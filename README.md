@@ -14,6 +14,13 @@ agents**, where the system prompt ships directly in the project's public
 source code (as opposed to being reverse-engineered/leaked from a closed
 product).
 
+**[→ `agent-archetypes.md`](./agent-archetypes.md)** — start here for the
+30,000-foot view: the ~35 agents/tools/skills/bots in this collection
+sorted into six recognizable architectural archetypes (general-purpose
+interactive assistant, benchmark-driven issue solver, minimalist
+scaffold, multi-role pipeline, PR-review specialist, app/UI generator),
+plus the two axes that explain most of the variance between them.
+
 **[→ `code-review-approaches.md`](./code-review-approaches.md)** —
 a synthesized comparison of every code/PR-review-specific source in this
 collection, stage by stage (system prompt, diff format, context,
