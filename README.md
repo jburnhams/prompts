@@ -23,8 +23,9 @@ product).
 | [`pr-agent/`](./pr-agent) | [PR-Agent / Qodo Merge](https://github.com/qodo-ai/pr-agent) | Code review agent | Apache-2.0 |
 | [`swe-agent/`](./swe-agent) | [SWE-agent](https://github.com/SWE-agent/SWE-agent) | Coding agent (issue resolver) | MIT |
 | [`openhands/`](./openhands) | [OpenHands](https://github.com/All-Hands-AI/OpenHands) | Coding agent (autonomous SWE) | MIT |
+| [`opencode/`](./opencode) | [OpenCode](https://github.com/anomalyco/opencode) | Coding agent (terminal, multi-provider) | MIT |
 
 ## Candidates for next pass
 
 Other open-source coding/review agents worth adding later: Continue.dev,
-gpt-engineer, Plandex, Goose (Block), AutoCodeRover, OpenCode.
+gpt-engineer, Plandex, Goose (Block), AutoCodeRover.
