@@ -38,14 +38,16 @@ still retrievable, just no longer actively developed at those locations.
 
 A second category, kept separate from the open-source folders above: prompts
 from closed-source products, extracted by third parties rather than
-published by the vendor. See [`leaked/README.md`](./leaked/README.md) for
-caveats on provenance and reliability.
+published by the vendor. 28 sources so far — see
+[`leaked/README.md`](./leaked/README.md) for the full list and caveats on
+provenance and reliability. Most came in bulk from one community aggregator
+repo; a couple (Factory/Droid) from standalone gists.
 
-| Folder | Project | Type |
-|---|---|---|
-| [`leaked/windsurf/`](./leaked/windsurf) | Windsurf (Cascade) | Coding agent (closed source) |
+**Checked and no leak found (as of 2026-07-10)**: CodeRabbit, Greptile, and
+Qodo's closed-source products (its open-source `pr-agent` is already
+covered above). Worth re-checking later.
 
 ## Candidates for next pass
 
 Other open-source coding/review agents worth adding later: Continue.dev,
-gpt-engineer, Plandex, AutoCodeRover.
+gpt-engineer, Plandex, AutoCodeRover, Bolt, Gemini CLI, Lumo.

@@ -16,8 +16,56 @@ vendor. Treat them accordingly:
 Each subfolder's README notes exactly where the leak came from so you can
 judge reliability yourself.
 
+Most of these were pulled in bulk from
+[`x1xhlol/system-prompts-and-models-of-ai-tools`](https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools),
+a large, actively maintained community aggregator (2026-07-10 snapshot).
+Folders that say "not from the x1xhlol aggregator" in their README came from
+elsewhere.
+
+Deliberately skipped from that aggregator: non-coding assistants (Cluely,
+Comet Assistant, NotionAI, Perplexity, Poke, Dia) and its "Open Source
+prompts" folder (Bolt, Cline, Codex CLI, Gemini CLI, Lumo, RooCode) — those
+are mirrors of genuinely open-source projects, better sourced from their
+own repos directly (as done for Cline/Codex CLI/Roo Code already; Bolt,
+Gemini CLI, and Lumo are candidates to add as proper open-source folders
+later).
+
+**Looked for and not found**: CodeRabbit, Greptile, and Qodo (beyond the
+already-included open-source `pr-agent`) don't appear to have any leaked
+system prompt published anywhere as of 2026-07-10 — not in the aggregator
+above, nor in other leak-collection repos/gists checked. Worth re-checking
+periodically.
+
 ## Sources so far
 
 | Folder | Product | Vendor |
 |---|---|---|
 | [`windsurf/`](./windsurf) | Windsurf (Cascade) | Windsurf (formerly Codeium) |
+| [`amp/`](./amp) | Amp | Sourcegraph |
+| [`factory/`](./factory) | Factory (Droid) | Factory |
+| [`cursor/`](./cursor) | Cursor | Anysphere |
+| [`devin/`](./devin) | Devin AI | Cognition |
+| [`replit/`](./replit) | Replit Agent | Replit |
+| [`lovable/`](./lovable) | Lovable | Lovable |
+| [`v0/`](./v0) | v0 | Vercel |
+| [`same-dev/`](./same-dev) | Same.dev | Same |
+| [`manus/`](./manus) | Manus | Manus (Monica) |
+| [`orchids/`](./orchids) | Orchids.app | Orchids |
+| [`leap-new/`](./leap-new) | Leap.new | Encore |
+| [`emergent/`](./emergent) | Emergent | Emergent |
+| [`augment-code/`](./augment-code) | Augment Code | Augment |
+| [`codebuddy/`](./codebuddy) | CodeBuddy | Tencent |
+| [`trae/`](./trae) | Trae | ByteDance |
+| [`qoder/`](./qoder) | Qoder | Qoder |
+| [`kiro/`](./kiro) | Kiro | AWS |
+| [`junie/`](./junie) | Junie | JetBrains |
+| [`traycer/`](./traycer) | Traycer AI | Traycer |
+| [`warp/`](./warp) | Warp | Warp |
+| [`xcode/`](./xcode) | Xcode Intelligence | Apple |
+| [`zai-code/`](./zai-code) | Z.ai Code | Zhipu AI |
+| [`google-gemini/`](./google-gemini) | Gemini (AI Studio vibe-coder) | Google |
+| [`google-antigravity/`](./google-antigravity) | Antigravity | Google |
+| [`vscode-agent-leaked/`](./vscode-agent-leaked) | VS Code Agent (leaked snapshot) | Microsoft |
+| [`claude-code/`](./claude-code) | Claude Code (leaked snapshot) | Anthropic |
+| [`claude-for-chrome/`](./claude-for-chrome) | Claude for Chrome | Anthropic |
+| [`anthropic/`](./anthropic) | Claude.ai default assistant | Anthropic |
