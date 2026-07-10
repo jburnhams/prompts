@@ -20,6 +20,13 @@ collection, stage by stage (system prompt, diff format, context,
 filtering, output format, delivery, safety), with links back to each
 source for detail.
 
+**[→ `coding-agent-approaches.md`](./coding-agent-approaches.md)** — the
+companion doc, one level down: a comparison of the *full* coding-agent
+system prompts themselves (identity, per-model variants, environment
+injection, tool-use policy, code-editing format, planning, project-memory
+files, safety, communication style), with particular focus on OpenHands,
+OpenCode, Codex, Claude Code, and Cursor.
+
 ## Sources so far
 
 | Folder | Project | Type | License |
