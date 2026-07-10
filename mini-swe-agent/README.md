@@ -38,3 +38,35 @@ diff.
   codebase" — `mini.yaml` doesn't offer this), and drops the "submit"
   command instructions from the system template (kept only in the
   instance template).
+
+## Tool surface
+
+The floor of this collection: **exactly one tool, `bash`, and nothing
+else** — no dedicated edit tool, no search tool, no browser, no
+multimodal input, no planning tool. Everything (reading files, editing,
+searching, submitting) happens through bash commands the model chooses
+to run, using the "Useful command examples" section (heredoc file
+creation, `sed -i` editing with a macOS `Darwin` variant, `nl -ba | sed
+-n` for viewing numbered line ranges) as the only editing guidance given
+— there is no SEARCH/REPLACE or old_string/new_string convention taught
+at all, because there's no edit tool to teach it for.
+- **Execution model**: **non-persistent** — "Directory or environment
+  variable changes are not persistent. Every action is executed in a new
+  subshell," worked around by prefixing commands with
+  `MY_ENV_VAR=... cd /path && ...`. This is the opposite persistence model
+  from Augment SWE-bench Agent's `pexpect`-backed persistent shell.
+- **Calling convention**: native API tool-calling, not text-parsed action
+  blocks — confirmed by `format_error_template`'s reference to
+  `finish_reason`/`has_tool_calls`. `swebench.yaml` additionally permits
+  multiple bash tool calls in one response; `mini.yaml` implicitly expects
+  one.
+- **Termination**: a magic bash command, `echo
+  COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`, rather than a dedicated
+  "submit"/"complete" tool (contrast Augment SWE-bench Agent's
+  `complete_tool.py`).
+- **Browser/multimodal/planning**: none.
+- **Sandbox/isolation**: not specified in these configs — left to
+  whatever harness runs the agent (local subprocess, container, etc.).
+- **Extensibility**: none built in — this is the deliberately minimal
+  "100 line agent" baseline that `live-swe-agent` forks specifically to
+  add a tool-creation capability on top of (see below).

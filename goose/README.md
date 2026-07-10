@@ -33,3 +33,34 @@ directory.
 
 Not included: `permission_judge.md`, which was empty (0 bytes) at the
 retrieved commit.
+
+## Tool surface
+
+- **Shell**: not fixed — `{{shell}}` is a template variable filled in at
+  runtime (so it adapts to whatever the OS/user actually has: bash, zsh,
+  PowerShell, etc.), the only source in this collection whose base prompt
+  treats "which shell" as a variable rather than assuming one.
+- **Tools generally**: `system.md` names **no built-in tools at all** —
+  everything comes from dynamically-loaded **Extensions** ("Extensions
+  provide additional tools and context from different data sources and
+  applications. You can dynamically enable or disable extensions"), each
+  contributing its own tools and, optionally, its own `### Instructions`
+  block folded into the prompt. There's also a stated soft limit —
+  `extension_tool_limits` triggers a suggestion to disable some
+  extensions if the user exceeds a configured extension/tool count,
+  because "exceeding recommended limits" degrades "tool selection
+  accuracy" — the only source in this collection with an explicit
+  too-many-tools warning built into the prompt logic itself.
+- **Small/local-model fallback — a genuinely different tool-calling
+  convention**: `tiny_model_system.md` abandons structured tool calling
+  entirely for a `$`-prefixed plain-text shell convention ("To run a
+  shell command, start a new line with $: `$ ls`"), text-parsed rather
+  than API-native — directly comparable to mini-swe-agent's and
+  Live-SWE-agent's text-block action parsing (see
+  [`agent-tool-surfaces.md`](../agent-tool-surfaces.md)), but chosen here
+  specifically for *weaker models*, not as a general design philosophy.
+- **Code execution**: whatever the active extensions provide — nothing
+  fixed in the base prompt.
+- **Browser/web, multimodal**: not addressed in the base prompt (would
+  come from extensions).
+- **Sandbox/isolation**: not specified.
