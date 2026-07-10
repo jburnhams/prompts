@@ -45,6 +45,8 @@ OpenCode, Codex, Claude Code, and Cursor.
 | [`bolt/`](./bolt) | [Bolt.new](https://github.com/stackblitz/bolt.new) | AI app-building agent (browser) | MIT |
 | [`gemini-cli/`](./gemini-cli) | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | Coding agent (Google, terminal) | Apache-2.0 |
 | [`augment-swebench-agent/`](./augment-swebench-agent) | [Augment SWE-bench Agent](https://github.com/augmentcode/augment-swebench-agent) | Coding agent (SWE-bench Verified baseline) | MIT |
+| [`mini-swe-agent/`](./mini-swe-agent) | [mini-swe-agent](https://github.com/SWE-agent/mini-swe-agent) | Coding agent ("the 100 line" SWE-bench baseline) | MIT |
+| [`live-swe-agent/`](./live-swe-agent) | [Live-SWE-agent](https://github.com/OpenAutoCoder/live-swe-agent) | Coding agent (writes its own tools mid-task) | MIT |
 
 Note: Roo Code and Copilot Chat's source repos were both archived
 (read-only) shortly before this collection was put together — files are
@@ -110,8 +112,23 @@ commands, or the top-level folders' standalone CLI/IDE agents). See
 has no published prompt/diff-formatting logic anywhere — closed-source,
 server-side. See `github-pr-bots/README.md` for what was checked.
 
+## Related reading (not part of this collection)
+
+[*"Inside the Scaffold: A Source-Code Taxonomy of Coding Agent
+Architectures"*](https://arxiv.org/html/2604.03515v1) — an arXiv paper
+doing complementary analysis to this repo: instead of comparing prompt
+text, it compares the *scaffold/architecture code* around 13 open-source
+coding agents (control flow, tool interfaces, context management),
+grounded in specific file paths and commit hashes. No prompts included,
+so nothing to add here directly, but a good companion read to
+[`coding-agent-approaches.md`](./coding-agent-approaches.md), and its
+source list is where several "candidates for next pass" below came from.
+
 ## Candidates for next pass
 
 Other open-source coding/review agents worth adding later: Continue.dev,
-gpt-engineer, Plandex, AutoCodeRover, bolt.diy (community multi-LLM fork of
-Bolt).
+gpt-engineer, Plandex, bolt.diy (community multi-LLM fork of Bolt).
+From the scaffold-taxonomy paper above: AutoCodeRover, Agentless,
+Moatless Tools, DARS-Agent, Prometheus (all SWE-bench-family agents, same
+category as `swe-agent/`/`mini-swe-agent/`/`live-swe-agent/`/
+`augment-swebench-agent/` above).

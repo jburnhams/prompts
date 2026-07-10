@@ -27,6 +27,8 @@ from the files in this repo at the time of writing, not from memory.
 | [`aider/`](./aider) | Aider | Apache-2.0 |
 | [`swe-agent/`](./swe-agent) | SWE-agent | MIT |
 | [`augment-swebench-agent/`](./augment-swebench-agent) | Augment SWE-bench Agent | MIT |
+| [`mini-swe-agent/`](./mini-swe-agent) | mini-swe-agent | MIT |
+| [`live-swe-agent/`](./live-swe-agent) | Live-SWE-agent | MIT |
 | [`goose/`](./goose) | Goose | Apache-2.0 |
 | [`crush/`](./crush) | Crush | FSL-1.1-MIT |
 | [`bolt/`](./bolt) | Bolt.new | MIT |
@@ -41,6 +43,13 @@ lower-confidence than the officially-published sources, though the
 overall *shape* they show (terseness mandates, TodoWrite, etc.) is
 corroborated by public documentation and by how similar tools that copy
 their conventions behave.
+
+Related reading, not a prompt source itself but worth pairing with this
+doc: [*"Inside the Scaffold: A Source-Code Taxonomy of Coding Agent
+Architectures"*](https://arxiv.org/html/2604.03515v1) does the
+architecture-level equivalent of this comparison — control flow, tool
+interfaces, context management — across 13 open-source agents including
+several listed here.
 
 ---
 
@@ -120,6 +129,9 @@ applied.
 | Bespoke `<boltAction type="file">` XML-in-artifact syntax carrying the **full file contents**, not a diff — whole-file rewrite is the unit of change | Bolt.new |
 | A dedicated `read_lints`/linter-integration step is part of the edit loop itself, not a separate "verification" stage | Cursor (`<linter_errors>` — checks linter state after every edit and caps retries at 3 before asking the user) |
 | Editing format left to "use the appropriate tool" without specifying a wire format in the base prompt (delegated entirely to tool schemas) | OpenCode, Roo Code, Crush, Goose |
+| `str_replace`/`view`/`create`/`insert`/`undo_edit` on a single editor tool, `sed`-heavy usage examples for everything else | mini-swe-agent, Live-SWE-agent (both, via a `bash`-only toolset — see next row) |
+| **No dedicated edit tool at all** — bash is the only tool, and file edits happen via heredocs (`cat <<'EOF' > file`) and `sed`; the prompt teaches these as worked examples rather than exposing a structured edit API | mini-swe-agent, Live-SWE-agent — genuinely distinct from every other source here, all of which have at least one dedicated file-editing tool |
+| Instructed to **write its own new tools mid-task** in Python when bash alone isn't a good fit, with a reflection nudge after every action asking whether a new tool would help | Live-SWE-agent only — no other source in this collection gives the model authority to expand its own toolset at runtime; see [`live-swe-agent/README.md`](./live-swe-agent) |
 | A note that **no patch tool is available at all**, so a different tool must be used | Cursor ("There is no apply_patch CLI available in terminal. Use the appropriate tool for editing the code instead.") — notable because Codex explicitly prefers `apply_patch` and Cursor explicitly says it doesn't have one; same underlying concept, opposite availability |
 | Explicit prohibition against a specific patch tool name that doesn't exist in that product, to stop the model hallucinating it | Crush ("Never attempt 'apply_patch' or 'apply_diff' - they don't exist. Use 'edit' or 'multiedit' instead.") — direct evidence that this is a real failure mode vendors have had to patch (pun intended) by naming the wrong tool explicitly |
 
@@ -268,3 +280,11 @@ Code-descended family, and the clearest outlier from Cursor.
   this entire persona (defensive-security-only stance, never-comment
   rule, 4-line terseness, AGENTS.md-reading) plus the review instructions
   on top. The base prompt's behavior always leaks through.
+- **The minimal-scaffold end of the spectrum is more radical than
+  "fewer features."** mini-swe-agent strips file-editing down to bash +
+  `sed`; Live-SWE-agent goes further and has the model author its own
+  Python tools mid-task instead of shipping a fixed toolset at all. Both
+  still score competitively on SWE-bench Verified per their own READMEs
+  — evidence that the elaborate tool/mode surface built up across most of
+  the other sources here (dedicated edit tools, plan modes, sub-agents,
+  memory-file systems) is a design choice, not a proven necessity.
