@@ -14,6 +14,11 @@ agents**, where the system prompt ships directly in the project's public
 source code (as opposed to being reverse-engineered/leaked from a closed
 product).
 
+**[→ `code-review-approaches.md`](./code-review-approaches.md)** —
+a synthesized comparison of every code/PR-review-specific source in this
+collection, stage by stage (diff format, context, filtering, output
+format, delivery, safety), with links back to each source for detail.
+
 ## Sources so far
 
 | Folder | Project | Type | License |
