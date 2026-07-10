@@ -14,6 +14,12 @@ agents**, where the system prompt ships directly in the project's public
 source code (as opposed to being reverse-engineered/leaked from a closed
 product).
 
+**[→ `code-review-approaches.md`](./code-review-approaches.md)** —
+a synthesized comparison of every code/PR-review-specific source in this
+collection, stage by stage (system prompt, diff format, context,
+filtering, output format, delivery, safety), with links back to each
+source for detail.
+
 ## Sources so far
 
 | Folder | Project | Type | License |
@@ -90,6 +96,7 @@ commands, or the top-level folders' standalone CLI/IDE agents). See
 | [`github-pr-bots/claude-code-action/`](./github-pr-bots/claude-code-action) | Anthropic | MIT |
 | [`github-pr-bots/gemini-code-review/`](./github-pr-bots/gemini-code-review) | Google | Apache-2.0 |
 | [`github-pr-bots/codex-review/`](./github-pr-bots/codex-review) | OpenAI | MIT (published reference impl., not the real hosted service — see README) |
+| [`github-pr-bots/opencode-review/`](./github-pr-bots/opencode-review) | Anomaly (OpenCode) | MIT (defaults to the full "build" agent, not a review-specific one — see README) |
 
 **Copilot: nothing found.** GitHub's actual hosted Copilot code-review bot
 has no published prompt/diff-formatting logic anywhere — closed-source,
