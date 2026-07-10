@@ -10,6 +10,16 @@ behind) the real thing, so treat this as a data point, not a spec.
 ## Files
 - `Prompt.txt` — extracted system prompt.
 - `Tools.json` — extracted tool/function definitions.
+- [`architecture-notes.md`](./architecture-notes.md) — a synthesized
+  summary of Claude Code's internal architecture (agentic loop,
+  permission system, multi-agent "Team" coordination, plugins/skills,
+  feature flags, MCP integration, memory) drawn from a separate, much
+  larger alleged leak of the **full TypeScript source** (not just the
+  prompt) at
+  [`tanbiralam/claude-code`](https://github.com/tanbiralam/claude-code).
+  Not stored here as source — see that file for provenance, caveats
+  (unverified authenticity, confirmed stub code in security-sensitive
+  areas), and methodology.
 
 ## Tool surface
 

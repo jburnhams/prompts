@@ -1,0 +1,380 @@
+# Claude Code: internal architecture notes (from a full-source leak)
+
+This is a different, much larger source than the `Prompt.txt`/`Tools.json`
+extraction documented in this folder's main [`README.md`](./README.md).
+Those are prompt-only extractions (the kind pulled via a debug flag or a
+prompt-injection trick). What's summarized here comes from
+[`tanbiralam/claude-code`](https://github.com/tanbiralam/claude-code), a
+public repo claiming to hold the **full, unobfuscated TypeScript source**
+of Claude Code — allegedly leaked on 2026-03-31 via an exposed source
+map file in the npm registry, discovered by Chaofan Shou and posted
+publicly. Its own README puts it at ~1,900 files and ~512,000 lines,
+built on Bun + React/Ink.
+
+**This document is a synthesized architecture summary, not a copy of
+the source.** No source files from that repo are stored in this
+repository. Everything below is written in my own words from browsing
+the repo (via `github.com` tree/blob views, since it couldn't be cloned
+in this environment) and should be read as secondary analysis, not a
+spec — treat it the same way the rest of this folder treats the
+prompt-only extraction: a data point, not ground truth.
+
+## Caveats before anything else
+
+- **Authenticity is unverified.** A repo claiming to be a specific
+  commercial product's full leaked source is easier to fabricate
+  convincingly than a short prompt-text extraction, and there's no
+  independent way to confirm this one is genuine from the outside.
+- **A meaningful fraction of the repo is stub code, concentrated in the
+  most security-sensitive areas.** Confirmed stubs (files whose entire
+  body is a placeholder, e.g. a comment reading roughly "Stub: not
+  included in leaked source" or "ANT-ONLY," with disabled/no-op logic)
+  include the peer-agent-listing tool, the bash-command security
+  classifier, and the SSH session manager. File *names* and directory
+  *structure* may be complete while the *logic* inside some files isn't
+  — so treat the module map below as showing intended architecture, not
+  proof that every described behavior is actually implemented in what's
+  public.
+- **This summary itself is one level removed from the source**: it was
+  produced by browsing GitHub's rendered file views through an
+  AI-summarization step (no local clone, no full-text grep across the
+  repo), so it should be read as "plausible structural description,"
+  not "verified line-by-line audit." Confirmed-by-direct-reading vs.
+  inferred-from-file-naming is noted inline where it matters.
+
+## Module map
+
+`src/` is organized as roughly three dozen top-level areas: `tools/`
+(~58 individual tool implementations, each its own directory),
+`commands/` (~85 slash-command implementations), `services/` (business
+logic — MCP, LSP, OAuth, analytics, memory extraction, plugin
+management), `bridge/` (~35 files, IDE integration), `coordinator/`
+(multi-agent "Team" supervisor logic), `state/` (in-memory session
+state), `memdir/` (persisted cross-session memory), `skills/`,
+`plugins/`, `permissions`-related code under `utils/permissions/` (24
+files), plus `vim/`, `voice/`, `ssh/` as smaller feature-specific areas,
+and top-level orchestration files (`QueryEngine.ts`, `query.ts`,
+`Tool.ts`, `tools.ts`, `Task.ts`, `context.ts`).
+
+## The agentic loop
+
+Two files split the responsibility that other sources in this
+collection's `agent-tool-surfaces.md`/`agent-subagent-architectures.md`
+docs usually describe as one undifferentiated "the agent loop":
+
+- **`QueryEngine.ts`** owns the *conversation*: one instance per
+  conversation, persisting message history, file-state cache, usage
+  tracking, and permission-denial history across multiple
+  `submitMessage()` calls. It normalizes streamed API events
+  (`message_start`/content-block deltas/`message_stop`) into SDK-facing
+  message types, writes to a persistent transcript (fire-and-forget for
+  still-mutating assistant messages, awaited for user/system messages to
+  keep them consistent), and handles compaction-boundary bookkeeping —
+  when a "snip" compaction occurs, it replays the message store to
+  strip stale markers rather than leaving them to leak memory across a
+  long session.
+- **`query.ts`** owns the *turn*: assembles the system + user/system
+  context each call, drives compaction strategy selection (autocompact,
+  reactive compact on a "prompt too long" error, "snip," or full context
+  collapse), executes tools — including letting a tool start running
+  while the model is *still streaming* the rest of its response — and
+  has narrow recovery paths for specific failure modes (image/media
+  errors, max-output-token truncation retried).
+
+This two-layer split (conversation-level state vs. turn-level
+execution) doesn't have a clean one-to-one analog elsewhere in this
+collection's sources — most of what's captured for other agents is
+prompt text plus a flat tool list, not the surrounding session-engine
+architecture, since none of the other sources have a full-source leak
+to draw this distinction from.
+
+## Tool definition and dispatch
+
+`Tool.ts` defines a generic `Tool<Input, Output>` contract: identity,
+a Zod input schema, a `call()` method taking a `ToolUseContext` and a
+`canUseTool` permission-check callback, a `checkPermissions()` method
+tied into the permission system below, and capability flags
+(`isConcurrencySafe()`, `isReadOnly()`, `isDestructive()`,
+`isSearchOrReadCommand()`) that presumably drive some of the
+parallel-tool-call and confirmation behavior documented from the
+prompt-text side in `coding-agent-approaches.md` §4.
+
+`tools.ts` is the registry. Its own in-repo framing (per the research
+pass) describes `getAllBaseTools()` as "the source of truth for ALL
+tools." Filtering happens in layers on top of that base list:
+per-mode restriction (a stripped-down "simple mode" exposes only
+Bash/FileRead/FileEdit; worktree mode adds `EnterWorktreeTool`/
+`ExitWorktreeTool`; coordinator mode swaps in a different allowed-tool
+set entirely — see below), permission-deny rules that can remove a tool
+from the model's visible list entirely rather than just blocking a call
+to it, and a final merge step that combines built-ins with MCP-derived
+tools while preserving a stable order — reordering the tool list between
+turns would invalidate Anthropic's prompt cache, so ordering is treated
+as a correctness concern, not cosmetic.
+
+## System prompt assembly
+
+`src/constants/prompts.ts` assembles the prompt from named sections
+(identity/tone, task-doing conventions, tool-use policy, environment
+block, dynamic language/output-style/MCP-instruction sections) — the
+same overall shape documented from the plain-text `Prompt.txt`
+extraction in this folder's main README, which is a point of
+convergence between the two independently-sourced leaks rather than
+something this document is asserting on its own.
+
+Two things the full-source view adds that a prompt-text extraction
+can't show:
+
+- **Explicit prompt-caching-aware section design.** A separate file,
+  `systemPromptSections.ts`, wraps most sections in a memoization layer
+  (`systemPromptSection()`) computed once and cached until `/clear` or
+  `/compact`, but marks a few sections with a deliberately named
+  `DANGEROUS_uncachedSystemPromptSection()` wrapper for content that
+  must be recomputed every turn — a naming choice that reads as a
+  direct warning to future maintainers that adding an uncached section
+  has a real prompt-cache-cost consequence, not just a style note.
+- **CLAUDE.md loading and git-status injection are two separate,
+  independently-gated functions** in `context.ts` (`getUserContext()`
+  for CLAUDE.md, respecting a `CLAUDE_CODE_DISABLE_CLAUDE_MDS` env var
+  and a "bare mode"; `getSystemContext()` for git branch/status/recent
+  commits, skipped in remote-execution contexts) — confirming these are
+  independently toggleable pieces of environment injection rather than
+  one monolithic block, and that git-status text is truncated past
+  2000 characters specifically to control token cost.
+
+## Permission system
+
+The most fleshed-out subsystem in the research pass, and worth reading
+alongside this collection's cross-source tool-surface work since none
+of the prompt-only extractions elsewhere in this repo show this level
+of mechanism (they only show the *instruction text* asking the model to
+seek permission, not the enforcement architecture behind it).
+
+- **Six modes**: `default`, `plan`, `acceptEdits`, `bypassPermissions`,
+  `dontAsk`, and an internal-only `auto` mode gated behind a feature
+  flag and excluded from the externally-available mode set by an
+  `isExternalPermissionMode()` type guard.
+- **Rule model**: a `PermissionRule` is `{source, behavior, value}` —
+  `source` ∈ user/project/local/flag/policy settings, CLI arg, command,
+  or session; `behavior` ∈ allow/deny/ask; `value` carries the tool name
+  plus optional pattern content (e.g. a bash-prefix pattern). Rules from
+  all sources are aggregated into three maps (always-allow,
+  always-deny, always-ask) that the decision function consults in
+  order — allow wins outright, deny blocks outright, otherwise
+  content-specific pattern matching applies, and remaining "ask"
+  decisions get transformed per-mode (`dontAsk` auto-denies with a
+  rationale instead of prompting; `acceptEdits` short-circuits the
+  expensive classifier path for file-op tools).
+- **An LLM-based "auto" classifier** (`yoloClassifier.ts`) for the
+  internal-only `auto` mode: a fast first-pass decides allow/no-allow
+  cheaply, and only escalates to a slower "thinking" pass if the fast
+  pass leans toward blocking — built from recent conversation context
+  plus the user's own configured allow/deny rules and CLAUDE.md. A
+  companion `bashClassifier.ts` for more granular bash-specific
+  classification exists as a file but is one of the confirmed stubs
+  ("classifier permissions feature is ANT-ONLY") — its real logic isn't
+  in the public repo.
+- **Storage**: settings-file-based, loaded at policy (managed/
+  enterprise) > project > user > local scope, format
+  `{"permissions": {"allow": [...], "deny": [...], "ask": [...]}}` as
+  string-pattern arrays per behavior, with a managed-settings flag that
+  can restrict evaluation to policy rules only (an enterprise lockdown
+  mechanism).
+
+## Multi-agent "Team" coordination
+
+This is the part most directly relevant to
+[`agent-subagent-architectures.md`](../../agent-subagent-architectures.md)
+in this collection, and it turns out to be more structured than
+anything captured from prompt-only extractions elsewhere: a
+**supervisor-worker architecture layered on top of the same sub-agent
+primitive** used for ordinary Task-tool delegation, not a separate
+peer-to-peer engine.
+
+- **`Task.ts`** (top-level) defines a shared abstraction — a `TaskType`
+  union covering six execution modes (local bash, local agent, remote
+  agent, in-process teammate, local workflow, MCP monitoring, plus a
+  "dream" mode) and a common status lifecycle. Concrete task kinds
+  (`LocalAgentTask`, `RemoteAgentTask`, `InProcessTeammateTask`, etc.)
+  implement this shared contract — meaning plain async sub-agent
+  delegation and full "Team" coordination are **two policies riding the
+  same underlying task machinery**, distinguished mainly by which tools
+  each context is allowed to use (`ASYNC_AGENT_ALLOWED_TOOLS` vs.
+  `COORDINATOR_MODE_ALLOWED_TOOLS` vs.
+  `IN_PROCESS_TEAMMATE_ALLOWED_TOOLS`, all defined as constants in
+  `tools.ts`).
+- **`coordinator/coordinatorMode.ts`** generates a distinct system
+  prompt for the supervisor role, explicitly instructing it to behave
+  like a manager rather than a conversational peer (e.g. told not to
+  thank or acknowledge worker output the way it would a human).
+- **`TeamCreateTool`** materializes a team: generates a team name, a
+  deterministic lead-agent ID, writes team metadata to disk, resets
+  task numbering to start fresh per swarm, and registers the team for
+  cleanup at session end — a fix, per an in-code comment, for a prior
+  bug where teams were "left on disk forever unless explicitly
+  TeamDelete'd." The lead agent is explicitly excluded from its own
+  teammate registry.
+- **Workers are spawned through the same `AgentTool`/`runAgent.ts`
+  machinery as ordinary sub-agent delegation** — self-contained
+  prompts, no visibility into prior conversation, a unique task ID per
+  worker. Coordinator mode is a policy/tool-restriction layer on top of
+  this, not a different transport.
+- **`SendMessageTool`** both continues a running worker by task ID and
+  routes messages between named teammates — direct, broadcast (`"*"`),
+  or cross-session via `bridge:`/`uds:` prefixes — plus structured
+  message types beyond plain text (shutdown request/response, plan
+  approval/rejection). Delivery is asynchronous: messages land in
+  per-agent mailboxes; a stopped in-process agent gets auto-resumed to
+  receive a queued message. Results surface back to the coordinator as
+  structured `<task-notification>`-style blocks carrying status/summary/
+  token-usage — a close analog to the `<task-notification>` structure
+  this very session receives from its own background sub-agents,
+  suggesting (without proving) real architectural continuity between
+  what's leaked here and the live product.
+- **Gating**: the whole feature requires an experimental env var or CLI
+  flag for external users, plus a remote GrowthBook killswitch — see
+  "Feature flags" below.
+- One real gap in the research pass: `ListPeersTool.ts`, which would
+  show exactly how peer discovery/listing works, is a confirmed stub —
+  so the peer-visibility mechanism is inferred (from `TeamCreateTool`'s
+  teammate registry) rather than directly confirmed.
+
+## Plugins and skills
+
+Two related but distinct extensibility layers:
+
+- **Plugins** are the broader installable unit — can register skills,
+  hooks, *and* MCP servers, with marketplace/versioning/trust machinery
+  (`name@marketplace` identity, dependency validation between plugins,
+  non-in-place updates that fetch-then-swap rather than mutate in
+  place, policy-based install blocking for admin-managed environments).
+  Built-in plugins ship with the CLI and are distinguished from
+  marketplace ones by a `@builtin` ID suffix.
+- **Skills** are one specific artifact type plugins (or bare
+  `.claude/skills` directories, or MCP servers) can supply into a
+  shared registry: a directory containing `SKILL.md` with YAML
+  frontmatter (name, description, `when-to-use`, gitignore-style
+  activation `paths`, allowed-tools, model/effort overrides,
+  shell-execution and variable-substitution support) plus a markdown
+  body that becomes the actual prompt text delivered to the model.
+  Discovery walks up the directory tree from an edited file to find
+  nested `.claude/skills` dirs, in addition to a static startup scan of
+  managed/user/project skill directories.
+- **The skill-ranking/relevance logic is a confirmed stub**
+  (`skillSearch/signals.ts` — a `DiscoverySignal` interface with no
+  body) — so *how* skills actually get surfaced/prioritized to the
+  model isn't visible in what's public, only that a structured
+  "signal" concept for it exists.
+
+## Feature flags: two independent systems
+
+- **Compile-time, via Bun's bundler**: a `feature('FLAG_NAME')` macro
+  that Bun's bundler replaces with a literal `true`/`false` at build
+  time, letting false-gated branches be statically stripped from the
+  shipped bundle (real dead-code elimination, not just a runtime
+  no-op). Outside the bundler, the macro just returns `false`.
+- **Runtime, via GrowthBook**: a remote-eval feature-flagging client
+  (flag keys observed with a `tengu_` prefix) with a resolution order
+  of env-var override → local config override (internal-only) →
+  in-memory cache → disk-persisted cache (so flags survive restarts
+  without a fresh network round-trip). This is the layer used as an
+  emergency killswitch independent of redeploys — e.g. the
+  multi-agent-teams feature and voice mode both have a GrowthBook flag
+  that can disable them for external users without shipping new code.
+
+The two systems answer different questions: the compile-time one
+decides what code exists in the shipped bundle at all; the runtime one
+decides what's turned on for a given session among code that did ship.
+
+## MCP integration
+
+Broader transport support than any single MCP-related mention captured
+from the prompt-only sources in this collection: stdio, SSE, streamable
+HTTP, WebSocket (plus an IDE-specific WebSocket variant), in-process
+servers (Chrome and Computer-Use MCP servers run without subprocess
+overhead), and a proxied path for remote servers reached through
+Anthropic's own infrastructure. Auth covers standard OAuth (RFC 9728
+discovery → RFC 8414 metadata → PKCE) plus a separate "Cross-App
+Access" path letting one enterprise IdP login be reused across multiple
+MCP servers. Connected servers' tools get surfaced into the local tool
+registry with `mcp__servername__toolname`-prefixed names — the same
+naming convention visible directly in this very session's own deferred
+MCP tool list, which is the closest thing to independent corroboration
+this research pass found.
+
+## State, sessions, and memory — two genuinely different systems
+
+- **`state/`** is in-memory, per-process application state (including
+  the live `teamContext` used by Team coordination above) — session UI
+  state, not persisted memory.
+- **`memdir/`** is a separate, file-based, cross-session memory store —
+  markdown files with an index (`MEMORY.md`) pointing to per-topic
+  files, each with YAML frontmatter constraining memory to four
+  categories (user preferences, collaboration-pattern feedback,
+  project-specific context, reference material) and **explicitly
+  excluding anything derivable from the current project state** (code
+  patterns, architecture, git history) — a deliberate scope boundary
+  keeping it from overlapping with CLAUDE.md, which already covers
+  code-adjacent documentation (see "System prompt assembly" above).
+  Retrieval is LLM-based, not keyword/recency matching: a side-query
+  sends the user's current message plus every memory file's
+  filename+description header to a model, with a conservative
+  selection prompt ("if you are unsure... do not include it"), capped
+  at 5 memories per turn, filtering out redundant tool-doc memories for
+  tools already used recently while preserving warning/edge-case notes.
+
+This is architecturally close to what `agent-tool-surfaces.md` §7 in
+this collection flags as a rare capability — persistent cross-session
+memory exposed as a genuine system rather than a passive file
+convention (the closest other example in this collection being leaked
+Windsurf's `create_memory`/`trajectory_search` tools) — except here
+retrieval is a background LLM call gating what gets *read into* context
+each turn, rather than a tool the model calls explicitly to search its
+own memory.
+
+## Other distinctive findings
+
+- **Vim emulation** (`src/vim/`: `motions.ts`, `operators.ts`,
+  `textObjects.ts`, `transitions.ts`) — file naming strongly suggests a
+  real modal-editing implementation for the terminal input box
+  (motion+operator+text-object composition, a mode-transition state
+  machine), though file contents weren't read directly.
+- **Voice mode** is real but carefully gated — requires Anthropic OAuth
+  specifically (rejects plain API-key auth), talks to a dedicated
+  streaming endpoint, and carries its own GrowthBook emergency
+  killswitch, distinct from the SSH stub below in that this one reads
+  as a genuinely shipped, staged-rollout feature rather than a
+  placeholder.
+- **SSH support is a confirmed stub** — whatever remote-execution-over-
+  SSH capability the real product has, its implementation isn't in this
+  public repo.
+- **Worktree-scoped sub-sessions** (`EnterWorktreeTool`/
+  `ExitWorktreeTool`) are conditionally added to the tool pool in
+  worktree mode, and both tools have the same fully-fleshed-out
+  four-file structure as other confirmed-real tools (unlike the
+  stubbed ones) — a reasonably confident signal this one isn't a stub,
+  though the tool bodies themselves weren't read directly.
+- **A broader tool inventory than any single prompt extraction shows**:
+  beyond the well-known Bash/Read/Edit/Grep/Task family, the full
+  `src/tools/` listing includes tools not visible in any prompt-only
+  leak in this collection — an interactive clarifying-question tool, a
+  context-inspection/debug tool, a context-"snip" compaction tool, a
+  synthetic-output tool used specifically by coordinator mode, a
+  terminal-capture tool, and others whose purpose is inferred from
+  naming only.
+
+## Why this is worth having alongside the prompt-only extraction
+
+The two leaks corroborate each other on the parts that overlap (system
+prompt structure, the Task tool's stateless one-shot sub-agent
+contract) while the full-source leak adds an entire layer this
+collection's other sources can't show at all: not just *what a scaffold
+tells the model to do*, but the actual engineering underneath — prompt
+caching mechanics, a two-tier feature-flag system, a real permission
+rule-resolution algorithm, and a supervisor-worker multi-agent system
+built as a policy layer over the same primitive as ordinary sub-agent
+delegation. That last point in particular sharpens a distinction
+`agent-subagent-architectures.md` could only gesture at from prompt
+text alone: "sub-agent delegation" and "multi-agent team coordination"
+aren't two different mechanisms here, they're the same mechanism under
+two different tool-allowlist policies.
