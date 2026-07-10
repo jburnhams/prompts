@@ -36,6 +36,15 @@ adds architecture/test-coverage analysis).
   *what was excluded and why*, explicitly to build user trust rather than
   just suppressing noise silently.
 
+### Existing comments, new comments, proposed changes
+
+No PR exists yet at this point (it reviews uncommitted local changes), so
+there's no existing/new GitHub comment handling — output goes to the
+terminal/chat only. **Proposed changes** are the most fully-specified
+format in this collection: every finding requires a fenced `` ```diff ``
+block with `-`/`+` lines (see `templates/output-format.md`), not just
+prose — the template literally has no field for "no suggested fix."
+
 ## Files
 
 - `commands/review.md` / `commands/deep-review.md` — the two orchestrating

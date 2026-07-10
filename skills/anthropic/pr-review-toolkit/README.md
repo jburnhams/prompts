@@ -24,6 +24,23 @@ prompts per concern.
   alongside Critical/Important/Suggestions — the only skill in this
   collection that does.
 
+### Existing comments, new comments, proposed changes
+
+- **Doesn't touch GitHub PR comments at all**, in either direction. Its
+  `allowed-tools` are `Bash, Glob, Grep, Read, Task` — no `gh pr comment`,
+  no inline-comment MCP tool. Despite being framed as PR review, it neither
+  reads existing review discussion nor posts anything back to GitHub —
+  output is the aggregated Markdown summary (Critical/Important/
+  Suggestions/Strengths), presented in-chat only. Contrast with
+  `../code-review/`, which is built specifically to post real inline
+  comments.
+- **Proposed changes**: each finding in the aggregate template is
+  `[agent-name]: Issue description [file:line]` — no fix snippet or diff
+  format specified in the orchestrating prompt; individual agents (e.g.
+  `code-reviewer.md`) are told to include a "concrete fix suggestion" but
+  the format is left to the model, not templated like TuringMind's
+  `` ```diff `` blocks or PR-Agent's structured snippet pairs.
+
 ## Files
 - `commands/review-pr.md` — the orchestrating command prompt (decides which
   subagents to run and how to combine their findings).

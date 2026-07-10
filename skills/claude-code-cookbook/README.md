@@ -37,6 +37,32 @@ card the model follows loosely than a strict state machine like
   given as *examples* (e.g. the security-issue template), not a strict
   schema, and there's no explicit false-positive filtering pass.
 
+### Existing comments, new comments, proposed changes
+
+This is the only source in the collection where "existing comments" is the
+entire point of one of its two commands, rather than a side concern of one:
+
+- **`pr-review.md` produces new comments**, using its own `critical.must` /
+  `high.imo` / `medium.imo` / `low.nits` / `info.q` taxonomy (a labeling
+  scheme borrowed from the wider "Conventional Comments" convention). Each
+  comment template pairs a priority label with a proposed fix as a plain
+  code example (not a diff, not a strict before/after schema) and a
+  rationale. No mention of checking for or avoiding duplicate/prior
+  comments — nothing here prevents re-raising a point another reviewer (or
+  a previous run) already made.
+- **`pr-fix.md` consumes existing comments**: `gh pr view --comments`
+  pulls the full review thread, which then gets classified using the
+  *same* must/imo/nits/q taxonomy (so a `pr-review.md`-authored comment and
+  a human's comment sort into the same buckets), phased into a fix order
+  (Critical → High → Medium → Low), and — uniquely in this collection —
+  the workflow ends with **reply templates** for responding back to the
+  reviewer on GitHub (a fix-completion report format and a
+  technical-decision-explanation format), not just a private fix log.
+- **Proposed changes** across both commands are illustrative code
+  snippets/examples in the prompt text (e.g. "use bcrypt instead of
+  plaintext"), not a machine-checkable format like PR-Agent's
+  `existing_code`/`improved_code` pair or TuringMind's fenced `diff` block.
+
 ## Files
 
 - `commands/pr-review.md` — the main systematic PR review command

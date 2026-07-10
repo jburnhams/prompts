@@ -1,10 +1,14 @@
 # code-review
 
-Reviews a GitHub pull request. Launches 5 independent reviewer agents
-(CLAUDE.md compliance, bug detection, git-history/blame context, prior PR
-comment history, and code-comment verification/accuracy), scores each
-finding's confidence, and posts only high-confidence (default threshold 80)
-comments as inline GitHub PR comments with direct links.
+Reviews a GitHub pull request. Launches 4 parallel reviewer agents (2x
+CLAUDE.md-compliance Sonnet agents, 2x bug/security-focused Opus agents),
+then validates each candidate finding with a dedicated subagent before
+posting only validated issues as inline GitHub PR comments.
+
+(Correction: earlier notes here described 5 agents including
+git-history/blame and prior-PR-comment reviewers — that was wrong, likely
+carried over from an inaccurate summary rather than the actual command
+file. Fixed after reading `commands/code-review.md` directly.)
 
 This is the plugin `agent37`'s `local-review` (see `../../agent37/`) says
 it's explicitly modeled on — worth comparing the two side by side.
@@ -40,6 +44,26 @@ it's explicitly modeled on — worth comparing the two side by side.
   Markdown), with at least one line of context on each side of the cited
   range — the command prompt gives the exact URL format required for
   GitHub's Markdown preview to render it as a code snippet.
+
+### Existing comments, new comments, proposed changes
+
+- **Existing comments are checked, but only to decide whether to run at
+  all**: step 1 checks `gh pr view <PR> --comments` for a comment already
+  left *by Claude* — if found, it skips the PR entirely (with an explicit
+  carve-out to still review Claude-authored PRs). It does not read human
+  reviewers' existing comments to avoid re-raising the same point, or to
+  incorporate their feedback into the review.
+- **New comments**: real inline PR comments via
+  `mcp__github_inline_comment__create_inline_comment`, one per unique
+  issue, each required to cite/link its source (e.g. link the CLAUDE.md
+  rule quoted). A todo list of planned comments is drafted first as a
+  self-check, but never posted.
+- **Proposed changes**: conditional on fix size — small, fully-self-contained
+  fixes get a GitHub committable suggestion block (only if committing it
+  *alone* fully resolves the issue); larger/multi-location fixes get a
+  prose description instead, no suggestion block. No structured
+  before/after schema like PR-Agent's `existing_code`/`improved_code` —
+  it's left to the model's judgment within that one constraint.
 
 ## Files
 - `commands/code-review.md` — the full command prompt.

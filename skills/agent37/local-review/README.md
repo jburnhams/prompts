@@ -28,6 +28,14 @@ anything below 80 before presenting results grouped by severity.
   `**file.ts:42** - description` plus explanation and suggested fix. No
   "filtered issues" transparency section (unlike TuringMind's).
 
+### Existing comments, new comments, proposed changes
+
+No PR exists yet (uncommitted local changes only), so no GitHub comment
+I/O — output is chat/terminal only. **Proposed changes**: "suggested fix
+(with code snippet if helpful)" per the output-format instructions — a
+snippet is encouraged but, unlike TuringMind's template, not strictly
+required in every finding.
+
 ## Files
 - `commands/local-review.md` — the full command prompt (orchestration
   steps, sub-agent instructions, confidence scoring rubric, output format).

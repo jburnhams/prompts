@@ -19,9 +19,8 @@ prompt for a specific PR command.
   questions about a PR.
 - `pr_add_docs.toml` — the `/add_docs` command: generates docstrings for
   code in the PR.
-
-Note: the code-suggestions (`/improve`) prompt lives elsewhere in the repo
-under a different filename and wasn't tracked down yet — worth adding later.
+- `code_suggestions/` — the `/improve` command: proposes concrete code
+  fixes (see that folder's README) — added after initially being missed.
 
 ## Scaffolding (beyond the prompt text)
 
@@ -49,3 +48,27 @@ templates with the variable names left in place:
   reviewer prompt goes on to define a structured findings format the model
   must follow, consumed programmatically by PR-Agent to post as PR
   comments/labels rather than left as a chat reply).
+
+### Existing comments, new comments, proposed changes
+
+- **Existing PR comments/discussion are not fed back into `/review`'s
+  prompt.** Neither `pr_reviewer_prompts.toml` nor
+  `code_suggestions/pr_code_suggestions_prompts.toml` reference prior
+  review threads, other reviewers' comments, or "has this already been
+  raised" — each run is a fresh read of the diff plus PR
+  title/description/tickets. (There is a separate `pr_line_questions_prompts.toml`
+  for answering follow-up questions on a specific line, not fetched here,
+  which is the closest thing to "responding to a comment.")
+- **New comments**: `/review`'s output is one structured summary object
+  (`PRReview` — title-level fields like `score`, `security_concerns`, plus
+  a capped list of `key_issues_to_review` with file/line links) rather than
+  N separate inline comments — it reads as a single review summary, not a
+  GitHub-native "N comments on M lines" review. `key_issues_to_review` has
+  **no proposed fix** — it's issue-only (location + description + why it
+  matters), by design (see `code_suggestions/`, which is the fix-proposing
+  half of the tool, kept as a separate command with a separate prompt and
+  its own self-verification pass).
+- **Proposed changes**: see `code_suggestions/README.md` — structured
+  `existing_code`/`improved_code` snippet pairs, self-scored 0-10 by a
+  second reflect prompt before being surfaced, rendered as GitHub-native
+  suggested-change blocks.

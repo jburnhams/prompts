@@ -58,6 +58,19 @@ wait for human input before continuing.
   outcome — output is meant to update project state, not just inform the
   user.
 
+### Existing comments, new comments, proposed changes
+
+Notably, **this skill can review a PR (`gh pr view` resolves a PR
+reference to a branch/commit in step 1) but never touches PR comments at
+all** — no reading existing review discussion, no posting new comments.
+Findings and fixes live entirely in the local spec/story file and
+`deferred-work.md` (see above); if you want a GitHub-comment workflow, this
+isn't it (compare `../anthropic/code-review/` or
+`../claude-code-cookbook/`). Proposed changes for `patch`-bucket findings
+aren't presented as suggestions to approve line-by-line either — once the
+user picks "apply every patch" or walks through them, BMAD directly edits
+the files itself rather than emitting a diff/snippet for the user to apply.
+
 ## Files
 
 - `SKILL.md` — activation sequence, config loading, and the step-file
