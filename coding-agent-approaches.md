@@ -30,6 +30,7 @@ from the files in this repo at the time of writing, not from memory.
 | [`mini-swe-agent/`](./mini-swe-agent) | mini-swe-agent | MIT |
 | [`composio-swekit/`](./composio-swekit) | Composio SWE-Kit | Apache-2.0 |
 | [`codeact-hyperlight/`](./codeact-hyperlight) | CodeAct + Hyperlight (Microsoft Agent Framework) | MIT — pattern/backend, not a standalone agent |
+| [`pi-agent/`](./pi-agent) | Pi | MIT |
 | [`live-swe-agent/`](./live-swe-agent) | Live-SWE-agent | MIT |
 | [`goose/`](./goose) | Goose | Apache-2.0 |
 | [`crush/`](./crush) | Crush | FSL-1.1-MIT |
@@ -131,7 +132,7 @@ applied.
 | `apply_patch`-style patch tool as the *preferred but not exclusive* path, with an explicit list of cases where it should be skipped (auto-generated files, bulk search-and-replace) | Codex CLI |
 | Bespoke `<boltAction type="file">` XML-in-artifact syntax carrying the **full file contents**, not a diff — whole-file rewrite is the unit of change | Bolt.new |
 | A dedicated `read_lints`/linter-integration step is part of the edit loop itself, not a separate "verification" stage | Cursor (`<linter_errors>` — checks linter state after every edit and caps retries at 3 before asking the user) |
-| Editing format left to "use the appropriate tool" without specifying a wire format in the base prompt (delegated entirely to tool schemas) | OpenCode, Roo Code, Crush, Goose |
+| Editing format left to "use the appropriate tool" without specifying a wire format in the base prompt (delegated entirely to tool schemas) | OpenCode, Roo Code, Crush, Goose, Pi (the *most* minimal case — the base prompt doesn't even name an edit tool's conventions, it just lists whichever tools are registered with a one-line snippet each) |
 | `str_replace`/`view`/`create`/`insert`/`undo_edit` on a single editor tool, `sed`-heavy usage examples for everything else | mini-swe-agent, Live-SWE-agent (both, via a `bash`-only toolset — see next row) |
 | **No dedicated edit tool at all** — bash is the only tool, and file edits happen via heredocs (`cat <<'EOF' > file`) and `sed`; the prompt teaches these as worked examples rather than exposing a structured edit API | mini-swe-agent, Live-SWE-agent — genuinely distinct from every other source here, all of which have at least one dedicated file-editing tool |
 | Instructed to **write its own new tools mid-task** in Python when bash alone isn't a good fit, with a reflection nudge after every action asking whether a new tool would help | Live-SWE-agent only — no other source in this collection gives the model authority to expand its own toolset at runtime; see [`live-swe-agent/README.md`](./live-swe-agent) |
@@ -231,6 +232,7 @@ Code-descended family, and the clearest outlier from Cursor.
 | A structured, multi-part "status update" protocol during long turns — narrated present/future tense progress notes tied to todo-list state, separate from the final summary | Cursor (`<status_update_spec>`, `<summary_spec>`) — the most elaborate mid-task communication protocol in the collection; none of the other leaders specify anything this granular for *in-progress* narration |
 | Extensive final-answer formatting spec (heading rules, bullet density, monospace usage, tone words) as its own dedicated section | Codex CLI (`### Final answer structure and style guidelines`) — comparably detailed to Cursor's but focused on the *final* message only, not in-progress narration |
 | No dedicated verbosity-control section in the base prompt | OpenHands (verbosity is not addressed — consistent with it being designed for autonomous/headless operation rather than a chat UI), SWE-agent, Bolt.new |
+| Terseness compressed to a **single unconditional guideline line** ("Be concise in your responses") rather than a dedicated section with worked examples | Pi — the shortest verbosity instruction of any interactive chat-facing source in the collection |
 
 ## 12. Completion & verification requirements
 
@@ -292,4 +294,11 @@ Code-descended family, and the clearest outlier from Cursor.
   still score competitively on SWE-bench Verified per their own READMEs
   — evidence that the elaborate tool/mode surface built up across most of
   the other sources here (dedicated edit tools, plan modes, sub-agents,
-  memory-file systems) is a design choice, not a proven necessity.
+  memory-file systems) is a design choice, not a proven necessity. Pi
+  takes the same philosophy to an *interactive, general-purpose* tool
+  rather than a benchmark-only one: real `read`/`write`/`edit` tools
+  (unlike the bash-only pair), but a base prompt that's still just one
+  persona sentence, a dynamically-built tool list, and two unconditional
+  guidelines — no taught edit format, no multi-paragraph terseness
+  section, everything else pushed to optional skills/extensions the user
+  installs rather than baked into the default.
