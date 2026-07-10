@@ -8,23 +8,28 @@ prompt the sub-agent runs under, how its result gets back into the
 orchestrator's context, and what happens if two sub-agents run at once.
 
 Grounded directly in each source's own "## Sub-agents" README section
-(all re-read from the files in this repo at time of writing). 14 sources
+(all re-read from the files in this repo at time of writing). 15 sources
 have one — a mix of the "coding agent" core collection and several
 `leaked/` sources whose tool JSON turned out to carry unusually detailed
-sub-agent specifications once actually read closely.
+sub-agent specifications once actually read closely, plus one source
+(Codex CLI) added after an initial pass wrongly concluded it had no
+delegation mechanism — see the methodology note at the end of §2.
 
 ## Sources covered
 
 Claude Code (leaked), the general Anthropic assistant prompts (leaked),
-OpenCode, Cline, Roo Code, Gemini CLI, GitHub Copilot Chat, Crush, Goose,
-Composio SWE-Kit, Amp (leaked), Emergent (leaked), Google Antigravity
-(leaked), and v0 (leaked). Sources with **no** sub-agent mechanism
-captured in what's stored here — Codex CLI, Aider, SWE-agent,
-mini-swe-agent, Live-SWE-agent, Augment SWE-bench Agent, Bolt.new, Pi,
-CodeAct+Hyperlight, OpenHands, and (notably, given how rich their tool
-surfaces are — see `agent-tool-surfaces.md` §§1–7) leaked Cursor and
-leaked Windsurf — are covered only in the "Absences" section below, not
-individually profiled.
+OpenCode, Cline, Roo Code, Codex CLI, Gemini CLI, GitHub Copilot Chat,
+Crush, Goose, Composio SWE-Kit, Amp (leaked), Emergent (leaked), Google
+Antigravity (leaked), and v0 (leaked). Sources with **no** sub-agent
+mechanism found — Aider, SWE-agent, mini-swe-agent, Live-SWE-agent,
+Augment SWE-bench Agent, Bolt.new, Pi, CodeAct+Hyperlight, OpenHands,
+and (notably, given how rich their tool surfaces are — see
+`agent-tool-surfaces.md` §§1–7) leaked Cursor and leaked Windsurf — are
+covered only in the "Absences" section below, not individually
+profiled. Unlike every other source here, Codex CLI's sub-agent section
+is sourced from reading the live upstream `openai/codex` repo directly
+rather than from a prompt/tool-JSON file stored in this collection —
+see its README for why.
 
 ---
 
@@ -42,6 +47,7 @@ from "save context" to "get a second opinion" to "isolate risk."
 | **Risk isolation** — the sub-agent's mistakes are contained/verifiable before trusting them | Emergent (git-diff verification explicitly required after every sub-agent report), Google Antigravity's `browser_subagent` (orchestrator must independently re-check DOM/screenshot state rather than trust the report) |
 | **A quantified threshold**, not just judgment | Gemini CLI ("more than 3 files or repeated steps") — comparable in spirit to Codex CLI's quantified plan-skip threshold (see `coding-agent-approaches.md` §6), applied here to delegation instead of planning |
 | **Fixed pipeline stages**, not a judgment call at all — every task goes through the same roles in the same order | Composio SWE-Kit's 3-role handoff (`SOFTWARE_ENGINEER` → `CODE_ANALYZER`/`EDITING_AGENT`) |
+| **Explicit "well-scoped task" framing plus a batch/map use case** | Codex CLI's `spawn_agent` description ("Spawn a sub-agent for a well-scoped task"), with a distinct bulk-delegation path (`agent_jobs.rs`'s CSV-driven "map a sub-agent over rows and collect results," capped at 16-64 concurrent) alongside single ad hoc spawns |
 
 ## 2. Calling convention & protocol shape
 
@@ -58,15 +64,31 @@ control back and forth via convention?
 | **File-mediated handoff** — orchestrator and sub-agent communicate through a shared document, not tool-call parameters/results | Emergent's backend-testing flow specifically: `test_result.md` documents its own "Testing Protocol and communication protocol with testing sub-agent," and the orchestrator is told to read/update it before and after each test-agent invocation |
 | **Confusable-but-different: session/context handoff to the *user*, not a spawned agent** | Cline's `new_task` — generates a structured summary and hands it to the user as a preview for starting a *fresh conversation*; no orchestrator-sub-agent relationship, no result passed back, the "new task" replaces the current one rather than running alongside it |
 | **Async background process the orchestrator never directly invokes** — runs over history, produces artifacts the orchestrator later reads | Google Antigravity's Knowledge Subagent (distills past conversations into "Knowledge Items" the orchestrator reads later, rather than being called synchronously) |
+| **Tool call → persistent, addressable child, not stateless one-shot** — spawn returns an id the orchestrator can message, interrupt, and block-wait on across *multiple, separate* follow-up tool calls, rather than one call that blocks until a final report | Codex CLI — `spawn_agent` returns an agent id; `send_input` (optionally with `interrupt: true`) messages it again later; `wait_agent` blocks on one or more ids with a timeout; `close_agent` tears it down. The only source in this collection where the orchestrator can steer a sub-agent *mid-flight* rather than only front-loading everything into the initial call and waiting for one final message. |
 
 **Takeaway**: Cline's `new_task` is worth flagging as a trap for anyone
 skimming tool names across sources — it's lexically adjacent to Claude
 Code's `Task` and Roo Code's mode system, but semantically unrelated:
 it's a context-compaction/session-restart convenience for the *user*,
 not a delegation mechanism. Composio SWE-Kit's keyword-handoff pipeline
-is the real structural outlier — every other source treats "sub-agent"
-as a callable tool with a return value; Composio treats it as a fixed
-sequence of roles sharing one conversation.
+is a different kind of structural outlier — every stateless-tool-call
+source treats "sub-agent" as one call with a return value; Composio
+treats it as a fixed sequence of roles sharing one conversation; Codex
+treats it as a *live, continuing* child process the orchestrator keeps
+a handle to, which is a third shape again, not a variation on either.
+
+**A methodology note, since this row was added after the fact**: my
+first pass on Codex CLI concluded it had no sub-agent mechanism,
+because the only Codex material stored in this collection is per-model
+*prompt text* (`codex/gpt_5_2_prompt.md` etc.) — Codex's delegation
+tooling is implemented in Rust source that ships separately from that
+prompt text and was never fetched into this repo. The lesson generalizes:
+for every source in this survey whose sub-agent findings come from a
+prompt-text or tool-JSON *extraction* rather than full source (i.e.
+every source here except Codex), an absence in this doc means "not
+mentioned in the captured prompt/tool text," not "confirmed not to
+exist." Treat every row in §7 ("Absences") as provisional on that basis,
+not as a verified negative.
 
 ## 3. Does the sub-agent get its own system prompt?
 
@@ -80,6 +102,7 @@ runs under.
 |---|---|
 | **Yes — complete, standalone prompt file(s)** | Copilot Chat (`executionSubagentPrompt.tsx`: "You are an AI coding research assistant that runs a series of terminal commands..."; `searchSubagentPrompt.tsx`: "...that uses search tools to gather information..."), Crush (`task.md.tpl`: "You are an agent for Crush..."; `agentic_fetch_prompt.md.tpl`: "You are a web content analysis agent for Crush..."), Goose (`subagent_system.md`: "You are a specialized subagent within the goose AI framework... You were spawned by the main goose agent") |
 | **No — only the orchestrator-side tool/call description is captured, not the sub-agent's own prompt** | Claude Code, Amp (all three of `Task`/`oracle`/`codebase_search_agent`), Gemini CLI, OpenCode, v0, Emergent (six named agents, no prompt text for any of them), Google Antigravity's `browser_subagent` |
+| **Partial — a role-based config/persona layer confirmed to exist, but the actual prompt text per role wasn't read** | Codex CLI — `agent/role.rs` defines named roles (`"default"`, `"explorer"`, `"worker"`) with distinct behavioral framing and the ability to override model/reasoning/service-tier per role, loaded through the same config machinery as `config.toml`; closer to Claude Code's typed `subagent_type` registry than to a single generic delegate, but not confirmed as a fully-captured standalone system prompt the way Copilot Chat/Crush/Goose are |
 | **N/A — no tool-call boundary in the first place, so no separate "sub-agent prompt" concept applies** | Composio SWE-Kit (each of the three roles has its own persona prompt, but they're peers in one state machine, not an orchestrator-plus-spawned-sub-agent relationship) |
 
 Of the three sources with a captured sub-agent prompt, each makes a
@@ -104,11 +127,13 @@ answer arrive back at the orchestrator?
 | **Hard turn cap with a forced-cutoff nudge message** injected on the last allowed turn | Copilot Chat — both sub-agents get "OK, your allotted iterations are finished..." on `isLastTurn`, pushing them to emit the required `<final_answer>` block rather than trailing off |
 | **Turn cap as a template variable, no forced nudge described** | Goose (`{{max_turns}}` interpolated into the prompt; "Stop using tools once you have sufficient information" is a soft instruction, not an injected cutoff message) |
 | **No stated turn limit in what's captured** | Claude Code, Amp, Gemini CLI, OpenCode, Crush, v0, Emergent, Google Antigravity |
+| **No turn cap, but an explicit blocking-wait-with-timeout instead** — the orchestrator doesn't cap the sub-agent's own turns; it caps how long *it* will wait for a result | Codex CLI — `wait_agent` takes a `timeout_ms` and "returns empty status when timed out," leaving the child running rather than force-stopping it; a structurally different bounding mechanism from every turn-cap approach above, consistent with the sub-agent being a persistent addressable process rather than a single bounded call (see §2) |
 | **Strictly constrained output grammar** — the sub-agent's final message must match an exact format | Copilot Chat (`ExecutionSubagent`: command+summary pairs inside `<final_answer>`; `SearchSubagent`: bare `path:line-start-line-end` list, "ONLY" that tag) |
 | **Structured-but-freeform** — a required section (e.g. Sources) but otherwise prose | Crush's `agentic_fetch` (mandatory `## Sources` section listing every URL used, answer text otherwise free-form) |
 | **Free-text summary, no schema** | Claude Code ("a concise summary of the result" — no format specified), Amp's `Task`/`oracle` (same wording, inherited from the same lineage), Emergent (free-text "finish action" summary) |
 | **Explicit distrust of the self-report — orchestrator must independently re-verify** | Emergent ("Please check the response from sub agent including git-diff carefully... Subagent sometimes is dull and lazy... or over enthusiastic"), Google Antigravity's `browser_subagent` ("you should read the DOM or capture a screenshot to see what it did" rather than trusting the report alone) |
 | **Explicit trust instruction — take the report at face value** | Claude Code ("The agent's outputs should generally be trusted"), Composio SWE-Kit's integration playbook ("Always implement... EXACTLY as specified in the playbook returned") |
+| **Structural mediation instead of a trust/distrust instruction** — the orchestrator isn't told to trust or verify a summary after the fact, because it's kept in the loop on risky actions *as they happen* | Codex CLI — `codex_delegate.rs` routes the sub-agent's exec/patch/permission/user-input approval requests up to the parent session rather than letting the child auto-resolve them; the parent doesn't see every intermediate model turn, but it does gate every risky action, which sidesteps the trust-the-summary question other sources have to answer explicitly |
 
 **Takeaway**: this is the sharpest split in the whole comparison — some
 sources (Claude Code, Composio's playbook role) instruct the
@@ -117,7 +142,13 @@ orchestrator to trust a sub-agent's self-report outright, while others
 step. Emergent's is the most pointed: it names both failure modes
 ("dull and lazy" under-delivery vs. "over enthusiastic" over-delivery)
 and prescribes a concrete check (diff review) rather than leaving
-verification to the orchestrator's judgment.
+verification to the orchestrator's judgment. Codex CLI's approval-routing
+design is a genuinely different answer to the same underlying problem —
+rather than choosing trust or verify-after-the-fact, it structurally
+prevents the sub-agent from taking irreversible risky actions
+unsupervised in the first place, which only works because its protocol
+(§2) keeps the child addressable/interruptible instead of firing it off
+stateless.
 
 ## 5. Concurrency and write-safety across sub-agents
 
@@ -131,6 +162,8 @@ this directly.
 | **Explicit file-conflict-aware parallel/serial rule** | Gemini CLI ("NEVER run multiple subagents in a single turn if their abilities mutate the same files or resources... Only run multiple subagents in parallel when their tasks are independent") |
 | **Per-sub-agent-type granularity, plus a worked good/bad example** | Amp — "Codebase Search agents: ...in parallel," "Task executors: ...in parallel **iff** their write targets are disjoint," with a concrete bad example (`Task(refactor)` and `Task(handler-fix)` both touching the same file "must serialize") — the most detailed concurrency policy captured in this collection |
 | **Generic "launch multiple agents concurrently" encouragement, no conflict-safety caveat** | Claude Code ("Launch multiple agents concurrently whenever possible, to maximize performance") — notably *without* Gemini CLI's/Amp's same-file caveat |
+| **A hard numeric concurrency cap, not a qualitative rule** | Codex CLI's `agent_jobs.rs` batch/CSV path caps concurrent spawned agents at 16 by default (max 64, configurable) — the only source in this collection with an actual number rather than a file-conflict heuristic; doesn't address same-file write conflicts directly, but bounds blast radius by construction |
+| **A capacity/depth limit enforced by the coordinator infrastructure itself, independent of any prompt instruction** | Codex CLI's `AgentControl`/`AgentRegistry` enforce a max live-agent count with reservation-and-rollback semantics at spawn time — a systems-level guardrail rather than a rule the model is expected to follow voluntarily, distinct from every other row in this table (all of which are prompt instructions the model could in principle ignore) |
 | **Not addressed** | OpenCode, Cline (n/a — not a real sub-agent), Roo Code (n/a — no sub-agent at all), Copilot Chat, Crush, Goose, Composio SWE-Kit (structurally serial by design — one role active at a time), Emergent, Google Antigravity, v0 |
 
 **Takeaway**: Claude Code's own "launch multiple agents concurrently"
@@ -150,6 +183,7 @@ orchestrator can, or a deliberately narrower set?
 | **Sub-agent tool scope narrower than the orchestrator's by design** | Claude Code (`statusline-setup`: `Read, Edit` only; `output-style-setup`: `Read, Write, Edit, Glob, LS, Grep`), Crush's search sub-agent (`glob, grep, ls, view` — no edit/bash), Amp's `oracle` (read-only: `list_directory, Read, Grep, glob, web_search, read_web_page` — no edit/bash, consistent with an advisory-only role), Composio SWE-Kit's `CODE_ANALYZER_PROMPT` ("you cannot modify files, execute shell commands, or directly access the file system") |
 | **Sub-agent tool scope as broad as (or broader in composition than) a plain search delegate — can call other sub-agents itself** | Amp's `Task` — scoped to include `codebase_search_agent` among its own tools, meaning one sub-agent type can itself delegate to another, without an explicit recursion ban anywhere in the captured text |
 | **Full tool parity with the orchestrator** | Claude Code's `general-purpose` type (`Tools: *`) |
+| **Recursion allowed and structurally bounded (capacity/depth limit) rather than banned by rule** | Codex CLI — nested spawning (a spawned agent spawning its own children) appears permitted; `agent-graph-store`'s parent→child edges support arbitrary depth, and `AgentControl`'s capacity limit (§5) is what actually bounds it, not a prompt-level prohibition. A third position distinct from both "explicitly banned" (Goose) and "allowed with no stated limit at all" (Amp) — allowed, but enforced by infrastructure rather than by instruction or by silence. |
 | **Not addressed** | OpenCode, Gemini CLI, v0, Emergent (each named agent has an implicit fixed toolkit per its specialty, but no stated recursion rule), Google Antigravity |
 
 **Takeaway**: Amp's `Task` tool having `codebase_search_agent` in its
@@ -157,14 +191,23 @@ own tool list, with no recursion caveat anywhere in the extracted text,
 sits in real tension with Goose's explicit "cannot spawn additional
 subagents" rule — two sources in this collection land on opposite sides
 of the same design question (can a sub-agent itself delegate?) without
-either being clearly "correct."
+either being clearly "correct." Codex CLI's answer is a third path worth
+naming separately: recursion is neither banned nor left to the model's
+judgment, it's bounded by a systems-level capacity/depth limit the
+model can't override — the same infrastructure-over-instruction pattern
+seen in its concurrency handling (§5).
 
 ## 7. Absences worth noting
 
-- **Codex CLI has no sub-agent mechanism captured anywhere in this
-  collection's Codex files** (`codex/`, or the `github-pr-bots/`
-  Codex-based review bot) — its "Plan tool" (see `coding-agent-approaches.md`
-  §6) manages the orchestrator's own todo list, not a delegated agent.
+- **Codex CLI is not on this list, on correction — it has one of the
+  more sophisticated sub-agent architectures in the whole survey**
+  (see §2, §4, §5, §6). It's called out here specifically because the
+  omission happened first: a pass over only the prompt-text files
+  stored in `codex/` concluded there was no delegation mechanism, which
+  was wrong — the actual tooling is Rust source elsewhere in
+  `openai/codex` that this collection never fetched. See the
+  methodology note at the end of §2 for what this implies about every
+  other row below.
 - **Leaked Cursor and leaked Windsurf — despite having two of the
   richest tool surfaces in this entire collection (see
   `agent-tool-surfaces.md` §§1–7, especially Windsurf's 30-tool
@@ -172,8 +215,10 @@ either being clearly "correct."
   either extraction.** Tool-surface breadth and sub-agent capability are
   not the same axis: Windsurf invested in browser automation, deployment
   integration, and persistent memory instead of task delegation, while
-  Claude Code and Gemini CLI (comparatively narrower tool surfaces) both
-  invested specifically in delegation.
+  Claude Code, Gemini CLI, and (per the correction above) Codex CLI —
+  all comparatively narrow, unglamorous tool surfaces by
+  `agent-tool-surfaces.md`'s accounting — turn out to be exactly the
+  three sources that invested most heavily in delegation architecture.
 - **Benchmark-lineage agents (SWE-agent, mini-swe-agent, Live-SWE-agent,
   Augment SWE-bench Agent) have no sub-agent concept at all** —
   consistent with their single-tool-loop, one-shot-benchmark-run design;
@@ -237,3 +282,24 @@ either being clearly "correct."
   spawn-and-report delegation. When comparing scaffolds by tool name
   alone, always check the actual protocol (§2) before assuming
   equivalence.
+- **Codex CLI's `spawn_agent` family is architecturally the most
+  advanced sub-agent design in this collection**, not because any one
+  piece is unique in isolation, but because it's the only source that
+  combines a persistent addressable child (§2) with mid-flight
+  steering (`send_input`/interrupt), approval-gate mediation instead of
+  a post-hoc trust decision (§4), and infrastructure-enforced (not
+  instruction-enforced) concurrency and recursion limits (§5, §6).
+  Every other source picks one point on the stateless-call spectrum and
+  a prompt-level policy for safety; Codex picks a different point on
+  the spectrum entirely (stateful, long-lived, interruptible) and
+  backs its safety properties with systems guarantees rather than
+  asking the model to follow a rule.
+- **The Codex correction is itself the most important methodological
+  finding in this document**: an absence in a prompt-text-only or
+  tool-JSON-only extraction is evidence of nothing beyond "not
+  mentioned in that text." Codex CLI looked capability-free on this
+  exact axis right up until someone checked the actual source, at
+  which point it turned out to be the richest example in the survey.
+  Every "no sub-agent mechanism" claim elsewhere in this document rests
+  on the same kind of extraction and should be read with the same
+  discount — absence of evidence, not evidence of absence.
