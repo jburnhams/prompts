@@ -23,6 +23,7 @@ etc.) — only things whose job is specifically reviewing code.
 | [`github-pr-bots/gemini-code-review`](./github-pr-bots/gemini-code-review) | GitHub PR, or local branch | Gemini CLI extension |
 | [`github-pr-bots/codex-review`](./github-pr-bots/codex-review) | GitHub PR | OpenAI reference implementation |
 | [`github-pr-bots/opencode-review`](./github-pr-bots/opencode-review) | GitHub PR (`/oc` mention, or automated) | GitHub Action |
+| [`composio-swekit/pr_review`](./composio-swekit) | GitHub PR | Multi-agent framework template (LangGraph) |
 
 ---
 
@@ -177,6 +178,7 @@ this on" onto the model actually running the right `git diff` invocation.
 | User chooses sequential vs. parallel subagent execution | [`pr-review-toolkit`](./skills/anthropic/pr-review-toolkit) — the only source that makes this a user choice rather than hardcoding one |
 | Single pass, no sub-agents at all | `pr-agent`, [`codex-review`](./github-pr-bots/codex-review), [`gemini-code-review`](./github-pr-bots/gemini-code-review) `/pr-code-review` |
 | Explicitly "adversarial" framing | [`bmad-code-review`](./skills/bmad-code-review) (`bmad-review-adversarial-general` layer), [`gemini-code-review`](./github-pr-bots/gemini-code-review) ("your adherence to instructions is absolute") |
+| Sequential pipeline of role-specialized agents that hand off via literal keyword responses (not tool calls or structured fields) | [`composio-swekit/pr_review`](./composio-swekit) — `PR_FETCHER_PROMPT` → (`"ANALYZE REPO"`) → `REPO_ANALYZER_PROMPT` → (`"ANALYSIS COMPLETED"`) → `PR_COMMENT_PROMPT`, each a separately-prompted role in one LangGraph state machine rather than parallel subagents |
 
 ## 6. Filtering, confidence & triage
 
@@ -225,6 +227,7 @@ what's already on the PR.
 | Delivery | Existing comments read? | Sources |
 |---|---|---|
 | Real inline GitHub PR comments (MCP tool) | Checks only if *the bot itself* already commented, to avoid re-running | [`anthropic/code-review`](./skills/anthropic/code-review) |
+| Real inline GitHub PR review comments via `GITHUB_CREATE_A_REVIEW_COMMENT_FOR_A_PULL_REQUEST`, plus a final quality-rating comment | **Yes — the most explicit dedup instruction found anywhere in this collection**: told twice to call `GITHUB_LIST_REVIEW_COMMENTS_ON_A_PULL_REQUEST` and "check before commenting if that comment has already been made, and avoid making duplicate comments," not just for its own prior runs but generally | [`composio-swekit/pr_review`](./composio-swekit) |
 | GitHub's native pending-review flow (create → add comments → submit, locked to event type `COMMENT`) | No | [`gemini-code-review`](./github-pr-bots/gemini-code-review) `/pr-code-review` |
 | Raw REST API `curl` calls, no `gh`/MCP | No — will duplicate comments on re-run | [`codex-review`](./github-pr-bots/codex-review) |
 | Single structured summary object/comment, not per-line | No | `pr-agent` `/review` |
@@ -268,12 +271,16 @@ A few things stood out across all twelve:
   None of the "no filtering step described" tools (Codex, Gemini,
   Cookbook) are necessarily worse — they may just push that judgment into
   the base model's instructions rather than a separate pipeline stage.
-- **Almost nothing here reads existing PR comments.** Of twelve sources,
-  only `claude-code-action` (as context) and `claude-code-cookbook`'s
-  `pr-fix` (as its entire purpose) do. Everything else reviews from
-  scratch every time, including tools that will duplicate a comment if
-  you re-run them on the same PR (Codex's reference implementation says
-  so explicitly).
+- **Most of these don't read existing PR comments**, though the exceptions
+  are informative. Of thirteen sources, `claude-code-action` reads them as
+  context, `claude-code-cookbook`'s `pr-fix` exists entirely to consume
+  them, and `composio-swekit/pr_review` goes furthest — an explicit,
+  twice-stated instruction to check for and avoid duplicate comments
+  before posting. Everything else reviews from scratch every time,
+  including tools that will duplicate a comment if you re-run them on the
+  same PR (Codex's reference implementation says so explicitly). The
+  spread suggests dedup-awareness isn't hard to add — most sources just
+  didn't bother.
 - **"Proposes a fix" and "flags an issue" are treated as separate concerns**
   more often than not — PR-Agent and Gemini both split them into different
   commands/prompts entirely, rather than one command doing both.

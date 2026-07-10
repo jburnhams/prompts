@@ -14,11 +14,25 @@ agents**, where the system prompt ships directly in the project's public
 source code (as opposed to being reverse-engineered/leaked from a closed
 product).
 
+**[→ `agent-archetypes.md`](./agent-archetypes.md)** — start here for the
+30,000-foot view: the ~35 agents/tools/skills/bots in this collection
+sorted into six recognizable architectural archetypes (general-purpose
+interactive assistant, benchmark-driven issue solver, minimalist
+scaffold, multi-role pipeline, PR-review specialist, app/UI generator),
+plus the two axes that explain most of the variance between them.
+
 **[→ `code-review-approaches.md`](./code-review-approaches.md)** —
 a synthesized comparison of every code/PR-review-specific source in this
 collection, stage by stage (system prompt, diff format, context,
 filtering, output format, delivery, safety), with links back to each
 source for detail.
+
+**[→ `coding-agent-approaches.md`](./coding-agent-approaches.md)** — the
+companion doc, one level down: a comparison of the *full* coding-agent
+system prompts themselves (identity, per-model variants, environment
+injection, tool-use policy, code-editing format, planning, project-memory
+files, safety, communication style), with particular focus on OpenHands,
+OpenCode, Codex, Claude Code, and Cursor.
 
 ## Sources so far
 
@@ -37,6 +51,12 @@ source for detail.
 | [`crush/`](./crush) | [Crush](https://github.com/charmbracelet/crush) | Coding agent (Charm, terminal) | FSL-1.1-MIT |
 | [`bolt/`](./bolt) | [Bolt.new](https://github.com/stackblitz/bolt.new) | AI app-building agent (browser) | MIT |
 | [`gemini-cli/`](./gemini-cli) | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | Coding agent (Google, terminal) | Apache-2.0 |
+| [`augment-swebench-agent/`](./augment-swebench-agent) | [Augment SWE-bench Agent](https://github.com/augmentcode/augment-swebench-agent) | Coding agent (SWE-bench Verified baseline) | MIT |
+| [`mini-swe-agent/`](./mini-swe-agent) | [mini-swe-agent](https://github.com/SWE-agent/mini-swe-agent) | Coding agent ("the 100 line" SWE-bench baseline) | MIT |
+| [`live-swe-agent/`](./live-swe-agent) | [Live-SWE-agent](https://github.com/OpenAutoCoder/live-swe-agent) | Coding agent (writes its own tools mid-task) | MIT |
+| [`composio-swekit/`](./composio-swekit) | [Composio SWE-Kit](https://github.com/ComposioHQ/composio) | Coding agent + PR review, multi-role framework | Apache-2.0 |
+| [`codeact-hyperlight/`](./codeact-hyperlight) | [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) | Tool-use pattern (CodeAct) + sandboxed execution, not a standalone agent | MIT |
+| [`pi-agent/`](./pi-agent) | [Pi](https://github.com/badlogic/pi-mono) | Coding agent (minimal terminal harness) | MIT |
 
 Note: Roo Code and Copilot Chat's source repos were both archived
 (read-only) shortly before this collection was put together — files are
@@ -102,8 +122,24 @@ commands, or the top-level folders' standalone CLI/IDE agents). See
 has no published prompt/diff-formatting logic anywhere — closed-source,
 server-side. See `github-pr-bots/README.md` for what was checked.
 
+## Papers
+
+[`papers/inside-the-scaffold/`](./papers/inside-the-scaffold) — the PDF
+itself (CC-BY 4.0), stored rather than just linked: *"Inside the Scaffold:
+A Source-Code Taxonomy of Coding Agent Architectures"*
+([arXiv:2604.03515](https://arxiv.org/abs/2604.03515)). Does complementary
+analysis to this repo: instead of comparing prompt text, it compares the
+*scaffold/architecture code* around 13 open-source coding agents (control
+flow, tool interfaces, context management), grounded in specific file
+paths and commit hashes. A good companion read to
+[`coding-agent-approaches.md`](./coding-agent-approaches.md), and its
+source list is where several "candidates for next pass" below came from.
+
 ## Candidates for next pass
 
 Other open-source coding/review agents worth adding later: Continue.dev,
-gpt-engineer, Plandex, AutoCodeRover, bolt.diy (community multi-LLM fork of
-Bolt).
+gpt-engineer, Plandex, bolt.diy (community multi-LLM fork of Bolt).
+From the scaffold-taxonomy paper above: AutoCodeRover, Agentless,
+Moatless Tools, DARS-Agent, Prometheus (all SWE-bench-family agents, same
+category as `swe-agent/`/`mini-swe-agent/`/`live-swe-agent/`/
+`augment-swebench-agent/` above).
