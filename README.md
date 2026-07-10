@@ -78,6 +78,23 @@ much as the prompt wording itself. See
 [`skills/README.md`](./skills/README.md) for details on where these came
 from.
 
+## GitHub PR bots
+
+A fourth category: the automated bots/GitHub Actions vendors offer that
+review PRs directly on GitHub (as opposed to `skills/`'s Claude-Code-only
+commands, or the top-level folders' standalone CLI/IDE agents). See
+[`github-pr-bots/README.md`](./github-pr-bots/README.md).
+
+| Folder | Vendor | License |
+|---|---|---|
+| [`github-pr-bots/claude-code-action/`](./github-pr-bots/claude-code-action) | Anthropic | MIT |
+| [`github-pr-bots/gemini-code-review/`](./github-pr-bots/gemini-code-review) | Google | Apache-2.0 |
+| [`github-pr-bots/codex-review/`](./github-pr-bots/codex-review) | OpenAI | MIT (published reference impl., not the real hosted service — see README) |
+
+**Copilot: nothing found.** GitHub's actual hosted Copilot code-review bot
+has no published prompt/diff-formatting logic anywhere — closed-source,
+server-side. See `github-pr-bots/README.md` for what was checked.
+
 ## Candidates for next pass
 
 Other open-source coding/review agents worth adding later: Continue.dev,
