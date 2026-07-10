@@ -23,12 +23,16 @@ Folders that say "not from the x1xhlol aggregator" in their README came from
 elsewhere.
 
 Deliberately skipped from that aggregator: non-coding assistants (Cluely,
-Comet Assistant, NotionAI, Perplexity, Poke, Dia) and its "Open Source
-prompts" folder (Bolt, Cline, Codex CLI, Gemini CLI, Lumo, RooCode) — those
-are mirrors of genuinely open-source projects, better sourced from their
-own repos directly (as done for Cline/Codex CLI/Roo Code already; Bolt,
-Gemini CLI, and Lumo are candidates to add as proper open-source folders
-later).
+Comet Assistant, NotionAI, Perplexity, Poke, Dia) and, from its "Open
+Source prompts" folder, the entries that are genuinely open source —
+Cline, Codex CLI, Gemini CLI, and RooCode — which are sourced directly from
+their own repos instead (see the root README). Bolt turned out to also be
+genuinely open source and was moved to `../bolt/`.
+
+`lumo/` is the one exception that *looks* like it belongs in that "Open
+Source prompts" folder but doesn't: Proton has not actually open-sourced
+Lumo (see that folder's README for sourcing on this), so it stays here
+rather than being promoted to an official folder.
 
 **Looked for and not found**: CodeRabbit, Greptile, and Qodo (beyond the
 already-included open-source `pr-agent`) don't appear to have any leaked
@@ -69,3 +73,4 @@ periodically.
 | [`claude-code/`](./claude-code) | Claude Code (leaked snapshot) | Anthropic |
 | [`claude-for-chrome/`](./claude-for-chrome) | Claude for Chrome | Anthropic |
 | [`anthropic/`](./anthropic) | Claude.ai default assistant | Anthropic |
+| [`lumo/`](./lumo) | Lumo | Proton |

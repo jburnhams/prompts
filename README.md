@@ -29,6 +29,8 @@ product).
 | [`codex/`](./codex) | [Codex CLI](https://github.com/openai/codex) | Coding agent (OpenAI's terminal agent) | Apache-2.0 |
 | [`goose/`](./goose) | [Goose](https://github.com/block/goose) | Coding agent (Block, CLI + desktop) | Apache-2.0 |
 | [`crush/`](./crush) | [Crush](https://github.com/charmbracelet/crush) | Coding agent (Charm, terminal) | FSL-1.1-MIT |
+| [`bolt/`](./bolt) | [Bolt.new](https://github.com/stackblitz/bolt.new) | AI app-building agent (browser) | MIT |
+| [`gemini-cli/`](./gemini-cli) | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | Coding agent (Google, terminal) | Apache-2.0 |
 
 Note: Roo Code and Copilot Chat's source repos were both archived
 (read-only) shortly before this collection was put together — files are
@@ -38,16 +40,23 @@ still retrievable, just no longer actively developed at those locations.
 
 A second category, kept separate from the open-source folders above: prompts
 from closed-source products, extracted by third parties rather than
-published by the vendor. 28 sources so far — see
+published by the vendor. 29 sources so far — see
 [`leaked/README.md`](./leaked/README.md) for the full list and caveats on
 provenance and reliability. Most came in bulk from one community aggregator
-repo; a couple (Factory/Droid) from standalone gists.
+repo; a couple (Factory/Droid, Lumo) from standalone gists/mirror-repo
+subfolders.
 
 **Checked and no leak found (as of 2026-07-10)**: CodeRabbit, Greptile, and
 Qodo's closed-source products (its open-source `pr-agent` is already
 covered above). Worth re-checking later.
 
+**Note on Lumo**: despite Proton's marketing and despite being filed under
+a "Open Source prompts" folder in the aggregator repo it was sourced from,
+Lumo is not actually open source — it stays in `leaked/` rather than
+alongside Bolt and Gemini CLI above.
+
 ## Candidates for next pass
 
 Other open-source coding/review agents worth adding later: Continue.dev,
-gpt-engineer, Plandex, AutoCodeRover, Bolt, Gemini CLI, Lumo.
+gpt-engineer, Plandex, AutoCodeRover, bolt.diy (community multi-LLM fork of
+Bolt).
