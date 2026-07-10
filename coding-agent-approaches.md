@@ -28,6 +28,8 @@ from the files in this repo at the time of writing, not from memory.
 | [`swe-agent/`](./swe-agent) | SWE-agent | MIT |
 | [`augment-swebench-agent/`](./augment-swebench-agent) | Augment SWE-bench Agent | MIT |
 | [`mini-swe-agent/`](./mini-swe-agent) | mini-swe-agent | MIT |
+| [`composio-swekit/`](./composio-swekit) | Composio SWE-Kit | Apache-2.0 |
+| [`codeact-hyperlight/`](./codeact-hyperlight) | CodeAct + Hyperlight (Microsoft Agent Framework) | MIT — pattern/backend, not a standalone agent |
 | [`live-swe-agent/`](./live-swe-agent) | Live-SWE-agent | MIT |
 | [`goose/`](./goose) | Goose | Apache-2.0 |
 | [`crush/`](./crush) | Crush | FSL-1.1-MIT |
@@ -112,6 +114,7 @@ per session.
 | Tool catalog explicitly *excluded* from the system prompt itself (tool schemas delivered via the API's native tools mechanism, not spelled out in text) | Roo Code (`system.ts`: `const toolsCatalog = ""` — a deliberate code-level choice, with a comment noting "Tools catalog is not included in the system prompt") |
 | A stated preference ranking of *which* tool to use for a given job (e.g. semantic/codebase search over grep, a task-delegation tool over ad hoc search) | Cursor (`codebase_search` mandated as primary, `<grep_spec>`), Claude Code/OpenCode/Crush (Task/Agent tool preferred for open-ended search "to reduce context usage") |
 | A specific fast-search-tool brand preference stated in the prompt | OpenHands and Codex both explicitly recommend `rg`/`ripgrep` over `grep` for speed |
+| **CodeAct**: instead of one tool call per turn, the model writes a short Python program that chains several tool calls together via a `call_tool(name, **kwargs)` built-in, executed in one shot inside an isolated sandbox | `codeact-hyperlight` — the only source in this collection built around this pattern; the tool description itself is dynamically assembled per run from the live sandbox config (registered tools, filesystem/network policy), not fixed text — see [`codeact-hyperlight/README.md`](./codeact-hyperlight) |
 
 ## 5. Code-editing format
 
@@ -212,6 +215,8 @@ check for regardless.
 | A general-purpose "Task" agent, recommended specifically to reduce context usage on open-ended search | Claude Code, OpenCode ("prefer to use the Task tool in order to reduce context usage" — identical framing to Claude Code again), Crush (`agent_tool.md`) |
 | Extensible, dynamically-loaded tool sources via a plugin/extension system rather than fixed named sub-agents | Goose ("Extensions provide additional tools and context... You can dynamically enable or disable extensions") |
 | Sub-agent behavior described but not exposed as a distinct named tool in the base prompt shown | OpenHands, Cursor, Codex CLI, Aider, Bolt.new |
+| A **fixed team of separately-prompted roles** (not spun up ad hoc) that hand off control via a small closed vocabulary of literal keyword responses rather than a tool call or structured output field | Composio SWE-Kit's `swe/langgraph` template — orchestrator ("ANALYZE CODE"/"EDIT FILE"/"PATCH COMPLETED") hands off to a read-only analyzer ("ANALYSIS COMPLETE") and a file-editing-only editor ("EDITING COMPLETED"), each with permissions scoped to their role at the tool level, not just by instruction |
+| The *same task* reframed entirely differently depending on the target multi-agent framework — a single `ROLE`/`GOAL`/`BACKSTORY` agent in one framework binding, three cooperating roles in another | Composio SWE-Kit again: compare `swe/crewai` (one agent) against `swe/langgraph` (three roles) in [`composio-swekit/README.md`](./composio-swekit) — direct evidence that "which agent framework you scaffold with" changes prompt *architecture*, not just which API calls get made |
 
 ## 11. Communication style & verbosity
 

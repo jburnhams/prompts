@@ -47,6 +47,8 @@ OpenCode, Codex, Claude Code, and Cursor.
 | [`augment-swebench-agent/`](./augment-swebench-agent) | [Augment SWE-bench Agent](https://github.com/augmentcode/augment-swebench-agent) | Coding agent (SWE-bench Verified baseline) | MIT |
 | [`mini-swe-agent/`](./mini-swe-agent) | [mini-swe-agent](https://github.com/SWE-agent/mini-swe-agent) | Coding agent ("the 100 line" SWE-bench baseline) | MIT |
 | [`live-swe-agent/`](./live-swe-agent) | [Live-SWE-agent](https://github.com/OpenAutoCoder/live-swe-agent) | Coding agent (writes its own tools mid-task) | MIT |
+| [`composio-swekit/`](./composio-swekit) | [Composio SWE-Kit](https://github.com/ComposioHQ/composio) | Coding agent + PR review, multi-role framework | Apache-2.0 |
+| [`codeact-hyperlight/`](./codeact-hyperlight) | [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) | Tool-use pattern (CodeAct) + sandboxed execution, not a standalone agent | MIT |
 
 Note: Roo Code and Copilot Chat's source repos were both archived
 (read-only) shortly before this collection was put together — files are
@@ -112,15 +114,16 @@ commands, or the top-level folders' standalone CLI/IDE agents). See
 has no published prompt/diff-formatting logic anywhere — closed-source,
 server-side. See `github-pr-bots/README.md` for what was checked.
 
-## Related reading (not part of this collection)
+## Papers
 
-[*"Inside the Scaffold: A Source-Code Taxonomy of Coding Agent
-Architectures"*](https://arxiv.org/html/2604.03515v1) — an arXiv paper
-doing complementary analysis to this repo: instead of comparing prompt
-text, it compares the *scaffold/architecture code* around 13 open-source
-coding agents (control flow, tool interfaces, context management),
-grounded in specific file paths and commit hashes. No prompts included,
-so nothing to add here directly, but a good companion read to
+[`papers/inside-the-scaffold/`](./papers/inside-the-scaffold) — the PDF
+itself (CC-BY 4.0), stored rather than just linked: *"Inside the Scaffold:
+A Source-Code Taxonomy of Coding Agent Architectures"*
+([arXiv:2604.03515](https://arxiv.org/abs/2604.03515)). Does complementary
+analysis to this repo: instead of comparing prompt text, it compares the
+*scaffold/architecture code* around 13 open-source coding agents (control
+flow, tool interfaces, context management), grounded in specific file
+paths and commit hashes. A good companion read to
 [`coding-agent-approaches.md`](./coding-agent-approaches.md), and its
 source list is where several "candidates for next pass" below came from.
 
