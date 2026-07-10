@@ -26,6 +26,7 @@ from the files in this repo at the time of writing, not from memory.
 | [`roocode/`](./roocode) | Roo Code | Apache-2.0 |
 | [`aider/`](./aider) | Aider | Apache-2.0 |
 | [`swe-agent/`](./swe-agent) | SWE-agent | MIT |
+| [`augment-swebench-agent/`](./augment-swebench-agent) | Augment SWE-bench Agent | MIT |
 | [`goose/`](./goose) | Goose | Apache-2.0 |
 | [`crush/`](./crush) | Crush | FSL-1.1-MIT |
 | [`bolt/`](./bolt) | Bolt.new | MIT |
@@ -114,6 +115,7 @@ applied.
 | Custom `SEARCH/REPLACE` block syntax (`<<<<<<< SEARCH` / `=======` / `>>>>>>> REPLACE`), fenced, with a worked multi-example teaching sequence in the prompt itself | Aider (`editblock_prompts.py` — the most example-heavy teaching of an edit format in the collection: two full worked examples before any rules are stated) |
 | XML-tagged `SEARCH/REPLACE` variant, different fence syntax (`------- SEARCH` / `=======` / `+++++++ REPLACE`) inside a `<replace_in_file>` tool call | Cline |
 | `old_string`/`new_string` pair via a dedicated edit tool, must be unambiguous (fails if `old_string` isn't unique) | Claude Code, Gemini CLI (`EDIT_PARAM_OLD_STRING`), OpenHands (implied by the same "read enough to make it unambiguous" framing) |
+| `str_replace`/`view`/`create`/`insert`/`undo_edit` commands on one editor tool, with a description string that's a near-verbatim match to Anthropic's own published reference tool | SWE-agent (`tools/edit_anthropic` bundle) and Augment SWE-bench Agent (`tools/str_replace_tool.py`) — both explicitly fork [Anthropic's SWE-bench blog post](https://www.anthropic.com/engineering/swe-bench-sonnet) reference implementation, down to near-identical instruction-prompt wording ("I've uploaded a python code repository... Follow these steps to resolve the issue: 1. ...2. Create a script to reproduce the error...") — see [`augment-swebench-agent/README.md`](./augment-swebench-agent) for the side-by-side |
 | `apply_patch`-style patch tool as the *preferred but not exclusive* path, with an explicit list of cases where it should be skipped (auto-generated files, bulk search-and-replace) | Codex CLI |
 | Bespoke `<boltAction type="file">` XML-in-artifact syntax carrying the **full file contents**, not a diff — whole-file rewrite is the unit of change | Bolt.new |
 | A dedicated `read_lints`/linter-integration step is part of the edit loop itself, not a separate "verification" stage | Cursor (`<linter_errors>` — checks linter state after every edit and caps retries at 3 before asking the user) |

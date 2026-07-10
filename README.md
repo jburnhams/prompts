@@ -44,6 +44,7 @@ OpenCode, Codex, Claude Code, and Cursor.
 | [`crush/`](./crush) | [Crush](https://github.com/charmbracelet/crush) | Coding agent (Charm, terminal) | FSL-1.1-MIT |
 | [`bolt/`](./bolt) | [Bolt.new](https://github.com/stackblitz/bolt.new) | AI app-building agent (browser) | MIT |
 | [`gemini-cli/`](./gemini-cli) | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | Coding agent (Google, terminal) | Apache-2.0 |
+| [`augment-swebench-agent/`](./augment-swebench-agent) | [Augment SWE-bench Agent](https://github.com/augmentcode/augment-swebench-agent) | Coding agent (SWE-bench Verified baseline) | MIT |
 
 Note: Roo Code and Copilot Chat's source repos were both archived
 (read-only) shortly before this collection was put together — files are
