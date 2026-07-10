@@ -67,6 +67,16 @@ commercial terms) — see [`skills/README.md`](./skills/README.md).
 |---|---|---|
 | [`skills/agent37/`](./skills/agent37) | agent37-platform | `local-review` (pre-commit review) |
 | [`skills/anthropic/`](./skills/anthropic) | Anthropic | `code-review`, `pr-review-toolkit`, `security-guidance` |
+| [`skills/turingmind/`](./skills/turingmind) | TuringMind AI | Pre-commit review, quick + deep modes |
+| [`skills/bmad-code-review/`](./skills/bmad-code-review) | BMad Code, LLC | Code review as a 4-step state machine w/ pluggable review layers |
+| [`skills/claude-code-cookbook/`](./skills/claude-code-cookbook) | wasabeef | PR review, auto-role-suggesting review, PR-fix |
+
+Each of these documents its **scaffolding**, not just the prompt text —
+how it constructs the diff/context, what else it pulls in, and how output
+gets delivered — since that varies a lot between sources and matters as
+much as the prompt wording itself. See
+[`skills/README.md`](./skills/README.md) for details on where these came
+from.
 
 ## Candidates for next pass
 

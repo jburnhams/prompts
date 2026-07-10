@@ -4,6 +4,26 @@ A more elaborate PR-review command than `../code-review/`, invoked as
 `/review-pr`. Delegates to 6 specialized subagents rather than one-shot
 prompts per concern.
 
+## Scaffolding (beyond the prompt text)
+
+- **Context construction**: `git diff --name-only` for scope, plus
+  `gh pr view` if a PR already exists — file-type/content detection then
+  decides which subagents are even applicable (e.g.
+  `type-design-analyzer` only runs if types were added/modified,
+  `comment-analyzer` only if comments/docs changed).
+- **Sequential vs. parallel is a user choice**, not fixed: the command
+  prompt explicitly offers both — sequential for "easier to act on, one
+  complete report at a time" vs. parallel for speed — unlike every other
+  skill in this collection, which hardcodes parallel subagent launches.
+- **`code-simplifier` runs last, after the others pass** — quality/clarity
+  cleanup is explicitly sequenced as a final polish step rather than
+  running alongside the bug-hunting agents (this repo's own `/code-review`
+  vs `/simplify` split embodies the same separation of concerns).
+- **Output includes what's good, not just problems**: the aggregated
+  summary template has a "Strengths" / "Positive Observations" section
+  alongside Critical/Important/Suggestions — the only skill in this
+  collection that does.
+
 ## Files
 - `commands/review-pr.md` — the orchestrating command prompt (decides which
   subagents to run and how to combine their findings).
