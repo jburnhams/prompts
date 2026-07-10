@@ -27,6 +27,8 @@ product).
 | [`roocode/`](./roocode) | [Roo Code](https://github.com/RooCodeInc/Roo-Code) | Coding agent (VS Code extension, Cline fork) | Apache-2.0 |
 | [`copilot-chat/`](./copilot-chat) | [GitHub Copilot Chat](https://github.com/microsoft/vscode-copilot-chat) | Coding agent (VS Code agent mode + CLI) | MIT |
 | [`codex/`](./codex) | [Codex CLI](https://github.com/openai/codex) | Coding agent (OpenAI's terminal agent) | Apache-2.0 |
+| [`goose/`](./goose) | [Goose](https://github.com/block/goose) | Coding agent (Block, CLI + desktop) | Apache-2.0 |
+| [`crush/`](./crush) | [Crush](https://github.com/charmbracelet/crush) | Coding agent (Charm, terminal) | FSL-1.1-MIT |
 
 Note: Roo Code and Copilot Chat's source repos were both archived
 (read-only) shortly before this collection was put together — files are
@@ -46,4 +48,4 @@ caveats on provenance and reliability.
 ## Candidates for next pass
 
 Other open-source coding/review agents worth adding later: Continue.dev,
-gpt-engineer, Plandex, Goose (Block), AutoCodeRover.
+gpt-engineer, Plandex, AutoCodeRover.

@@ -15,29 +15,55 @@ strings. Like OpenCode and Roo Code, the actual instructions vary by model
 family — this repo has the most granular per-model split of any source in
 this collection.
 
-Only a representative subset of the ~30 files in this directory tree is
-included here (core assembly + one file per major model family); the
-directory also has provider variants not copied (e.g. more OpenAI
-sub-variants), plus entirely separate prompt trees for `panel/`, `inline/`,
-`notebook/`, `devcontainer/`, etc. that aren't part of the core coding-agent
-prompt.
+This is the **complete** contents of `agent/` and `agent/openai/` — every
+file in both directories. Not included: the separate prompt trees for
+`panel/`, `inline/`, `notebook/`, `devcontainer/`, etc. one level up, which
+back distinct chat features (non-agentic chat, inline completions, notebook
+cells...) rather than the core coding agent, plus the `agent/test/`
+directory (test fixtures, not real prompts).
 
 ## Files
 
+### Core assembly
 - `agentPrompt.tsx` — the main agent-mode system prompt assembly.
 - `allAgentPrompts.ts` / `promptRegistry.ts` — registry mapping models to
   their prompt implementation.
 - `defaultAgentInstructions.tsx` — the default persona/rules/tone shared
   across models absent a more specific variant.
 - `copilotCLIPrompt.tsx` — the prompt used by the separate Copilot CLI tool.
-- `anthropicPrompts.tsx` — variant for Claude models.
-- `geminiPrompts.tsx` — variant for Gemini models.
-- `xAIPrompts.tsx` — variant for Grok models.
-- `zaiPrompts.tsx` — variant for Zhipu/Z.ai models.
-- `minimaxPrompts.tsx` — variant for MiniMax models.
-- `familyHPrompts.tsx` — variant for an internal/codenamed "family H" model.
-- `vscModelPrompts.tsx` — variant for Microsoft's own VS Code-hosted models.
-- `openai/defaultOpenAIPrompt.tsx` — default OpenAI-model variant.
-- `openai/gpt5Prompt.tsx` / `openai/gpt5CodexPrompt.tsx` /
-  `openai/gpt51CodexPrompt.tsx` / `openai/gpt54Prompt.tsx` /
-  `openai/gpt54ConcisePrompt.tsx` — GPT-5-generation model-specific variants.
+
+### Conversation/history handling
+- `agentConversationHistory.tsx` — formats prior turns for inclusion in the
+  prompt.
+- `summarizedConversationHistory.tsx` / `simpleSummarizedHistoryPrompt.tsx`
+  — condensed/summarized history variants (for long conversations).
+- `backgroundSummarizer.ts` — prompt for the background summarization pass
+  itself.
+
+### Sub-agents & misc instructions
+- `executionSubagentPrompt.tsx` — prompt for a delegated "execute this step"
+  sub-agent.
+- `searchSubagentPrompt.tsx` — prompt for a delegated codebase-search
+  sub-agent.
+- `fileLinkificationInstructions.tsx` — output formatting rules for turning
+  file references into clickable links.
+
+### Per-model-family variants
+- `anthropicPrompts.tsx` — Claude models.
+- `geminiPrompts.tsx` — Gemini models.
+- `xAIPrompts.tsx` — Grok models.
+- `zaiPrompts.tsx` — Zhipu/Z.ai models.
+- `minimaxPrompts.tsx` — MiniMax models.
+- `familyHPrompts.tsx` — an internal/codenamed "family H" model.
+- `vscModelPrompts.tsx` — Microsoft's own VS Code-hosted models.
+
+### OpenAI model variants (`openai/`)
+- `defaultOpenAIPrompt.tsx` — fallback for OpenAI models without a more
+  specific variant.
+- `gpt5Prompt.tsx`, `gpt5CodexPrompt.tsx` — GPT-5 and GPT-5-Codex.
+- `gpt51Prompt.tsx`, `gpt51CodexPrompt.tsx` — GPT-5.1 and GPT-5.1-Codex.
+- `gpt52Prompt.tsx`, `gpt53CodexPrompt.tsx` — GPT-5.2 and GPT-5.3-Codex.
+- `gpt54Prompt.tsx`, `gpt54ConcisePrompt.tsx`, `gpt54LargePrompt.tsx` —
+  GPT-5.4, plus concise/large context-window variants.
+- `hiddenModelBPrompt.tsx` — prompt for an unannounced/codenamed model
+  ("Model B") gated behind an internal flag.
