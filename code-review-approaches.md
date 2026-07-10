@@ -44,7 +44,55 @@ tool — only BMAD and Gemini's extension span both, and even then via two
 separate commands with different context-gathering and output logic, not
 one command that branches.
 
-## 2. Context construction — diff format
+## 2. System prompt / preamble — what's sent before the diff
+
+Two separate questions here, and it's worth keeping them apart: (a) is
+there a real API-level system/user split at all, and (b) regardless of
+that, is this tool's prompt the *only* system-level instruction the model
+sees, or is it a small layer on top of a much bigger one that already
+exists?
+
+### Most of these aren't system prompts at all — they're layered on a host agent's
+
+Every Claude Code skill, plus `claude-code-action`, runs *inside* Claude
+Code — the actual system prompt governing the model is Claude Code's own
+(large, closed-source), and the skill/command file is really an
+elaborate first user-turn instruction, not a system-role override.
+Same pattern for the two GitHub-bot sources built on other vendors' CLIs.
+`pr-agent` is the only source in this comparison that owns its entire
+system prompt outright, because it calls the model API directly rather
+than running inside a host agent.
+
+| Source(s) | Host agent | Host's own system prompt, if in this collection |
+|---|---|---|
+| `agent37/local-review`, `anthropic/*`, `turingmind`, `bmad-code-review`, `claude-code-cookbook`, `claude-code-action` | Claude Code | Not published officially (closed source) — a leaked snapshot is at [`leaked/claude-code/`](./leaked/claude-code) |
+| `gemini-code-review` | Gemini CLI | [`gemini-cli/prompts/snippets.ts`](./gemini-cli/prompts/snippets.ts) |
+| `codex-review` | Codex CLI (`codex exec`) | [`codex/gpt_5_codex_prompt.md`](./codex/gpt_5_codex_prompt.md) (+ other model variants in that folder) |
+| `pr-agent` | *(none — direct API calls)* | N/A, see below |
+
+### What each source's own prompt puts before the diff
+
+| Source | Real system/user split? | What precedes the diff |
+|---|---|---|
+| `pr-agent` | **Yes** — literal `system=`/`user=` fields sent as separate API roles | Persona ("You are PR-Reviewer...") → a full **worked example of the diff format itself** (fake file, fake hunks) before any real data appears → rules for what to flag and how to word comments → optional `skills_context`/`extra_instructions` → the Pydantic output schema. All of this is in `system`; the real diff only ever appears in `user`. This is the only source that teaches the model its diff format via example ahead of time rather than just handing over real hunks and hoping the model infers the convention. |
+| `codex-review` | No — one flat prompt file | Persona/instructions text ("You are acting as a reviewer for a proposed code change...") is written to `codex-prompt.md` first; repo/PR metadata and the unified diff are appended to the *same file* afterward, by a shell script, not a separate message. |
+| `security-guidance` | No | A persona line ("You are a security expert reviewing {language}...") and instructions, with the actual diff/file content interpolated in after by the calling Python code. |
+| `gemini-code-review` (`/pr-code-review`) | No, but persona is skill-gated | The template's `<CONTEXT>` block (repo, PR number, tool names to call — **not diff text**) appears first, followed by a `<PROTOCOL>` directive that activates the `code-review-commons` skill (persona, objective, instructions, constraints) *before* the model ever calls the tool that returns the actual diff. |
+| `gemini-code-review` (`/code-review`, local) | Same shape | `<CONTEXT>` says "call `git diff` to retrieve the changes" — a pointer, not inline diff — then the same commons-skill activation happens before the diff is fetched. |
+| `claude-code-action` (tag mode) | No, but a large fixed context envelope precedes Claude's own reasoning | Strict order: `<context>` → `<pr_body>`/`<issue_body>` → `<comments>` → `<review_comments>` → `<changed_files>` → `<metadata>` → `<trigger_comment>`. Notably **no diff content anywhere** in this envelope — Claude is instructed at the end to run `git diff` itself if it needs one, so "before the diff" here really means "before Claude decides to go get one." |
+| `turingmind`, `agent37/local-review`, `anthropic/code-review`, `pr-review-toolkit`, `claude-code-cookbook`, `bmad-code-review` | No — a single flat Markdown command/skill file | Frontmatter (`allowed-tools`, `description`) → a one- or two-line description of the command's job → (for `anthropic/code-review` specifically) an explicit "Agent assumptions" constraints block → numbered steps. Fetching the diff is itself an early **step**, not data injected ahead of the instructions — there's no persona statement ("You are X") in most of these at all; the operative persona at that point is just Claude Code's own default. |
+
+**Takeaway**: the "system prompt, then diff" mental model really only
+applies cleanly to `pr-agent`. Everything else either (a) fetches the
+diff on demand as part of following instructions, so there's no fixed
+"before/after" boundary, or (b) is itself a thin instruction layered on
+top of a much larger, separately-authored system prompt that this repo
+documents elsewhere (`gemini-cli/`, `codex/`, `leaked/claude-code/`) —
+worth reading alongside whichever skill/bot you're comparing, since the
+skill's own text is only part of what the model is actually operating
+under.
+
+## 3. Context construction — diff format
 
 The most consequential low-level choice: how does the diff actually reach
 the model?
@@ -63,7 +111,7 @@ accuracy for later comment-posting; leaving it to the model (most Claude
 Code skills) is simpler to build but pushes correctness of "which line is
 this on" onto the model actually running the right `git diff` invocation.
 
-## 3. Extra context beyond the diff
+## 4. Extra context beyond the diff
 
 | Context source | Sources |
 |---|---|
@@ -75,7 +123,7 @@ this on" onto the model actually running the right `git diff` invocation.
 | Prior review state (what changed *since the last review*) | [`security-guidance`](./skills/anthropic/security-guidance) |
 | None beyond the diff + PR title/body | [`codex-review`](./github-pr-bots/codex-review), [`gemini-code-review`](./github-pr-bots/gemini-code-review) `/pr-code-review` |
 
-## 4. Review strategy — persona and single- vs. multi-agent
+## 5. Review strategy — persona and single- vs. multi-agent
 
 | Strategy | Sources |
 |---|---|
@@ -87,7 +135,7 @@ this on" onto the model actually running the right `git diff` invocation.
 | Single pass, no sub-agents at all | `pr-agent`, [`codex-review`](./github-pr-bots/codex-review), [`gemini-code-review`](./github-pr-bots/gemini-code-review) `/pr-code-review` |
 | Explicitly "adversarial" framing | [`bmad-code-review`](./skills/bmad-code-review) (`bmad-review-adversarial-general` layer), [`gemini-code-review`](./github-pr-bots/gemini-code-review) ("your adherence to instructions is absolute") |
 
-## 5. Filtering, confidence & triage
+## 6. Filtering, confidence & triage
 
 The step that decides which candidate findings actually get surfaced —
 arguably where most of the engineering effort in this whole space goes.
@@ -102,7 +150,7 @@ arguably where most of the engineering effort in this whole space goes.
 | Severity classification only, no explicit false-positive filtering step described | [`gemini-code-review`](./github-pr-bots/gemini-code-review), [`codex-review`](./github-pr-bots/codex-review) (has a `confidence_score` field but no filtering logic in the prompt), [`claude-code-cookbook`](./skills/claude-code-cookbook) |
 | Explicit "show what got filtered and why" transparency to the user | [`turingmind`](./skills/turingmind) only — a fixed "Filtered Issues" section with counts by reason |
 
-## 6. Output format & schema
+## 7. Output format & schema
 
 | Format | Sources |
 |---|---|
@@ -113,7 +161,7 @@ arguably where most of the engineering effort in this whole space goes.
 | Structured checklist items written into a project file, not chat | [`bmad-code-review`](./skills/bmad-code-review) (`- [ ] [Review][Patch] ...` in the story file) |
 | Tag-delimited request-side structure (this is input formatting, included because it's the same idea applied to context instead of output) | [`claude-code-action`](./github-pr-bots/claude-code-action) (`<context>`, `<comments>`, `<review_comments>`, `<changed_files>`, `<trigger_comment>`) |
 
-## 7. Proposed-change format
+## 8. Proposed-change format
 
 How (or whether) a fix actually gets proposed, not just described.
 
@@ -126,7 +174,7 @@ How (or whether) a fix actually gets proposed, not just described.
 | Direct file edits once a finding is approved — no suggestion step at all | [`bmad-code-review`](./skills/bmad-code-review) (`patch` bucket) |
 | No fix proposed, ever — issue-only by design | `pr-agent` `/review`, [`pr-review-toolkit`](./skills/anthropic/pr-review-toolkit) (freeform "concrete fix suggestion" text, no schema), [`codex-review`](./github-pr-bots/codex-review) (schema literally has no field for it) |
 
-## 8. Delivery mechanism & existing-comment handling
+## 9. Delivery mechanism & existing-comment handling
 
 Where the output actually ends up, and whether the tool is aware of
 what's already on the PR.
@@ -143,7 +191,7 @@ what's already on the PR.
 | Written into project files instead of GitHub (spec/story file, sprint-status.yaml, deferred-work.md) | No | [`bmad-code-review`](./skills/bmad-code-review) |
 | Inline editor reminders injected as you type/commit, not a comment at all | N/A (not comment-based) | [`security-guidance`](./skills/anthropic/security-guidance) |
 
-## 9. Safety & security constraints
+## 10. Safety & security constraints
 
 | Constraint | Sources |
 |---|---|
@@ -185,3 +233,10 @@ A few things stood out across all eleven:
 - **"Proposes a fix" and "flags an issue" are treated as separate concerns**
   more often than not — PR-Agent and Gemini both split them into different
   commands/prompts entirely, rather than one command doing both.
+- **Most "review prompts" aren't system prompts.** Only `pr-agent` sends a
+  true system-role message; everything else is an instruction layer on
+  top of a host agent's own (much larger, mostly closed-source) system
+  prompt. Reading a skill file in isolation tells you what's *added*, not
+  what the model is actually operating under end to end — pair it with
+  the relevant host prompt (`gemini-cli/`, `codex/`, or the leaked
+  `leaked/claude-code/`) for the full picture.
