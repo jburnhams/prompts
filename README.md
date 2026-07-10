@@ -32,6 +32,17 @@ Note: Roo Code and Copilot Chat's source repos were both archived
 (read-only) shortly before this collection was put together — files are
 still retrievable, just no longer actively developed at those locations.
 
+## Leaked / closed-source prompts
+
+A second category, kept separate from the open-source folders above: prompts
+from closed-source products, extracted by third parties rather than
+published by the vendor. See [`leaked/README.md`](./leaked/README.md) for
+caveats on provenance and reliability.
+
+| Folder | Project | Type |
+|---|---|---|
+| [`leaked/windsurf/`](./leaked/windsurf) | Windsurf (Cascade) | Coding agent (closed source) |
+
 ## Candidates for next pass
 
 Other open-source coding/review agents worth adding later: Continue.dev,
