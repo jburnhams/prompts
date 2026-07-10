@@ -55,6 +55,19 @@ a "Open Source prompts" folder in the aggregator repo it was sourced from,
 Lumo is not actually open source — it stays in `leaked/` rather than
 alongside Bolt and Gemini CLI above.
 
+## Skills / plugins
+
+A third category: Claude Code "skills"/plugins — small, self-contained
+prompts that define a single slash command or subagent (e.g. "review my
+uncommitted changes") rather than a whole standalone agent. Officially
+published, but licensing varies (MIT to Anthropic's source-available
+commercial terms) — see [`skills/README.md`](./skills/README.md).
+
+| Folder | Publisher | Contents |
+|---|---|---|
+| [`skills/agent37/`](./skills/agent37) | agent37-platform | `local-review` (pre-commit review) |
+| [`skills/anthropic/`](./skills/anthropic) | Anthropic | `code-review`, `pr-review-toolkit`, `security-guidance` |
+
 ## Candidates for next pass
 
 Other open-source coding/review agents worth adding later: Continue.dev,
