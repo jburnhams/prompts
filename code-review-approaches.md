@@ -22,6 +22,7 @@ etc.) — only things whose job is specifically reviewing code.
 | [`github-pr-bots/claude-code-action`](./github-pr-bots/claude-code-action) | GitHub PR (`@claude`, or automated) | GitHub Action |
 | [`github-pr-bots/gemini-code-review`](./github-pr-bots/gemini-code-review) | GitHub PR, or local branch | Gemini CLI extension |
 | [`github-pr-bots/codex-review`](./github-pr-bots/codex-review) | GitHub PR | OpenAI reference implementation |
+| [`github-pr-bots/opencode-review`](./github-pr-bots/opencode-review) | GitHub PR (`/oc` mention, or automated) | GitHub Action |
 
 ---
 
@@ -33,8 +34,8 @@ What kicks off a review, and what's actually in scope.
 |---|---|
 | Slash command, local uncommitted changes | [`agent37/local-review`](./skills/agent37/local-review), [`turingmind`](./skills/turingmind) (`/review` + `/deep-review`), [`gemini-code-review`](./github-pr-bots/gemini-code-review) `/code-review` |
 | Slash command, an existing PR | [`anthropic/code-review`](./skills/anthropic/code-review), [`pr-review-toolkit`](./skills/anthropic/pr-review-toolkit), [`claude-code-cookbook`](./skills/claude-code-cookbook) `pr-review`, [`gemini-code-review`](./github-pr-bots/gemini-code-review) `/pr-code-review`, `pr-agent` `/review` + `/improve` |
-| `@mention` in a PR/issue comment | [`claude-code-action`](./github-pr-bots/claude-code-action) tag mode, `@codex review`, `@gemini-cli /review` |
-| GitHub Action on PR events (`opened`/`synchronize`) — fully automatic | [`claude-code-action`](./github-pr-bots/claude-code-action) agent mode, [`gemini-code-review`](./github-pr-bots/gemini-code-review) workflow example, [`codex-review`](./github-pr-bots/codex-review) |
+| `@mention` in a PR/issue comment | [`claude-code-action`](./github-pr-bots/claude-code-action) tag mode, `@codex review`, `@gemini-cli /review`, [`opencode-review`](./github-pr-bots/opencode-review) `/oc` or `/opencode` |
+| GitHub Action on PR events (`opened`/`synchronize`) — fully automatic | [`claude-code-action`](./github-pr-bots/claude-code-action) agent mode, [`gemini-code-review`](./github-pr-bots/gemini-code-review) workflow example, [`codex-review`](./github-pr-bots/codex-review), [`opencode-review`](./github-pr-bots/opencode-review) |
 | Background hook, no explicit trigger at all | [`security-guidance`](./skills/anthropic/security-guidance) (fires on edit/commit) |
 | Flexible cascade (asks what to review if unclear) | [`bmad-code-review`](./skills/bmad-code-review) — 5-tier cascade: explicit arg → recent conversation → sprint-tracking file → current branch → ask |
 
@@ -46,51 +47,93 @@ one command that branches.
 
 ## 2. System prompt / preamble — what's sent before the diff
 
-Two separate questions here, and it's worth keeping them apart: (a) is
-there a real API-level system/user split at all, and (b) regardless of
-that, is this tool's prompt the *only* system-level instruction the model
-sees, or is it a small layer on top of a much bigger one that already
-exists?
+*(Revised after a direct challenge to the first draft of this section —
+"surely running a full coding-agent system prompt just to do a review is
+massive context bloat, doesn't OpenCode have a leaner mode?" That's a
+fair question, and checking it properly surfaced a more interesting
+answer than the original version had. Findings and their sourcing below.)*
 
-### Most of these aren't system prompts at all — they're layered on a host agent's
+Three separate questions, best kept apart: (a) is there a real API-level
+system/user split at all; (b) if this tool runs inside a host coding
+agent (Claude Code, Gemini CLI, Codex CLI, OpenCode), **can** that host's
+own default system prompt be swapped for something leaner; and (c),
+regardless of (b) — does the tool actually in front of you *do* that, or
+does it just default to the full thing?
 
-Every Claude Code skill, plus `claude-code-action`, runs *inside* Claude
-Code — the actual system prompt governing the model is Claude Code's own
-(large, closed-source), and the skill/command file is really an
-elaborate first user-turn instruction, not a system-role override.
-Same pattern for the two GitHub-bot sources built on other vendors' CLIs.
-`pr-agent` is the only source in this comparison that owns its entire
-system prompt outright, because it calls the model API directly rather
-than running inside a host agent.
+### (a) + (b): every host agent here supports running leaner — this isn't hypothetical
 
-| Source(s) | Host agent | Host's own system prompt, if in this collection |
+| Host | Override mechanism | Source |
 |---|---|---|
-| `agent37/local-review`, `anthropic/*`, `turingmind`, `bmad-code-review`, `claude-code-cookbook`, `claude-code-action` | Claude Code | Not published officially (closed source) — a leaked snapshot is at [`leaked/claude-code/`](./leaked/claude-code) |
-| `gemini-code-review` | Gemini CLI | [`gemini-cli/prompts/snippets.ts`](./gemini-cli/prompts/snippets.ts) |
-| `codex-review` | Codex CLI (`codex exec`) | [`codex/gpt_5_codex_prompt.md`](./codex/gpt_5_codex_prompt.md) (+ other model variants in that folder) |
-| `pr-agent` | *(none — direct API calls)* | N/A, see below |
+| Claude Agent SDK | Defaults to an **empty/minimal** system prompt unless you opt in with `systemPrompt: { type: "preset", preset: "claude_code" }`. Without the preset you get a "much more barebones agent" — no coding conventions, no tool-use guidelines beyond the basics. | [Claude Code docs, "Modifying system prompts"](https://code.claude.com/docs/en/agent-sdk/modifying-system-prompts) |
+| Claude Code CLI / `claude-code-action` | The full built-in prompt is the *default* when you run the actual `claude` CLI (as opposed to the bare SDK), but it can be fully replaced via `system_prompt:` (override) or extended via `append_system_prompt:` | `claude-code-base-action` docs, referenced from [`claude-code-action/README.md`](./github-pr-bots/claude-code-action) |
+| Gemini CLI | `GEMINI_SYSTEM_MD` env var can point at a fully custom `system.md`, replacing the default provider-specific prompt entirely | Referenced in [`gemini-cli/README.md`](./gemini-cli) |
+| Codex CLI | `--config experimental_instructions_file=<path>` overrides the built-in instructions (marked experimental) | [`openai/codex` discussion #7296](https://github.com/openai/codex/discussions/7296) |
+| OpenCode | Fully custom agents via `"agent": { "review": { "prompt": "{file:...}" } }` in config, plus a built-in read-only "Plan" agent as a lighter-weight option than "build" | [OpenCode docs, Agents](https://opencode.ai/docs/agents/) |
 
-### What each source's own prompt puts before the diff
+So the capability to avoid shipping a whole general-purpose coding-agent
+prompt just to review a diff **exists on every platform** represented in
+this collection.
+
+### (c): none of the actual review tools in this collection use it
+
+This is the part worth sitting with. Every source that runs inside a host
+agent — all 6 Claude Code skills, `claude-code-action`, `gemini-code-review`,
+`codex-review`, and `opencode-review` — relies on that host's **default,
+full** system prompt and layers its review instructions on top, rather
+than overriding it with something leaner:
+
+- None of the `create-prompt`/formatter code in `claude-code-action`, and
+  none of the Claude Code skill files, set `system_prompt`/`--append-system-prompt`
+  or the SDK's `preset` option — checked directly in the source, not
+  inferred.
+- `gemini-code-review`'s command `.toml` files and its GitHub Actions
+  wiring (`workflow-example/gemini-review.yml`) contain no reference to
+  `GEMINI_SYSTEM_MD` — checked directly, no match.
+- `codex-review`'s GitHub Actions example builds `codex-prompt.md` and
+  runs plain `codex exec`/`openai/codex-action` — no
+  `experimental_instructions_file` anywhere in the workflow.
+- **`opencode-review` was checked specifically because of this question**,
+  and it's the clearest case: `github.handler.ts` explicitly falls back to
+  `default_agent` from config, or `"build"` — OpenCode's full
+  general-purpose, edit-capable coding agent — [when no `agent` input is
+  set](https://github.com/anomalyco/opencode/blob/dev/packages/opencode/src/cli/cmd/github.handler.ts).
+  A leaner "Plan" (read-only) agent exists and a fully custom one can be
+  configured, but **neither is the default** — you have to opt in.
+  Worse, an [open OpenCode issue](https://github.com/anomalyco/opencode/issues/5005)
+  reports that even explicitly disabling the Plan/Build/General agents
+  doesn't stop OpenCode's own default persona text from being injected —
+  so even opting in doesn't cleanly guarantee you've fully escaped the
+  base prompt.
+
+`pr-agent` remains the only source that's a genuinely bare model call by
+construction — not because it made a deliberate "run lean" choice that
+the others declined, but because it was never built on top of a host
+agent CLI in the first place. It calls the API directly with its own
+`system=`/`user=` fields (see below) — there's no larger prompt underneath
+it to strip away.
+
+### What precedes the diff, source by source
 
 | Source | Real system/user split? | What precedes the diff |
 |---|---|---|
 | `pr-agent` | **Yes** — literal `system=`/`user=` fields sent as separate API roles | Persona ("You are PR-Reviewer...") → a full **worked example of the diff format itself** (fake file, fake hunks) before any real data appears → rules for what to flag and how to word comments → optional `skills_context`/`extra_instructions` → the Pydantic output schema. All of this is in `system`; the real diff only ever appears in `user`. This is the only source that teaches the model its diff format via example ahead of time rather than just handing over real hunks and hoping the model infers the convention. |
-| `codex-review` | No — one flat prompt file | Persona/instructions text ("You are acting as a reviewer for a proposed code change...") is written to `codex-prompt.md` first; repo/PR metadata and the unified diff are appended to the *same file* afterward, by a shell script, not a separate message. |
+| `codex-review` | No — one flat prompt file, on top of Codex CLI's full default system prompt | Persona/instructions text ("You are acting as a reviewer for a proposed code change...") is written to `codex-prompt.md` first; repo/PR metadata and the unified diff are appended to the *same file* afterward, by a shell script, not a separate message. |
 | `security-guidance` | No | A persona line ("You are a security expert reviewing {language}...") and instructions, with the actual diff/file content interpolated in after by the calling Python code. |
-| `gemini-code-review` (`/pr-code-review`) | No, but persona is skill-gated | The template's `<CONTEXT>` block (repo, PR number, tool names to call — **not diff text**) appears first, followed by a `<PROTOCOL>` directive that activates the `code-review-commons` skill (persona, objective, instructions, constraints) *before* the model ever calls the tool that returns the actual diff. |
+| `gemini-code-review` (`/pr-code-review`) | No, but persona is skill-gated, on top of Gemini CLI's full default system prompt | The template's `<CONTEXT>` block (repo, PR number, tool names to call — **not diff text**) appears first, followed by a `<PROTOCOL>` directive that activates the `code-review-commons` skill (persona, objective, instructions, constraints) *before* the model ever calls the tool that returns the actual diff. |
 | `gemini-code-review` (`/code-review`, local) | Same shape | `<CONTEXT>` says "call `git diff` to retrieve the changes" — a pointer, not inline diff — then the same commons-skill activation happens before the diff is fetched. |
-| `claude-code-action` (tag mode) | No, but a large fixed context envelope precedes Claude's own reasoning | Strict order: `<context>` → `<pr_body>`/`<issue_body>` → `<comments>` → `<review_comments>` → `<changed_files>` → `<metadata>` → `<trigger_comment>`. Notably **no diff content anywhere** in this envelope — Claude is instructed at the end to run `git diff` itself if it needs one, so "before the diff" here really means "before Claude decides to go get one." |
-| `turingmind`, `agent37/local-review`, `anthropic/code-review`, `pr-review-toolkit`, `claude-code-cookbook`, `bmad-code-review` | No — a single flat Markdown command/skill file | Frontmatter (`allowed-tools`, `description`) → a one- or two-line description of the command's job → (for `anthropic/code-review` specifically) an explicit "Agent assumptions" constraints block → numbered steps. Fetching the diff is itself an early **step**, not data injected ahead of the instructions — there's no persona statement ("You are X") in most of these at all; the operative persona at that point is just Claude Code's own default. |
+| `claude-code-action` (tag mode) | No, but a large fixed context envelope precedes Claude's own reasoning, on top of Claude Code's full default system prompt | Strict order: `<context>` → `<pr_body>`/`<issue_body>` → `<comments>` → `<review_comments>` → `<changed_files>` → `<metadata>` → `<trigger_comment>`. Notably **no diff content anywhere** in this envelope — Claude is instructed at the end to run `git diff` itself if it needs one, so "before the diff" here really means "before Claude decides to go get one." |
+| `opencode-review` | No, same shape as Claude Action, on top of OpenCode's full "build"-agent default system prompt | `<github_action_context>` (meta-instructions: PR push/creation happens automatically, don't caveat about it) → `<pull_request>` block (title/body/author/branches/state/additions/deletions/commit count/file count) → `<pull_request_comments>` → `<pull_request_changed_files>` (list only, no diff) → `<pull_request_reviews>` (formal reviews). Also no diff content — same "model fetches it itself" pattern as Claude Action. |
+| `turingmind`, `agent37/local-review`, `anthropic/code-review`, `pr-review-toolkit`, `claude-code-cookbook`, `bmad-code-review` | No — a single flat Markdown command/skill file, on top of Claude Code's full default system prompt | Frontmatter (`allowed-tools`, `description`) → a one- or two-line description of the command's job → (for `anthropic/code-review` specifically) an explicit "Agent assumptions" constraints block → numbered steps. Fetching the diff is itself an early **step**, not data injected ahead of the instructions — there's no persona statement ("You are X") in most of these at all; the operative persona at that point is just Claude Code's own default. |
 
 **Takeaway**: the "system prompt, then diff" mental model really only
 applies cleanly to `pr-agent`. Everything else either (a) fetches the
 diff on demand as part of following instructions, so there's no fixed
-"before/after" boundary, or (b) is itself a thin instruction layered on
-top of a much larger, separately-authored system prompt that this repo
-documents elsewhere (`gemini-cli/`, `codex/`, `leaked/claude-code/`) —
-worth reading alongside whichever skill/bot you're comparing, since the
-skill's own text is only part of what the model is actually operating
-under.
+"before/after" boundary, or (b) is a thin instruction layered on top of a
+much larger, separately-authored host system prompt that this repo
+documents elsewhere (`gemini-cli/`, `codex/`, `opencode/`,
+`leaked/claude-code/`) — and, per the research above, could in principle
+be swapped for something leaner on every one of these platforms, but
+isn't, in any of the actual published review tools checked here.
 
 ## 3. Context construction — diff format
 
@@ -103,7 +146,7 @@ the model?
 | Structured API result with LEFT/RIGHT line numbers per hunk (not raw text) | [`gemini-code-review`](./github-pr-bots/gemini-code-review) `/pr-code-review` (`pull_request_read.get_diff`) |
 | Plain unified diff, pre-baked directly into the prompt text | [`codex-review`](./github-pr-bots/codex-review) (`git diff --unified=5`), [`gemini-code-review`](./github-pr-bots/gemini-code-review) `/code-review` (`git diff -U5 --merge-base`), [`security-guidance`](./skills/anthropic/security-guidance) |
 | Diff-source cascade with format validation + chunking for huge diffs | [`bmad-code-review`](./skills/bmad-code-review) (staged/uncommitted/branch/commit-range/pasted, >3000 lines → offer to chunk) |
-| No pre-formatted diff at all — the model runs `git diff`/`gh` itself when it needs one | [`agent37/local-review`](./skills/agent37/local-review), [`turingmind`](./skills/turingmind), [`anthropic/code-review`](./skills/anthropic/code-review), [`pr-review-toolkit`](./skills/anthropic/pr-review-toolkit), [`claude-code-cookbook`](./skills/claude-code-cookbook), [`claude-code-action`](./github-pr-bots/claude-code-action) tag mode |
+| No pre-formatted diff at all — the model runs `git diff`/`gh` itself when it needs one | [`agent37/local-review`](./skills/agent37/local-review), [`turingmind`](./skills/turingmind), [`anthropic/code-review`](./skills/anthropic/code-review), [`pr-review-toolkit`](./skills/anthropic/pr-review-toolkit), [`claude-code-cookbook`](./skills/claude-code-cookbook), [`claude-code-action`](./github-pr-bots/claude-code-action) tag mode, [`opencode-review`](./github-pr-bots/opencode-review) |
 
 **Takeaway**: pre-formatting the diff (PR-Agent, Gemini, Codex) means the
 tool controls exactly what the model sees and can guarantee line-number
@@ -185,6 +228,7 @@ what's already on the PR.
 | GitHub's native pending-review flow (create → add comments → submit, locked to event type `COMMENT`) | No | [`gemini-code-review`](./github-pr-bots/gemini-code-review) `/pr-code-review` |
 | Raw REST API `curl` calls, no `gh`/MCP | No — will duplicate comments on re-run | [`codex-review`](./github-pr-bots/codex-review) |
 | Single structured summary object/comment, not per-line | No | `pr-agent` `/review` |
+| Single plain issue/PR comment via a direct REST call | No | [`opencode-review`](./github-pr-bots/opencode-review) (`octoRest.rest.issues.createComment`) |
 | One continuously-updated tracking comment; formal reviews/approvals explicitly forbidden | Yes — both regular comments and formal PR reviews are pre-loaded as context (kept in separate prompt sections) | [`claude-code-action`](./github-pr-bots/claude-code-action) tag mode |
 | Reading existing comments **is the entire point** — classifies them, then produces reply templates back to reviewers | Yes, exclusively | [`claude-code-cookbook`](./skills/claude-code-cookbook) `pr-fix` |
 | Terminal/chat output only, nothing touches GitHub | N/A | [`agent37/local-review`](./skills/agent37/local-review), [`turingmind`](./skills/turingmind), [`pr-review-toolkit`](./skills/anthropic/pr-review-toolkit) (despite being framed as PR review — no GitHub comment tool in its `allowed-tools` at all), [`gemini-code-review`](./github-pr-bots/gemini-code-review) `/code-review` |
@@ -208,7 +252,7 @@ what's already on the PR.
 
 ## Design takeaways
 
-A few things stood out across all eleven:
+A few things stood out across all twelve:
 
 - **Diff format and delivery mechanism are the two axes that most
   determine engineering complexity.** Pre-formatting the diff (PR-Agent,
@@ -224,7 +268,7 @@ A few things stood out across all eleven:
   None of the "no filtering step described" tools (Codex, Gemini,
   Cookbook) are necessarily worse — they may just push that judgment into
   the base model's instructions rather than a separate pipeline stage.
-- **Almost nothing here reads existing PR comments.** Of eleven sources,
+- **Almost nothing here reads existing PR comments.** Of twelve sources,
   only `claude-code-action` (as context) and `claude-code-cookbook`'s
   `pr-fix` (as its entire purpose) do. Everything else reviews from
   scratch every time, including tools that will duplicate a comment if

@@ -16,6 +16,7 @@ into GitHub comments/suggestions.
 | [`claude-code-action/`](./claude-code-action) | Anthropic | Genuinely open source (MIT), and what actually runs |
 | [`gemini-code-review/`](./gemini-code-review) | Google | Genuinely open source (Apache-2.0), and what actually runs |
 | [`codex-review/`](./codex-review) | OpenAI | OpenAI's own **published reference implementation**, explicitly *not* the real hosted service — see that folder's README |
+| [`opencode-review/`](./opencode-review) | Anomaly (OpenCode) | Genuinely open source (MIT); defaults to the full general-purpose "build" agent, not a review-specific one — see that folder's README |
 
 ## Copilot: nothing found
 
