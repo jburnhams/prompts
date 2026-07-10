@@ -41,3 +41,53 @@ Per the extracted `Tools.json`: `Task` (sub-agent delegate), `Bash`,
 
 As with the prompt text itself, treat this tool list as one dated
 snapshot, not a guaranteed-current spec.
+
+## Sub-agents
+
+The full `Task` tool description in `Tools.json` is the most detailed
+sub-agent specification captured anywhere in this collection — worth
+reading as the reference case other sources' briefer mentions can be
+compared against.
+
+- **Typed agent registry, not a free-form delegate**: the description
+  enumerates named agent types with their own tool scopes —
+  `general-purpose` (`Tools: *`), `statusline-setup` (`Tools: Read,
+  Edit`), `output-style-setup` (`Tools: Read, Write, Edit, Glob, LS,
+  Grep`) — and the caller must pass a `subagent_type` parameter picking
+  one. A sub-agent's tool access is narrower than the orchestrator's by
+  design for anything other than `general-purpose`.
+- **Explicit "when NOT to use" guidance**: reading a known file path,
+  searching for an exact class name, or searching within 2-3 known
+  files should go through `Read`/`Glob` directly instead — the Task
+  tool is reserved for genuinely open-ended, multi-round work, framed
+  as a speed/cost tradeoff, not a blanket "always delegate" rule.
+- **Protocol is strictly one-shot, stateless, and opaque mid-flight**:
+  "Each agent invocation is stateless. You will not be able to send
+  additional messages to the agent, nor will the agent be able to
+  communicate with you outside of its final report." The orchestrator
+  never sees intermediate tool calls the sub-agent makes — only the
+  single final message.
+- **Result handling is the orchestrator's job, not automatic**: "The
+  result returned by the agent is not visible to the user. To show the
+  user the result, you should send a text message back to the user
+  with a concise summary" — the sub-agent's report is folded into the
+  orchestrator's own next turn as ordinary tool-result content, then
+  the orchestrator decides what (if anything) to surface.
+- **The calling prompt must front-load everything**: since there's no
+  back-and-forth, "your prompt should contain a highly detailed task
+  description... and you should specify exactly what information the
+  agent should return." The sub-agent has no access to the user's
+  original intent unless the orchestrator explicitly restates it,
+  including whether it's expected to write code or just research.
+- **Trust posture**: "The agent's outputs should generally be
+  trusted" — stated as an explicit instruction, not left implicit.
+- **Concurrency**: "Launch multiple agents concurrently whenever
+  possible... use a single message with multiple tool uses" — the same
+  batched-parallel-tool-call convention used for ordinary tools (see
+  `coding-agent-approaches.md` §4), applied to sub-agent fan-out too.
+- **No system prompt shown for the sub-agent side**: unlike Goose's
+  `subagent_system.md` or Copilot Chat's `ExecutionSubagentPrompt`/
+  `SearchSubagentPrompt`, this extraction only shows the *tool
+  description* the orchestrator sees — what system prompt (if any) the
+  spawned agent itself runs under isn't captured here. See
+  `agent-subagent-architectures.md` for the cross-source comparison.

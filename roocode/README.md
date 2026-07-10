@@ -59,3 +59,19 @@ prompt from many small, single-purpose section files, plus a mode system
   the persona, changes per mode (see `coding-agent-approaches.md` §13).
   Also imports a `SkillsManager` and a pluggable `DiffStrategy` for the
   edit-format layer.
+
+## Sub-agents
+
+**No sub-agent/delegation tool of any kind appears in the files captured
+here** — no `new_task`-as-delegate, no `Task`-equivalent, nothing
+matching Claude Code's, Gemini CLI's, or Copilot Chat's spawn-and-report
+pattern. This is a second real divergence from Cline (alongside the
+missing browser tool noted in "Tool surface" above): Roo Code's **mode
+system** is the closest thing it has to task-splitting, but modes change
+*what the single active agent is allowed to do* (which tool group is
+exposed, what persona framing applies), not *how many agents are
+running* — there's no fan-out, no separate context window for a
+delegated task, and no summarized-report-back step. If Roo Code added
+genuine sub-agent delegation after this snapshot (`main` branch,
+2026-07-10, on an archived/read-only repo — see the note above), it
+isn't reflected in these files.

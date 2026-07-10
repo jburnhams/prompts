@@ -59,3 +59,29 @@ implementation code with only a small amount of embedded prompt text
   skills system (`Skill.Service`), both conditionally injected only when
   something is actually configured/available — same "don't pad the prompt
   with unused capability text" instinct as Pi's dynamic tool listing.
+
+## Sub-agents
+
+A `Task` tool is referenced by name repeatedly, but — unlike leaked
+Claude Code's `Tools.json` — none of the files captured here include the
+tool's own schema/description text, only the persona prompt's
+instructions to *use* it: "prefer to use the Task tool in order to
+reduce context usage," "proactively use the Task tool with specialized
+agents when the task at hand matches the agent's description," and "if
+you need to launch multiple agents in parallel, send a single message
+with multiple Task tool calls." Functionally this reads as the same
+delegate-and-summarize pattern as leaked Claude Code's `Task` (unsurprising
+— OpenCode's `anthropic.txt` variant is closely modeled on Claude Code's
+own prompt), just without the underlying tool description to confirm
+details like statelessness or the `subagent_type` registry.
+
+- **The Task-tool instructions are Claude-lineage-only, not universal
+  across OpenCode's provider variants**: they appear in `default.txt`,
+  `anthropic.txt`, `trinity.txt`, and `meta.txt`, but are **absent** from
+  `gpt.txt`, `codex.txt`, `beast.txt`, `gemini.txt`, `kimi.txt`, and
+  `copilot-gpt-5.txt` — none of those other seven per-provider variants
+  mention Task-based delegation at all. Sub-agent delegation is one of
+  the clearest per-model-family divergences in this repo's whole
+  collection: it's present only in the variants descended from Claude
+  Code's own prompt conventions, not a capability OpenCode explains
+  uniformly regardless of which model is driving.

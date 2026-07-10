@@ -47,3 +47,22 @@ classic, single-file prompt layout, so it's used here for a clean read.
 - **Extensibility**: `use_mcp_tool`/`access_mcp_resource`/
   `load_mcp_documentation` for MCP servers, plus `new_task` for spawning a
   follow-on task and `plan_mode_respond` for its plan/act mode split.
+
+## Sub-agents
+
+**Cline has no sub-agent delegation tool in this snapshot** — `new_task`
+is a different, easily-confused mechanism worth calling out explicitly:
+it doesn't launch a second, independent agent that reports back. It
+generates "a detailed summary of the conversation so far" (explicit
+five-part structure: current work, key technical concepts, relevant
+files/code, problem solving, pending tasks/next steps) and hands that
+summary to the **user** as a preview, who can then choose to start a
+*fresh conversation* preloaded with it, or keep chatting in the current
+one. It's a context-compaction / session-handoff tool aimed at working
+around context-window limits across a single continuous task, not a
+parallel-delegation or divide-and-conquer mechanism — the new "task" runs
+in place of the current one, not alongside it, and there's no
+orchestrator/sub-agent relationship or result-passing-back protocol at
+all. Contrast this directly with Claude Code's `Task` tool (see
+`leaked/claude-code/README.md`), which spawns a genuinely separate agent
+that returns a report *to* the still-running orchestrator.

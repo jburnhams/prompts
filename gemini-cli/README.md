@@ -63,3 +63,40 @@ implementations' actual names.
   dynamic, though the sandboxing itself is enforced outside the prompt.
 - **Extensibility**: `ACTIVATE_SKILL_TOOL_NAME` for its skills system,
   `UPDATE_TOPIC_TOOL_NAME` for narrating topic changes mid-session.
+
+## Sub-agents
+
+Framed explicitly as an **orchestration/context-management strategy**,
+not just a search convenience — the "Available Sub-Agents" section opens
+by naming the model's own context window as the resource being
+protected: "Operate as a **strategic orchestrator**. Your own context
+window is your most precious resource... use sub-agents to 'compress'
+complex or repetitive work." When delegated, "the sub-agent's entire
+execution is consolidated into a single summary in your history."
+
+- **Named, specialized agents invoked by name** through `AGENT_TOOL_NAME`
+  with an `agent_name` parameter — "You MUST delegate tasks to the
+  sub-agent with the most relevant expertise" — rather than one
+  general-purpose delegate. `codebase_investigator` is the one named
+  explicitly, reserved for "complex refactoring, codebase exploration or
+  system-wide analysis."
+- **Concrete delegation triggers given, not left to judgment alone**:
+  "Repetitive Batch Tasks" is defined quantitatively — "more than 3
+  files or repeated steps" (e.g. "Add license headers to all files in
+  src/", "Fix all lint errors in the project") — a rare case in this
+  collection of a numeric threshold for *when to delegate*, not just
+  when to skip planning (contrast Codex CLI's "skip the plan tool for
+  the easiest 25%" framing, a similar quantified-threshold instinct
+  applied to a different decision).
+- **Explicit concurrency-safety mandate, phrased as a hard rule**: "You
+  should NEVER run multiple subagents in a single turn if their
+  abilities mutate the same files or resources... Only run multiple
+  subagents in parallel when their tasks are independent... or if
+  parallel execution is explicitly requested by the user." This is a
+  file-conflict-aware version of the generic "batch independent tool
+  calls" instruction most sources give for ordinary tools — here scoped
+  specifically to write-safety across concurrently-running agents.
+- **No sub-agent system prompt captured**: like leaked Claude Code, this
+  file only shows the orchestrator-side tool/delegation instructions,
+  not what system prompt (if any) `codebase_investigator` or other named
+  sub-agents run under.

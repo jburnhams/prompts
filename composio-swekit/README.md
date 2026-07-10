@@ -123,3 +123,38 @@ not merely instructed in prose.
   CrewAI's tool-equipped `Agent` vs. AutoGen/LlamaIndex/CamelAI
   equivalents) varies by generated project, though the Composio tool
   *names* stay constant across all of them.
+
+## Sub-agents
+
+A structurally different pattern from every spawn-and-report mechanism
+elsewhere in this collection, worth reading as the outlier case: **a
+fixed team of separately-prompted roles wired into one LangGraph state
+machine**, not an on-demand delegate the orchestrator calls as a tool.
+
+- **No delegation tool call at all** — control passes between
+  `SOFTWARE_ENGINEER_PROMPT` (orchestrator), `CODE_ANALYZER_PROMPT`
+  (read-only investigator), and `EDITING_AGENT_PROMPT` (the only role
+  that can write) via **literal keyword strings** in a shared
+  conversation (`"ANALYZE CODE"`, `"ANALYSIS COMPLETE"`, `"EDIT FILE"`,
+  `"EDITING COMPLETED"`, `"PATCH COMPLETED"`), not a tool schema with
+  parameters and a return value. There's no equivalent of Claude Code's
+  `subagent_type` parameter or Goose's `{{task_instructions}}` template
+  fill-in — the "instruction" for the next role is whatever's already in
+  the shared conversation history.
+- **Roles are fixed at design time, not chosen per-task**: unlike every
+  named-sub-agent-registry source above (Claude Code's typed agents,
+  Gemini CLI's `codebase_investigator`), there's no menu to pick from —
+  the same three roles run in the same handoff order on every task. The
+  `pr_review/langgraph/` pipeline mirrors this with its own fixed
+  three-role team (`PR_FETCHER_PROMPT` → `REPO_ANALYZER_PROMPT` →
+  `PR_COMMENT_PROMPT`).
+- **Tool-scoping is still enforced per role**, just via the framework's
+  node-to-tool bindings rather than a runtime parameter — `CODE_ANALYZER_PROMPT`
+  is told directly "you cannot modify files, execute shell commands, or
+  directly access the file system," a prompt-level restatement of a
+  boundary the graph wiring also enforces structurally.
+- **No stateless/single-shot constraint** — because control returns to a
+  shared conversation rather than a sub-agent reporting back through a
+  tool-result, a role can in principle be revisited multiple times as
+  the state machine cycles, unlike the strictly one-shot Task-tool
+  pattern used elsewhere in this collection.

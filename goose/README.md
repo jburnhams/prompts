@@ -64,3 +64,43 @@ retrieved commit.
 - **Browser/web, multimodal**: not addressed in the base prompt (would
   come from extensions).
 - **Sandbox/isolation**: not specified.
+
+## Sub-agents
+
+`subagent_system.md` is a complete, standalone system prompt swapped in
+"when Goose spawns a sub-agent to handle a delegated task" — the third
+source in this collection (with Copilot Chat and Crush) whose sub-agent
+prompt text is fully captured, not just the orchestrator-side tool
+description that triggers delegation.
+
+- **Explicit identity and provenance**: opens with "You are a specialized
+  subagent within the goose AI framework... You were spawned by the main
+  goose agent to handle a specific task efficiently" — the sub-agent is
+  told directly that it *is* a sub-agent and who spawned it, more
+  self-aware framing than Copilot Chat's or Crush's sub-agent prompts,
+  which describe a role ("execution research assistant," "web content
+  analysis agent") without naming the spawning relationship itself.
+- **A stated security boundary specific to recursion**: listed as one of
+  five core characteristics — "Security: Cannot spawn additional
+  subagents." Goose is the only source in this collection that states a
+  no-recursive-delegation rule explicitly in the sub-agent's own prompt,
+  rather than leaving nesting depth unaddressed.
+- **Turn/timeout bounding via template variables**: `{{max_turns}}` is
+  interpolated directly into the prompt text ("The maximum number of
+  turns to respond is {{max_turns}}"), plus an optional `{{subagent_id}}`
+  for tracking and `{{task_instructions}}` for the delegated task itself
+  — all Jinja2-style fill-ins, consistent with the rest of Goose's
+  template-based prompt system (see `{{shell}}` in "Tool surface" above).
+- **Tool-efficiency framed as the sub-agent's primary constraint**: "Use
+  tools only when absolutely necessary... Avoid exploratory tool usage
+  unless explicitly required... Stop using tools once you have sufficient
+  information" — a cost-consciousness instruction pushed down into the
+  sub-agent itself, rather than left to the orchestrator's choice of
+  when to delegate (contrast Gemini CLI's concurrency/conflict rules,
+  which live entirely on the orchestrator side).
+- **Communication contract**: markdown-formatted responses, clear
+  progress updates, an explicit "this should be the last message you
+  generate" instruction for the final summary/report — functionally
+  similar to Copilot Chat's forced `<final_answer>` cutoff, but stated as
+  a soft convention here rather than a hard turn-budget mechanism with an
+  injected nudge message.
