@@ -57,3 +57,47 @@ prompts):
 - `complete_tool.py` — trivial by design: "Call this tool when you are
   done with the task, and supply your answer or summary." The task's
   actual termination condition, kept deliberately minimal.
+
+## Tool surface
+
+A small, fixed, four-tool set — no search tool at all, no browser, no
+multimodal input.
+
+- **Shell**: a single **persistent** bash tool (`bash_tool.py`), spawned
+  via `pexpect` against a real `/bin/bash` with a custom sentinel prompt
+  so state (cwd, env vars, background jobs) survives across calls — a
+  different implementation strategy from mini-swe-agent's/live-swe-agent's
+  explicitly **non**-persistent "every action is a new subshell" model.
+  Supports pluggable `CommandFilter`s (an `SSHCommandFilter` is defined)
+  for transforming commands before execution, e.g. to run remotely.
+  `instruction.py` separately warns about environment gotchas such as
+  symlinked paths inside the Docker sandbox and no internet access.
+- **Editing**: `str_replace_tool.py`, a `view`/`create`/`str_replace`/
+  `insert`/`undo_edit` multi-command tool — the same family (and near-
+  verbatim text) as Claude Code's/Gemini CLI's old_string/new_string edit
+  tools, tracing to the same Anthropic reference implementation (see
+  `coding-agent-approaches.md` §5). The `undo_edit` command is notable —
+  few other sources in this collection expose edit-undo as its own tool
+  action rather than relying on the model just re-editing.
+- **Search**: none — no grep/glob/semantic-search tool is defined; file
+  discovery happens through `view`ing directories via `str_replace_tool`
+  or ad hoc `bash` commands (`find`, `grep`) if the model chooses to run
+  them.
+- **Planning**: `sequential_thinking_tool.py` — a structured "thoughts"
+  tool (5–25 numbered thoughts, `instruction.py` suggests starting with
+  5–7 candidate root causes before narrowing down) for making the model's
+  reasoning explicit and revisable, closer in spirit to Gemini CLI's
+  tracker-tool family than to a plain "think step by step" instruction.
+- **Termination**: `complete_tool.py` — deliberately trivial, a single
+  explicit "I'm done" signal rather than folding completion into the
+  bash-submit convention mini-swe-agent/live-swe-agent use (`echo
+  COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`).
+- **Ensembling, not a tool but adjacent**: `ensembler_prompt.py`/
+  `majority_vote_ensembler.py` run an entirely separate LLM (o1) over N
+  completed trajectories' diffs to pick a winner — a benchmark-harness
+  concern layered on top of the four-tool agent loop, not part of the
+  agent's own tool surface.
+- **Browser/web/multimodal**: none.
+- **Sandbox/isolation**: runs inside a Docker container for SWE-bench
+  evaluation (per the symlinked-paths gotcha note); not itself
+  micro-VM/browser-sandboxed like Bolt.new or Hyperlight.

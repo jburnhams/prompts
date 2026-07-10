@@ -75,3 +75,51 @@ A separate, dedicated code-review pipeline, worth cross-referencing with
   `GITHUB_CREATE_A_REVIEW_COMMENT_FOR_A_PULL_REQUEST`, plus a final
   overall quality-rating comment, and is told to "be very skeptical" and
   keep comments non-verbose.
+
+## Tool surface
+
+Composio's tools are namespaced by integration/toolkit (`FILETOOL_*`,
+`CODE_ANALYSIS_TOOL_*`, `GITHUB_*`) rather than given the short generic
+names (`bash`, `edit`, `grep`) used elsewhere in this collection — the
+prompt text spells out the fully-qualified tool name at every call site.
+Per-role tool access is a hard boundary here, not just a convention: the
+orchestrator/analyzer/editor roles in `swe/langgraph/` are wired to
+disjoint tool sets, enforced by the framework's per-node tool bindings,
+not merely instructed in prose.
+- **Shell**: none exposed directly — no bash/terminal tool appears in
+  either template. All action happens through the named FILETOOL/
+  CODE_ANALYSIS_TOOL/GITHUB tool calls instead of a general-purpose shell.
+- **Search/exploration**: `FILETOOL_GIT_REPO_TREE` (repo structure) for
+  the orchestrator; the read-only `CODE_ANALYSIS_TOOL` family
+  (`GET_CLASS_INFO`, `GET_METHOD_BODY`, `GET_METHOD_SIGNATURE`) plus
+  `FILETOOL_OPEN_FILE`/`FILETOOL_SCROLL`/`FILETOOL_SEARCH_WORD` for the
+  analyzer — symbol-level lookups closer to Copilot Chat's
+  `SearchWorkspaceSymbols` than to plain grep, though scoped to
+  class/method granularity rather than full LSP integration.
+  `FILETOOL_SEARCH_WORD` is the closest thing to a grep-equivalent.
+- **Editing**: `FILETOOL_EDIT_FILE` (line-range based — `start_line`/
+  `end_line` params) and `FILETOOL_GIT_PATCH` for generating patches,
+  restricted to the editing role only.
+- **PR review / GitHub integration**: a dedicated set only in
+  `pr_review/langgraph/` — `GITHUB_GET_A_PULL_REQUEST`,
+  `GITHUB_GET_PR_METADATA`, `GITHUB_LIST_COMMITS_ON_A_PULL_REQUEST`,
+  `GITHUB_GET_A_COMMIT`, `GITHUB_GET_DIFF` for fetching, and
+  `GITHUB_CREATE_A_REVIEW_COMMENT_FOR_A_PULL_REQUEST`/
+  `GITHUB_CREATE_AN_ISSUE_COMMENT`/
+  `GITHUB_LIST_REVIEW_COMMENTS_ON_A_PULL_REQUEST` for posting — real
+  GitHub-API-backed tools, not a shelled-out `gh` CLI (contrast the
+  `github-pr-bots/` sources in this collection, several of which do shell
+  out to `gh`/`git`).
+- **Sub-agent handoff as the extensibility mechanism**: control passes
+  between the three roles via literal keyword strings in the conversation
+  (`"ANALYZE CODE"`, `"EDITING COMPLETED"`, etc.) rather than a
+  dispatcher tool — see the role-handoff description above.
+- **Browser/multimodal**: none.
+- **Sandbox/isolation**: not specified by the prompts — depends on
+  wherever the generated LangGraph/CrewAI app is deployed.
+- **Framework-conditional tool wiring**: since SWE-Kit is a code
+  generator (`swekit scaffold`) targeting five different agent
+  frameworks, the actual tool-calling mechanism (LangGraph tool nodes vs.
+  CrewAI's tool-equipped `Agent` vs. AutoGen/LlamaIndex/CamelAI
+  equivalents) varies by generated project, though the Composio tool
+  *names* stay constant across all of them.

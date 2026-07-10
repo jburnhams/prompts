@@ -56,3 +56,34 @@ Diffing `config/livesweagent.yaml` against `../mini-swe-agent/config/mini.yaml`:
 - `config/livesweagent.yaml` — the full agent config: system prompt,
   instance/task template, action-observation template (including the
   tool-creation reflection nudge), and format-error recovery template.
+
+## Tool surface
+
+Also, like mini-swe-agent, **exactly one built-in tool: bash** — but
+here that's the starting point, not the whole story, since the model is
+explicitly told to expand its own toolset mid-task.
+- **Execution model**: same non-persistent-subshell model as
+  mini-swe-agent (`MY_ENV_VAR=... cd /path && ...` workaround for state).
+- **Calling convention**: text-parsed action blocks, not native
+  tool-calling — "exactly ONE bash code block" in triple backticks per
+  response, parsed out of the model's text output. This is the one
+  concrete scaffolding divergence from mini-swe-agent's native
+  tool-calling (`finish_reason`/`has_tool_calls`), despite the README's
+  own "very minimal modifications" framing — see the "What's actually
+  different" section above.
+- **Editing**: no dedicated edit tool — same `sed -i`/heredoc-via-bash
+  approach as mini-swe-agent, plus the option to write a bespoke edit
+  script (see below).
+- **Self-extension, the headline feature**: the model is instructed to
+  write single-purpose Python scripts on the fly via bash heredocs
+  whenever plain commands aren't a good fit, and the action-observation
+  template nudges this reflection after *every* action ("decide if there
+  are any tools you can create to help you with the current task").
+  These created "tools" are just executable scripts invoked via the same
+  bash tool, not new entries in an API-level tool schema — the expansion
+  happens at the task-workspace level, not the model's function-calling
+  surface.
+- **Search/browser/multimodal**: none.
+- **Operational limits set in config**: `cost_limit: 3.` (dollar budget),
+  `step_limit: 0.` (unlimited), `mode: confirm`.
+- **Sandbox/isolation**: not specified in this config.

@@ -37,3 +37,25 @@ Not included: `prompt.ts` (~1600 lines) — the session/agentic-loop
 orchestrator that wires prompts, tools, and streaming together. It's mostly
 implementation code with only a small amount of embedded prompt text
 (`MAX_STEPS_PROMPT` etc.), so it's out of scope for this collection.
+
+## Tool surface
+
+- **Shell**: `Bash` — non-trivial commands must be explained to the user
+  before running, "especially important when... making changes to the
+  user's system."
+- **Search**: separate `grep` and `glob` tools (named explicitly in the
+  worked example), plus a delegated `Task` tool "to reduce context usage"
+  for open-ended search.
+- **Code execution**: none beyond `Bash` — no dedicated Python/Node
+  execution tool.
+- **Browser/web**: `WebFetch`, but scoped narrowly in this prompt to
+  self-documentation ("first use the WebFetch tool... from opencode
+  docs") — not framed as a general research tool here.
+- **Multimodal**: not addressed in `default.txt`.
+- **Sandbox/isolation**: not in the prompt text; see
+  [`../github-pr-bots/opencode-review/`](../github-pr-bots/opencode-review)
+  for the GitHub Action's execution context.
+- **Extensibility**: MCP support (`MCP.Service` in `system.ts`) and a
+  skills system (`Skill.Service`), both conditionally injected only when
+  something is actually configured/available — same "don't pad the prompt
+  with unused capability text" instinct as Pi's dynamic tool listing.

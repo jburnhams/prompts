@@ -20,3 +20,30 @@ classic, single-file prompt layout, so it's used here for a clean read.
 - `responses.ts` — templates for tool-result / error messages fed back to the
   model mid-conversation (not the system prompt itself, but part of the
   overall prompting strategy).
+
+## Tool surface
+
+- **Shell**: `execute_command` — generic, "tailor your command to the
+  user's system," one command per tool call (this version predates native
+  parallel tool-calling; see `coding-agent-approaches.md` §4).
+- **Search**: `search_files` (regex-based), `list_files`, and
+  `list_code_definition_names` — the last one lists source-definition
+  symbols (classes/functions) rather than raw text matches, a lightweight
+  AST-adjacent capability distinct from plain grep.
+- **Code execution**: none beyond the shell.
+- **Browser/web**: `browser_action` — a full **vision-based, Puppeteer
+  browser control tool**: launch → click/type/scroll by pixel coordinate
+  read off a returned screenshot → close. Explicitly exclusive ("only the
+  `browser_action` tool can be used" while a browser session is open, no
+  interleaving with other tools) and conditionally included via the
+  `supportsBrowserUse` parameter passed into `SYSTEM_PROMPT()` — only
+  shown to the model if the underlying provider/model actually supports
+  image input.
+- **Multimodal**: implicit in `browser_action` — every browser action
+  except `close` returns a screenshot the model must visually interpret
+  to pick click coordinates.
+- **Sandbox/isolation**: none described — runs directly on the user's
+  machine/VS Code environment.
+- **Extensibility**: `use_mcp_tool`/`access_mcp_resource`/
+  `load_mcp_documentation` for MCP servers, plus `new_task` for spawning a
+  follow-on task and `plan_mode_respond` for its plan/act mode split.

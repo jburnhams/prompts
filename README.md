@@ -34,6 +34,14 @@ injection, tool-use policy, code-editing format, planning, project-memory
 files, safety, communication style), with particular focus on OpenHands,
 OpenCode, Codex, Claude Code, and Cursor.
 
+**[→ `agent-tool-surfaces.md`](./agent-tool-surfaces.md)** — a further
+drill-down focused specifically on *what tools each scaffold actually
+gives the model*: shell type/persistence, search tooling, code execution,
+browser/web access, multimodal handling, async/background execution,
+persistent memory & deployment, sandbox/isolation, and extensibility
+(MCP/skills/dynamic tool sets), across all 21 sources with a documented
+tool surface.
+
 ## Sources so far
 
 | Folder | Project | Type | License |

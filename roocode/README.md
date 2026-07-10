@@ -30,3 +30,32 @@ prompt from many small, single-purpose section files, plus a mode system
 - `sections/system-info.ts` — injects OS/shell/cwd environment info.
 - `sections/tool-use.ts` / `sections/tool-use-guidelines.ts` — tool-calling
   protocol and guidance on choosing/sequencing tools.
+
+## Tool surface
+
+- **Shell**: `execute_command`, runs in the user's actual VS Code
+  terminal — explicitly notes commands run in "a new terminal instance"
+  each time and that interactive/long-running/background commands are
+  supported with status updates, unlike Cline's more generic framing.
+- **Search**: regex search + "view source code definitions" (per
+  `getCapabilitiesSection`) — same lightweight symbol-listing capability
+  as Cline's `list_code_definition_names`, consistent with the shared
+  Cline lineage. `system.ts` also instantiates a `CodeIndexManager`
+  (semantic code indexing service), though it's not obviously surfaced as
+  prompt text in the files captured here — worth revisiting if the
+  relevant section file is added later.
+- **Code execution**: none beyond the shell.
+- **Browser/web**: **no browser tool** in what's captured here — a real
+  divergence from Cline (its fork parent), which has a full
+  screenshot-driven Puppeteer `browser_action` tool (see
+  [`../cline/README.md`](../cline)).
+- **Multimodal**: not addressed (consistent with dropping the browser
+  tool).
+- **Sandbox/isolation**: none described — runs directly in the user's VS
+  Code environment.
+- **Extensibility**: MCP support (conditionally included, same pattern as
+  Cline), plus its own **mode system** — different modes can expose
+  different *tool groups*, so the available tool surface itself, not just
+  the persona, changes per mode (see `coding-agent-approaches.md` §13).
+  Also imports a `SkillsManager` and a pluggable `DiffStrategy` for the
+  edit-format layer.

@@ -78,3 +78,49 @@ a handful of moving parts rather than a large fixed block of rules:
   *updating* an existing summary rather than writing one from scratch.
   Worth comparing against `../goose/compaction.md`, the collection's other
   dedicated compaction prompt.
+
+## Tool surface
+
+The defining trait is that the tool surface **is the prompt** —
+`toolsList` is built by mapping over whichever tool names are actually
+selected (`selectedTools || ["read", "bash", "edit", "write"]`) and
+pulling each one's own one-line description out of `toolSnippets`, a
+table defined outside this file per-tool. Nothing about a specific
+tool's behavior is hardcoded into the system-prompt text itself.
+- **Default four tools**: `read`, `write`, `edit`, `bash` — no
+  search/grep/glob tool ships by default. `bash` is the fallback for
+  everything else, per the conditionally-added guideline "Use bash for
+  file operations like ls, rg, find" (added only when `bash` is available
+  *and* dedicated `grep`/`find`/`ls` tools are not, avoiding redundant
+  instructions when a project *does* wire up more specific tools) — an
+  explicit named preference for `rg` over other search commands when
+  falling back to bash, same preference Codex states for its own search
+  guidance (see `coding-agent-approaches.md` §4).
+- **No taught edit format**: unlike every other source surveyed in
+  `coding-agent-approaches.md` §5, the base system prompt says nothing
+  about *how* to edit (no SEARCH/REPLACE, no old_string/new_string
+  rules) — that's entirely delegated to the `edit` tool's own
+  schema/description, which lives outside `system-prompt.js`.
+  Consistent with the "small function, not a long document" design: the
+  persona/guideline layer stays generic, tool-specific mechanics stay
+  with the tool.
+  - **Extensibility — skills, extensions, custom tools**: the four
+  built-ins are explicitly a starting point, extended via user-installed
+  skills (`formatSkillsForPrompt`, appended only if `read` is available),
+  extensions, and prompt templates. Any additional registered tool
+  automatically gets a line in the tools list the same way the four
+  built-ins do, since the list is generated from whatever's registered,
+  not a fixed enumeration.
+- **Self-documentation via bundled local files, not a fetch tool**:
+  `readmePath`/`docsPath`/`examplesPath` point at files shipped with the
+  CLI itself; the model is told to read them directly rather than
+  fetching a docs website (contrast Claude Code's/OpenCode's
+  WebFetch-the-docs-site pattern) — the only source in this collection
+  that self-documents this way.
+- **Browser/web/multimodal**: none in the base prompt/tool set described
+  here.
+- **Sandbox/isolation**: not specified — runs as a local CLI process.
+- **Full override escape hatch**: a user-supplied `.pi/SYSTEM.md` or
+  `~/.pi/agent/SYSTEM.md` replaces the entire tool-list/guidelines/
+  self-documentation assembly described above, rather than layering on
+  top of it.
