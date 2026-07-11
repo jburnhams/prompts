@@ -87,6 +87,64 @@ all. Contrast this directly with Claude Code's `Task` tool (see
 `leaked/claude-code/README.md`), which spawns a genuinely separate agent
 that returns a report *to* the still-running orchestrator.
 
+## Compaction
+
+See [`agent-context-compaction.md`](../agent-context-compaction.md) for
+the cross-source comparison this feeds into. All evidence lives in
+`responses.ts:7-16` — nothing relevant elsewhere in the folder. Cline
+turns out to layer **three separate, structurally distinct
+context-management mechanisms**, none of which call each other in what's
+captured here, on top of the session-handoff `new_task` tool documented
+above:
+
+- **Silent, non-summarized truncation — no LLM call at all**:
+  `contextTruncationNotice()` — "Some previous conversation history with
+  the user has been removed to maintain optimal context window length.
+  The initial user task and the most recent exchanges have been
+  retained for continuity, while intermediate conversation history has
+  been removed." Keep-first-and-last, drop-the-middle, with the dropped
+  middle simply gone — no summary is generated to stand in for it. This
+  is more primitive than every other compaction mechanism surveyed in
+  this collection, which all either run real LLM summarization or a
+  heuristic trim that still preserves some semantic content (OpenCode's
+  `prune`, Claude Code's `microcompact`); Cline's plain deletion has no
+  recovery story at all, not even a lossy one.
+- **A separate, real LLM-summarization path — gated on explicit user
+  approval, not silent**: `condense()` — "The user has accepted the
+  condensed conversation summary you generated... It's crucial that you
+  respond by ONLY asking the user what you should work on next. You
+  should NOT take any initiative or make any assumptions about
+  continuing with work... you should NOT reference information outside
+  of what's contained in the summary for this response." This confirms
+  a distinct, model-generated summary the user must accept before it
+  takes effect — a third trigger shape not matching this doc's existing
+  "proactive silent" vs. "reactive-on-error" vs. "manual command"
+  categories: **model-proposes, user-approves**. The prompt that
+  actually asks the model to generate the summary in the first place
+  isn't in any captured file — only this post-acceptance acknowledgment
+  is — so the summarization prompt's shape (structured vs. free text)
+  is unconfirmed.
+- **A distinctive post-compaction behavioral lockdown**: unlike every
+  other surveyed source's post-compaction instruction (which is about
+  *how to resume work*), Cline's explicitly tells the model *not* to
+  resume work — no suggesting file changes, no reading files, just ask
+  what to do next. No other source in this collection's compaction
+  survey does this.
+- **A narrower, targeted dedup, scoped only to file reads**:
+  `duplicateFileReadNotice()` — "This file read has been removed to
+  save space in the context window. Refer to the latest file read for
+  the most up to date version of this file." Conceptually a narrow
+  cousin of Claude Code's `microcompact` (heuristic placeholder
+  replacement of stale tool output) but limited to file-read results
+  specifically, not general tool output.
+- **Distinct from `new_task`** (above): `new_task` ends the current
+  task and starts a genuinely new, separate conversation; these three
+  mechanisms all operate *within* the same ongoing task, trimming its
+  history in place. Cline has (at least) four separate answers to "the
+  context is getting too full" — silent deletion, approved
+  summarization, targeted dedup, and full session handoff — rather than
+  one unified compaction pipeline.
+
 ## Self-verification and testing
 
 See [`agent-self-verification.md`](../agent-self-verification.md) for

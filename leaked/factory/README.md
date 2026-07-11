@@ -63,3 +63,31 @@ than to an internal "done" signal.
   spirit but has no reproduce-script mechanic and no explicit
   "consider edge cases" step — closer to just the verification tail of
   that workflow than the full reproduce → fix → verify → submit shape.
+
+## Compaction and turn output
+
+See [`agent-context-compaction.md`](../../agent-context-compaction.md)
+and [`agent-turn-output.md`](../../agent-turn-output.md) for the
+cross-source comparisons these feed into. Nothing found for either
+topic across the full 334-line prompt — no context-window/token-budget
+language, no handoff/resume concept, no title/session-name field or
+generation logic. This prompt is entirely oriented around a single
+bounded implementation-or-diagnostic task ending in a PR (Phase 0 →
+Phase 1 → Phase 2A/2B), so it's plausible compaction is structurally
+less relevant to this product's per-task design than to a long-lived
+interactive session — but that's an inference from the prompt's shape,
+not a confirmed finding; this is a single system-prompt extraction with
+no orchestration code, so a genuine absence can't be confirmed either
+way.
+
+- **Two prompted-narration rules touch turn-output territory without
+  being reasoning-display mechanisms**: "if there is no real need to
+  use tools, then the LLM response should only contain the non-empty
+  text part and should not include any tool calls," and "Output text
+  to communicate with the user; all text outside of tool use is
+  displayed to the user. Only use tools to complete tasks, not to
+  communicate with the user." Both are ordinary output-shape/
+  communication-style instructions (already this collection's
+  `coding-agent-approaches.md` territory), not a native
+  thinking/reasoning content-block mechanism.
+- No thinking/reasoning-visibility language of any kind was found.

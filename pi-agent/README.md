@@ -166,3 +166,34 @@ cross-source comparison this feeds into.
   *where* to cut was explicitly excluded when this file was originally
   extracted (see the file's own header comment), so trigger mechanics
   for Pi remain unconfirmed in this collection.
+
+## Turn output
+
+See [`agent-turn-output.md`](../agent-turn-output.md) for the
+cross-source comparison this feeds into. **Not found** in either local
+prompt file — a full-text grep for title/thinking/reasoning/thought
+across `system-prompt.js` and `compaction/prompts.js` returned zero
+matches.
+
+- **The compaction prompt was checked and explicitly ruled out as a
+  disguised title generator.** `SUMMARIZATION_SYSTEM_PROMPT` produces a
+  full structured multi-section Markdown document (`## Goal` / `##
+  Constraints & Preferences` / `## Progress` / `## Key Decisions` / `##
+  Next Steps` / `## Critical Context`) — the opposite shape of a title
+  — and is explicit that the call must not produce conversational
+  output at all: "Do NOT continue the conversation. Do NOT respond to
+  any questions in the conversation. ONLY output the structured
+  summary." No length cap, no worked examples, nothing resembling
+  Goose's/Crush's/OpenCode's/Claude Code's title-generation format
+  constraints.
+- Consistent with, but not proof of, Pi's stated minimalism: the base
+  system prompt is built as "a small function rather than a long static
+  document" with only two unconditional guidelines ("Be concise in your
+  responses," "Show file paths clearly when working with files") — the
+  same instinct that could plausibly extend to skipping title
+  generation by design, the way Cline and Roo Code confirmably did
+  (via a direct schema read showing no title field). This folder
+  contains only two prompt-construction files, not Pi's session-history
+  data model or CLI session-list code, so — unlike the Cline/Roo Code
+  finding — this is a targeted-search-came-up-empty result across a
+  narrow file set, not a schema-confirmed design choice.

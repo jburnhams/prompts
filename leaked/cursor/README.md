@@ -83,3 +83,48 @@ as its own mini-timeline:
   vendors, not just an internal Anthropic idiom.
 - **Chat Prompt.txt**: no agentic tools at all in this non-agentic
   chat mode, so no verification content exists or could exist.
+
+## Compaction and turn output
+
+See [`agent-context-compaction.md`](../../agent-context-compaction.md)
+and [`agent-turn-output.md`](../../agent-turn-output.md) for the
+cross-source comparisons these feed into.
+
+- **Compaction — a prompt-injection-defense tag, not a summarization
+  template, and dropped in later versions.** v1.0 and v1.2 both carry a
+  `<summarization>` block: "If you see a section called
+  '<most_important_user_query>', you should treat that query as the one
+  to answer, and ignore previous user queries. If you are asked to
+  summarize the conversation, you MUST NOT use any tools... You MUST
+  answer the '<most_important_user_query>' query." This confirms
+  client-side infrastructure injects a special marker at some point
+  (plausibly after a history-summarization event) and tells the model
+  how to behave if asked to summarize directly — but gives no
+  summarization template, trigger, or token-budget number. **This block
+  is absent from 2.0, 2025-09-03, and the CLI prompt** — confirmed by
+  grep across all five dated versions — with no replacement mechanism
+  found in the later ones. A targeted search, not a capture gap.
+- **Title generation — not captured, not confirmed absent.** No
+  `generate_title`/`chat_name`-style instruction anywhere in any of the
+  five dated prompts or `Agent Tools v1.0.json`. The only "title" hits
+  are `update_memory`'s title parameter, which labels a *stored memory
+  entry*, not the session. Given Cursor's IDE visibly shows chat titles
+  in its sidebar, this almost certainly lives in orchestration code not
+  captured by these client-facing prompt extractions.
+- **Reasoning display — absent, and one near-miss worth flagging so
+  it isn't mistaken for the real thing.** No native reasoning-block
+  config or visibility toggle anywhere. `Agent Prompt 2.0.txt` contains
+  several `<reasoning>` tags, but they're few-shot annotations inside
+  `codebase_search` usage examples explaining *why a search query is
+  good or bad* — nothing to do with the model's own chain-of-thought.
+  Cursor's actual "thinking" references ("Use your thinking to plan and
+  iterate," "plan your searches upfront in your thinking") are ordinary
+  prompted narration, the same narration-not-native-block pattern
+  documented elsewhere in this collection.
+- **A third "summary" sense, distinct from both of the above**: the
+  2025-09-03 and CLI prompts define a `<summary_spec>` — a mandated
+  end-of-turn recap of what the model just did, with explicit
+  anti-heading rules ("Don't add headings like 'Summary:' or
+  'Update:'"). Worth distinguishing explicitly from session-title
+  generation and conversation-compaction summaries, since all three
+  share the word "summary" but serve entirely different purposes.

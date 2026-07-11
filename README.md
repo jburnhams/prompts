@@ -57,27 +57,33 @@ in the collection.
 
 **[→ `agent-context-compaction.md`](./agent-context-compaction.md)** —
 a further drill-down on how a scaffold survives running out of context
-mid-task, across 9 sources: trigger model (proactive token-threshold
-checks vs. reactive-on-API-error vs. manual commands, and real
-combinations of these), prompt shape (free text vs. structured
-templates vs. XML), single-mechanism vs. layered-pipeline vs.
-pluggable-strategy architecture, incremental/anchored vs.
-from-scratch summarization, recovery philosophy (is the discarded
-detail actually gone), prompt-cache interaction, sub-agent isolation,
-and — compared in detail — actual numeric token budgets (reserved
-buffers, summary output caps, retention thresholds) across the sources
-that expose them.
+mid-task, across 18 sources: trigger model (proactive token-threshold
+checks vs. reactive-on-API-error vs. manual commands vs. Cline's
+model-proposes/user-approves third shape), prompt shape (free text vs.
+structured templates vs. XML), single-mechanism vs. layered-pipeline
+vs. pluggable-strategy vs. Cline's multiple-uncoordinated-mechanisms
+architecture, incremental/anchored vs. from-scratch summarization,
+recovery philosophy (is the discarded detail actually gone, down to
+Cline's plain-deletion-no-summary floor and Windsurf's "externalize
+before compaction happens" strategy via a persistent memory tool),
+prompt-cache interaction, sub-agent isolation, and — compared in
+detail — actual numeric token budgets (reserved buffers, summary
+output caps, retention thresholds) across the sources that expose them.
 
 **[→ `agent-turn-output.md`](./agent-turn-output.md)** — a further
-drill-down on what a single LLM turn actually produces, across 9
+drill-down on what a single LLM turn actually produces, across 18
 sources: session/task title generation (a dedicated cheap-model side
 call vs. no generation at all vs. folded into the main model's own tool
-calls — Cline and Roo Code are the only confirmed "don't bother"
-cases), reasoning/thinking display defaults (shown-collapsed-by-default
-vs. hidden-until-opted-in, split roughly down the middle), Codex's
-unusually layered raw/summary/effort reasoning-visibility controls, and
-the recurring but easy-to-conflate distinction between native
-model-API reasoning blocks and ordinary prompted narration text.
+calls — ten sources now confirmed or likely "don't bother," though only
+Cline and Roo Code are schema-confirmed rather than just
+capture-gapped), reasoning/thinking display defaults
+(shown-collapsed-by-default vs. hidden-until-opted-in), Codex's
+unusually layered raw/summary/effort reasoning-visibility controls,
+Devin's `<think>` tool (a mandatory, categorically-hidden reasoning
+mechanism that fits neither "native API block" nor "prompted
+narration"), Windsurf's schema-embedded per-tool-call narration
+requirement, and the recurring but easy-to-conflate distinction between
+native model-API reasoning blocks and ordinary prompted narration text.
 
 **[→ `agent-self-verification.md`](./agent-self-verification.md)** — a
 further drill-down on how (and whether) a scaffold checks its own work

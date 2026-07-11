@@ -67,3 +67,39 @@ gathered mechanically, but the final pass/fail call is handed to the
   `/review`-style command, no hook-based gate. The only rollback
   primitive found is `str_replace_editor`'s single-file `undo_edit` —
   not verification-triggered.
+
+## Compaction and turn output
+
+See [`agent-context-compaction.md`](../../agent-context-compaction.md)
+and [`agent-turn-output.md`](../../agent-turn-output.md) for the
+cross-source comparisons these feed into. Nothing found for either
+topic in either file (checked separately per the provenance-mismatch
+note above). No context-window/token-budget language, no handoff/resume
+concept, no session-title/rename field or generation logic anywhere in
+`Prompt.txt` or `Tools.json`.
+
+- **A near-miss worth flagging so it isn't mistaken for a title
+  mechanism**: `Prompt.txt`'s "Summarizing Proposed Changes" section
+  defines a `<proposed_actions summary="...">` tag capped at 58
+  characters, and `Tools.json`'s `report_progress` tool has a similarly
+  constrained `summary` field. Both are **per-turn action summaries**
+  ("what did this turn's edits do"), not session-title generation
+  ("what should this whole session/task be called") — a structurally
+  adjacent but distinct kind of thing from every title mechanism this
+  collection has found elsewhere (Goose's/Crush's/OpenCode's/Claude
+  Code's one-shot session-naming calls).
+- `report_progress`'s formatting rules are also unusually specific for
+  something embedded in a tool-parameter description rather than the
+  system prompt: "maximum of 5 items... no more than 30 words... Put a
+  ✓ before every item you've done recently and → for the items in
+  progress... Avoid technical terms, as users are non-technical. Don't
+  use emojis." Prompted-narration-style constraints, just relocated to
+  a tool schema instead of prompt text.
+- No thinking/reasoning-display language anywhere — `Prompt.txt`'s
+  proposal-only "Assistant" framing has no visible agent-loop/reasoning
+  mechanism at all, and `Tools.json` is pure tool schema.
+- Given the provenance mismatch already noted, and that neither file is
+  runtime/orchestration code, both absences read as capture gaps rather
+  than confirmed design choices — Replit Agent's known
+  checkpoint/project-naming UI strongly suggests the relevant logic
+  just isn't in what was extracted here.

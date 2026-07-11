@@ -254,3 +254,29 @@ the cross-source comparison this feeds into.
   LOW/MEDIUM/HIGH before running it. This gates *proposed actions*, a
   different concern from checking *completed* work — worth flagging
   since the name alone invites the opposite assumption.
+
+## Turn output
+
+See [`agent-turn-output.md`](../agent-turn-output.md) for the
+cross-source comparison this feeds into. **Not found** in any of this
+folder's three local prompt files (`system_prompt.j2`,
+`additional_info.j2`, `in_context_learning_example.j2`) — a targeted
+grep for title/thinking/reasoning/thought turned up nothing relevant.
+The one "title" hit is unrelated to session naming: "When updating a
+PR, preserve the original PR title and purpose, updating description
+only when necessary" (`system_prompt.j2:46`).
+
+This is a genuine capture gap, not a confirmed design choice, for two
+independent reasons: this folder's Compaction section above is itself
+sourced from the *live* `OpenHands/software-agent-sdk` repo rather than
+anything stored locally, meaning this folder only ever held CodeAct-
+agent prompt text, never harness/session-management code where a title
+feature would live; and the Sub-agents section documents a separate
+`openhands/app_server/` FastAPI layer "hosting many independent
+sandboxed conversations for the cloud product" — exactly where
+session-naming logic would plausibly live, and it isn't represented by
+any file in this folder. The closest tangential hit is prompted
+narration, not a reasoning-display mechanism: the TROUBLESHOOTING block
+tells the model to "Document your reasoning process" after repeated
+failed fix attempts — ordinary prose in a debugging workflow, not a
+native thinking/reasoning content-block toggle.

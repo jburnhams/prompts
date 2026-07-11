@@ -154,6 +154,37 @@ tool's actual behavior even though the name stayed the same.
   change vs. hierarchical task delegation) that happen to share the word
   "mode."
 
+## Compaction
+
+See [`agent-context-compaction.md`](../agent-context-compaction.md) for
+the cross-source comparison this feeds into. **Confirmed absent** —
+a stronger finding than "not checked," since every file that assembles
+the system prompt was read in full (`system.ts`, `responses.ts`, and
+all nine `sections/*.ts` files) and a keyword search across the whole
+folder (condense, summarize, context window, truncate, compact,
+sliding, prune, shrink, overflow, max tokens) came up empty except for
+an unrelated directory-listing truncation notice shared with Cline
+("File list truncated," `responses.ts:185`) and a stray leftover
+comment from the Cline fork's shared lineage. No compaction-prompt
+template, no summarization sub-agent or tool, and no context-window
+threshold logic appears anywhere in the assembled prompt.
+
+- **`new_task`/Orchestrator mode (documented above) doesn't layer any
+  compaction on top**: the Boomerang-task delegation protocol addresses
+  task decomposition, not what happens if the *parent* task's own
+  history grows too large — nothing in the delegation protocol gates
+  `new_task`, `attempt_completion`, or mode-switching on context size.
+- **Caveat on confidence**: this pass re-read every prompt-assembly
+  file but did not re-check Roo Code's tool *implementations*
+  (`src/core/tools/*.ts`) live against upstream the way the Tool
+  surface and Sub-agents sections above did (both of which turned out
+  to be wrong on the first pass, before live-source correction) — so if
+  a `CondenseContextTool.ts` or similar exists in
+  `src/core/tools/`/`src/core/condense/` upstream, it wouldn't be
+  visible from the files in this collection. Treat this as confirmed
+  absence *in the captured prompt-assembly code*, with the same caveat
+  that made the earlier Tool-surface/Sub-agents corrections necessary.
+
 ## Turn output: session titles
 
 See [`agent-turn-output.md`](../agent-turn-output.md) for the

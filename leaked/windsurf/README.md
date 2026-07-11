@@ -113,3 +113,65 @@ including full browser automation and deployment).
   Cursor's and Devin's 3x caps), no `/review`-style command, no
   mandatory pre-completion reflection tool (contrast Devin's `<think>`
   checkpoint) — none of it is present anywhere in these two files.
+
+## Compaction and turn output
+
+See [`agent-context-compaction.md`](../../agent-context-compaction.md)
+and [`agent-turn-output.md`](../../agent-turn-output.md) for the
+cross-source comparisons these feed into.
+
+- **Compaction — a genuinely novel strategy, not a fit for the doc's
+  existing typology: sidestep recovery by externalizing before
+  compaction happens, rather than engineering a better summary at
+  compaction time.** The `<memory_system>` block states the underlying
+  problem in stronger terms than any other source surveyed: "Remember
+  that you have a limited context window and ALL CONVERSATION CONTEXT,
+  **including checkpoint summaries, will be deleted**. Therefore, you
+  should create memories liberally to preserve key context." Two things
+  make this distinctive:
+  - **Even the summary isn't trusted to survive** — a stronger claim
+    than this doc's other "the summary is the only surviving record"
+    findings (Crush, Gemini CLI), since here the survivor itself is
+    stated to eventually go too.
+  - **The prescribed mitigation is a separate, persistent, queryable
+    memory store** (`create_memory`), written to proactively and
+    without waiting for a natural break point: "You DO NOT need USER
+    permission to create a memory... You DO NOT need to wait until the
+    end of a task... You DO NOT need to be conservative about creating
+    memories." Rather than one better compaction pipeline, the design
+    bet is continuous externalization of important facts *before* any
+    compaction/deletion event, via a durable store outside the
+    conversation entirely.
+  - A second, related recovery mechanism: `trajectory_search` lets the
+    model semantically search its own **past session history** on
+    demand ("Call this tool when the user @mentions a @conversation")
+    — a queryable retrieval tool, distinct from both this doc's "static
+    pointer back to the transcript" pattern and its "sole surviving
+    summary" pattern; a third recovery-philosophy variant.
+  - What's *not* captured: the actual checkpoint-summarization prompt
+    text, trigger logic, or any token-budget number — "checkpoint" is
+    used as an established term, implying real orchestration exists,
+    just not represented in this extraction.
+- **Title generation — not captured**, despite the richest tool
+  surface in this collection. No conversation-naming instruction
+  anywhere; all "title"-adjacent hits are unrelated (a deployed
+  server's display name, a memory entry's title, the mandatory
+  per-tool-call `toolSummary` field below, a fetched webpage's HTML
+  `<title>`).
+- **Reasoning display — absent**, no analog to Devin's `<think>` tool
+  or Cursor's thinking-narration references found in either file.
+- **A structurally novel narration mechanism, worth flagging for
+  `agent-turn-output.md`'s narration-vs-native-block distinction**: a
+  `toolSummary` argument is **required as the first parameter on every
+  one of the 30 tools** — "Brief 2-5 word summary of what this tool is
+  doing... you must specify this argument first over all other
+  arguments." Every other "narrate before acting" instruction surveyed
+  in this collection (Gemini CLI's "Explain Before Acting," Codex's
+  streaming narration, OpenCode's `beast.txt` rule) is free text the
+  model chooses to emit in its message, sitting outside the tool
+  call's own schema. Windsurf instead embeds the narration requirement
+  directly into the tool call's JSON schema as a required field — the
+  model cannot call a tool at all without populating a short action
+  label as a structured argument. A fourth narration mechanism, not
+  matching either "native reasoning block" or "free-text prompted
+  narration": **schema-embedded narration**.

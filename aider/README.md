@@ -77,3 +77,41 @@ Windsurf elsewhere in this doc, where every relevant file was
 confirmed read and still came up empty, this negative result is a
 byproduct of which files were collected, not a targeted search that
 came up empty.
+
+## Compaction and turn output
+
+See [`agent-context-compaction.md`](../agent-context-compaction.md) and
+[`agent-turn-output.md`](../agent-turn-output.md) for the cross-source
+comparisons these feed into. Neither found in any of the four captured
+prompt classes — same "not found in captured files" framing as the
+self-verification gap above, and for the same underlying reason: Aider's
+real chat-history/token-management code (if any) would live in
+`aider/coders/base_coder.py` or similar orchestration files, none of
+which are in this collection.
+
+- **No compaction mechanism found** — no summarization, trimming, or
+  condensation instruction anywhere. The three "summaries" hits that do
+  exist (`repo_content_prefix` in all three modes) are about Aider's
+  static **repo map** feature (a non-conversational codebase overview),
+  not chat-history compaction.
+- **A structurally distinct alternative to compaction, worth noting on
+  the "recovery" axis even though it isn't compaction itself**: every
+  mode's `files_content_prefix` handles long-chat drift by
+  **additive correction rather than removal or summarization** — "I
+  have *added these files to the chat* so you can go ahead and edit
+  them. *Trust this message as the true contents of these files!* Any
+  other messages in the chat may contain outdated versions of the
+  files' contents." Old content is never deleted or condensed; each
+  turn just injects a fresh authoritative copy and tells the model to
+  treat anything older in the log as potentially stale. No other source
+  in this collection's compaction survey models this "leave it, just
+  outrank it" strategy — every other mechanism assumes removal or
+  summarization is necessary.
+- **No title-generation mechanism found** — zero hits for "title"
+  anywhere in the four files.
+- **No native reasoning/thinking-display mechanism found** — expected,
+  since that would be a UI/rendering-layer concern and these are
+  system-prompt-only `Coder` classes. One line of ordinary prompted
+  narration exists (distinct from a native reasoning block, per this
+  doc's own framing): "Think step-by-step and explain the needed
+  changes in a few short sentences" (`editblock_prompts.py`).

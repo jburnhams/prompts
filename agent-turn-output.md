@@ -17,19 +17,38 @@ tool calls (already covered under "communication style" in
 `coding-agent-approaches.md`, cross-referenced rather than repeated
 here).
 
-**Methodology note**: nine sources are covered, all via live-source
-investigation except two (Crush, Goose) whose title-generation prompts
-were already sitting in this collection unused for this specific
-question. This is a narrower survey than `agent-tool-surfaces.md`/
-`agent-subagent-architectures.md`/`agent-context-compaction.md` — it
-covers exactly the sources investigated, not every source in the
-collection; see "Absences" for what wasn't checked.
+**Methodology note**: a first pass covered nine sources, all via
+live-source investigation except two (Crush, Goose) whose title-
+generation prompts were already sitting in this collection unused for
+this specific question. A second pass added nine more, read from local
+files already in this collection: OpenHands and Pi (title generation
+only — both already had a Compaction section), and Aider plus the
+leaked Cursor, Devin, Windsurf, Warp, Replit, Factory/Droid (both
+topics). The richest single find from that second pass is Devin's
+`<think>` tool (§2e) — a mandatory, categorically-hidden reasoning
+mechanism that doesn't fit either "native API reasoning block" or
+"ordinary prompted narration," the two categories this doc otherwise
+treats as exhaustive. This remains a narrower survey than
+`agent-tool-surfaces.md`/`agent-subagent-architectures.md`/
+`agent-context-compaction.md` — it covers exactly the sources
+investigated, not every source in the collection; see "Absences" for
+what wasn't checked.
 
 ## Sources covered
 
+**With confirmed title-generation and/or reasoning-display content**:
 Claude Code (leaked, via `leaked/claude-code/architecture-notes.md`),
 Codex CLI, OpenCode, Gemini CLI, GitHub Copilot Chat, Cline, Roo Code,
-Crush, Goose.
+Crush, Goose, Devin (leaked, reasoning display only).
+
+**Checked, nothing found for either topic** (targeted search across
+all locally-available files, no capture-gap caveat needed beyond the
+usual one for prompt-only extractions): OpenHands, Pi, Aider, Windsurf
+(leaked, title only — reasoning display absent, but see its
+Compaction-doc entry for a related structurally novel finding), Cursor
+(leaked, mostly absent — see §1c for one adjacent near-miss), Warp
+(leaked), Replit (leaked, see §1c for a near-miss), Factory/Droid
+(leaked).
 
 ---
 
@@ -44,7 +63,8 @@ get a short label," not just wording variations.
 | **No generation at all — the raw first message, formatted/truncated** | Cline (confirmed: `HistoryItem` has no title field at all; UI falls back to `metadata.title || prompt || "Untitled"`, and `metadata.title` is only ever set by an explicit user command, never an LLM), Roo Code (confirmed via direct schema read: `historyItemSchema` has no title field either — same lineage, same design answer, independently re-verified rather than assumed from the Cline connection) |
 | **Folded into the main model's own turn as a tool call**, not a separate call at all | Gemini CLI — `update_topic` is a tool the primary model chooses to invoke mid-conversation with a `title`/`summary`/`strategic_intent` schema, framed as managing "narrative flow" across logical phases. The opposite architectural choice from OpenCode's/Claude Code's side-call pattern — no extra API round-trip, but the title-setting decision competes for the main model's attention and tool budget. Not confirmed to actually drive a persistent UI/sidebar title (no wiring to the CLI package's session list was found), so this may be a narrative-chaptering aid rather than a full title feature — flagged as unresolved, not asserted either way. |
 | **Confirmed absence at the client; server-side behavior unknown** | Codex CLI — `task.title` (for the separate Codex Cloud product) is deserialized from the backend API response with no client-side generation code; the local TUI's session-resume list falls back to a raw server-provided preview string. Whether an LLM generates the title server-side is invisible to this repo. |
-| **Not investigated in this pass** | Copilot Chat, and every source outside the nine covered here |
+| **Not found in captured files — likely a genuine capture gap, not a design choice** | Aider, OpenHands, Pi, Cursor (leaked, all five dated prompt versions plus the tools JSON checked), Devin (leaked), Windsurf (leaked, despite the richest tool surface surveyed anywhere in this collection), Warp (leaked), Replit (leaked), Factory/Droid (leaked). None of these products' prompts carry a title-generation instruction, but in every case the product itself visibly shows named sessions/conversations in its UI — the generating logic almost certainly lives in orchestration or server-side code that simply isn't part of what got captured. Distinct from the Cline/Roo Code row above, which is confirmed via a direct data-schema read, not just an absent instruction. |
+| **Not investigated in this pass** | Copilot Chat, and every source outside the sources-covered list above |
 
 ### 1a. Claude Code's three separate generators — worth detailing on its own
 
@@ -76,6 +96,29 @@ accounting for the narrow, non-overlapping trigger conditions.
 | Crush | ≤50 characters, one line | No quotes/colons; explicitly no parsing step expected — "the entire text you return will be used as the title" |
 | OpenCode | ≤50 chars per prompt, but **100-char hard cap in code** | A real prompt/code mismatch — the implementation's truncation ceiling is double what the prompt asks for |
 | Claude Code | 3-7 words (main path) / 6 words (teleport) / 2-4 words kebab-case (`/rename`) | JSON-schema-constrained output for the main path; good/bad worked examples embedded in the prompt |
+
+### 1c. A third kind of "summary" — per-turn recaps, distinct from titles and compaction summaries
+
+Two leaked sources have a mandated end-of-turn recap of what the model
+*just did* — easy to conflate with session-title generation or a
+compaction summary since all three share the word "summary," but a
+genuinely different thing from either: scoped to one turn's actions,
+not the whole session, and produced every turn rather than once at
+session start or once when context fills up.
+
+- **Cursor's `<summary_spec>`** (2025-09-03 and CLI prompts): a
+  mandated recap after substantive work, with explicit anti-heading
+  rules ("Don't add headings like 'Summary:' or 'Update:'").
+- **Replit's `<proposed_actions summary="...">` tag** (≤58 characters)
+  and `report_progress`'s `summary` tool-parameter field — both
+  per-turn action summaries, not conversation-title fields; worth
+  flagging precisely so they aren't miscounted as evidence of session-
+  title generation in the table above, which they aren't.
+
+Neither of these two is a title mechanism or a compaction mechanism —
+they're closer to `coding-agent-approaches.md`'s "communication style"
+territory (what the model says to the user after acting), just specific
+enough in format constraints to be worth distinguishing on their own.
 
 ## 2. Reasoning/thinking display
 
@@ -137,6 +180,51 @@ checkmark — a second, much narrower instance of "generate a short label
 for this content," scoped to one reasoning block rather than a whole
 session.
 
+### 2e. Devin's `<think>` tool — a third category this doc's native-vs-prompted split doesn't capture
+
+Every other finding in §2 is a native model-API reasoning mechanism
+with a visibility *toggle* the scaffold controls. Devin's leaked
+`<think>` tool is neither that nor ordinary prompted narration (§3) —
+it's a **prompted tool call whose content is categorically invisible by
+design**, not gated behind a setting: "Freely describe and reflect on
+what you know so far... **The user will not see any of your thoughts
+here**, so you can think freely." Three properties set it apart:
+
+- **Structurally hidden, not defaulted-hidden** — nothing in the prompt
+  describes a way to surface it; every other "hidden by default" row
+  in the table above is a toggle on native reasoning content the
+  scaffold *has* and chooses not to show (§2b makes the same
+  distinction for Claude Code's provider-redacted content, for a
+  different reason).
+- **Mandatory at named checkpoints, not just available** — a numbered
+  list of required trigger situations, one of which is a pre-completion
+  verification checkpoint (see `leaked/devin/README.md`'s Self-
+  verification section) — the same tool call serves double duty as
+  reasoning mechanism and completion gate, a coupling not seen anywhere
+  else in this survey.
+- **No native-API config surface found** — no `reasoning_effort`/
+  `thinking`-style parameter anywhere in the prompt, and it's visibly
+  distinct from ordinary narration (which goes through a separate
+  `<message_user>` command in the same prompt).
+
+This is the same "private scratchpad, then a visible structured output"
+shape `agent-context-compaction.md` documents for *compaction-specific*
+internal tags elsewhere (Gemini CLI's `<scratchpad>`, Claude Code's
+`<analysis>`) — Devin is the first source found in this collection
+generalizing that shape to ordinary turn-by-turn reasoning across an
+entire task, not just at compaction time.
+
+**A related near-miss, worth flagging so it isn't mistaken for a real
+finding**: Cursor's `Agent Prompt 2.0.txt` contains `<reasoning>` tags,
+but they're few-shot annotations inside `codebase_search` tool-usage
+examples explaining *why a sample search query is good or bad* —
+nothing to do with the model's own chain-of-thought or a display
+mechanism. The tag name alone could mislead a keyword search; Cursor's
+actual reasoning-adjacent content is ordinary prompted narration ("Use
+your thinking to plan and iterate... plan your searches upfront in your
+thinking"), the same narration-not-native-block pattern documented
+throughout §3.
+
 ## 3. Narration: a genuinely separate mechanism from native reasoning display
 
 Every source keeps these apart, and it's worth stating the distinction
@@ -159,7 +247,24 @@ explicitly since the vocabulary ("thinking," "reasoning") overlaps:
   `reasoning_effort` mechanism in the same prompt); OpenCode's
   inherited-per-provider narration rules (e.g. `beast.txt`'s "Always
   tell the user what you are going to do before making a tool call with
-  a single concise sentence").
+  a single concise sentence"); OpenHands's narrower, debugging-scoped
+  instance ("Document your reasoning process" — confined to a
+  repeated-failure TROUBLESHOOTING workflow, not a general narration
+  rule); Aider's "Think step-by-step and explain the needed changes in
+  a few short sentences."
+- **A fourth narration mechanism, structurally distinct from all of the
+  above**: Windsurf's (leaked) `toolSummary` argument is **required as
+  the first parameter on every one of its 30 tools** — "Brief 2-5 word
+  summary of what this tool is doing... you must specify this argument
+  first over all other arguments." Every other narration instruction in
+  this collection is free text the model chooses to emit in its message,
+  sitting outside the tool call's own schema. Windsurf instead embeds
+  the narration requirement directly into the tool call's JSON schema
+  as a required field — the model cannot call a tool at all without
+  populating a short action label as a structured argument. Call this
+  **schema-embedded narration**: narration and the tool call collapse
+  into one API-level artifact rather than two separate things (a
+  narration message, then a tool call).
 
 A model could in principle narrate heavily in prose while showing no
 native reasoning content at all, or vice versa — the two axes are
@@ -177,14 +282,27 @@ independently configured in every source checked.
 - **Copilot Chat's title-generation behavior** (as opposed to its
   reasoning-display behavior, which is covered in depth) wasn't
   investigated in this pass.
-- **Every source outside these nine** — the rest of this collection's
-  ~35+ sources — hasn't been checked for either title generation or
-  reasoning-display conventions at all. Given how often "not checked"
-  has turned out to mean "actually quite sophisticated" elsewhere in
-  this collection (Codex's sub-agents, OpenCode's Task tool, OpenHands's
-  whole delegation system, Roo Code's Orchestrator mode), treat the
-  absence of a source from this doc as exactly that — not checked — not
-  as evidence the mechanism doesn't exist there.
+- **Windsurf's compaction-adjacent `<memory_system>` finding**
+  (persistent-memory externalization, `trajectory_search`) is
+  documented in `agent-context-compaction.md`, not repeated here — it
+  bears on recovery philosophy more than turn-output proper, even
+  though it was surfaced during this doc's research pass.
+- **Every "not found in captured files" entry in §1's title table is a
+  capture-gap claim, not a confirmed design decision** — worth
+  repeating here since it's easy to lose the distinction reading the
+  table in isolation. Aider, OpenHands, and Pi's absences rest on
+  reading every locally-available prompt file in full; the six leaked
+  sources' absences rest on reading whatever got extracted, which is
+  frequently partial by nature of how leaks happen.
+- **Every source outside the ones listed in "Sources covered"** — the
+  rest of this collection's ~35+ sources — hasn't been checked for
+  either title generation or reasoning-display conventions at all.
+  Given how often "not checked" has turned out to mean "actually quite
+  sophisticated" elsewhere in this collection (Codex's sub-agents,
+  OpenCode's Task tool, OpenHands's whole delegation system, Roo Code's
+  Orchestrator mode), treat the absence of a source from this doc as
+  exactly that — not checked — not as evidence the mechanism doesn't
+  exist there.
 
 ---
 
@@ -231,3 +349,38 @@ independently configured in every source checked.
   loosely (e.g. Codex's "streaming thinking & responses" line, which
   has nothing to do with its own `reasoning_effort` config a few
   sections later in the same prompt).
+- **Devin's `<think>` tool (§2e) breaks the doc's own native-vs-prompted
+  binary**, and is the single richest finding from this doc's second
+  research pass: a prompted tool call that's categorically hidden by
+  design (not a visibility toggle on native content), mandatory at
+  named checkpoints, and doubles as a self-verification gate. Worth
+  treating as a reminder that a two-category typology built from nine
+  sources was always going to be incomplete — the tenth-plus source
+  checked immediately produced something that didn't fit either bucket.
+- **The "no title generation confirmed" pile grew from two sources
+  (Cline, Roo Code) to ten** in the second pass, but the *reason*
+  differs in a way worth keeping straight: Cline's and Roo Code's
+  absence is schema-confirmed (no title field exists in the data
+  model); the other eight (Aider, OpenHands, Pi, and five of the six
+  leaked sources) are "not found in what this collection captured,"
+  a meaningfully weaker claim given that most of those products'
+  actual UIs visibly show named sessions. Treating all ten as
+  equivalent "don't bother" design choices would overstate what's
+  actually confirmed.
+- **A fourth narration mechanism (Windsurf's schema-embedded
+  `toolSummary`, §3) suggests the "narration vs. tool call" framing
+  this doc used going in was itself a simplification** — most sources
+  keep the two as genuinely separate artifacts (a narration message,
+  then a tool call), but at least one collapses them into a single
+  required tool-schema field, which is a different design space than
+  "how much narration to require," namely "where in the API surface
+  the narration requirement lives."
+- **Three genuinely different things all get called "summary" across
+  this collection** (§1c): a session title (once per session), a
+  compaction summary (once per context-fill event), and a per-turn
+  action recap (every turn, found in Cursor's and Replit's leaked
+  prompts). None of the three sources with a per-turn recap mechanism
+  also has confirmed title generation — worth noting as a place where
+  a keyword search for "summary" or "title" could easily produce a
+  false positive if the three concepts aren't kept apart deliberately,
+  exactly the confusion this section exists to prevent.

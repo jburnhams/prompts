@@ -35,3 +35,20 @@ completion" section is built around **not** auto-verifying.
   gate, no judge call, no `/review` command, no hook system — the tool
   set here (`run_command`, `read_files`, `grep`, `file_glob`,
   `edit_files`, `create_file`) has no completion-gating logic anywhere.
+
+## Compaction and turn output
+
+See [`agent-context-compaction.md`](../../agent-context-compaction.md)
+and [`agent-turn-output.md`](../../agent-turn-output.md) for the
+cross-source comparisons these feed into. Nothing found for either
+topic in `Prompt.txt`'s 162 lines — a targeted keyword search (summar-,
+compact, context window, token, truncat, title, session name, rename,
+thinking, reasoning, scratchpad) turned up only unrelated hits about
+**file-reading** truncation ("This can only respond with 5,000 lines of
+the file. If the response indicates that the file was truncated, you
+can make a new request to read a different line range"). Given Warp's
+terminal app visibly supports long-running, named agent sessions, this
+reads as a capture gap — this single, short, general-purpose system
+prompt almost certainly doesn't carry whatever context-management and
+session-naming logic lives in the surrounding app, not evidence either
+mechanism is genuinely absent from the product.

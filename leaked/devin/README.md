@@ -59,3 +59,54 @@ than scattered as free-floating prose.
   documentation/citation-generation feature (mandatory per-sentence
   `<cite>` tags) with no edit tools, so "checking its own code" isn't a
   meaningful question for that prompt.
+
+## Compaction and turn output
+
+See [`agent-context-compaction.md`](../../agent-context-compaction.md)
+and [`agent-turn-output.md`](../../agent-turn-output.md) for the
+cross-source comparisons these feed into.
+
+- **Compaction — confirmed absent**, via a full read plus targeted
+  grep across the whole 402-line prompt (`summar`/`compact`/`context
+  window`/`token limit`/`truncat`/`conversation history`/`handoff`/
+  `memory`/`session`). The only hits are unrelated shell/search-output
+  truncation ("Long shell outputs will be truncated and written to a
+  file"). `DeepWiki Prompt.txt`'s `<budget:token_budget>200000` is a
+  token budget for that separate read-only Q&A feature's own answer
+  generation, not agent-context management. The prompt reads as a
+  complete, coherent document with no missing-section markers, so this
+  looks like a genuine absence in what leaked, not a partial extraction.
+- **Title generation — not captured.** No session/conversation-naming
+  instruction anywhere; the only naming convention present is for git
+  branches (`devin/{timestamp}-{feature-name}`). Devin's product UI
+  visibly shows session names, so this plausibly happens server-side,
+  outside what a client-facing system prompt would carry.
+- **Reasoning display — a genuinely novel mechanism, worth reading in
+  full.** The `<think>` tool (see the self-verification section above
+  for its role as a completion-gate) is structurally distinct from
+  everything else surveyed in `agent-turn-output.md`: "Freely describe
+  and reflect on what you know so far... **The user will not see any of
+  your thoughts here**, so you can think freely." Three properties make
+  it a third category, not a fit for the doc's existing native-block-
+  vs-prompted-narration split:
+  - **Categorically hidden, not a visibility default the user can
+    flip** — every other "hidden by default" source in the turn-output
+    doc's comparison is a toggle on native reasoning content; Devin's
+    prompt frames invisibility as structural to the tool itself, with
+    no visibility setting described.
+  - **Mandatory at named checkpoints, not just available** — a numbered
+    "you must use the think tool" list with three required triggers
+    (one of which is the pre-completion verification checkpoint already
+    documented in Self-verification above), plus ten more "should use"
+    situations.
+  - **A prompted tool call, not a native reasoning API block** — no
+    evidence of `reasoning_effort`/`thinking`-style API parameters
+    anywhere in the prompt, and it's visibly distinct from ordinary
+    narration (which goes through a separate `<message_user>` command).
+  This is the same "private scratchpad, visible output" shape this
+  collection's compaction doc documents for *summarization-specific*
+  internal tags elsewhere (Gemini CLI, Claude Code) — Devin is the one
+  source found so far generalizing that shape to ordinary turn-by-turn
+  reasoning across an entire task, not just at compaction time, and
+  coupling it directly to self-verification (the same tool call serves
+  both purposes).
