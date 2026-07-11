@@ -59,3 +59,42 @@ directory for project-specific instructions, layered on top of these.
   location, mandatory before acting per the critical rules), plus
   `agent_tool.md`'s general-purpose search delegate (Task-style,
   read-only-scoped).
+
+## Sub-agents
+
+Two sub-agents, both with their **complete system prompts captured as
+separate template files** (`task.md.tpl`, `agentic_fetch_prompt.md.tpl`)
+— alongside Copilot Chat, one of only two sources in this collection
+with the sub-agent's own prompt text available, not just the
+orchestrator-side tool description.
+
+- **Search sub-agent** (`agent_tool.md` describes it; `task.md.tpl` is
+  its system prompt) — scoped to exactly `glob, grep, ls, view` (no
+  editing, no bash). Its prompt is strikingly terse-by-design: "you
+  should be concise, direct, and to the point, since your responses will
+  be displayed on a command line interface... One word answers are
+  best... You MUST avoid text before/after your response, such as 'The
+  answer is <answer>.'" — a much harder terseness constraint than the
+  main `coder.md.tpl` persona uses for the orchestrator itself. Also
+  mandates absolute (not relative) file paths in its output, presumably
+  because the result gets folded into a different working context than
+  the one the sub-agent ran in.
+- **`agentic_fetch` web sub-agent** (`agentic_fetch_prompt.md.tpl`) — a
+  persona swap to "a web content analysis agent for Crush," with its own
+  tool subset (`web_search`, `web_fetch`, plus `grep`/`view` for large
+  fetched-content files) and a fully specified output contract: answer
+  first, then a mandatory `## Sources` section listing every URL that
+  contributed — plus a worked example decomposing one broad question
+  ("Rust vs Go for web services") into four narrower searches. This is
+  the same fetch-vs-agentic_fetch tiering noted in "Tool surface" above,
+  but here grounded in the sub-agent's actual instructions rather than
+  just the tool description's one-line cost/capability tradeoff note.
+- **Protocol**: both sub-agent prompts inject the same `<env>` block
+  (working directory, platform, date — `task.md.tpl` adds git-repo
+  status) that the main `coder.md.tpl` prompt gets, so sub-agents share
+  the orchestrator's environment context even though they run under a
+  fully different persona and reduced tool set. Neither file describes
+  concurrency rules or how the orchestrator should handle the returned
+  text — unlike Gemini CLI's explicit file-conflict concurrency mandate
+  or Claude Code's "launch multiple agents concurrently" instruction,
+  parallel-sub-agent guidance isn't captured in what's collected here.

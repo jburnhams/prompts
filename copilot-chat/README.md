@@ -117,3 +117,46 @@ set.
 - **Multimodal**: not addressed beyond notebook output mimetypes.
 - **Sandbox/isolation**: not specified — runs in the user's actual VS
   Code workspace.
+
+## Sub-agents
+
+The only source in this collection where the **sub-agent's complete
+system prompt is captured verbatim as its own file** — not just the
+orchestrator-side tool description that triggers delegation. Two
+purpose-built sub-agents, each swapping in "custom execution instructions
+instead of the default agent system prompt" (per both files' own doc
+comments):
+
+- **`ExecutionSubagentPrompt`** (`executionSubagentPrompt.tsx`) — the
+  wrapper `CoreRunInTerminal`'s tool description tells the orchestrator
+  to prefer (see "Tool surface" above). Its system prompt is a **complete
+  persona swap**: "You are an AI coding research assistant that runs a
+  series of terminal commands to perform a small execution-focused
+  task," free to adapt the literal commands given ("if you are asked to
+  `make` a project but there is no Makefile, you might instead run `cmake
+  . && make`"). Bounded by `maxExecutionTurns`, with a hard cutoff
+  message injected on the last allowed turn ("OK, your allotted
+  iterations are finished. Show the `<final_answer>`.") and a mandated
+  output format — a `<final_answer>` block listing each command run plus
+  a one-line summary, nothing else.
+- **`SearchSubagentPrompt`** (`searchSubagentPrompt.tsx`) — same
+  turn-budget/forced-cutoff structure, different persona and output
+  contract: "an AI coding research assistant that uses search tools to
+  gather information," required to return `<final_answer>` as a bare
+  list of `path:line-start-line-end` references, explicitly "ONLY" that
+  tag with nothing else.
+- **Protocol**: both inherit the orchestrator's full tool-calling
+  machinery (`ChatToolCalls`, same `toolCallRounds`/`toolCallResults`
+  plumbing as the main agent) rather than a separate lightweight
+  execution path — the sub-agent is a real, complete tool-calling loop,
+  just under a different system prompt, a hard turn cap, and a
+  constrained output grammar. The forced-final-turn nudge ("OK, your
+  allotted iterations are finished...") is a distinctive reliability
+  mechanism not seen elsewhere in this collection — most other sources
+  just trust the sub-agent to wrap up in time.
+- **Result handling**: not shown in these two files (they only render
+  the sub-agent's own conversation), but structurally the constrained
+  `<final_answer>` format exists specifically to make the result cheap
+  and unambiguous for the orchestrator to fold back into its own
+  context — a tighter contract than Claude Code's free-text "concise
+  summary" report.

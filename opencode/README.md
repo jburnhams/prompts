@@ -59,3 +59,80 @@ implementation code with only a small amount of embedded prompt text
   skills system (`Skill.Service`), both conditionally injected only when
   something is actually configured/available — same "don't pad the prompt
   with unused capability text" instinct as Pi's dynamic tool listing.
+
+## Sub-agents
+
+**Correction to an earlier version of this doc**: this folder only
+stores the prompt *text* files, and a first pass concluded the `Task`
+tool's schema/protocol simply wasn't captured here. It's more than
+uncaptured — reading the actual implementation directly
+(`packages/opencode/src/tool/task.ts` and `packages/opencode/src/agent/`,
+live on `openai/opencode`'s `dev` branch, not stored in this folder)
+shows the Task tool is genuinely **more sophisticated than Claude
+Code's stateless one-shot design**, closer in spirit to Codex CLI's
+addressable `spawn_agent` family (see `codex/README.md`) but built on a
+different primitive: a generic `BackgroundJob` state machine, not a
+purpose-built agent-session protocol.
+
+- **Tool ID is literally `"task"`.** Parameters: `description` (3-5
+  word label), `prompt` (the task), `subagent_type`, an optional
+  `task_id` ("resume a previous task... the task will continue the same
+  subagent session as before instead of creating a fresh one"), and —
+  gated behind an experimental flag — `background` ("Run the agent in
+  the background. You will be notified when it completes. DO NOT sleep,
+  poll, or proactively check on its progress").
+- **Genuinely stateful, not just resumable-after-completion**: calling
+  `task` again with an already-running `task_id` doesn't error or
+  block — it gets **queued onto the still-live job** (`background.extend()`)
+  and returns immediately. That's a real "send a follow-up to a running
+  sub-agent" capability, the same category of thing as Codex's
+  `send_input`, not documented anywhere a prompt-text-only read could
+  have found it.
+- **A race between completion and background-promotion**: by default,
+  a `task` call races the job finishing against the job being
+  *promoted* to background (`Effect.raceFirst`) — if the user interrupts
+  a foreground task rather than killing it, it can detach and keep
+  running, later injecting its result back into the parent session as a
+  synthetic follow-up message rather than a tool result. Interrupting
+  (not promoting) genuinely cancels the child.
+- **Named agent registry with real tool-scope and prompt differences**
+  (`agent/agent.ts`): built-ins are `build`/`plan` (primary agents, not
+  delegates), `general` (subagent, no custom prompt — reuses the
+  orchestrator's own base prompt, "execute multiple units of work in
+  parallel"), and `explore` (subagent, its **own dedicated system
+  prompt**, read-only permission set — grep/glob/list/bash/webfetch/
+  websearch/read allowed, everything else denied). A sub-agent's
+  `prompt` field, when set, **entirely replaces** rather than appends to
+  the model-family base prompt (`session/llm/request.ts`); `general`
+  (no custom prompt) falls through to the same base prompt the
+  orchestrator uses.
+- **Custom sub-agents via Markdown files** — `{agent,agents}/**/*.md`
+  with YAML frontmatter, functionally the same convention as Claude
+  Code's `.claude/agents/*.md`, confirmed intentional: a code comment in
+  `config/markdown.ts` explicitly notes "other coding agents like claude
+  code allow invalid yaml in their frontmatter."
+- **Recursion denied by default, not silently allowed**:
+  `subagent-permissions.ts`'s `deriveSubagentSessionPermission()` denies
+  a spawned sub-agent's own `task` tool (and `todowrite`) by default
+  unless its specific agent type's ruleset explicitly grants it — the
+  `plan` agent, for instance, is allowed to spawn `general` but nothing
+  else. A different, more granular position than either Goose's
+  blanket "cannot spawn additional subagents" ban or Amp's apparently
+  unrestricted recursion.
+- **No hard concurrency/file-lock mechanism** — only a prompt-level
+  instruction ("avoid working with the same files or topics") backing
+  parallel Task-tool calls; safety comes from the permission-ask
+  ruleset on individual file edits, not a same-file mutex across
+  sub-agents.
+- **The richer async/background protocol is explicitly experimental**
+  (`OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS`) — the tool's schema
+  itself changes shape depending on the flag; only the resume-and-extend
+  path is unconditionally reachable.
+- **The Claude-lineage-only prompt-instruction finding still holds** as
+  a separate, correct observation: the *persona-prompt instructions* to
+  use the Task tool ("prefer to use the Task tool in order to reduce
+  context usage," etc.) appear only in `default.txt`, `anthropic.txt`,
+  `trinity.txt`, and `meta.txt` — absent from `gpt.txt`, `codex.txt`,
+  `beast.txt`, `gemini.txt`, `kimi.txt`, `copilot-gpt-5.txt`. The tool
+  itself is available regardless of model family; only the prompt-level
+  encouragement to reach for it varies.

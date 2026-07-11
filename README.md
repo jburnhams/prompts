@@ -42,6 +42,19 @@ persistent memory & deployment, sandbox/isolation, and extensibility
 (MCP/skills/dynamic tool sets), across all 21 sources with a documented
 tool surface.
 
+**[→ `agent-subagent-architectures.md`](./agent-subagent-architectures.md)**
+— a companion drill-down on one specific tool-surface capability: when
+and how a scaffold spawns another agent. Covers delegation triggers,
+calling protocol (stateless tool-call vs. persistent addressable child
+vs. shared-conversation handoff vs. async background process vs.
+multi-party orchestration topologies), whether the sub-agent gets its
+own system prompt, turn/output bounding, concurrency and write-safety,
+and recursion limits, across the 19 sources with a documented sub-agent
+mechanism — including Microsoft Agent Framework's five named
+orchestration patterns (Sequential/Concurrent/Handoff/GroupChat/
+Magentic), a structurally different N-party design found nowhere else
+in the collection.
+
 ## Sources so far
 
 | Folder | Project | Type | License |
