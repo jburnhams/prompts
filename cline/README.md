@@ -178,3 +178,66 @@ claude4.ts`, `model_prompts/claude4-experimental.ts`).
   changes you made, which you'll need to address." Diagnostics are
   surfaced automatically after every edit, but nothing forces the model
   to act on them before declaring the task done.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. Built on a **binary
+per-command self-tag**, not a tri-level classifier like OpenHands' —
+plus a separate, unrelated static deny-list for file *paths*.
+
+- **`execute_command`'s `requires_approval` boolean**: "Set to 'true'
+  for potentially impactful operations like installing/uninstalling
+  packages, deleting/overwriting files, system configuration changes,
+  network operations, or any commands that could have unintended side
+  effects. Set to 'false' for safe operations like reading
+  files/directories, running development servers, building projects,
+  and other non-destructive operations." The model self-classifies on
+  every call; the tag is only consulted "in case the user has
+  auto-approve mode enabled" — a client-side on/off toggle referenced
+  by name and pointed at Cline's own public docs
+  (`docs.cline.bot/features/auto-approve`), but never defined
+  mechanically in the prompt itself.
+- **A count-based escalation, distinct from any single command's risk
+  level**: `autoApprovalMaxReached()` — "Auto-approval limit reached.
+  The user has provided the following feedback to help guide you" —
+  implies a numeric ceiling on consecutive auto-approved actions before
+  the user must manually re-engage, an escalation trigger based on
+  cumulative count rather than on a changed command or an individual
+  risk tier.
+- **Denial is an ordinary conversational turn, not a hard stop**:
+  `toolDenied()` — "The user denied this operation" — surfaced back
+  into the conversation as a tool-result string the model must react
+  to.
+- **A separate, persistent, path-scoped deny-list — `.clineignore`**,
+  orthogonal to command-risk tagging: "Access to ${path} is blocked by
+  the .clineignore file settings. You must try to continue in the task
+  without using this file, or ask the user to update the .clineignore
+  file." Real code enforces this, not just prompt convention —
+  `formatFilesList()` calls `clineIgnoreController.validateAccess()`
+  and visually marks blocked files with a lock symbol before the list
+  even reaches the model. A static, gitignore-style pattern-matched
+  mechanism, but scoped only to file *paths*, never to shell commands
+  or arbitrary tool calls — Cline's closest analog to Claude Code's
+  settings-file allow/deny arrays or OpenHands' risk tiers, just on a
+  narrower axis.
+- **Plan/Act mode is prompted, not structurally enforced — a real
+  contrast with Claude Code's harness-typed `plan` mode** (see
+  `leaked/claude-code/architecture-notes.md`'s Permission system
+  section): the only stated tool-access rule is the inverse for ACT
+  mode ("access to all tools EXCEPT the plan_mode_respond tool")
+  — nothing in the captured text says PLAN mode *removes* access to
+  `execute_command`/`write_to_file`. Mode transition is user-driven by
+  convention only: the model can ask "the user to switch you back to
+  ACT MODE" but has no dedicated forcing tool, unlike Claude Code's
+  `ExitPlanMode`.
+- **`attempt_completion`'s gate is procedural, not risk-based** —
+  already covered under Self-verification above: a self-check on
+  finishing, not on individual risky actions.
+- **Sandbox/isolation**: none described — runs directly on the user's
+  machine/VS Code environment, no complementary isolation layer to
+  cross-reference against the approval mechanism.
+- No PreToolUse-equivalent hook mechanism found anywhere in the four
+  captured files — Cline's gate is entirely the `requires_approval`
+  self-tag plus the client-side auto-approve setting, with
+  `.clineignore` as the only other enforcement point.

@@ -280,3 +280,79 @@ narration, not a reasoning-display mechanism: the TROUBLESHOOTING block
 tells the model to "Document your reasoning process" after repeated
 failed fix attempts — ordinary prose in a debugging workflow, not a
 native thinking/reasoning content-block toggle.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. This is the doc where
+`security_risk_assessment.j2` — previously filed only as an
+"adjacent-but-different" note under Self-verification above — is the
+central finding, not a footnote. Sourced partly from live upstream
+fetches (`raw.githubusercontent.com/All-Hands-AI/OpenHands` at tag
+`0.60.0`), since this folder never stored the file itself or the
+controller code that enforces it.
+
+- **The full risk policy, context-dependent on execution mode**: three
+  tiers (LOW/MEDIUM/HIGH), but the *definitions themselves* change via
+  a Jinja conditional depending on whether the agent is running in CLI
+  mode (host filesystem) or sandboxed/container mode — e.g. LOW is
+  "Safe, read-only actions" in CLI mode vs. "Read-only actions inside
+  sandbox" in container mode; HIGH is "elevated (`sudo`) commands,
+  deleting critical files" in CLI mode vs. "connecting to host
+  filesystem, privileged container ops" in container mode. A closing
+  global rule overrides both: "Always escalate to **HIGH** if
+  sensitive data leaves the environment." No other source checked for
+  this doc couples its risk tiers this tightly to the actual isolation
+  boundary in play.
+- **The self-tag is advisory, not trusted by default — a genuine,
+  operator-selectable static-vs-LLM-based choice**: the model's own
+  `security_risk` tag is only *one* of three interchangeable
+  `SecurityAnalyzer` implementations the harness can be configured
+  with — `LLMRiskAnalyzer` (trusts the model's self-reported tag
+  verbatim), `InvariantAnalyzer` (spins up a genuinely separate,
+  Dockerized static policy-analysis server and evaluates the action
+  trace independent of what the model claims), and a third,
+  unexamined `GraySwanAnalyzer`. This is the clearest static-vs-
+  LLM-based contrast found across every source checked for this doc —
+  most sources pick one philosophy; OpenHands makes it a pluggable
+  operator choice, the same "infrastructure over instruction" pattern
+  this collection's other docs found distinguishing OpenHands's
+  `Condenser` (compaction) and delegation system (sub-agents).
+- **Fail-safe default when no analyzer is configured**: "When no
+  security analyzer is configured, treat all actions as UNKNOWN
+  risk... This is a fail-safe approach that ensures confirmation is
+  required" — the system defaults to asking for *everything* rather
+  than trusting the model's tag by omission.
+- **Only HIGH (or UNKNOWN) actually pauses execution**: `confirmation_mode`
+  is a single boolean (a global always-ask/never-ask switch, not a
+  named-mode enum like Claude Code's six modes), scoped to five action
+  types (`CmdRunAction`, `IPythonRunCellAction`,
+  `BrowseInteractiveAction`, `FileEditAction`, `FileReadAction`). LOW
+  and MEDIUM never pause even with `confirmation_mode` on — only a
+  HIGH tag, or an UNKNOWN tag when no analyzer is configured at all.
+- **An acknowledged rough edge in CLI mode**: in CLI mode, every
+  runnable action of the gated types sets `AWAITING_CONFIRMATION`
+  regardless of risk tier when `confirmation_mode` is on — the source
+  code's own comment reads "this is not ideal... we should refactor,"
+  meaning CLI mode is effectively closer to always-ask than the
+  tri-level policy elsewhere suggests.
+- **Scope/persistence**: risk assessment runs per-action, every time —
+  no persistent "remember this decision" cache was found in the
+  controller; `confirmation_mode` itself is a session/config-level
+  toggle, not a per-rule persisted allowlist.
+- **Distinct, narrower prompted rules also present in `system_prompt.j2`**:
+  a `<SECURITY>` block on credential use ("Only use GITHUB_TOKEN and
+  other credentials in ways the user has explicitly requested and would
+  expect"), and a specific process-safety rule against broad `pkill`
+  patterns ("Prefer using `ps aux` to find the exact process ID (PID)
+  first, then kill that specific PID") — both prompted-only, no
+  structural enforcement confirmed. The TROUBLESHOOTING block's "propose
+  a new plan and confirm with the user before proceeding" on major
+  issues is likewise a prompted, non-structural escalation trigger —
+  detecting a "major issue" is left entirely to the model's judgment.
+- No PreToolUse-equivalent hook mechanism or rule-file/allowlist
+  concept exists in the local `.j2` files — the entire enforcement
+  layer lives in `agent_controller.py`, mirroring Claude Code's split
+  between silent prompt text and harness-internal gating, except that
+  here the model *is* an active participant (it sets the tag), just
+  not a trusted one.

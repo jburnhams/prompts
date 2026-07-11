@@ -329,6 +329,58 @@ seek permission, not the enforcement architecture behind it).
   string-pattern arrays per behavior, with a managed-settings flag that
   can restrict evaluation to policy rules only (an enterprise lockdown
   mechanism).
+- **The model's own prompt text is silent on all of this** — a targeted
+  search of `Prompt.txt` (the plain extracted system prompt, distinct
+  from this architecture doc) found zero language about permission
+  modes, risk classification, or approval mechanics anywhere. The
+  entire machinery above lives in the harness, invisible to the model;
+  unlike OpenHands (below, in a cross-source companion doc) or Cline,
+  Claude Code's model isn't told the rules, it's just gated by them.
+- **Cross-source corroboration, not just a leak claim**: Anthropic's
+  own public hooks documentation (`code.claude.com/docs/en/hooks`)
+  independently confirms the exact same six-value `permission_mode`
+  enum (`default`/`plan`/`acceptEdits`/`auto`/`dontAsk`/
+  `bypassPermissions`, with `default` labeled "Manual" in the UI) as a
+  field passed into hook payloads — strong evidence the leaked
+  architecture reflects the real shipped product, not just this
+  extraction's interpretation.
+- **`PreToolUse`, missing from this repo's own leaked source, is real
+  and fully documented publicly** — worth flagging since it's easy to
+  assume every hook event this doc cites came from the leak; this one
+  didn't. Per the public docs: fires "before a tool call executes,"
+  can inspect `tool_name`/`tool_input`/the current `permission_mode`,
+  and returns a `permissionDecision` of `deny`/`allow`/`ask`/`defer`
+  (defer falls through to the normal permission system) plus a
+  `permissionDecisionReason` shown to the model — and, distinctively,
+  an `updatedInput` field that lets the hook **rewrite** the tool's
+  arguments before execution, not just block or allow it. Exit code 0
+  with JSON output processes `permissionDecision`; exit code 2 is a
+  hard block. Matchers operate on tool name (including regex like
+  `"mcp__.*"`) with an `if` field using the same pattern syntax as
+  settings rules (`"Bash(git *)"`). Two further hook events named in
+  the public docs but not in the leak — `PermissionRequest` ("when a
+  permission dialog appears") and `PermissionDenied` ("when a tool
+  call is denied by the auto mode classifier") — directly confirm the
+  `auto` mode's LLM classifier above is real and has its own
+  hook-observable denial event, not just an internal implementation
+  detail.
+- **`ExitPlanMode`, the tool that ends `plan` mode**: per its own tool
+  description, "Use this tool when you are in plan mode and have
+  finished presenting your plan and are ready to code. This will
+  prompt the user to exit plan mode" — with explicit good/bad examples
+  distinguishing "planning implementation steps" (should trigger it)
+  from pure research tasks (should not) — the model has a dedicated
+  tool to request the mode transition, unlike Cline's Plan/Act split
+  (see `cline/README.md`'s Permissions section), where the model can
+  only ask in prose and has no equivalent forcing tool.
+- **Provenance discipline worth keeping straight when citing this
+  section**: the six-mode enum, rule model, `yoloClassifier.ts`/
+  `bashClassifier.ts`, and settings-file storage are all leak-confirmed
+  (this repo's own extraction); the `PreToolUse` mechanics,
+  `permissionDecision`/exit-code protocol, and the `PermissionRequest`/
+  `PermissionDenied` event names are confirmed only via Anthropic's
+  public docs, fetched separately — don't conflate the two
+  provenances when citing this section elsewhere.
 
 ## Multi-agent "Team" coordination
 
