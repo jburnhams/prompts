@@ -51,7 +51,12 @@ usual one for prompt-only extractions): OpenHands, Pi, Aider, Windsurf
 Compaction-doc entry for a related structurally novel finding), Cursor
 (leaked, mostly absent — see §1c for one adjacent near-miss), Warp
 (leaked), Replit (leaked, see §1c for a near-miss), Factory/Droid
-(leaked).
+(leaked), Zed (genuinely open source — title generation and reasoning
+display both absent from what's captured, a capture gap rather than a
+confirmed absence since this folder holds only agent prompt templates,
+not session/UI code; one ordinary §3-style narration rule found —
+"send a brief one- to two-sentence preamble... Skip the preamble for
+trivial single reads").
 
 ---
 

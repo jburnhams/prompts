@@ -23,7 +23,11 @@ Claude Code (leaked), the general Anthropic assistant prompts (leaked),
 OpenCode, Cline, Roo Code, Codex CLI, OpenHands, SWE-agent, Gemini CLI,
 GitHub Copilot Chat, Crush, Goose, Composio SWE-Kit, Microsoft Agent
 Framework (via `codeact-hyperlight/`), Amp (leaked), Emergent (leaked),
-Google Antigravity (leaked), and v0 (leaked). Sources with **no**
+Google Antigravity (leaked), v0 (leaked), and Zed (genuinely open
+source — a prompted-only "when to delegate" section, gated on a tool
+literally named `spawn_agent` like Codex CLI's, but with no schema or
+calling-convention detail captured for Zed's version — see
+`zed/README.md`'s Sub-agents section). Sources with **no**
 sub-agent mechanism found — Aider, mini-swe-agent, Live-SWE-agent,
 Augment SWE-bench Agent, Bolt.new, Pi, and (notably, given how rich
 their tool surfaces are — see `agent-tool-surfaces.md` §§1–7) leaked

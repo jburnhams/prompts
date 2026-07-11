@@ -43,7 +43,12 @@ OpenCode, Gemini CLI, OpenHands, Microsoft Agent Framework (via
 
 **Third pass**: Google Antigravity (leaked) — see §10 for a
 severity-gated retry policy and a persistent "artifact-as-verification-
-record" pattern, both candidate additions to the typology below.
+record" pattern, both candidate additions to the typology below. Zed
+(genuinely open source) — `diff_judge.hbs`, a clean §3 instance: a
+dedicated separate-LLM-call prompt that scores a diff 0-100 against a
+list of assertions with a required per-assertion `<analysis>` line
+before the `<score>`, though the surrounding retry/gating logic that
+calls it isn't captured.
 
 ---
 
@@ -158,6 +163,7 @@ evaluating completed work, distinct from the agent that produced it.
 | **Ensemble generate-then-judge over whole independent task attempts** — not partial delegation, N full separate agent runs judged after the fact | SWE-agent's `RetryAgentConfig`/`sweagent/agent/reviewer.py`: `ScoreRetryLoop` runs a `Reviewer` LLM call (own system/instance prompts, own cost accounting) that assigns a numeric acceptance score to each complete attempt, optionally sampled multiple times for self-consistency; `ChooserRetryLoop` runs several attempts to exhaustion, then a separate `Chooser` call (optionally preceded by a `Preselector`) picks the best. Augment SWE-bench Agent's `ensembler_prompt.py`/`majority_vote_ensembler.py` — a separate model (o1) shown N candidate diffs side by side, picking a majority-vote winner. Both are the *same underlying shape* (generate multiple, judge separately), arrived at independently — one scores/retries, the other majority-votes over a fixed batch. |
 | **A general single-agent "run until done" loop with an optional LLM judge**, checked against the original request text | Microsoft Agent Framework's `AgentLoopMiddleware.with_judge()` (`agent_framework/_harness/_loop.py`) — a fully separate chat-client call returns a structured `JudgeVerdict` (`answered: bool`, `reasoning: str`), checked against the *original user request*, not a todo list; failure produces a nudge (the judge's own reasoning fed back as a new user turn), not a restart; capped tighter than a non-judge loop (5 iterations vs. 10) specifically because judge calls are "costly and probabilistic"; never wired in by default, one of several interchangeable strategies alongside non-LLM alternatives (`todos_remaining()`, `background_tasks_running()`) in the same file. |
 | **A dedicated adversarial verification subagent, structurally unable to trust the implementer** | Claude Code (leaked, **internal-only — see the caveat in §7**) — `src/tools/AgentTool/built-in/verificationAgent.ts`: a separate LLM instance with no file-write access, required to gather command-output evidence for every check rather than accept the implementer's claims, run the build and full test suite ("failing tests are an automatic FAIL"), run linters/type-checkers, and perform mandatory "adversarial probes" (concurrency, boundary values, idempotency) before issuing a PASS/FAIL/PARTIAL verdict the implementer "cannot self-assign." |
+| **A minimal, rubric-scored judge prompt — the mechanism in isolation, without the surrounding retry/gating logic** | Zed (genuinely open source) — `diff_judge.hbs`: a separate call scores a `{{diff}}` 0-100 against a list of `{{assertions}}`, required to emit a one-line `<analysis>` per assertion before the final `<score>` — auditable per-criterion rather than a single opaque verdict, but this template alone doesn't reveal what calls it or what happens on a low score. |
 
 **A cross-cutting design question all four answer differently**: what
 happens when the judge/reviewer says "not good enough"? SWE-agent's

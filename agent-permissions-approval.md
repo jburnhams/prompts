@@ -40,7 +40,8 @@ says, not confirmed against a codebase): Copilot Chat, Crush, Cursor
 (leaked), Devin (leaked), Windsurf (leaked), Replit (leaked), Factory/
 Droid (leaked), Google Antigravity (leaked — a hard workspace-scoping
 boundary present in its IDE prompts and confirmed absent from its CLI
-capture; see §2/§3 below).
+capture; see §2/§3 below), Zed (genuinely open source — the richest
+sandbox description in this doc's prompt-text-level bucket; see §6).
 
 **Confirmed absent or near-absent**: Goose (a named
 `permission_judge.md` file exists upstream but was captured as 0
@@ -150,6 +151,7 @@ How long does "yes" last once granted?
 | **Two tiers only, no session cache at all** | Roo Code — a decision is either asked every single time, or explicitly promoted into the persisted `allowedCommands`/`deniedCommands` settings via an in-chat UI (permanent, survives restarts). There is no analog of Codex's `ApprovedForSession` — everything not already on the persisted lists gets re-asked for the life of the extension. |
 | **A rule-source model with both a session tier and four persisted scopes, resolved together rather than layered as fallback tiers** | Claude Code (leaked) — a `PermissionRule` carries a `source` field valued at user/project/local/flag/policy-settings, CLI arg, command, **or session** — i.e. session-scoped rules are one first-class rule source among several, not a separate cache Codex-style. Rules from every source are aggregated into three maps (always-allow/always-deny/always-ask) that a single decision function consults in order (allow wins outright, deny blocks outright), rather than checking session first and falling through to disk. The four persisted scopes (policy/managed-enterprise > project > user > local) load in that precedence order, with a managed-settings flag able to restrict evaluation to policy rules only — an enterprise lockdown Codex/Gemini CLI have no direct equivalent of, closer in spirit to Gemini CLI's admin-tier ownership/permission requirements (§3) than to any of its own persistence peers. |
 | **Client-side, out-of-band, and explicitly unreachable by the model itself** | Windsurf — the only sanctioned override for `SafeToAutoRun` is a user-configured settings allowlist the model is told exists but is given no tool to read or write, and is explicitly told to keep opaque in conversation ("do not refer to any specific arguments of the run_command tool in your response"). |
+| **Three tiers, named directly in plain prose rather than a typed enum** | Zed (genuinely open source) — "can grant a sandbox request for that command, for the rest of the thread, or always" — per-call, per-thread, and permanent, the same three-tier shape as Codex's typed enum (row above), plus an explicit mid-thread stability guarantee not stated by any other source in this survey: "These sandbox settings are guaranteed to remain in effect for the entire duration of this thread. If they ever change, you will be told." |
 | **Not addressed / no persistence concept found** | Cline (no session-cache language beyond the client-side auto-approve toggle itself), Cursor, Devin, Replit, Factory/Droid, Warp. |
 
 ## 5. Escalation behavior
@@ -203,6 +205,23 @@ approval?
 
 ## 6. Sandbox and isolation as a complementary layer
 
+- **A fully platform-branching sandbox description, stated directly in
+  the prompt text rather than left implicit** — Zed (genuinely open
+  source): reads unrestricted ("any path on the filesystem is
+  readable, including Git metadata"); writes default to a scratch
+  directory plus the project's own worktrees, with the exact scratch
+  location varying by platform (Linux: `/tmp`; Windows: routed through
+  WSL under Bubblewrap; elsewhere: a per-thread temp dir); network
+  blocked outbound by default everywhere. Elevation is granular and
+  per-command — `allow_hosts`/`allow_all_hosts` for network (Windows
+  can only grant all-or-nothing), `fs_write_paths`/`allow_fs_write_all`
+  for the filesystem, and `unsandboxed: true` as a full escape hatch.
+  **`.git` metadata is hardcoded-protected in every platform branch
+  and cannot be elevated short of the full escape hatch** — "Git
+  metadata writes are never grantable inside the sandbox... request
+  `unsandboxed: true` with a reason" — the same "ordinary git
+  operations require higher trust than regular file writes" pattern
+  worth cross-referencing against `agent-git-vcs.md`.
 - **Explicitly coupled to the approval decision itself, not a
   substitute for it** — Codex CLI: even under the most permissive
   approval mode short of the full bypass flag, an unsandboxed

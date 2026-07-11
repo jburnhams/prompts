@@ -36,7 +36,9 @@ Codex CLI, OpenCode, Gemini CLI.
 plus this session's own live tool-schema for worktrees), Cline, Roo
 Code, Aider, OpenHands, Copilot Chat, Crush, Devin (leaked), Jules
 (leaked), Factory/Droid (leaked), Augment SWE-bench Agent (the one
-source with a code-level, not merely prompted, git restriction).
+source with a code-level, not merely prompted, git restriction), Zed
+(genuinely open source — no commit/branch/PR conventions, but a
+hardcoded sandbox-level protection on `.git` metadata; see §7).
 
 **Confirmed near-total or total absence**: Goose, Pi, Cursor (leaked),
 Windsurf (leaked), Warp (leaked), Replit (leaked), SWE-agent,
@@ -399,6 +401,21 @@ findings, not just gaps in what was checked.
   distinguishing from this doc's §3 (OpenCode's and Gemini CLI's
   actual shadow-git checkpoint systems), since the terminology overlap
   invites exactly that confusion.
+- **Zed**: no commit-message convention, no branch-naming rule, no
+  PR/push workflow, and no checkpoint/undo or worktree-isolation
+  system — but not a thin source overall (it has this doc's richest
+  sandbox description, §6 of `agent-permissions-approval.md`), and
+  that sandbox is where its one real git-relevant finding lives: `.git`
+  metadata is hardcoded-protected across every platform branch of the
+  sandbox, and any operation that needs to write it (commit, checkout,
+  merge, etc.) requires the full `unsandboxed: true` escape hatch —
+  meaning ordinary git usage is structurally treated as a *higher-
+  trust* operation than regular file edits, not simply gated by the
+  same prompted "ask first" convention every other source in this doc
+  uses. The prompt's own "worktrees" terminology refers to the
+  project's already-open root directories, not a git-worktree creation
+  mechanism — worth flagging so it isn't confused with §4's actual
+  worktree-isolation services.
 - **SWE-agent, mini-swe-agent's base config, Augment SWE-bench Agent**:
   no checkpoint, no worktree, no branch rules, no PR/push workflow —
   by design, not by omission. All three submit a diff for external
