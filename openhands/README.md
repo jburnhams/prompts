@@ -356,3 +356,59 @@ controller code that enforces it.
   between silent prompt text and harness-internal gating, except that
   here the model *is* an active participant (it sets the tag), just
   not a trusted one.
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../agent-git-vcs.md) for the cross-source
+comparison this feeds into. The richest git policy of the general-
+purpose (non-benchmark-harness) sources checked for this doc, entirely
+concentrated in `system_prompt.j2`'s `<VERSION_CONTROL>` and
+`<PULL_REQUESTS>` blocks.
+
+- **A concrete co-author trailer convention with a fallback identity
+  policy**: "If there are existing git user credentials already
+  configured, use them and add Co-authored-by: openhands
+  &lt;openhands@all-hands.dev&gt; to any commits messages you make. if a
+  git config doesn't exist use "openhands" as the user.name and
+  "openhands@all-hands.dev" as the user.email by default, unless
+  explicitly instructed otherwise." A literal git-config policy,
+  including a concrete username/email fallback, not just an
+  attribution instruction.
+- **Auto-commit is conditional, not gated strictly behind explicit
+  request** — a real contrast with the push/PR rules below: "Use
+  `git status` to see all modified files, and stage all files
+  necessary for the commit. Use `git commit -a` whenever possible,"
+  paired with an explicit don't-commit-junk rule ("Do NOT commit files
+  that typically shouldn't go into version control (e.g., node_modules/,
+  .env files...) unless explicitly instructed" — check `.gitignore` or
+  ask if unsure). Commits happen when the agent judges it appropriate
+  in the course of solving the task, not on every edit and not only on
+  explicit request.
+- **Push/PR creation is a hard request-gate, echoed twice**: "Do NOT
+  make potentially dangerous changes (e.g., pushing to main, deleting
+  repositories) unless explicitly asked to do so," restated in
+  `<PULL_REQUESTS>` as "**Important**: Do not push to the remote
+  branch and/or start a pull request unless explicitly asked to do
+  so."
+- **Branch-safety is a lightweight, name-keyed heuristic, not a real
+  branch-protection check**: "You should work within the current
+  branch... unless... the current branch is 'main', 'master', or
+  another default branch where direct pushes may be unsafe" — a
+  prompt-only proxy for protected-branch detection, keyed purely off
+  branch name rather than any actual permissions/protection-rule
+  lookup.
+- **Session-hygiene rules for PRs not seen phrased this way
+  elsewhere in this collection**: "create only ONE per session/issue
+  unless explicitly instructed otherwise," "update it with new
+  commits rather than creating additional PRs for the same issue," and
+  "preserve the original PR title and purpose, updating description
+  only when necessary" (the last already covered under Turn output
+  above, in the title-generation context — repeated here because it's
+  equally a git-workflow rule). No PR-description *template* and no
+  self-review-before-opening step were found.
+- **No worktree isolation found** — the closest analog is the
+  single-clone, single-branch session-isolation rule above (stay on
+  the checked-out branch), not multiple `git worktree` checkouts for
+  parallel sub-agents; the Sub-agents section's `DelegateExecutor`/
+  `WorkflowToolSet` concurrency is at the conversation/thread level,
+  not the filesystem-checkout level, based on what's documented.

@@ -41,6 +41,15 @@ OpenCode, Gemini CLI, OpenHands, Microsoft Agent Framework (via
 (leaked), Devin (leaked), Windsurf (leaked), Warp (leaked), Replit
 (leaked), Factory/Droid (leaked).
 
+**Third pass**: Google Antigravity (leaked) — see §10 for a
+severity-gated retry policy and a persistent "artifact-as-verification-
+record" pattern, both candidate additions to the typology below. Zed
+(genuinely open source) — `diff_judge.hbs`, a clean §3 instance: a
+dedicated separate-LLM-call prompt that scores a diff 0-100 against a
+list of assertions with a required per-assertion `<analysis>` line
+before the `<score>`, though the surrounding retry/gating logic that
+calls it isn't captured.
+
 ---
 
 ## 1. The shared SWE-bench-lineage workflow template
@@ -154,6 +163,7 @@ evaluating completed work, distinct from the agent that produced it.
 | **Ensemble generate-then-judge over whole independent task attempts** — not partial delegation, N full separate agent runs judged after the fact | SWE-agent's `RetryAgentConfig`/`sweagent/agent/reviewer.py`: `ScoreRetryLoop` runs a `Reviewer` LLM call (own system/instance prompts, own cost accounting) that assigns a numeric acceptance score to each complete attempt, optionally sampled multiple times for self-consistency; `ChooserRetryLoop` runs several attempts to exhaustion, then a separate `Chooser` call (optionally preceded by a `Preselector`) picks the best. Augment SWE-bench Agent's `ensembler_prompt.py`/`majority_vote_ensembler.py` — a separate model (o1) shown N candidate diffs side by side, picking a majority-vote winner. Both are the *same underlying shape* (generate multiple, judge separately), arrived at independently — one scores/retries, the other majority-votes over a fixed batch. |
 | **A general single-agent "run until done" loop with an optional LLM judge**, checked against the original request text | Microsoft Agent Framework's `AgentLoopMiddleware.with_judge()` (`agent_framework/_harness/_loop.py`) — a fully separate chat-client call returns a structured `JudgeVerdict` (`answered: bool`, `reasoning: str`), checked against the *original user request*, not a todo list; failure produces a nudge (the judge's own reasoning fed back as a new user turn), not a restart; capped tighter than a non-judge loop (5 iterations vs. 10) specifically because judge calls are "costly and probabilistic"; never wired in by default, one of several interchangeable strategies alongside non-LLM alternatives (`todos_remaining()`, `background_tasks_running()`) in the same file. |
 | **A dedicated adversarial verification subagent, structurally unable to trust the implementer** | Claude Code (leaked, **internal-only — see the caveat in §7**) — `src/tools/AgentTool/built-in/verificationAgent.ts`: a separate LLM instance with no file-write access, required to gather command-output evidence for every check rather than accept the implementer's claims, run the build and full test suite ("failing tests are an automatic FAIL"), run linters/type-checkers, and perform mandatory "adversarial probes" (concurrency, boundary values, idempotency) before issuing a PASS/FAIL/PARTIAL verdict the implementer "cannot self-assign." |
+| **A minimal, rubric-scored judge prompt — the mechanism in isolation, without the surrounding retry/gating logic** | Zed (genuinely open source) — `diff_judge.hbs`: a separate call scores a `{{diff}}` 0-100 against a list of `{{assertions}}`, required to emit a one-line `<analysis>` per assertion before the final `<score>` — auditable per-criterion rather than a single opaque verdict, but this template alone doesn't reveal what calls it or what happens on a low score. |
 
 **A cross-cutting design question all four answer differently**: what
 happens when the judge/reviewer says "not good enough"? SWE-agent's
@@ -443,6 +453,44 @@ this doc can't answer from prompt text alone — but it's a measurably
 different level of prompt-engineering investment than a source that
 just says "please test your changes," and worth tracking as its own
 axis of comparison.
+
+## 11. Two more candidate patterns from Google Antigravity
+
+Two findings that don't cleanly fit any of §1–§10, surfaced during a
+third research pass on this leaked source (`planning-mode.txt` and
+`CLI Prompt.md`, which share the same template near-verbatim).
+
+- **A severity-gated retry/escalation policy tied to a task-mode state
+  machine**: "If you find minor issues or bugs during testing, stay in
+  the current TaskName, switch back to EXECUTION mode... Only create a
+  new TaskName if verification reveals fundamental design flaws that
+  require rethinking your entire approach — in that case, return to
+  PLANNING mode." Not §1's flat reproduce-fix-verify loop (no
+  reproduce-script mechanic, no explicit "consider edge cases" step),
+  not §2's deterministic gate, not §3's separate-LLM judge — a
+  two-tier branch on *what kind* of failure was found, each routed to
+  a different recovery mode (patch-in-place vs. restart planning).
+  Every retry-on-failure mechanism elsewhere in this doc (SWE-agent's
+  `ScoreRetryLoop`, Augment's ensembler) treats all failures the same;
+  this is the only source that classifies the failure itself before
+  deciding how to recover from it.
+- **"Artifact-as-verification-record"**: a required, persistent
+  Markdown file (a "Walkthrough," `<appDataDir>/brain/
+  <conversation-id>/walkthrough.md`) documenting "Changes made / What
+  was tested / Validation results," with embedded screenshots/
+  recordings as evidence, explicitly *updated* rather than recreated
+  on related follow-up work. The closest existing entry is Jules's
+  Playwright-screenshot-as-proof mechanism (§6/leaked/jules/README.md)
+  — both tie verification to a generated artifact rather than a text
+  assertion — but Jules's screenshot is submitted as a single
+  completion-time proof, while Antigravity's Walkthrough is a durable,
+  cumulative, cross-session document that persists and gets amended,
+  closer to a lab notebook than a one-shot piece of evidence. This
+  whole mechanism is scoped to complex/planned work only — trivial,
+  investigatory, or minor-follow-up edits are explicitly told to skip
+  it entirely ("you continue your work WITHOUT making a plan or
+  requesting user review"), so it coexists with, rather than replaces,
+  an ordinary no-verification path for small changes.
 
 ## Absences
 

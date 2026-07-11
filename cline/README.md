@@ -241,3 +241,43 @@ plus a separate, unrelated static deny-list for file *paths*.
   captured files — Cline's gate is entirely the `requires_approval`
   self-tag plus the client-side auto-approve setting, with
   `.clineignore` as the only other enforcement point.
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../agent-git-vcs.md) for the cross-source
+comparison this feeds into. Clean, confirmed-empty on five of six axes
+(commit conventions, worktree isolation, branch rules, auto-commit
+config, PR/push workflow) — `execute_command` is a fully generic shell
+tool with no git-specific instruction anywhere in the four prompt
+files. The sixth axis yields a real but narrower-than-expected finding.
+
+- **The publicly-documented "Checkpoints" feature is named but never
+  mechanically specified**: the word appears exactly once, inside a
+  list of Cline-docs sub-pages the model is told to fetch if asked
+  "can Cline do..." ("`features` (Auto approve, Checkpoints, Cline
+  rules, Drag & Drop, Plan & Act, Workflows, etc)") — a bare topic
+  label pointing at documentation, not a description of what the
+  feature does. This is a genuine capture gap for that specific
+  feature, not a confirmed absence of it — Cline's public docs
+  independently confirm Checkpoints exists as a product feature.
+- **A separate, directly-confirmed mechanism does exist, but it's
+  narrower — automatic in-memory file-content reversion on two
+  specific failure paths, not a git-based or browsable task-level
+  snapshot system**: if a task resumes after an interrupted
+  `replace_in_file`/`write_to_file`, "the file was reverted back to
+  its original state before the interrupted edit"; if a SEARCH/REPLACE
+  block fails to match, "the file was reverted to its original
+  state," with the tool result literally re-embedding the pre-edit
+  file content. Both fire automatically on failure, hold the pre-edit
+  string in the harness's memory (no stash/shadow-commit language
+  anywhere), and give the user no way to browse or select an arbitrary
+  earlier state — a materially narrower mechanism than what
+  "Checkpoints" implies publicly, with no indication in the prompt
+  text that the two are even the same system.
+- No commit tool, commit-message template, or co-author trailer
+  anywhere — contrast directly with Claude Code's dedicated "#
+  Committing changes with git" section.
+- No `git worktree` or parallel-isolation concept — consistent with
+  Cline having no sub-agent/parallel-task delegation mechanism at all
+  in this snapshot (`new_task` is a session-handoff tool, not a
+  parallel worker, per the Sub-agents section above).

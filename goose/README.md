@@ -238,3 +238,26 @@ gap's shape is unusually well-evidenced.
   agent's own shell/file actions.
 - No allow/deny list, no risk classification, no escalation language,
   no user-override flags found anywhere in the captured files.
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../agent-git-vcs.md) for the cross-source
+comparison this feeds into. **Genuine, fully confirmed absence** — all
+nine `.md` files were read in full and grepped for git/commit/branch/
+worktree/checkpoint/PR terms; the only hits are incidental English
+usage unrelated to version control (`plan.md`'s "any conditional or
+**branching** logic"; the word "commit" appearing only inside this
+folder's own README, describing when `permission_judge.md` was
+captured).
+
+- No commit message conventions, no checkpoint/undo system, no
+  worktree isolation, no branch-management rules, no auto-commit
+  behavior, no PR/push workflow appear anywhere in the captured files.
+- Consistent with this source's overall architecture: `system.md`
+  names no built-in tools at all — everything, including any shell or
+  git access, comes from dynamically-loaded extensions whose tool
+  descriptions aren't part of this captured folder. This is a capture
+  gap, not proof the product lacks git tooling — if Goose has a git/
+  GitHub extension, its instructions live outside these files, the
+  same caveat this folder's own README already applies to permissions
+  (`permission_judge.md`).

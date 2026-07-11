@@ -360,3 +360,94 @@ no LLM-based risk classification anywhere in the path.
   isolation. OpenCode relies entirely on the rule-engine + tree-sitter
   layer for safety, a real contrast with Gemini CLI's separate
   OS-native sandbox managers (see that source's Permissions section).
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../agent-git-vcs.md) for the cross-source
+comparison this feeds into. Sourced from a fresh live clone of
+`anomalyco/opencode`. **The richest checkpoint/undo finding across
+every source checked for this doc** — a fully-built, automatic,
+per-turn, git-based system genuinely wired into a real session-level
+undo/redo feature, plus a dedicated worktree service and a full
+GitHub Action automation bot.
+
+- **Commit/branch defaults, base persona is a verbatim descendant of
+  Claude Code's own leaked prompt**: "NEVER commit changes unless the
+  user explicitly asks you to. It is VERY IMPORTANT to only commit
+  when explicitly asked, otherwise the user will feel that you are
+  being too proactive" — word-for-word the same line documented in
+  `leaked/claude-code/architecture-notes.md`'s Git section. Strictness
+  varies sharply by model-family variant: `beast.txt` (o-series/
+  reasoning models) states an absolute prohibition ("You are NEVER
+  allowed to stage and commit files automatically," even with prior
+  permission); `kimi.txt` goes further still with the strictest
+  per-call re-confirmation requirement found across every source in
+  this survey — "Ask for confirmation each time when you need to do
+  git mutations, **even if the user has confirmed in earlier
+  conversations**," explicitly defeating session-level standing
+  approval. Plan mode forbids commits unconditionally regardless of
+  model family: "you MUST NOT... run any non-readonly tools (including
+  changing configs or making commits)... This supersedes any other
+  instructions you have received."
+- **A fully automatic, git-based checkpoint system — two parallel
+  implementations, mirroring the dual-implementation pattern this
+  collection's compaction research already found in this same
+  monorepo**: a shadow git repository separate from `.git`
+  (`~/.local/share/opencode/snapshot/<project-id>/...`, using
+  `--git-dir`/`--work-tree` flags), seeded from the real repo's object
+  database specifically to avoid re-hashing cost on huge repos ("on
+  huge repos like chromium checkout the git add --all rebuilding the
+  hashes can take minutes"). A newer, parallel implementation
+  (`packages/core/src/snapshot.ts`) captures bare content-addressed
+  git *trees* per step instead of commits — no commit objects at all.
+  **Triggered automatically before every LLM step**, not manually
+  invoked — a code comment explains the precise timing requirement:
+  "The AI SDK may execute tools internally before emitting start-step
+  events, so capturing inside the event handler can be too late."
+  Files over 2MB are excluded and tracked via a synced `info/exclude`
+  file. Config-gated but **on by default** — disabled only for
+  non-git projects or an explicit `config.snapshot === false` opt-out
+  — and auto garbage-collected hourly (`git gc --prune=7.days`).
+- **Wired into a real, working `/undo`-style session feature** — not
+  just a snapshot mechanism sitting unused: `SessionRevert.Service`
+  walks a session's message history to a target point, restores the
+  filesystem to that exact moment (full `restore()` or selective
+  per-file `revert()`, batching up to 100 files per `git checkout
+  <hash> -- <files...>` call for performance on large changesets), and
+  a mirror-image `unrevert()` (redo) restores the saved "future"
+  snapshot again. Old messages/parts past the target point are only
+  deleted once the user commits to a genuinely new direction
+  (`cleanup()`).
+- **A dedicated, first-class `Worktree.Service`** creates real git
+  worktrees for parallel sessions — `~/.local/share/opencode/worktree/
+  <project-id>/<slugified-name>`, via `git worktree add --no-checkout
+  -b opencode/<name> <directory>`, a fixed `opencode/<name>` branch
+  naming convention, up to 26 collision-retry attempts with a random
+  slug suffix, and an optional **startup script** so each worktree can
+  bootstrap its own dev server/dependencies after creation. Currently
+  gated behind an **experimental** flag
+  (`OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS`, the same flag this
+  collection's Sub-agents research already documented) — part of
+  OpenCode's still-experimental parallel/background-session
+  architecture, not (yet) the default path for the `task` sub-agent
+  tool. Explicitly a *separate* system from the snapshot mechanism
+  above, confirmed by distinct naming ("sandbox" vs. "snapshot") and
+  separate service registrations.
+- **A full GitHub Action automation bot** (`opencode-agent[bot]`)
+  routes on issue/PR-comment events vs. schedule/dispatch events,
+  generates its own commit message and PR title via a cheap dedicated
+  LLM call ("Summarize the following in less than 40 characters"),
+  always attributes commits with a real `Co-authored-by:
+  <actor>@users.noreply.github.com` trailer, and — distinctively —
+  **detects and defers to the underlying agent having already taken
+  independent git action mid-session**: it diffs HEAD before/after the
+  chat turn, and if the agent switched branches or opened a PR itself
+  via its own Bash tool, the bot logs "Agent managed its own branch,
+  skipping infrastructure push/PR" and stands down rather than
+  double-pushing — a real "don't fight the agent" safeguard not found
+  in any other source checked for this doc. PR creation separately
+  dedupes against an already-open PR for the same head→base pair for
+  the same reason.
+- **No self-review gate before PR creation** — already established in
+  this doc's own Self-verification section (`/review` is user-invoked,
+  never auto-chained); this pass found nothing to override that.

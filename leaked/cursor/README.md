@@ -174,3 +174,29 @@ then disappears entirely from the two newest captures.
   itself.
 - No allow/deny list, no config file, no sandbox/isolation mentioned as
   a safety layer in any captured file.
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../../agent-git-vcs.md) for the cross-source
+comparison this feeds into. Thin and mostly incidental across every
+version — the sparsest git content of any source with a real tool
+surface checked for this doc.
+
+- **The only git-specific tool found is read-only**: `fetch_pull_request`
+  (v1.2) — "Looks up a pull request (or issue) by number, a commit by
+  hash, or a git ref (branch, version, etc.) by name. Returns the full
+  diff and other metadata." No PR-creation tool, no description
+  template, no self-review step — Cursor has no captured mechanism for
+  actually opening a PR, only for looking one up.
+- **No commit-message conventions, no checkpoint/undo system, no
+  worktree isolation, no branch-management rules, no auto-commit
+  rule** found in any of the five dated prompts or the tools JSON.
+  `git status`/`git commit` appear only as illustrative examples
+  inside unrelated guidance (e.g. "User: What does git status do?"
+  used purely to demonstrate when a todo list isn't needed).
+- **Consistent with this collection's already-documented finding that
+  `run_terminal_cmd` has no risk-classification flag at all** (unlike
+  Windsurf's `SafeToAutoRun` or Replit's `is_dangerous` — see
+  Permissions above): any git command would be gated by the same
+  generic, undifferentiated command-approval flow as any other shell
+  command, with no git-specific carve-out anywhere in this source.

@@ -228,3 +228,31 @@ sandbox/autonomous/destructive/dangerous returns zero matches.
   not prose that could be summarizing an absent feature.
 - Consistent with the README's existing note that sandbox/isolation is
   "not specified — runs as a local CLI process."
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../agent-git-vcs.md) for the cross-source
+comparison this feeds into. Genuine absence, with the same well-
+evidenced capture-gap caveat already established for this source's
+Permissions section: `system-prompt.js` is fully-read, non-truncated
+executable code with no branch, string, or conditional referencing
+git/commit/branch/worktree/checkpoint/PR anywhere in its 120 lines,
+and `compaction/prompts.js` is unrelated (pure conversation-
+summarization templates).
+
+- The base persona is a single sentence plus a dynamically-assembled
+  tool list and two hardcoded guidelines — no git policy of any kind
+  is baked into this layer.
+- **The same external-parameter caveat applies here as it did for
+  Permissions**: tool descriptions (`toolSnippets`) are passed into
+  `buildSystemPrompt()` from outside this repo. Pi ships `bash` as one
+  of its four default tools (`read`/`write`/`edit`/`bash`), which
+  would be sufficient for the model to run `git commit`/`git push`/etc.
+  if instructed to — but any git-specific guidance or safety rule
+  would have to live in the `bash` tool's own snippet text (not
+  captured) or be left entirely to the model's own unprompted
+  judgment, since the base prompt states no constraint either way.
+  Contrast this with Crush, which puts its git policy at the persona
+  level while pointing to (but not including) the bash tool's
+  description for format — the same missing-piece pattern, on a
+  different source.

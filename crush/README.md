@@ -258,3 +258,56 @@ handful of specific git operations.
 - **Sandbox/isolation**: confirmed absent — runs directly on the user's
   machine, no containerization referenced anywhere in the captured
   files.
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../agent-git-vcs.md) for the cross-source
+comparison this feeds into. The most fully worked-out example in this
+collection of an explicit, standing git policy embedded directly in a
+"critical rules" block — a two-tier system: continuous LLM judgment
+for general risk, plus three hardcoded named-action gates specifically
+for git.
+
+- **A named policy triad, stated as rules that override everything
+  else**: "**NEVER COMMIT**: Unless user explicitly says 'commit'...
+  **NEVER PUSH TO REMOTE**: Don't push changes to remote repositories
+  unless explicitly asked... **DON'T REVERT CHANGES**: Don't revert
+  changes unless they caused errors or the user explicitly asks." This
+  is the inverse of a checkpoint system — a rule constraining when the
+  *agent itself* may undo its own changes, not an automatic
+  pre-edit snapshot mechanism. The closest thing to a stated safety
+  valve is the general decision-making stop-list's "Could cause data
+  loss" trigger (covered under Self-verification/Permissions above),
+  which governs destructive git operations the same way it governs
+  any other high-consequence action.
+- **A real capture gap on commit-message format**: the commit rule
+  points to a named template — "follow the `<git_commits>` format from
+  the bash tool description exactly, including any configured
+  attribution lines" — but that template isn't present in this
+  folder; `coder.md.tpl` is only the main persona template, and the
+  bash tool's own description (where `<git_commits>` presumably lives,
+  possibly including a co-author trailer analogous to Claude Code's)
+  is a separate file not captured here.
+- **No PR-creation tool, no `gh` invocation guidance, and no PR
+  description template found anywhere** — push is gated the same
+  per-instance, explicit-ask-only way as commit, with no promotion to
+  a standing approval once granted once.
+- **No worktree isolation**: the two sub-agents (search, web-fetch)
+  inherit the identical `<env>` block as the main agent
+  (`WorkingDir`/`IsGitRepo`/`Platform`/`Date`), implying they operate
+  against the same working tree rather than an isolated copy, with no
+  concurrency/conflict-avoidance guidance stated for parallel
+  sub-agents.
+- **Git as a read-only research tool, not just a modification
+  target**: "Use `git log` and `git blame` for additional context when
+  needed," and a `<bash_commands>` example combining inspection
+  commands (`git status && git diff HEAD && git log -n 3`) — purely
+  informational usage, separate from the write-gated triad above.
+- **A live git-status snapshot is injected into every prompt**: the
+  `<env>` block includes "Is directory a git repo" and "Git status
+  (snapshot at conversation start - may be outdated)" — passive
+  context, not a behavioral rule, but worth noting as the one place
+  git state reaches the model automatically rather than via a tool
+  call.
+- No branch-naming convention, no force-push policy, no
+  protected-branch language found anywhere.

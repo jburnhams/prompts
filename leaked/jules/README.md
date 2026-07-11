@@ -163,3 +163,62 @@ both versions.
   will be useful for future tasks." No retrieval-side tool or mechanism
   is described in what's captured, so this is flagged as a real but
   incompletely-documented capability, not analyzed further here.
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../../agent-git-vcs.md) for the cross-source
+comparison this feeds into. The `submit` tool is the single point
+where commit message, branch naming, and push-with-approval all come
+together — worth reading as one coherent finalization step rather than
+three separate concerns.
+
+- **Commit message format is explicitly specified, standard-
+  conventions style**: "The commit message should follow standard
+  conventions: a short subject line (50 chars max), a blank line, and
+  a more detailed body if necessary." No co-author trailer is required
+  or shown anywhere.
+- **A distinctive "git-agnostic" split**: `submit`'s `title` and
+  `description` parameters are explicitly required to be **not**
+  git-specific ("which should both be git-agnostic") — only the
+  separate `commit_message` parameter is the actual git commit
+  message. `title`/`description` map to a Jules-side task/PR object,
+  kept deliberately independent of git plumbing.
+- **When to commit is a two-way gate**: "Call this only when you are
+  confident the code changes are complete by running all relevant
+  tests and ensuring they pass OR when the user asks you to commit,
+  push, submit, or otherwise finalize the code" — self-confidence
+  *or* explicit request, not explicit request alone (a looser gate
+  than most other sources surveyed for this doc).
+- **Branch naming — descriptive, not templated, with an explicit
+  continuation rule**: "Use a short, descriptive branch name... If you
+  are given a new, unrelated task after submitting, you should start a
+  new plan and use a new branch name. If the new request is a
+  follow-up to the same task, you may continue using the same branch."
+  No naming prefix/template (contrast Devin's `devin/{timestamp}-
+  {feature-name}`), no force-push policy, no protected-branch language.
+- **A mandatory pre-commit step, deliberately hidden from the
+  user-facing plan** (already covered in Self-review & verification
+  above under `pre_commit_instructions` — cross-referenced here since
+  it's equally a git-workflow gate): "Before completing your work with
+  the submit tool, you **must** call `pre_commit_instructions` and
+  follow its instructions... then call `submit` using a short,
+  descriptive branch name."
+- **Checkpoint/undo — repo-wide, not just file-level, and explicitly
+  framed as non-git**: `reset_all()`/`restore_file()` (renamed
+  `reset_file` in the tools JSON of the later-captured version) —
+  "Resets the entire codebase to its original state" / scoped to one
+  file. Framed entirely as "restore to task-start state," not an
+  arbitrary-point undo stack or literal `git checkout`/`git reset` —
+  consistent with `submit`'s "git-agnostic" framing, this reads as a
+  sandbox/VM-snapshot or diff-tracking mechanism abstracted away from
+  git rather than git commands themselves. The cleanest repo-wide
+  reset primitive found across every source checked for this doc —
+  simpler than Devin's file-only `undo_edit`, and unlike Replit's
+  editor-level `undo_edit`, works at both file and whole-repo scope.
+- **Post-submission PR-comment tools** (`read_pr_comments`/
+  `reply_to_pr_comments`, already covered above) are also, structurally,
+  part of the git/PR lifecycle — closing the loop between Jules's own
+  `submit` and a human reviewer's feedback on the resulting PR.
+- **No worktree isolation found** — no mention of parallel worktrees,
+  multiple sandboxes, or concurrent branches for sub-agents anywhere
+  in either captured version.

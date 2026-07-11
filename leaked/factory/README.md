@@ -130,3 +130,48 @@ judgment — no equivalent to Windsurf's `SafeToAutoRun` or Replit's
   isolation invoked as a safety rationale — a scoping statement exists
   ("file operations should only be scoped to `fileSystem` repository
   locations") but is never connected to why approval can be skipped.
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../../agent-git-vcs.md) for the cross-source
+comparison this feeds into. The most elaborately gated git workflow of
+any leaked source checked for this doc — commits, branches, and PR
+creation are all wired into the same mandatory environment-setup and
+quality-check pipeline already documented under Self-verification
+above.
+
+- **Branch policy, stated twice for emphasis**: "Work only on a
+  feature branch. Create the branch only AFTER successful git sync +
+  frozen/locked install + validation," and "never commit directly to
+  default branches." No naming-prefix convention (contrast Devin's
+  `devin/{timestamp}-{feature}`), and no force-push policy is stated.
+- **Commits are generically described, not templated**: "Implement
+  changes in small, logical commits with descriptive messages" — no
+  subject-line limit, no trailer, no worked example.
+- **A mandatory, blocking, four-step secret scan before every commit
+  or push** — `<security_check_spec>`: "Before ANY git commit or push
+  operation: Run 'git diff --cached' to review ALL changes being
+  committed... Run 'git status' to confirm all files being
+  included... Examine the diff for secrets, credentials, API keys, or
+  sensitive data... if detected, STOP and warn the user." Distinct
+  from (and more specific than) the general code-quality gate below —
+  this one is a content-scanning self-check, always-on for every
+  commit/push, not just implementation-final ones.
+- **The PR draft/non-draft gate, already covered under Self-
+  verification, is equally a git-workflow rule**: a non-draft PR
+  requires evidence of successful dependency installation, all quality
+  checks green, and a clean worktree ("worktree" used here in the
+  ordinary git sense — no uncommitted stray changes — not isolated
+  `git worktree` checkouts; see below).
+- **Required PR contents, a structured set rather than a line-by-line
+  template**: "Mark it **Droid-assisted**. Include summaries/logs
+  showing installs and all quality checks passed. Provide a brief
+  rationale and reference relevant issue/ticket."
+- **No worktree isolation for parallelism** — every use of "worktree"
+  in this prompt is git's working-tree-cleanliness sense ("Maintain a
+  clean worktree (`git status`)"), never isolated per-task checkouts;
+  a genuine negative finding, not a terminology gap, since the word
+  recurs three times and always in that sense.
+- **No git-based checkpoint/undo system found** — Factory's only
+  "state cleanliness" concept is the pre-commit/pre-PR clean-worktree
+  check above, not a way to revert.

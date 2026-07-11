@@ -354,3 +354,90 @@ the static engine, not replacing it.
   `network`/`readonly`/`approvedTools` settings (a short allowlist like
   `cat, ls, grep, head, tail`) — a second, independent gate running
   underneath the tool-call policy engine, toggled via `--sandbox`/`-s`.
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../agent-git-vcs.md) for the cross-source
+comparison this feeds into. Sourced from a fresh live clone of
+`google-gemini/gemini-cli`. Independently arrived at the same core
+idea as OpenCode — a hidden shadow git repository used purely as a
+checkpoint engine, structurally separate from the user's real `.git`
+— but with a materially different design centered on snapshotting
+**code and conversation state together**, plus a shipped, documented,
+user-facing worktree feature.
+
+- **The most detailed commit-message discipline found in this
+  survey — the only one of three CLI-shaped sources with an explicit
+  imitate-the-repo's-style instruction**: the `renderGitRepo` prompt
+  section (injected only when the project is detected as a git repo)
+  mandates gathering `git status`, `git diff HEAD`, and specifically
+  "`git log -n 3` to match the existing commit-message style
+  (verbosity, formatting, signature line, etc.)" before drafting one —
+  "Always propose a draft commit message. Never just ask the user to
+  give you the full commit message. Prefer commit messages that are
+  clear, concise, and focused more on 'why' and less on 'what'." Also:
+  "**NEVER** stage or commit your changes, unless you are explicitly
+  instructed to commit," with worked examples distinguishing intent
+  ("Commit the change" → do it; "Wrap up this PR for me" → don't); "Do
+  not use `git add .` or `git add -A` unprompted... stage only the
+  specific files that were changed"; "After each commit, confirm that
+  it was successful by running `git status`. If a commit fails, never
+  attempt to work around the issues without being asked to do so."
+- **A separate, hidden shadow-repo checkpoint system, snapshotting
+  filesystem state *and* conversation history together as one unit —
+  the one property that distinguishes it from OpenCode's equivalent**:
+  a `GitService` shadow repo lives in the CLI's own storage directory
+  with `GIT_DIR`/`GIT_WORK_TREE` pointed at the shadow dir / real
+  project root, a from-scratch `.gitconfig` that ignores the user's
+  global git config entirely (forced author `Gemini CLI
+  <gemini-cli@google.com>`, `commit.gpgsign=false`), and an explicit
+  design-intent comment: "the shadow repository is an internal,
+  isolated state management tool, and we want to ensure it works
+  reliably regardless of the user's local environment." Snapshot
+  creation (`git add .` + `--no-verify` commit, message always
+  `Snapshot for ${toolCall.name}`) is gated to file-*editing* tool
+  calls only — and fires **before the user even approves the edit**,
+  at the moment the edit is proposed. The resulting commit hash and
+  the full client conversation history at that point are written
+  together as one JSON checkpoint file. Restore is two-part: `git
+  restore --source <hash> .` + `git clean -fd` reverts the working
+  tree, and a second step reloads the saved conversation history back
+  into the session — restoring code *and* chat state to the
+  pre-edit-proposal moment in one operation.
+- **Off by default, requires a restart to toggle** (`general.
+  checkpointing.enabled`, `requiresRestart: true`), surfaced via a
+  `/restore [checkpoint-name]` slash command that lists or restores a
+  named checkpoint, with a specific, user-facing error path for a
+  garbage-collected/missing commit ("This can happen if the repository
+  has been re-cloned, reset, or if old commits have been garbage
+  collected").
+- **A shipped, documented, user-facing worktree feature, explicitly
+  framed for parallel-session isolation** — the CLI's own docs state
+  the purpose directly: "When working on multiple tasks at once, you
+  can use Git worktrees to give each Gemini session its own copy of
+  the codebase... This prevents changes in one session from colliding
+  with another." `--worktree`/`-w [name]` (gated behind an
+  `experimental.worktrees` setting) creates `git worktree add
+  <root>/.gemini/worktrees/<name> -b worktree-<name>` — a fixed
+  `worktree-<name>` branch-naming convention, matching OpenCode's
+  `opencode/<name>` pattern in shape if not in exact prefix. **Cleanup
+  on exit is conditional, not the unconditional "never auto-delete"
+  the docs page alone might suggest**: a completely unmodified
+  worktree (no uncommitted changes, HEAD unmoved) *is* auto-removed;
+  only a worktree with actual changes is preserved — the code is more
+  nuanced than its own documentation. `gemini --resume <session_id>`
+  from inside the worktree directory continues a prior session in that
+  isolated checkout, and a manual-management escape hatch (`git
+  worktree remove --force` / `git branch -D`) is documented for users
+  who want direct control.
+- **No PR-creation tooling found anywhere in the CLI itself** — a
+  branch-name-reading hook exists purely for UI display (live-watches
+  the git dir's `HEAD` file), with no PR-related logic attached. The
+  prompt's git guidance stops at "never push... without being asked
+  explicitly"; no PR-description template or self-review step is
+  described. (Gemini's separate GitHub code-review bot product lives
+  in this collection's `github-pr-bots/` folder as an entirely
+  different codebase, not part of the CLI investigated here.) No
+  reviewer/self-check agent exists in the confirmed built-in agent
+  set, consistent with this doc's existing Self-verification finding
+  for this source.

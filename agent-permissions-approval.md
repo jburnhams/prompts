@@ -38,7 +38,10 @@ docs), OpenHands, Cline.
 investigation performed; findings are what the captured prompt itself
 says, not confirmed against a codebase): Copilot Chat, Crush, Cursor
 (leaked), Devin (leaked), Windsurf (leaked), Replit (leaked), Factory/
-Droid (leaked).
+Droid (leaked), Google Antigravity (leaked — a hard workspace-scoping
+boundary present in its IDE prompts and confirmed absent from its CLI
+capture; see §2/§3 below), Zed (genuinely open source — the richest
+sandbox description in this doc's prompt-text-level bucket; see §6).
 
 **Confirmed absent or near-absent**: Goose (a named
 `permission_judge.md` file exists upstream but was captured as 0
@@ -133,6 +136,7 @@ block forever when no human is present to answer at all) — see §7.
 | **Flat string arrays in application settings, no DSL at all** | Roo Code — `allowedCommands`/`deniedCommands` plain string-prefix arrays configured through a VS Code settings UI, evaluated by longest-prefix-match. |
 | **A prompted, example-based policy — English text, not machine-checked rules** | Copilot Chat's Anthropic-family `operationalSafety` tag ("Take local, reversible actions freely... For actions that are hard to reverse, affect shared systems, or could be destructive, ask the user first," with a named example list) — the only source in this collection classifying risk by a stated *principle* (reversibility) rather than a command list or numeric tier, and doing so in plain prose rather than structured config. Crush's `<critical_rules>` block hardcodes specific named-action gates ("NEVER COMMIT... NEVER PUSH TO REMOTE... unless user explicitly says") the same way, alongside a separate consequence-based heuristic ("Only stop/ask if... could cause data loss"). |
 | **A hardcoded, non-configurable protection list, distinct from the general policy** | Roo Code's `RooProtectedController` — `.rooignore`/`.roomodes`/`.roorules*`/`AGENTS.md` and similar are write-protected "regardless of autoapproval settings," a real prompt-injection defense (nothing can talk the agent into rewriting its own instruction files) that sits outside and above the normal allow/deny system entirely. |
+| **Inline annotations inside user-authored workflow files, overriding the model's normal per-call judgment** | Google Antigravity (leaked, IDE prompts only — confirmed absent from its CLI capture) — `// turbo` and `// turbo-all` comments inside `.agent/workflows/*.md` files: "If a workflow step has a '// turbo' annotation above it, you can auto-run the workflow step... This annotation ONLY applies for this single step... If a workflow has a '// turbo-all' annotation anywhere, you MUST auto-run EVERY step." A different shape from every other row in this table — the policy lives as source-code-comment-style markup inside a markdown file the *user* authors, not a separate config format or settings UI, and it directly overrides the model's own `SafeToAutoRun` self-tag (§2) rather than replacing the tag mechanism. |
 | **No rule/policy mechanism found** | Devin, Warp, Pi. |
 
 ## 4. Scope and persistence of an approval
@@ -147,6 +151,7 @@ How long does "yes" last once granted?
 | **Two tiers only, no session cache at all** | Roo Code — a decision is either asked every single time, or explicitly promoted into the persisted `allowedCommands`/`deniedCommands` settings via an in-chat UI (permanent, survives restarts). There is no analog of Codex's `ApprovedForSession` — everything not already on the persisted lists gets re-asked for the life of the extension. |
 | **A rule-source model with both a session tier and four persisted scopes, resolved together rather than layered as fallback tiers** | Claude Code (leaked) — a `PermissionRule` carries a `source` field valued at user/project/local/flag/policy-settings, CLI arg, command, **or session** — i.e. session-scoped rules are one first-class rule source among several, not a separate cache Codex-style. Rules from every source are aggregated into three maps (always-allow/always-deny/always-ask) that a single decision function consults in order (allow wins outright, deny blocks outright), rather than checking session first and falling through to disk. The four persisted scopes (policy/managed-enterprise > project > user > local) load in that precedence order, with a managed-settings flag able to restrict evaluation to policy rules only — an enterprise lockdown Codex/Gemini CLI have no direct equivalent of, closer in spirit to Gemini CLI's admin-tier ownership/permission requirements (§3) than to any of its own persistence peers. |
 | **Client-side, out-of-band, and explicitly unreachable by the model itself** | Windsurf — the only sanctioned override for `SafeToAutoRun` is a user-configured settings allowlist the model is told exists but is given no tool to read or write, and is explicitly told to keep opaque in conversation ("do not refer to any specific arguments of the run_command tool in your response"). |
+| **Three tiers, named directly in plain prose rather than a typed enum** | Zed (genuinely open source) — "can grant a sandbox request for that command, for the rest of the thread, or always" — per-call, per-thread, and permanent, the same three-tier shape as Codex's typed enum (row above), plus an explicit mid-thread stability guarantee not stated by any other source in this survey: "These sandbox settings are guaranteed to remain in effect for the entire duration of this thread. If they ever change, you will be told." |
 | **Not addressed / no persistence concept found** | Cline (no session-cache language beyond the client-side auto-approve toggle itself), Cursor, Devin, Replit, Factory/Droid, Warp. |
 
 ## 5. Escalation behavior
@@ -200,6 +205,23 @@ approval?
 
 ## 6. Sandbox and isolation as a complementary layer
 
+- **A fully platform-branching sandbox description, stated directly in
+  the prompt text rather than left implicit** — Zed (genuinely open
+  source): reads unrestricted ("any path on the filesystem is
+  readable, including Git metadata"); writes default to a scratch
+  directory plus the project's own worktrees, with the exact scratch
+  location varying by platform (Linux: `/tmp`; Windows: routed through
+  WSL under Bubblewrap; elsewhere: a per-thread temp dir); network
+  blocked outbound by default everywhere. Elevation is granular and
+  per-command — `allow_hosts`/`allow_all_hosts` for network (Windows
+  can only grant all-or-nothing), `fs_write_paths`/`allow_fs_write_all`
+  for the filesystem, and `unsandboxed: true` as a full escape hatch.
+  **`.git` metadata is hardcoded-protected in every platform branch
+  and cannot be elevated short of the full escape hatch** — "Git
+  metadata writes are never grantable inside the sandbox... request
+  `unsandboxed: true` with a reason" — the same "ordinary git
+  operations require higher trust than regular file writes" pattern
+  worth cross-referencing against `agent-git-vcs.md`.
 - **Explicitly coupled to the approval decision itself, not a
   substitute for it** — Codex CLI: even under the most permissive
   approval mode short of the full bypass flag, an unsandboxed
@@ -234,6 +256,21 @@ approval?
   isolation as a reason approval can be skipped — the isolation and
   the approval-philosophy discussion simply never touch in the
   captured text.
+- **A hard filesystem-scope boundary, present in the IDE prompts and
+  confirmed absent from the CLI capture of the same product** — Google
+  Antigravity (leaked): "You are not allowed to access files not in
+  active workspaces. You may only read/write to the files in the
+  workspaces listed above," with one explicit, self-referential
+  exception (a config directory restricted "ONLY for usage specified
+  in your system instructions"). This is a workspace-root scope
+  restriction stated in prose rather than an OS-level sandbox — closer
+  to Codex's `WorkspaceWrite` policy in spirit than to Gemini CLI's
+  process-level sandbox, but never described as backed by any
+  enforcement beyond the prompt text itself. `CLI Prompt.md` has no
+  equivalent restriction anywhere (confirmed via full-text grep) — a
+  genuine, quotable capability/scope gap between the terminal and IDE
+  harnesses of the same product, not just an artifact of a shorter
+  capture.
 
 ## 7. Where the enforcement actually lives: harness vs. prompt
 

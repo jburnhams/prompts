@@ -39,7 +39,10 @@ what wasn't checked.
 **With confirmed title-generation and/or reasoning-display content**:
 Claude Code (leaked, via `leaked/claude-code/architecture-notes.md`),
 Codex CLI, OpenCode, Gemini CLI, GitHub Copilot Chat, Cline, Roo Code,
-Crush, Goose, Devin (leaked, reasoning display only).
+Crush, Goose, Devin (leaked, reasoning display only), Google
+Antigravity (leaked — title generation absent, reasoning display
+absent, but a structurally novel narration/communication-gating
+mechanism found; see §3a).
 
 **Checked, nothing found for either topic** (targeted search across
 all locally-available files, no capture-gap caveat needed beyond the
@@ -48,7 +51,12 @@ usual one for prompt-only extractions): OpenHands, Pi, Aider, Windsurf
 Compaction-doc entry for a related structurally novel finding), Cursor
 (leaked, mostly absent — see §1c for one adjacent near-miss), Warp
 (leaked), Replit (leaked, see §1c for a near-miss), Factory/Droid
-(leaked).
+(leaked), Zed (genuinely open source — title generation and reasoning
+display both absent from what's captured, a capture gap rather than a
+confirmed absence since this folder holds only agent prompt templates,
+not session/UI code; one ordinary §3-style narration rule found —
+"send a brief one- to two-sentence preamble... Skip the preamble for
+trivial single reads").
 
 ---
 
@@ -265,6 +273,24 @@ explicitly since the vocabulary ("thinking," "reasoning") overlaps:
   **schema-embedded narration**: narration and the tool call collapse
   into one API-level artifact rather than two separate things (a
   narration message, then a tool call).
+- **A fifth mechanism: a dedicated stateful tool that gates the
+  communication channel itself**, found only in one of Google
+  Antigravity's three captured prompt variants (leaked,
+  `planning-mode.txt` — confirmed absent from both `Fast Prompt.txt`
+  and `CLI Prompt.md`). The `task_boundary`/`notify_user` pair: while
+  "in an active task," ordinary assistant messages become literally
+  invisible to the user — "regular messages are invisible. You MUST
+  use notify_user" — and `task_boundary`'s `TaskStatus` field is
+  explicitly **prospective**, not retrospective: "should describe the
+  NEXT STEPS, not the previous steps," the opposite framing from every
+  other narration mechanism above (all of which narrate what the model
+  is about to do or just did as ordinary prose). `task_boundary` also
+  carries its own three-value `Mode` state machine (PLANNING/
+  EXECUTION/VERIFICATION) baked into the tool schema — narration here
+  isn't just a required field on an unrelated tool call (Windsurf's
+  `toolSummary`) but a dedicated tool whose entire purpose is managing
+  a structured narrative channel, with a hard rule about what other
+  channels are allowed to say anything at all while it's active.
 
 A model could in principle narrate heavily in prose while showing no
 native reasoning content at all, or vice versa — the two axes are
