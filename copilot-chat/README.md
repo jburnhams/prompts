@@ -277,3 +277,92 @@ this source in this pass.)
   accumulated history has no prior thinking blocks — an API
   continuity-validation requirement Anthropic's own API imposes, not a
   Copilot display policy.
+
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into. Sourced from
+`defaultAgentInstructions.tsx`, `anthropicPrompts.tsx`,
+`vscModelPrompts.tsx`, `openai/gpt51Prompt.tsx`/`gpt52Prompt.tsx`/
+`gpt54Prompt.tsx`/`gpt54LargePrompt.tsx`, `xAIPrompts.tsx`,
+`zaiPrompts.tsx`, `geminiPrompts.tsx`, and `agentPrompt.tsx`. Because
+prompts are selected per model family (`promptRegistry.ts`), this
+source is really **N different self-verification policies**, not one —
+the strength of what a session gets depends entirely on which model is
+backing it, from nothing (Gemini) to the richest single instance found
+anywhere in this collection (certain VS Code-hosted variants). No
+`/review` command or diff-reviewer persona was found gating task
+completion anywhere in this folder — the one review-flavored line
+found ("If the user asks for a 'review', default to a code review
+mindset") is explicitly user-invoked, consistent with this doc's §4
+conflation warning rather than an instance of it.
+
+- **Base/shared instructions (`GenericEditingTips`, used by the default
+  prompt and several other families)**: a bounded per-action check tied
+  to a concrete evidence channel — "After editing a file, any new
+  errors in the file will be in the tool result. Fix the errors if they
+  are relevant... and remember to validate that they were actually
+  fixed. Do not loop more than 3 times attempting to fix errors in the
+  same file. If the third try fails, you should stop and ask the user
+  what to do next." No test-running instruction at the base level —
+  only the linter-diagnostics loop.
+- **`AlternateGPTPrompt` (a GPT-4.1-era variant) is a near-independent
+  reinvention of the shared SWE-bench-lineage template** — see §1 of
+  the synthesis doc for the full quote and comparison; it explicitly
+  invokes "hidden tests that must also pass before the solution is
+  truly complete," functionally identical to SWE-agent/mini-swe-agent's
+  framing despite sharing no lineage with those benchmark harnesses.
+- **The Anthropic/Claude-family prompt is thin** (`anthropicPrompts.tsx`)
+  — no TESTING/VALIDATION section, no bounded-retry pattern; the one
+  relevant line is a rule against *circumventing* verification rather
+  than performing it: "Do not bypass safety checks (e.g. `--no-verify`)
+  or discard unfamiliar files that may be in-progress work" — an oblique
+  acknowledgment that a repo's own hook-based checks (this doc's §5)
+  might exist and shouldn't be routed around.
+- **The GLM prompt is the lightest of all** (`zaiPrompts.tsx`): a
+  four-step ANALYZE/PLAN/EXECUTE/VERIFY loop where "VERIFY" is a single
+  line — "Confirm each step works before proceeding" — with no
+  test/build detail and no retry cap.
+- **The OpenAI GPT-5.1/5.2/5.4 prompts share text close to verbatim
+  with Codex CLI's "Validating your work" section** — "If the codebase
+  has tests or the ability to build or run, consider using them to
+  verify changes once your work is complete... For all of testing,
+  running, building, and formatting, do not attempt to fix unrelated
+  bugs." Both are OpenAI-model-specific prompts, plausibly sharing an
+  internal style guide — a cross-product lineage worth noting alongside
+  this doc's other confirmed-lineage findings (e.g. Augment SWE-bench
+  Agent and SWE-agent both forking Anthropic's reference implementation).
+- **`gpt54LargePrompt.tsx` (experimental, behind
+  `ConfigKey.EnableGpt54LargePromptExp`) formalizes a hypothesis→edit→
+  validate loop**, more granular than an end-of-task check though still
+  short of Jules's true per-write mandate: a "Before the first edit"
+  block requires forming "one falsifiable local hypothesis... and one
+  cheap check that could disconfirm it," and an "After the first edit"
+  block requires "one focused validation action" immediately after —
+  preferring "the cheapest behavior-scoped or failing check," a narrow
+  test, or a narrow compile/lint/typecheck over a plain `git diff`.
+- **`xAIPrompts.tsx` (Grok)**: mandatory and automatic rather than
+  reactive — "After any substantive change, run the relevant
+  build/tests/linters automatically... Don't end a turn with a broken
+  build if you can fix it. If failures occur, iterate up to three
+  targeted fixes" — the same bounded-retry cap as the base
+  `GenericEditingTips`, but framed as a default action rather than a
+  response to surfaced errors.
+- **`geminiPrompts.tsx` is a confirmed absence within this source**:
+  zero matches for test/verify/lint/build across the full 262-line
+  file — notably consistent with Gemini CLI's own confirmed absence
+  elsewhere in this collection, a different product built on the same
+  model family.
+- **`vscModelPrompts.tsx` variants C and D carry the richest single
+  instance of prompted-only verification found anywhere in this
+  collection** — a named `verification-before-completion` "iron law."
+  See §10 of `agent-self-verification.md` for the full quote; variants
+  A and B in the same file lack this block entirely, confirming it's a
+  deliberate per-model-variant choice, not a shared base.
+- **`agentPrompt.tsx`'s `task_complete` tool**, gated behind an
+  `isAutopilot` permission level: "Before calling task_complete, you
+  MUST provide a brief text summary of what was accomplished... The
+  task is not complete until both the summary and the task_complete
+  call are present." A self-report completion signal with a summary
+  requirement, not a verified-correctness gate — structurally similar
+  to Cline's `attempt_completion`.

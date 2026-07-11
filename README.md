@@ -98,7 +98,16 @@ hooks — the one such mechanism actually shipped externally, alongside a
 leaked internal-only adversarial verification subagent), and Jules's
 per-action mandatory verification, hidden pre-commit tool, and
 Playwright-screenshot-as-proof frontend verification — the most
-granular self-review discipline found anywhere in this collection.
+granular self-review discipline found anywhere in this collection. A
+second research pass roughly doubled the source count (20 sources
+covered in depth) and surfaced two more patterns not in the original
+typology: verification authority handed to the *human user* instead of
+the model (Replit's automated-evidence-plus-confirmation tools, Warp's
+inverted "ask before verifying" default) and "prompt-simulated"
+gates that borrow deterministic-gate rhetoric — numbered steps, "no
+exceptions" language — without any confirmed code-level enforcement
+(Copilot Chat's `vscModelPrompts.tsx` "iron law" block, Factory/Droid's
+PR-draft-state gate).
 
 ### Other candidate drill-downs (not started)
 

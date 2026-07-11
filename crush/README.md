@@ -155,3 +155,60 @@ comparison this feeds into.
 - No trigger/model information captured beyond the prompt text itself
   (not confirmed whether this runs on a separate cheap model or the
   main session model).
+
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into. Crush is prompted-only
+(§7 there) but by far the densest example of that bucket found in this
+collection — testing/verification language recurs at nearly every
+structural checkpoint of `coder.md.tpl`, with no code-level enforcement
+confirmed in these prompt-only files.
+
+- **Named as a top-level critical rule**: `<critical_rules>` (the block
+  explicitly framed as overriding everything else) states plainly,
+  "**TEST AFTER CHANGES**: Run tests immediately after each
+  modification."
+- **A per-edit cadence, not just end-of-task**: the `<workflow>`
+  section's "While acting" list runs "After each change: run tests" /
+  "If tests fail: fix immediately" — closer to Jules's per-action gate
+  (synthesis doc §6) than to a single pre-submit check, though here
+  it's instruction-only, with no tool blocking the next edit if a test
+  wasn't actually run.
+- **A separate "Before finishing" checklist**, distinct from the
+  per-edit rule above: "Verify ENTIRE query is resolved... Cross-check
+  the original prompt and your own mental checklist; if any feasible
+  part remains undone, continue working instead of responding. Run
+  lint/typecheck if in memory. Verify all changes work."
+- **A dedicated `<task_completion>` block** spells out think →
+  implement → verify as three explicit phases, closing with: "Re-read
+  the original request and verify each requirement is met. Check for
+  missing error handling, edge cases, or unwired code. Run tests to
+  confirm the implementation works. Only say 'Done' when truly done -
+  never stop mid-task."
+- **A dedicated `<testing>` block is the richest concentration of this
+  language in the prompt**, and is the one place in this entire
+  collection where a prompt uses the term "self-verification"
+  explicitly: "Use self-verification: write unit tests, add output
+  logs, or use debug statements to verify your solutions... If tests
+  fail, fix before continuing... For formatters: iterate max 3 times to
+  get it right; if still failing, present correct solution and note
+  formatting issue." That "max 3 times" clause is a bounded-retry cap,
+  unusually specific for a purely prompted (§7) mechanism.
+- **A mechanically-sourced input, worth distinguishing from a true
+  gate (§8-adjacent)**: when `.Config.LSP` is populated, tool output
+  automatically includes lint/typecheck diagnostics alongside normal
+  results — a real non-LLM signal injected into context — but nothing
+  in the captured prompt blocks completion if the model just ignores
+  it; the instruction ("Fix issues in files you changed") is still
+  purely prompted, so this stops short of a genuine §2 deterministic
+  gate.
+- **Persisted across sessions**: `memory_instructions` treats
+  "Build/test/lint commands" as first-class content worth remembering,
+  reinforcing test-running as a standing habit rather than a one-off
+  ask.
+- No separate-LLM judge/reviewer call and no `/review`-style command
+  exist anywhere in this folder — the two sub-agent prompts
+  (`task.md.tpl`, `agentic_fetch_prompt.md.tpl`) are read-only
+  (`glob`/`grep`/`ls`/`view` only, per `agent_tool.md`), so neither
+  could run or verify code even in principle.

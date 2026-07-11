@@ -73,3 +73,43 @@ Worth reading in full; highlights:
   image handling — screenshots are captured and presumably fed back for
   visual inspection, similar in spirit to Cline's `browser_action`.
 - **Sandbox/isolation**: not indicated by the tool list itself.
+
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../../agent-self-verification.md) for
+the cross-source comparison this feeds into. **Effectively absent** —
+the weakest of any source checked for this doc so far, closer to the
+doc's "Absences" list than to §7's "prompted-only" bucket, despite
+having by far the richest tool surface in this collection (30 tools,
+including full browser automation and deployment).
+
+- The nearest thing to a "check your work" instruction only covers
+  *debugging*, not post-edit verification: "When debugging, only make
+  code changes if you are certain that you can solve the problem.
+  Otherwise, follow debugging best practices: 1. Address the root cause
+  instead of the symptoms. 2. Add descriptive logging statements...
+  3. Add test functions and statements to isolate the problem." That's
+  diagnostic-testing-to-isolate-a-bug advice, not a check that a fix is
+  actually correct once made.
+- After finishing, the prompt authorizes *demonstrating* the change
+  rather than *verifying* it: "proactively run terminal commands to
+  execute the USER's code for them... Run the app and try uploading and
+  searching for photos" — showing the app work is framed as a UX nicety
+  for the user to see, with no instruction to check the output for
+  errors or treat a failure as blocking.
+- No test-runner tool, no build-checking tool, and — despite the size of
+  the tool surface — no `read_lints`-equivalent diagnostic tool exists;
+  the only "lint" reference anywhere in `tools-wave-11.txt` is a passive
+  labeling parameter on `replace_file_content` ("IDs of lint errors this
+  edit aims to fix... they'll have been given in recent IDE feedback"),
+  which attributes an edit to a lint fix rather than actively checking
+  for one.
+- `check_deploy_status` only confirms a deployment build succeeded — an
+  infrastructure-status check, not a code-correctness one, and is
+  explicitly gated behind an existing `deploy_web_app` call and user
+  request rather than run proactively.
+- No SWE-bench-lineage reproduce/fix/verify echo, no "don't modify the
+  tests" instruction, no bounded-retry cap on fix loops (contrast
+  Cursor's and Devin's 3x caps), no `/review`-style command, no
+  mandatory pre-completion reflection tool (contrast Devin's `<think>`
+  checkpoint) — none of it is present anywhere in these two files.

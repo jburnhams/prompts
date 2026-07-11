@@ -13,21 +13,33 @@ benchmark-lineage workflow template, through mechanical non-LLM
 completion gates, up to a dedicated adversarial verification subagent
 that can't trust the implementer's self-report.
 
-**Methodology note**: nine sources are covered in real depth, plus
+**Methodology note**: twenty sources are covered in real depth, plus
 brief cross-references from four more (SWE-agent, Augment SWE-bench
-Agent, mini-swe-agent, Live-SWE-agent, Jules) whose relevant material
-was already documented elsewhere in this collection during earlier
-research phases. Three sources — Claude Code, Codex CLI, and Microsoft
-Agent Framework — required fresh live-source investigation and turned
-up the richest findings.
+Agent, mini-swe-agent, Live-SWE-agent) whose relevant material was
+already documented elsewhere in this collection during earlier research
+phases. A first pass covered nine sources in depth (Claude Code, Codex
+CLI, and Microsoft Agent Framework required fresh live-source
+investigation and turned up the richest findings); a second pass added
+eleven more — five open-source (Cline, Aider, Copilot Chat, Goose,
+Crush) and six leaked (Cursor, Devin, Windsurf, Warp, Replit, Factory/
+Droid) — all read from local files already in this collection, no live
+fetching needed. That second pass roughly doubled the size of the
+"prompted-only" bucket (§7) and surfaced several genuinely new patterns
+not fitting the original typology at all (§9, §10) — a reminder that
+this doc's own "Absences" section undersells how much is left
+unchecked.
 
 ## Sources covered
 
-SWE-agent, mini-swe-agent, Live-SWE-agent, Augment SWE-bench Agent
-(shared workflow lineage, §1), Roo Code, Claude Code (leaked, via
-`leaked/claude-code/architecture-notes.md`), Codex CLI, OpenCode,
-Gemini CLI, OpenHands, Microsoft Agent Framework (via
+**First pass**: SWE-agent, mini-swe-agent, Live-SWE-agent, Augment
+SWE-bench Agent (shared workflow lineage, §1), Roo Code, Claude Code
+(leaked, via `leaked/claude-code/architecture-notes.md`), Codex CLI,
+OpenCode, Gemini CLI, OpenHands, Microsoft Agent Framework (via
 `codeact-hyperlight/`), Jules (leaked).
+
+**Second pass**: Cline, Aider, Copilot Chat, Goose, Crush, Cursor
+(leaked), Devin (leaked), Windsurf (leaked), Warp (leaked), Replit
+(leaked), Factory/Droid (leaked).
 
 ---
 
@@ -66,6 +78,33 @@ edge cases → (sometimes) run the broader test suite → submit. Every
 source below either matches, extends, or replaces some part of this
 shape.
 
+**The same shape resurfaces independently outside the SWE-bench-harness
+world.** Copilot Chat's `AlternateGPTPrompt` (a GPT-4.1-era variant,
+`defaultAgentInstructions.tsx`) spells out an almost identical loop —
+"Implement the fix incrementally... Test frequently. Run tests after
+each change to verify correctness... Iterate until the root cause is
+fixed and all tests pass... Reflect and validate comprehensively...
+remember there are hidden tests that must also pass before the solution
+is truly complete" — "hidden tests" is functionally the same claim as
+SWE-agent/mini-swe-agent's "I've already taken care of all changes to
+any of the test files... you DON'T have to modify the testing logic."
+Copilot Chat's Grok/xAI-family prompt converges on the same idea from a
+different angle, framed as mandatory rather than descriptive: "After
+any substantive change, run the relevant build/tests/linters
+automatically... Don't end a turn with a broken build if you can fix
+it. If failures occur, iterate up to three targeted fixes." Devin
+independently carries the lineage's most specific single rule
+verbatim in spirit: "never modify the tests themselves, unless your
+task explicitly asks you to... Always first consider that the root
+cause might be in the code you are testing rather than the test
+itself." None of these three share literal prompt text with the four
+SWE-bench-harness sources in the table above — this looks like
+convergent design (the same lesson learned independently by different
+teams) rather than a shared common ancestor, worth distinguishing from
+this collection's confirmed cases of actual shared lineage (e.g. Augment
+SWE-bench Agent and SWE-agent both forking Anthropic's reference
+implementation, per `augment-swebench-agent/README.md`).
+
 ## 2. Deterministic, non-LLM completion gates
 
 Mechanisms that block a "done" signal on a structural precondition —
@@ -81,6 +120,29 @@ just not report a todo as incomplete, or ignore SWE-agent's checklist
 text), and neither actually inspects whether the *changes* are correct
 — they check procedural completeness (did you follow the checklist; are
 all todos marked done), not correctness.
+
+**A useful negative comparison**: Cline's `attempt_completion` tool
+looks superficially similar — its description says the tool "CANNOT be
+used until you've confirmed from the user that any previous tool uses
+were successful" and instructs the model to ask itself in `<thinking>`
+tags whether that's true before calling it. But this is pure prompting,
+not a code-level gate like Roo Code's — no structural check in
+`system.ts`/`responses.ts` was found blocking the call, and the
+"success" being confirmed is *tool-call success* (did the file write
+go through), not code correctness. Same surface shape as §2, weaker
+enforcement than either row in the table above.
+
+**Factory (Droid)'s leaked prompt** describes a checklist-shaped gate
+in the same MANDATORY/BLOCKING register as this table, but ties it to
+an external, human-visible artifact instead of an internal tool call:
+"Create a non-draft PR ONLY when: Dependencies successfully installed...
+All code quality checks green with evidence; Clean worktree except
+intended changes. If any item is missing, do NOT create a non-draft
+PR." Only the system prompt was captured for this source, so — unlike
+SWE-agent's and Roo Code's confirmed code-level implementations —
+whether anything actually enforces this at the code level is unknown;
+see §10 for why this is filed separately as a "prompt-simulated" gate
+rather than added to the table above.
 
 ## 3. Separate-LLM-call judge/reviewer patterns
 
@@ -195,6 +257,58 @@ code-level gate found backing it up.
   ("without asking"), plus a rhetorical self-check ("what would I want
   to verify before calling this done?") — softer than the ant-gated
   verification subagent, but present in ordinary builds.
+- **Crush**: the densest §7 instance by volume — testing/verification
+  language recurs at nearly every structural checkpoint of
+  `coder.md.tpl` (a top-level "TEST AFTER CHANGES" critical rule, a
+  per-edit "after each change: run tests" workflow step, a separate
+  "Before finishing" checklist, a dedicated `<task_completion>` block,
+  and a `<testing>` block that's the one place in this entire
+  collection using the literal term "self-verification" — "write unit
+  tests, add output logs, or use debug statements to verify your
+  solutions"). No code-level enforcement confirmed in these prompt-only
+  files; see `crush/README.md` for the full breakdown.
+- **Cursor** gets visibly more rigorous release over release rather
+  than staying flat, useful as a small case study in how one product's
+  §7 instructions evolve: earliest versions have only a bounded
+  linter-fix cap (3 tries, then ask); by the 2025-09-03 (GPT-5) and CLI
+  (2025-08-07) versions it's grown an unconditional "ensure a green
+  test/build run" requirement before closing a goal, plus the
+  retroactive self-correction clause covered in §10. The "green run"
+  phrasing is a second data point (alongside Claude Code's leaked
+  "never fake a green result") for that idiom circulating across
+  vendors rather than being one company's internal phrasing.
+- **Copilot Chat is really N different policies, not one** — prompts
+  are selected per model family, so the strength of self-verification
+  language a session gets depends entirely on which model is backing
+  it: the Anthropic/Claude-family prompt and the GLM prompt are thin
+  (one line each, no test-running specifics); the base `GenericEditingTips`
+  shared across several families adds a bounded 3-try-then-ask pattern
+  keyed to linter diagnostics surfaced automatically in tool output;
+  the OpenAI GPT-5.1/5.2/5.4 prompts carry text close to verbatim with
+  Codex CLI's "Validating your work" section (both are OpenAI-authored,
+  plausibly sharing an internal style guide — a cross-product lineage
+  worth flagging on its own); an experimental `gpt54LargePrompt.tsx`
+  variant formalizes a hypothesis-before-edit / validate-after-edit
+  loop more granular than end-of-task verification but short of Jules's
+  true per-write mandate; and the Gemini-family prompt has zero
+  verification language at all (confirmed via full-file grep) — the
+  same absence found independently in Gemini CLI itself, a different
+  product from the same model family. See §10 for the richest single
+  instance (`vscModelPrompts.tsx`'s "iron law" block).
+- **Devin**: see §10 for its mandatory-checkpoint-tool variant — the
+  verification content itself ("Make sure you completed all
+  verification steps... such as linting and/or testing") is ordinary
+  §7 prose; what's structurally distinctive is that a specific tool
+  call is required at that point in the task.
+- **Cline**: one of the thinner instances surveyed — no TESTING/
+  VALIDATION section, no bounded-retry pattern, no "hidden tests"
+  language anywhere in any of its three system-prompt variants. What
+  exists is narrower: `attempt_completion`'s self-report gate (§2 above,
+  a procedural "did the last tool call succeed" check, not a
+  correctness check) and an optional, browser-only verification path —
+  "if you want to test your work, you might use browser_action to
+  launch the site... [and check] screenshots" — conditional on browser
+  support and phrased as optional, not mandatory.
 
 **The critical caveat for Claude Code specifically**: nearly every
 verification mechanism this research pass found for Claude Code —
@@ -230,6 +344,106 @@ drill-down noted in the root README, not yet its own doc), not a check
 on *completed* work. Worth naming explicitly since the file name alone
 would suggest otherwise.
 
+## 9. Verification authority handed to the user, not the model
+
+Two leaked sources place the actual accept/reject decision outside the
+model entirely — a third pole beyond "self-report" (§7) and "separate
+LLM judge" (§3), and structurally distinct from either.
+
+- **Replit's "feedback tools"** — `web_application_feedback_tool`,
+  `shell_command_application_feedback_tool`, `vnc_window_application_feedback`
+  — all follow the same shape: the agent runs/observes the app, captures
+  objective evidence (a screenshot, logs, command output) automatically,
+  then asks the user one targeted question and *waits*. Completion
+  itself is explicitly deferred: `report_progress`'s description reads
+  "Call this function once the user explicitly confirms that a major
+  feature or task is complete. Do not call it without the user's
+  confirmation." This is neither a deterministic gate (nothing blocks
+  the tool from running; it just displays results) nor an LLM judge
+  (the judge is a human) — call it **automated evidence-gathering paired
+  with a mandatory human-confirmation gate**. One tool in the same
+  family, `suggest_deploy`, undercuts its own rigor slightly: "Use this
+  tool once you've validated that the project works as expected...
+  there is no need to do any follow up steps or verification" —
+  "you've validated" is asserted by the model, not mechanically checked
+  by the tool that follows it.
+- **Warp** inverts the usual §7 shape rather than adding a new one:
+  where every other prompted-only source *instructs* the agent to
+  verify on its own initiative, Warp's "Task completion" section makes
+  verification something the agent must ask permission to even attempt:
+  "don't automatically assume the user wants to run the build right
+  after finishing an initial coding task... it is also acceptable to
+  ask the user if they'd like to lint or format the code." This sits in
+  direct tension with the same prompt's general instruction to "bias
+  toward action... don't ask for confirmation first" — verification is
+  carved out as the one deliberate exception to an otherwise
+  action-biased default.
+
+Both differ from §5's `Stop` hooks in the same way: a hook is a
+mechanism the *scaffold* exposes and the *user* configures once,
+running the same way every time; these two are per-task, conversational,
+and require the user's live attention at exactly the moment the agent
+would otherwise declare victory.
+
+## 10. Prompt-simulated gates — borrowing the language of enforcement without the code
+
+A pattern that only became visible once enough §7 (prompted-only)
+sources were compared side by side: several prompts use categorical,
+checklist-style, "MANDATORY"/"BLOCKING"/"no exceptions" language that
+*reads* like §2's deterministic gates, while remaining — as far as the
+captured system-prompt text shows — pure natural-language instruction
+with no confirmed code-level enforcement. Worth naming as its own
+pattern because the rhetorical form is doing real work (it's a stronger
+ask of the model than an ordinary "please verify your work" sentence)
+even though the underlying mechanism is identical to every other §7
+entry.
+
+- **Copilot Chat's `vscModelPrompts.tsx` (variants C and D only —
+  confirmed absent from variants A and B in the same file, a deliberate
+  per-model-variant choice)** carries the most elaborate instance found
+  in this whole collection, a named `verification-before-completion`
+  principle: "Iron law: NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION
+  EVIDENCE... Gate (must complete all, in order): 1) identify the exact
+  command that proves the claim; 2) run the FULL command now... 3) read
+  full output, check exit code, count failures; 4) if output confirms
+  success, state the claim WITH evidence... 5) only then express
+  satisfaction... Rationalizations to reject: 'should work now', 'I'm
+  confident', 'just this once'... No exceptions: different words do not
+  bypass the rule." It even numbers its own steps as a "Gate" — the
+  vocabulary of §2, none of the code.
+- **Factory (Droid)'s PR draft/non-draft gate** (§2 above) belongs here
+  too: "CODE QUALITY VALIDATION (MANDATORY, BLOCKING)" is checklist
+  language tied to an external artifact (PR state) rather than an
+  internal tool call, but nothing in the captured prompt confirms
+  anything actually enforces it in code.
+- **Cursor's 2025-09-03 (GPT-5) prompt** adds a temporally distinct
+  variant — a self-correction obligation applied *retroactively*, one
+  turn late, rather than a pre-completion gate: "If you report code
+  work as done without a successful test/build run, self-correct next
+  turn by running and fixing first." This doesn't gate anything before
+  the false claim happens; it only asks the model to notice and fix it
+  after the fact — a genuinely different temporal shape from every other
+  mechanism in this document.
+- **Devin's mandatory-checkpoint variant** sits between a rhetorical
+  gate and a real one: its `<think>` scratchpad tool has a *required*
+  (not merely suggested) trigger before completion — "Before reporting
+  completion to the user. You must critically ex[a]mine your work...
+  Make sure you completed all verification steps that were expected of
+  you, such as linting and/or testing." What's actually enforced (as
+  far as the leaked prompt shows) is that the `<think>` tool gets
+  called at that point — a real, nameable checkpoint — not that its
+  contents constitute a genuine check; the verification itself is still
+  unchecked prose inside an unchecked tool call.
+
+**The common thread**: all four escalate the *rhetoric* of §7 without
+crossing into §2's territory (a structural precondition) or §5's (a
+user-configured hook actually wired into the agent loop). Whether the
+escalation changes model behavior in practice is an empirical question
+this doc can't answer from prompt text alone — but it's a measurably
+different level of prompt-engineering investment than a source that
+just says "please test your changes," and worth tracking as its own
+axis of comparison.
+
 ## Absences
 
 - **OpenCode**: no hidden self-review agent (confirmed absence — the
@@ -241,6 +455,36 @@ would suggest otherwise.
 - **Gemini CLI**: confirmed absence — no reviewer/verifier agent among
   the built-in agent set, no self-review/verify-before-finishing
   language found anywhere searched.
+- **Goose**: the cleanest confirmed absence in the whole survey — every
+  one of the folder's ten prompt files was read in full and a targeted
+  keyword search across all of them turns up nothing. This is stronger
+  than "prompted-only with no enforcement" (§7): those sources at least
+  *instruct* verification; Goose's captured prompts don't instruct it
+  at all. The sub-agent prompt's only completion-adjacent line is a
+  reporting instruction ("Clearly indicate when your task is complete"),
+  never a checking instruction. Standard caveat applies: this
+  collection holds prompt text only, so it's possible test-running
+  logic lives in Goose's surrounding Rust orchestration code, not
+  captured here.
+- **Windsurf**: confirmed absence, and a striking contrast given this
+  is by a wide margin the richest tool surface in the whole collection
+  (30 tools, full browser automation, deployment integration). The
+  closest thing to relevant content is debugging advice ("add test
+  functions and statements to isolate the problem") — diagnostic, not
+  a check that a fix is correct — and an instruction to *demonstrate*
+  a change by running it for the user, not to verify it worked. No
+  test-runner tool, no lint-checking tool (only a passive labeling
+  parameter on the edit tool), no bounded-retry cap, no review command.
+- **Aider**: not a confirmed absence, unlike the two above — a real
+  research gap worth distinguishing from a checked-and-empty result.
+  All four local prompt files return zero hits for test/lint/verify/
+  build language, but `base_prompts.py` defines empty hook points
+  (`shell_cmd_prompt`, `shell_cmd_reminder`) meant to be populated by a
+  separate `aider/coders/shell.py` module — not fetched into this
+  collection — that per Aider's public documentation is where its real
+  `--auto-test`/`--lint-cmd` feature lives. The honest claim here is
+  "not found in the files this collection captured," not "Aider has no
+  self-verification."
 - **Every source outside the ones listed above** — the rest of this
   collection hasn't been checked for self-verification mechanisms at
   all. Given how often "not checked" has turned out to mean "actually
@@ -307,4 +551,40 @@ would suggest otherwise.
   mainly in whether they extend it (Augment's added planning step and
   full-test-suite run) or leave it minimal. Everything else in this
   document is either an elaboration on top of that baseline or a
-  completely different mechanism layered alongside it.
+  completely different mechanism layered alongside it. The second
+  research pass found the same underlying lesson ("verify before
+  claiming done," "don't touch the tests") converging independently in
+  general-purpose IDE assistants (Copilot Chat's `AlternateGPTPrompt`
+  and Grok prompt, Devin) that share no lineage with the four
+  SWE-bench-harness sources — this looks like the field re-deriving the
+  same idea repeatedly, not one convention spreading by copying.
+- **Within the "prompted-only" bucket (§7) there is a whole second
+  spectrum, from nothing to elaborate rhetoric, that a binary
+  has-it/doesn't-have-it framing would flatten.** At one end: Goose and
+  Windsurf have no verification instruction of any kind, despite Windsurf
+  having the richest tool surface surveyed anywhere in this collection —
+  more tooling doesn't imply more verification discipline. In the
+  middle: thin, single-line instructions (Cline, Copilot Chat's
+  Anthropic and GLM variants). At the dense end: Crush repeats
+  verification language at nearly every structural checkpoint of its
+  prompt, and Copilot Chat's `vscModelPrompts.tsx` (§10) escalates to
+  numbered "Gate," "No exceptions" language that borrows §2's rhetorical
+  form while remaining, as far as any of this collection's captured
+  prompts show, unenforced by code. None of that escalation moves a
+  source out of §7 — it's still purely instructional — but treating
+  "has prompted verification text" as one undifferentiated category
+  would miss a real and measurable difference in how much a vendor
+  invested in the wording.
+- **A third pole exists beyond "the model self-reports" and "a separate
+  LLM judges"**: handing the accept/reject call to the human user
+  instead (§9). Replit's feedback tools gather evidence mechanically
+  (screenshots, logs, command output) and then require the user to
+  answer a direct question before the agent proceeds — neither a
+  deterministic gate nor an LLM judge, but a third architecture with
+  its own tradeoff: it can't be fooled by either a dishonest model
+  self-report or a manipulable judge call, at the cost of requiring the
+  user's live attention at exactly the moment automation is usually
+  most valuable. Warp's inversion (verification requires *asking*
+  before running, rather than running and then asking) shows the same
+  human-authority instinct taken to an extreme where even attempting
+  the check isn't the agent's default move.

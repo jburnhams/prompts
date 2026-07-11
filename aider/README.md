@@ -49,3 +49,31 @@ invokes.
   agent-driven exploration) is the sharpest architectural outlier
   in this collection's coding-agent set — everything else assumes the
   model can freely explore and pick its own files.
+
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into. **Not found in any local
+file, but flagged as a research gap rather than a confirmed absence.**
+`grep -rn -i "test\|lint\|verify\|build"` across all four captured
+prompt classes (`base_prompts.py`, `editblock_prompts.py`,
+`architect_prompts.py`, `ask_prompts.py` — 313 lines total) returns
+zero hits, and `architect_prompts.py` describes no review/verification
+split between the architect (plans changes) and editor (applies them)
+roles — the architect only writes instructions for the editor, never
+checks the editor's output.
+
+The likely reason is visible in the same `shell_cmd_prompt`/
+`shell_cmd_reminder` hook points noted above (Tool surface): both are
+empty strings in `base_prompts.py`, populated only by
+`aider/coders/shell.py`, which is **not present in this collection**.
+Per Aider's own public documentation, that's where its real
+`--auto-test`/`--lint-cmd` feature lives — Aider is known to support
+auto-running a configured test/lint command after edits and feeding
+failures back to the model. The honest claim from what's captured here
+is "no verification language found in the files this collection
+fetched," not "Aider has no self-verification" — unlike Goose and
+Windsurf elsewhere in this doc, where every relevant file was
+confirmed read and still came up empty, this negative result is a
+byproduct of which files were collected, not a targeted search that
+came up empty.

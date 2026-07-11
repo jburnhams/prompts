@@ -86,3 +86,37 @@ orchestrator/sub-agent relationship or result-passing-back protocol at
 all. Contrast this directly with Claude Code's `Task` tool (see
 `leaked/claude-code/README.md`), which spawns a genuinely separate agent
 that returns a report *to* the still-running orchestrator.
+
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into. One of the thinner §7
+(prompted-only) instances surveyed — no TESTING/VALIDATION section, no
+bounded-retry pattern, no "hidden tests" language anywhere across any
+of the three system-prompt variants (`system.ts`, `model_prompts/
+claude4.ts`, `model_prompts/claude4-experimental.ts`).
+
+- **`attempt_completion`'s gate is procedural, not a correctness
+  check**: its description says the tool "CANNOT be used until you've
+  confirmed from the user that any previous tool uses were successful,"
+  and instructs the model to ask itself in `<thinking>` tags whether
+  that's true before calling it — but the "success" being confirmed is
+  whether the last tool call went through (did the file write actually
+  happen), not whether the resulting code is correct. Entirely
+  prompted; no structural check in `system.ts`/`responses.ts` was found
+  blocking the call the way Roo Code's `AttemptCompletionTool.ts` does.
+- **Verification is otherwise folded into the browser tool, and only
+  optionally**: "This tool may be useful at key stages of web
+  development tasks... to verify the result of your work. You can
+  analyze the provided screenshots to ensure correct rendering..." —
+  conditional on browser support (`supportsBrowserUse`) and phrased as
+  something the model might choose to do ("if you want to test your
+  work"), not a mandate.
+- **A passive, automatic linter-surfacing channel exists but isn't a
+  gate**: `responses.ts`'s post-edit tool-result templates
+  (`fileEditWithUserChanges`/`fileEditWithoutUserChanges`) both append
+  a `newProblemsMessage` — the system prompt tells the model the tool
+  result "may include... Linter errors that may have arisen due to the
+  changes you made, which you'll need to address." Diagnostics are
+  surfaced automatically after every edit, but nothing forces the model
+  to act on them before declaring the task done.

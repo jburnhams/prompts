@@ -167,3 +167,41 @@ comparison this feeds into.
   reverse a list in python?" → "Python list reversal"), rather than
   format rules stated abstractly.
 - No trigger/model information captured beyond the prompt text itself.
+
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into. Goose is a confirmed
+**absence**, and an unusually clean one: every `.md` file in this
+folder was read in full, and a targeted search across all of them for
+test/verify/lint/build/check/confirm language turns up nothing tied to
+checking the agent's own work.
+
+- `system.md`, the main system prompt, names no built-in tools at all
+  (tools come from dynamically-loaded extensions) and its only
+  "Response Guidelines" line is "Use Markdown formatting for all
+  responses" — no verification instruction of any kind.
+- `subagent_system.md`'s "Communication Guidelines" include only a
+  reporting instruction — "Clearly indicate when your task is
+  complete" — never an instruction to *check* the work before
+  announcing it done. Contrast directly with Jules's per-action
+  verification gate (§6 of the synthesis doc): Goose's sub-agent is
+  told to announce completion, not to confirm it.
+- `apps_create.md`/`apps_iterate.md`, despite being literal
+  code-generation prompts, list only output-shape requirements
+  ("self-contained," "responsive," "appropriate error handling" as a
+  *feature* of the generated app) and end in a mandatory tool call —
+  no instruction to test or validate that the generated app actually
+  works.
+- `plan.md`'s planner mode stops at producing a plan for an executor
+  agent and never sees the execution result, so there's no
+  planner-side check either.
+- This is stronger than the "prompted-only, no enforcement" bucket
+  (§7) elsewhere in the doc — those sources at least *instruct*
+  verification without enforcing it; Goose's captured prompts don't
+  instruct it at all. Same caveat as this repo's compaction-trigger
+  note applies here too: this collection holds prompt text only, so
+  it's possible test-running or review logic lives in Goose's
+  surrounding Rust orchestration code, not captured in this folder —
+  the finding is "absent from every captured prompt," not "absent from
+  the product."
