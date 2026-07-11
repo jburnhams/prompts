@@ -18,12 +18,16 @@ the tool set can grow beyond what shipped on day one.
 
 ## Sources covered
 
-The 21 sources in this collection with a dedicated "## Tool surface"
+The 22 sources in this collection with a dedicated "## Tool surface"
 section: OpenHands, OpenCode, Codex CLI, Cline, Roo Code, Aider,
 SWE-agent, Augment SWE-bench Agent, mini-swe-agent, Live-SWE-agent,
 Composio SWE-Kit, CodeAct+Hyperlight, Pi, Goose, Crush, Bolt.new, Gemini
-CLI, GitHub Copilot Chat, plus the three leaked closed-source extractions
-(Claude Code, Cursor, Windsurf). The broader `leaked/` set (Manus, Devin,
+CLI, GitHub Copilot Chat, plus the four leaked closed-source extractions
+(Claude Code, Cursor, Windsurf, Google Antigravity — the last notable
+for a four-tool async terminal stack more granular than any other
+source surveyed, and for several tool names appearing verbatim in
+Windsurf's own list, a strong signal of shared Windsurf-derived
+infrastructure post-acquisition). The broader `leaked/` set (Manus, Devin,
 Replit, v0, Same.dev, Trae, Emergent, Traycer, Amp, etc.) and
 `github-pr-bots/` aren't individually profiled here — see each folder's
 own README for what tool JSON is available if you want to extend this.

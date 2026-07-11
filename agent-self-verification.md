@@ -41,6 +41,10 @@ OpenCode, Gemini CLI, OpenHands, Microsoft Agent Framework (via
 (leaked), Devin (leaked), Windsurf (leaked), Warp (leaked), Replit
 (leaked), Factory/Droid (leaked).
 
+**Third pass**: Google Antigravity (leaked) — see §10 for a
+severity-gated retry policy and a persistent "artifact-as-verification-
+record" pattern, both candidate additions to the typology below.
+
 ---
 
 ## 1. The shared SWE-bench-lineage workflow template
@@ -443,6 +447,44 @@ this doc can't answer from prompt text alone — but it's a measurably
 different level of prompt-engineering investment than a source that
 just says "please test your changes," and worth tracking as its own
 axis of comparison.
+
+## 11. Two more candidate patterns from Google Antigravity
+
+Two findings that don't cleanly fit any of §1–§10, surfaced during a
+third research pass on this leaked source (`planning-mode.txt` and
+`CLI Prompt.md`, which share the same template near-verbatim).
+
+- **A severity-gated retry/escalation policy tied to a task-mode state
+  machine**: "If you find minor issues or bugs during testing, stay in
+  the current TaskName, switch back to EXECUTION mode... Only create a
+  new TaskName if verification reveals fundamental design flaws that
+  require rethinking your entire approach — in that case, return to
+  PLANNING mode." Not §1's flat reproduce-fix-verify loop (no
+  reproduce-script mechanic, no explicit "consider edge cases" step),
+  not §2's deterministic gate, not §3's separate-LLM judge — a
+  two-tier branch on *what kind* of failure was found, each routed to
+  a different recovery mode (patch-in-place vs. restart planning).
+  Every retry-on-failure mechanism elsewhere in this doc (SWE-agent's
+  `ScoreRetryLoop`, Augment's ensembler) treats all failures the same;
+  this is the only source that classifies the failure itself before
+  deciding how to recover from it.
+- **"Artifact-as-verification-record"**: a required, persistent
+  Markdown file (a "Walkthrough," `<appDataDir>/brain/
+  <conversation-id>/walkthrough.md`) documenting "Changes made / What
+  was tested / Validation results," with embedded screenshots/
+  recordings as evidence, explicitly *updated* rather than recreated
+  on related follow-up work. The closest existing entry is Jules's
+  Playwright-screenshot-as-proof mechanism (§6/leaked/jules/README.md)
+  — both tie verification to a generated artifact rather than a text
+  assertion — but Jules's screenshot is submitted as a single
+  completion-time proof, while Antigravity's Walkthrough is a durable,
+  cumulative, cross-session document that persists and gets amended,
+  closer to a lab notebook than a one-shot piece of evidence. This
+  whole mechanism is scoped to complex/planned work only — trivial,
+  investigatory, or minor-follow-up edits are explicitly told to skip
+  it entirely ("you continue your work WITHOUT making a plan or
+  requesting user review"), so it coexists with, rather than replaces,
+  an ordinary no-verification path for small changes.
 
 ## Absences
 

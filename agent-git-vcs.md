@@ -387,11 +387,18 @@ findings, not just gaps in what was checked.
   genuinely near-zero git/VCS content in either captured file — the
   cleanest "not found" case in this survey for a source with strong
   public feature claims to the contrary.
-- **Cursor, Windsurf, Warp**: all three have real, substantial tool
-  surfaces and permission architectures documented elsewhere in this
-  collection, yet essentially no git-specific policy beyond what falls
-  out of their general command-approval mechanisms — a genuine,
-  confirmed thinness, not an oversight in this research pass.
+- **Cursor, Windsurf, Warp, Google Antigravity**: all four have real,
+  substantial tool surfaces and permission architectures documented
+  elsewhere in this collection, yet essentially no git-specific policy
+  beyond what falls out of their general command-approval mechanisms —
+  a genuine, confirmed thinness, not an oversight in this research
+  pass. Antigravity's case is the most pointed: its IDE prompt's full
+  23-tool schema has zero git-specific tools among them, and its own
+  "checkpoint" references turn out to mean a conversation/session
+  save-point, not a git-based code checkpoint — worth explicitly
+  distinguishing from this doc's §3 (OpenCode's and Gemini CLI's
+  actual shadow-git checkpoint systems), since the terminology overlap
+  invites exactly that confusion.
 - **SWE-agent, mini-swe-agent's base config, Augment SWE-bench Agent**:
   no checkpoint, no worktree, no branch rules, no PR/push workflow —
   by design, not by omission. All three submit a diff for external
