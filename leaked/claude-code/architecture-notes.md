@@ -512,6 +512,82 @@ own memory.
   terminal-capture tool, and others whose purpose is inferred from
   naming only.
 
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../../agent-self-verification.md) for
+the cross-source comparison this feeds into. **Read the caveat below
+before the findings** — it changes how to interpret nearly everything
+in this section.
+
+**The critical caveat: most of what's interesting here is an
+internal-only experiment, not shipped behavior.** Almost every
+mechanism below is gated behind `process.env.USER_TYPE === 'ant'` (an
+Anthropic-employee-only flag) or a GrowthBook flag explicitly commented
+"3P default: false — ant-only A/B" — meaning it's dead-code-eliminated
+out of ordinary external builds. What's confirmed is Anthropic testing
+verification mechanisms internally, not necessarily what ships to
+regular Claude Code users. One mechanism (Stop hooks, below) is the
+exception — genuinely general, not ant-gated, consistent with Claude
+Code's publicly documented hook system.
+
+- **A built-in adversarial "verification" subagent**
+  (`src/tools/AgentTool/built-in/verificationAgent.ts`) — the single
+  most distinctive finding. A structurally separate LLM instance, no
+  file-write access, whose entire prompt is built around **not trusting
+  the implementer's own self-report**: it must gather command-output
+  evidence for every check rather than accept claims, run the build,
+  run the full test suite ("failing tests are an automatic FAIL"), run
+  linters/type-checkers, apply type-specific strategies
+  (frontend/backend/CLI/infra/migration), and perform mandatory
+  "adversarial probes" (concurrency, boundary values, idempotency)
+  before issuing a **PASS/FAIL/PARTIAL verdict the implementer cannot
+  self-assign**. Internal-only, per the caveat above.
+- **`VerifyPlanExecutionTool` is a stub**, but the wiring around it is
+  real: gated behind `CLAUDE_CODE_VERIFY_PLAN=true` plus the ant-only
+  flag, model-invoked (not automatically triggered by `ExitPlanMode`),
+  with a periodic nudge — every 10 human turns since a plan was
+  approved, if verification hasn't started, a system-reminder is
+  injected: "You have completed implementing the plan. Please call the
+  'VerifyPlanExecution' tool directly (NOT the Task tool or an agent)."
+  The nudge's own trigger logic is a naive text-match (checks todo text
+  for the substring "verif"), not diff-aware — no automated mechanism
+  compares the actual code diff against the plan; that's left entirely
+  to whatever the verification subagent itself does when it runs.
+- **A quantified, empirically-motivated problem statement, disclosed in
+  the leak's own code comments**: two ant-gated system-prompt lines
+  ("verify it actually works before reporting complete"; "never claim
+  'all tests pass' when output shows failures... to manufacture a green
+  result") are annotated with an internal measurement — "False-claims
+  mitigation for Capybara v8 (29-30% FC rate vs v4's 16.7%)" — i.e. an
+  internal model version was observed falsely claiming task completion
+  roughly 3 times in 10, and this specific mitigation was built and put
+  under A/B test in response. Rare, concrete evidence (rather than
+  speculation) that false-completion-claiming is a real, measured
+  failure mode significant enough to drive dedicated engineering.
+- **The one genuinely shipped, general mechanism: `Stop` hooks can
+  force continuation.** Not ant-gated. A 26-member `HookEvent` union
+  includes `Stop`, `StopFailure`, `SubagentStop`, `PostToolUse`,
+  `PostToolUseFailure`, `TaskCompleted`, `TeammateIdle` alongside the
+  already-documented `PreCompact`/`PostCompact`. If a user-configured
+  `Stop` hook returns `preventContinuation: true`, the agent loop does
+  **not** end — it keeps running with the hook's stated reason surfaced
+  as a message. This is the concrete mechanism behind "wire up `npm
+  test` on Stop and block the agent from finishing if it fails" — a
+  real, user-configurable verification gate, just one the user sets up
+  rather than the agent choosing to use.
+- **A softer, genuinely-shipped "autonomy" framing**: a non-ant-gated
+  "Autonomous work" section (gated only by a real feature flag) tells
+  the model it can "run tests, check types, run linters — all without
+  asking" (a permission statement, not a mandate) and poses a rhetorical
+  self-check: "what would I want to verify before calling this done?" —
+  softer than the verification subagent's hard PASS/FAIL gate, but
+  present in ordinary builds.
+- **`SyntheticOutputTool` is real infrastructure, not a stub** — Ajv
+  JSON-schema validation of arbitrary agent output, used as supporting
+  plumbing for both agent hooks and "background verification" broadly;
+  it's a building block the verification machinery uses, not itself a
+  correctness-checker.
+
 ## Why this is worth having alongside the prompt-only extraction
 
 The two leaks corroborate each other on the parts that overlap (system

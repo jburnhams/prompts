@@ -265,3 +265,24 @@ cross-source comparison this feeds into.
   family), narration instructions come from whichever prompt file is
   active — e.g. `beast.txt`'s "Always tell the user what you are going
   to do before making a tool call with a single concise sentence."
+
+## Self-verification and testing
+
+Sourced from the live upstream repo, not files stored in this folder —
+see [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into.
+
+- **No hidden self-review agent** — confirmed absence: the complete
+  built-in agent list is `build`/`plan`/`general`/`explore`/
+  `compaction`/`title`/`summary` (the last three already documented
+  above); no "review"/"verifier" agent sits alongside them.
+- **A user-invoked `/review` command exists, but it's shaped like
+  PR-review, not autonomous self-checking**: `command/template/review.txt`
+  reviews `git diff` + `git diff --cached` + untracked files by
+  default (so it *can* be pointed at the agent's own uncommitted work),
+  explicitly framed as a "code reviewer" persona examining bugs,
+  structure, performance, and behavior changes, instructed to say "I'm
+  not sure" rather than invent issues. Requires explicit user
+  invocation after the fact — nothing auto-chains it after a normal
+  edit turn, the same "review-as-a-general-tool, not a completion gate"
+  pattern found in Codex's `/review`/`ReviewTask`.

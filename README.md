@@ -79,6 +79,27 @@ unusually layered raw/summary/effort reasoning-visibility controls, and
 the recurring but easy-to-conflate distinction between native
 model-API reasoning blocks and ordinary prompted narration text.
 
+**[→ `agent-self-verification.md`](./agent-self-verification.md)** — a
+further drill-down on how (and whether) a scaffold checks its own work
+before calling a task done, distinct from `code-review-approaches.md`
+(which is about reviewing *someone else's* PR). Covers: the shared
+"reproduce bug → fix → verify → edge cases → submit" workflow template
+running through nearly every SWE-bench-lineage agent (SWE-agent,
+mini-swe-agent, Live-SWE-agent, Augment SWE-bench Agent), deterministic
+non-LLM completion gates (Roo Code's `AttemptCompletionTool`, SWE-agent's
+templated `review_on_submit_m`), separate-LLM-call judge/reviewer
+patterns and what happens on a failed verdict (SWE-agent's
+`ScoreRetryLoop`/`ChooserRetryLoop`, Augment's o1 ensembler, Microsoft
+Agent Framework's `with_judge()` nudge-not-restart pattern), the
+"review-as-a-general-tool" conflation trap (Codex's `ReviewTask` and
+OpenCode's `/review` command are general diff-review utilities, not
+self-checks), hook-based user-configured gates (Claude Code's `Stop`
+hooks — the one such mechanism actually shipped externally, alongside a
+leaked internal-only adversarial verification subagent), and Jules's
+per-action mandatory verification, hidden pre-commit tool, and
+Playwright-screenshot-as-proof frontend verification — the most
+granular self-review discipline found anywhere in this collection.
+
 ### Other candidate drill-downs (not started)
 
 Same four-axis pattern as the docs above — system prompts,
@@ -93,16 +114,6 @@ order:
   with an LLM fast/slow classifier, OpenCode's permission rulesets,
   Gemini CLI's TOML policy engine, Roo Code's approval flow) but never
   pulled together as its own axis.
-- **Testing/verification & self-review loops** — the "reproduce bug →
-  fix → verify → edge cases → submit" workflow template shared across
-  nearly every SWE-bench-lineage agent, plus review-before-submit
-  patterns (SWE-agent's actual reviewer/chooser LLM calls, Augment's
-  ensembler, Codex's own review pass, and — the richest single example
-  found so far — Jules's per-action mandatory verification, hidden
-  pre-commit tool, and Playwright-screenshot-as-proof frontend
-  verification; see `leaked/jules/README.md`). Distinct from
-  `code-review-approaches.md`, which is about reviewing *someone
-  else's* PR — this is an agent checking its own work.
 - **Git/VCS interaction mechanics** — commit message conventions,
   checkpoint/undo systems, worktree isolation, branch-management
   rules.

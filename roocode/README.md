@@ -170,3 +170,23 @@ field anywhere**. The webview's task-history list renders straight from
 this schema, so what looks like a "task list" is really just the raw
 task text, not an AI-generated title. Same design answer as Cline: skip
 the extra LLM call entirely.
+
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into.
+
+**No review-specific mode, custom instructions, or LLM-judge mechanism
+found** — checked all five built-in modes (architect/code/ask/debug/
+orchestrator) and the shared objective/rules prompt sections; Debug
+mode's closest instruction ("Explicitly ask the user to confirm the
+diagnosis before fixing the problem") is human-in-the-loop diagnosis
+confirmation, not self-review of completed work. **What does exist is a
+purely mechanical, non-LLM completion gate**: `AttemptCompletionTool.ts`
+blocks the `attempt_completion` call outright if a tool failed earlier
+in the same turn, and — behind a `preventCompletionWithOpenTodos`
+setting — blocks it if any todo item isn't marked `"completed"`,
+returning a tool error that forces the agent to keep working rather
+than finish. No model judgment involved; a structural precondition
+check on the completion tool itself, comparable in spirit to (but far
+simpler than) SWE-agent's `review_on_submit_m` re-prompt gate.

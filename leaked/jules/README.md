@@ -100,6 +100,11 @@ externally.
 
 ## Self-review & verification
 
+See [`agent-self-verification.md`](../../agent-self-verification.md)
+for the cross-source comparison this feeds into — Jules's per-action
+mandatory verification is the strongest example there of gating
+correctness at every step rather than only at submission.
+
 The most distinctive part of this source, and the reason it's worth
 adding to this collection even on thin provenance: Jules pushes
 verification much further than a single "review before submit" step —

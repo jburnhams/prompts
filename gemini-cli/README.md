@@ -245,3 +245,19 @@ cross-source comparison this feeds into.
   silence... a concise, one-sentence explanation of your intent...
   before executing tool calls" plus "No Chitchat" — ordinary system-prompt
   rules, unrelated to the native `thinkingConfig` machinery above.
+
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into.
+
+**Confirmed absence, beyond what's already documented** (plan mode,
+the task-tracker family): no reviewer/verifier agent among the
+confirmed built-in agent set (`codebase-investigator`/
+`generalist-agent`/`cli-help-agent`/`skill-extraction-agent`/
+`browser`), and a targeted search for self-review/self-critique/
+"verify your"/"before finishing" language returned nothing relevant —
+the closest matches were unrelated `PREVIEW_GEMINI_*` model-name
+constants and human-facing review flows (commit-message review
+guidance, a `/memory inbox` human-approval step for auto-extracted
+memory patches) rather than the agent checking its own completed work.

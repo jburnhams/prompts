@@ -226,3 +226,31 @@ cross-source comparison this feeds into.
   `max_size=240`/`keep_first=2`, but the SDK's actual shipped preset
   overrides this to `max_size=80`/`keep_first=4` for both the top-level
   agent and any sub-agent that doesn't specify its own condenser.
+
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into.
+
+- **Confirmed at the prompt level** (`system_prompt.j2`, stored in this
+  folder): a numbered "TESTING"/"VERIFICATION" pair of rules — create
+  tests to verify issues before implementing fixes, consider
+  test-driven development for new features, don't write tests for
+  non-functional changes, ask the user before investing in test
+  infrastructure that doesn't exist, and "test your implementation
+  thoroughly, including edge cases" if the environment supports it.
+  Purely instructional — no code-level enforcement confirmed for this
+  layer.
+- **No dedicated review/verification sub-agent in the current SDK** —
+  confirmed absence: the complete built-in sub-agent set is exactly
+  `general-purpose`/`code-explorer`/`bash-runner`/`web-researcher`
+  (already documented in "Sub-agents" above), no fifth
+  "reviewer"/"verifier" agent exists.
+- **Correction to what a filename might suggest**: the old (`0.60.0`)
+  tag's `security_risk_assessment.j2` prompt file is **not** a
+  self-review-of-completed-work mechanism — confirmed by reading it in
+  full, it's a pre-execution risk-classification policy, requiring the
+  agent to tag each proposed tool call's `security_risk` as
+  LOW/MEDIUM/HIGH before running it. This gates *proposed actions*, a
+  different concern from checking *completed* work — worth flagging
+  since the name alone invites the opposite assumption.

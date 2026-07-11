@@ -305,3 +305,48 @@ cross-source comparison this feeds into.
   visible prose governed by the system prompt, unrelated to the native
   `reasoning_effort`/summary machinery above (the word "thinking" here
   is used loosely, not referring to the API mechanism).
+
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into.
+
+- **`ReviewTask` is a general "review any diff" utility, not a
+  self-check gate — a distinction worth being precise about.**
+  Confirmed by reading `codex-rs/core/src/tasks/review.rs` and
+  `codex-rs/core/src/session/review.rs`: it spawns a fully separate,
+  nested one-shot Codex conversation (own system prompt — a dedicated
+  `codex-rs/prompts/templates/review/rubric.md`, own approval policy
+  forced to "never," own optional model override) that can target
+  **uncommitted changes, a base-branch diff, an arbitrary commit SHA,
+  or free-text instructions** — four interchangeable modes, only one of
+  which (`UncommittedChanges`) naturally lines up with "review my own
+  recent work." The review prompt itself is unconditional: "You are
+  acting as a reviewer for a proposed code change made by **another
+  engineer**" — used even when reviewing the CLI's own uncommitted
+  diff. Output is structured JSON (`findings[]` with priority/confidence/
+  location, plus an overall correctness verdict), spliced back into the
+  *parent* conversation's history once the review sub-thread completes.
+- **Always explicitly invoked, never auto-chained**: the `codex review`
+  CLI subcommand (which requires one of the four target flags — no
+  implicit default), the TUI's `/review` popup, and the app-server's
+  programmatic review-request path all converge on the same
+  `ReviewTask` pipeline, but nothing in the normal turn-completion or
+  `apply_patch` flow calls it automatically. A search for
+  `review_on_submit`/`self_review`/`request_review`-style
+  completion-gating patterns (the SWE-agent/Roo Code style) turned up
+  nothing — Codex has no code-level "you must review before finishing"
+  gate.
+- **The actual self-verification instruction lives entirely in the
+  system prompt, not in code**: a "Validating your work" section
+  ("If the codebase has tests or the ability to build or run, consider
+  using them to verify changes once your work is complete") whose
+  proactivity is itself gated by the *approval mode* — told to
+  proactively test in fully-autonomous (`never`-approval) mode, told to
+  hold off until the user is ready to finalize in interactive modes.
+  Purely instructional, not enforced by any completion gate.
+- **A second, separate route into review-like behavior**: the
+  Codex-specific prompt variants additionally tell the *main* agent to
+  switch into a "code review mindset" whenever a user asks for a
+  "review" in normal chat — bypassing the `ReviewTask` subsystem
+  entirely and staying in the regular agent loop.

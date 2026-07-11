@@ -95,6 +95,11 @@ the speculation about `edit_anthropic`'s lineage was only half right.
 
 ## Sub-agents
 
+See also [`agent-self-verification.md`](../agent-self-verification.md)
+— the `review_on_submit_m` gate and the `ScoreRetryLoop`/`ChooserRetryLoop`
+reviewer/chooser mechanism documented in this section are both cited
+there as reference cases in the cross-source self-verification survey.
+
 Not previously covered for this source. `default.yaml`'s
 `review_on_submit_m` bundle (above) is **not** a sub-agent — it's
 deterministic re-prompting within one loop. The real sub-agent-relevant

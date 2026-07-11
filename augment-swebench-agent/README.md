@@ -96,7 +96,11 @@ multimodal input.
   `majority_vote_ensembler.py` run an entirely separate LLM (o1) over N
   completed trajectories' diffs to pick a winner — a benchmark-harness
   concern layered on top of the four-tool agent loop, not part of the
-  agent's own tool surface.
+  agent's own tool surface. Cited as a reference case in
+  [`agent-self-verification.md`](../agent-self-verification.md) — the
+  same "generate multiple candidates, judge with a separate model call"
+  shape SWE-agent's `ScoreRetryLoop`/`ChooserRetryLoop` independently
+  arrive at.
 - **Browser/web/multimodal**: none.
 - **Sandbox/isolation**: runs inside a Docker container for SWE-bench
   evaluation (per the symlinked-paths gotcha note); not itself

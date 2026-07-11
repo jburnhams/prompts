@@ -14,6 +14,12 @@ its own Python tools on the fly**, mid-task, whenever it decides one
 would help. "Live" refers to this — the agent's capabilities expand while
 it's working, rather than being fixed at session start.
 
+Shares the same 6-step reproduce → fix → verify → edge-cases → submit
+workflow lineage as `mini-swe-agent`, `swe-agent`, and
+`augment-swebench-agent` — see
+[`agent-self-verification.md`](../agent-self-verification.md) §1 for
+the full step-by-step comparison.
+
 ## What's actually different from mini-swe-agent
 
 Diffing `config/livesweagent.yaml` against `../mini-swe-agent/config/mini.yaml`:

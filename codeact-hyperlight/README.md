@@ -178,3 +178,56 @@ for how Handoff/GroupChat/Magentic compare to every other source's
 sub-agent design in this collection — none of the other 16 sources
 there implement anything resembling GroupChat or Magentic's
 ledger-driven replanning.
+
+## Self-verification: the "judge" pattern, in full
+
+See [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into — this framework's judge is
+the clearest, most fully-specified LLM-as-checker mechanism found
+anywhere in this collection.
+
+`AgentLoopMiddleware.with_judge()` (`agent_framework/_harness/_loop.py`)
+is a factory building a `should_continue`/`next_message` pair for the
+general single-agent "run until done" loop, backed by a **second,
+fully separate chat-client call** — it does not route through the
+wrapped agent's own pipeline, tools, or session at all.
+
+- **Structured verdict, with a text-marker fallback**: `JudgeVerdict`
+  (`answered: bool`, `reasoning: str`) requested via structured output
+  when the judge's model supports it; falls back to parsing literal
+  `VERDICT: DONE`/`VERDICT: MORE` markers otherwise, with anything
+  ambiguous or missing treated as "more work needed" — a fail-closed
+  default.
+- **Checked against the original request, not a todo list**: the judge
+  is sent the original user messages verbatim and asked whether they've
+  been "fully addressed" — an optional `criteria` list augments this
+  (injected both as extra instructions for the working agent *and* into
+  the judge's own prompt) but doesn't replace the original-request
+  anchor.
+- **Failure produces a nudge, not a restart**: on a "not answered"
+  verdict, the judge's own `reasoning` is fed back as a new user turn —
+  "An evaluator reviewed your previous response and judged that it does
+  not yet fully address the original request. Evaluator feedback:
+  {feedback}. Revise and continue..." The conversation either
+  accumulates normally or restarts from the original input plus a
+  progress log, depending on a `fresh_context` setting.
+- **Deliberately capped tighter than non-judge loops**: 5 iterations by
+  default versus 10 for a plain loop, checked *before* invoking the
+  judge so an expensive judge call is skipped once the cap fires — the
+  framework's own docstring calls judge calls out as "costly and
+  probabilistic," a rare case of a scaffold explicitly budgeting for
+  the cost of checking its own work, not just the work itself.
+- **Optional, never wired in by default**: `create_harness_agent()`
+  only attaches this middleware when a caller explicitly passes
+  `loop_should_continue` — the judge is one of several interchangeable
+  strategies, alongside non-LLM alternatives defined in the same file
+  (`todos_remaining()` — loop while a todo list has open items;
+  `background_tasks_running()`).
+- **A self-aware security warning, stated directly in the judge's own
+  docstring**: using a judge is called out as introducing "a second
+  external LLM boundary" — a route for data exfiltration or indirect
+  prompt injection, since the judge's feedback text gets fed straight
+  back into the working agent's context as an ordinary user turn. No
+  other source in this collection's self-verification survey documents
+  this specific risk (a verification mechanism itself becoming an
+  injection vector) as explicitly as this one does.
