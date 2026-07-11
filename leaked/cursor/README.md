@@ -128,3 +128,49 @@ cross-source comparisons these feed into.
   'Update:'"). Worth distinguishing explicitly from session-title
   generation and conversation-compaction summaries, since all three
   share the word "summary" but serve entirely different purposes.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. The best source in
+this collection for tracking approval-flow wording **across a
+documented timeline** — the same `run_terminal_cmd` tool's approval
+text is quoted near-verbatim across three snapshots, drifts noticeably,
+then disappears entirely from the two newest captures.
+
+- **v1.0/v1.2**: "Note that the user will have to approve the command
+  before it is executed. The user may reject it if it is not to their
+  liking, or may modify the command before approving it... The actual
+  command will NOT execute until the user approves it." Unconditional,
+  mandatory approval language.
+- **2.0**: the same passage softens from mandatory to conditional —
+  "Note that the user **may** have to approve the command before it is
+  executed" — consistent with the product having introduced auto-run/
+  allowlist settings by this point, even though the prompt never spells
+  out what conditions skip approval.
+- **2025-09-03 and the CLI prompt (both GPT-5)**: no `run_terminal_cmd`
+  tool schema is embedded in either file, and neither contains
+  "approve"/"approval" in connection with commands at all (confirmed by
+  full-file grep) — the explicit approval-flow description present in
+  every earlier version is simply absent, most likely because it now
+  lives in tool-schema/orchestration layers not captured alongside
+  these particular prompt snapshots, consistent with this repo's
+  existing note that prompt text and tool lists here were extracted at
+  different times.
+- **No risk-classification flag found in any version** — unlike
+  Windsurf's `SafeToAutoRun` or Replit's `is_dangerous`, every captured
+  `run_terminal_cmd` schema (`command`, `is_background`, optional
+  `explanation`) has no safety field at all. Approval in Cursor's
+  captured text is a blanket per-command UI step, not a model
+  self-classification.
+- **Escalation is addressed for edits to the proposed command, not for
+  risk**: "The user may reject it if it is not to their liking, or may
+  modify the command before approving it. If they do change it, take
+  those changes into account" — an approval-workflow rule (the approved
+  command is the command that runs), not a re-classify-on-change rule.
+- Every version separately instructs the model to assume non-interactive
+  execution — "PASS THE NON-INTERACTIVE FLAGS (e.g. --yes for npx)" —
+  about the *command's* own interactivity, not the approval mechanism
+  itself.
+- No allow/deny list, no config file, no sandbox/isolation mentioned as
+  a safety layer in any captured file.

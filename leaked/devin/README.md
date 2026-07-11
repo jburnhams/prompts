@@ -110,3 +110,39 @@ cross-source comparisons these feed into.
   reasoning across an entire task, not just at compaction time, and
   coupling it directly to self-verification (the same tool call serves
   both purposes).
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. **The cleanest
+confirmation in this collection that a background-autonomous agent can
+have zero command-approval infrastructure at all.** No named modes, no
+risk flag, no allow/deny list, no config file anywhere in the 402-line
+prompt — the `<shell>` tool's description covers only output formatting
+(multi-line `&&`, bracketed paste mode, truncation to a file), never a
+safety qualifier. "Permission" appears exactly twice, and neither is
+about command execution: once about *requesting credentials* from the
+user, once about getting consent before *external communications with
+third parties* — not about running shell commands.
+
+- **What replaces per-command approval is a reflection checkpoint, not
+  a gate**: the `<think>` tool is a mandatory pause-and-reason step
+  before consequential decisions (see the Turn-output section above for
+  its full detail) — an internal self-check, not an external approval
+  request. There's no human in the loop for the action itself.
+- **Safety is enforced by absolute prohibitions instead of conditional
+  risk judgment**: "Never force push, instead ask the user for help if
+  your push fails," "Never use `git add .`; instead be careful to only
+  add the files that you actually want to commit." Hard rules baked
+  into the prompt, not a per-instance safe/unsafe classification.
+- **A notify-and-continue pattern substitutes for a blocking pause**:
+  `<report_environment_issue>` — "Use this to report issues with your
+  dev environment as a reminder to the user... It is critical that you
+  use this command whenever you encounter an environment issue so the
+  user understands what is happening" — Devin is told to keep working
+  around the issue rather than stop and wait for a response.
+- No sandbox/isolation is invoked as a safety rationale — Devin
+  operates on "a real computer operating system" (presumably an
+  isolated cloud VM per task, by product design) but the prompt never
+  points to that isolation as a reason approval can be skipped; it
+  simply isn't discussed as a safety layer.

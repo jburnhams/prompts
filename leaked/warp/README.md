@@ -52,3 +52,31 @@ reads as a capture gap — this single, short, general-purpose system
 prompt almost certainly doesn't carry whatever context-management and
 session-naming logic lives in the surrounding app, not evidence either
 mechanism is genuinely absent from the product.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. No named modes, no
+risk-classification flag, no allow/deny list, no config file — command
+safety is left entirely to the model's own prompted judgment, and the
+prompt actively discourages seeking confirmation on ordinary work.
+
+- **The whole mechanism is one vague, unenforced instruction**: "Bias
+  strongly against unsafe commands, unless the user has explicitly
+  asked you to execute a process that necessitates running an unsafe
+  command... NEVER suggest malicious or harmful commands, full stop."
+  No boolean flag, no LOW/MEDIUM/HIGH tag, nothing in a tool schema —
+  "unsafe" is a natural-language judgment call remade every time, not a
+  structured classification step.
+- **The prompt's general instinct actively cuts against asking for
+  approval at all**: "bias toward action to address the user's query.
+  If the user asks you to do something, just do it, and don't ask for
+  confirmation first." The one carve-out is scope creep, not command
+  risk — "don't automatically commit and push the changes without
+  confirmation" is about not doing unrequested follow-up work, not
+  about vetting a command before running it.
+- No sandbox/isolation is mentioned as a complementary safety layer,
+  no persistence/session-memory for prior approvals, no escalation
+  behavior for a modified command — there's no approval step to
+  escalate from. The weakest, most unstructured approval posture found
+  across the sources checked for this doc.

@@ -91,3 +91,42 @@ way.
   `coding-agent-approaches.md` territory), not a native
   thinking/reasoning content-block mechanism.
 - No thinking/reasoning-visibility language of any kind was found.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. Distinct from the
+already-documented "Strict tool guard" (a pre-*viewing* gate, not a
+command-execution one — see Self-verification above). For command
+execution specifically, approval here is organized around **task-scope
+mode and a single named exception**, not a general per-command risk
+judgment — no equivalent to Windsurf's `SafeToAutoRun` or Replit's
+`is_dangerous` anywhere in this file.
+
+- **A binary task-mode distinction gates blast radius, not individual
+  commands**: "If you will make ANY file changes (edit/create/delete)
+  or open a PR, you are in IMPLEMENTATION mode. Otherwise, you are in
+  DIAGNOSTIC mode... Never modify files during diagnosis." This governs
+  what *kind* of task is underway, not whether a specific shell command
+  is safe.
+- **The one and only per-category command-approval rule found**:
+  dependency installation during diagnosis requires an explicit ask —
+  "You MUST NOT install or update dependencies unless explicitly
+  approved by the user... state the exact commands you would run and
+  ask whether to proceed with installation (which will be fully
+  awaited)." Everything else in Implementation mode runs
+  unconditionally: "Terminal tools are ENABLED. You MUST execute
+  required commands... All install/update commands MUST be awaited
+  until completion (no background execution)."
+- **A related but distinct deterministic check, scoped to content not
+  commands**: `<security_check_spec>`'s mandatory pre-commit
+  `git diff --cached` scan for secrets/credentials ("if detected, STOP
+  and warn the user") — a self-check on diff *content*, not a
+  command-risk classification, and already covered under
+  Self-verification above.
+- **No risk-classification flag, no allow/deny list, no persistence
+  language** for the single dependency-install exception (it reads as a
+  one-off ask, not remembered for future installs), and no sandbox/
+  isolation invoked as a safety rationale — a scoping statement exists
+  ("file operations should only be scoped to `fileSystem` repository
+  locations") but is never connected to why approval can be skipped.

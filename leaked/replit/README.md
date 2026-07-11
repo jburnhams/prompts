@@ -103,3 +103,46 @@ concept, no session-title/rename field or generation logic anywhere in
   than confirmed design choices — Replit Agent's known
   checkpoint/project-naming UI strongly suggests the relevant logic
   just isn't in what was extracted here.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. The provenance
+mismatch already flagged above (two different Replit products bundled
+under one leaked source) turns out to be directly on-topic: the two
+files represent two different approval philosophies.
+
+- **`Prompt.txt` ("Replit Assistant," proposal-only — nothing ever
+  auto-executes)**: approval is structural, not judgment-based — every
+  action is a client-rendered proposal the user must click to apply.
+  Within that system there's still an explicit risk flag on shell
+  proposals: `<proposed_shell_command>`'s `is_dangerous` attribute —
+  "true if the command is potentially dangerous (removing files,
+  killing processes, making non-reversible changes)... false
+  otherwise." A **boolean, LLM-set** classification, the same shape as
+  Windsurf's `SafeToAutoRun` but inverted semantics (flags *danger*
+  rather than *safety*) and inverted consequence — since nothing here
+  auto-executes anyway, the flag most plausibly drives UI warning
+  styling on the proposal card rather than gating execution.
+- **`Tools.json` ("Replit Agent," the more autonomous product — direct
+  execution)**: the `bash` tool has **no safety/danger/approval field
+  at all** — no risk tag, no confirmation language, direct unconditional
+  execution ("State is persistent across command calls").
+- **A striking within-corpus contrast**: the proposal-only Assistant
+  (which never auto-executes anything) still bothers to flag danger for
+  UI purposes; the more autonomous Agent's `bash` tool (which *does*
+  auto-execute) has stripped that concept entirely. Read as one
+  continuous product this would look like a safety regression; read
+  correctly per the provenance-mismatch note, it's two unrelated
+  snapshots with genuinely different designs, not evidence either way
+  about internal consistency.
+- **Approval-adjacent tools that gate declaring done, not running a
+  command**: `report_progress` — "Call this function once the user
+  explicitly confirms that a major feature or task is complete. Do not
+  call it without the user's confirmation" — and `suggest_deploy`,
+  where the actual deploy click stays manual even after the tool is
+  called. Neither is a command-approval mechanism; both are already
+  covered under Self-verification above.
+- No allow/deny list, no persistence/session-memory language, no
+  escalation behavior, and no sandbox/isolation framed as a safety
+  layer in either file.

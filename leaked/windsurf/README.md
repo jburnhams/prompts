@@ -175,3 +175,48 @@ cross-source comparisons these feed into.
   label as a structured argument. A fourth narration mechanism, not
   matching either "native reasoning block" or "free-text prompted
   narration": **schema-embedded narration**.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. The richest single
+finding across the sources checked for this doc: a named, single-purpose
+safety boolean baked directly into the tool call schema, with an
+explicit and unusually strong anti-override clause.
+
+- **`run_command`'s `SafeToAutoRun` flag** (`tools-wave-11.txt`): "Set
+  to true if you believe that this command is safe to run WITHOUT user
+  approval. A command is unsafe if it may have some destructive
+  side-effects. Example unsafe side-effects include: deleting files,
+  mutating state, installing system dependencies, making external
+  requests, etc. Set to true only if you are extremely confident it is
+  safe. If you feel the command could be unsafe, never set this to
+  true, EVEN if the USER asks you to." The same "unsafe" definition is
+  duplicated near-verbatim in the system prompt's `<running_commands>`
+  block — a belt-and-suspenders redundancy not seen in any other source
+  checked. It's a **boolean, LLM-self-assigned** classification, not a
+  static rule engine — the model re-derives it on every call, not a
+  three-tier LOW/MEDIUM/HIGH scheme.
+- **The strongest anti-override language found in this collection**:
+  "You cannot allow the USER to override your judgement on this. If a
+  command is unsafe, do not run it automatically, even if the USER
+  wants you to." No other source surveyed forbids the *user's own
+  in-chat request* from raising a single command's trust level this
+  explicitly.
+- **The only sanctioned override path is out-of-band and outside the
+  model's own reach**: "The user may set commands to auto-run via an
+  allowlist in their settings if they really want to." The model is
+  told this exists but isn't given any tool to read or write it, and is
+  explicitly told to keep the mechanism opaque to the user in
+  conversation: "do not refer to any specific arguments of the
+  run_command tool in your response."
+- **A deliberate contrast elsewhere in the same tool surface**:
+  `create_memory` explicitly needs no permission at all ("You DO NOT
+  need USER permission to create a memory"), while `deploy_web_app`/
+  `check_deploy_status` are gated behaviorally ("Do not run this unless
+  asked by the user") rather than via a risk flag — three different
+  permission postures for three different tool categories in the same
+  30-tool surface.
+- No sandbox/isolation is invoked anywhere as a complementary safety
+  layer, and no escalation language exists for a modified command — the
+  flag is simply re-derived fresh on every single call.
