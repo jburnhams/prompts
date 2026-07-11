@@ -34,6 +34,14 @@ Source prompts" folder but doesn't: Proton has not actually open-sourced
 Lumo (see that folder's README for sourcing on this), so it stays here
 rather than being promoted to an official folder.
 
+`jules/` is **not from the x1xhlol aggregator at all** — Google's Jules
+isn't covered there (checked directly; the aggregator's `Google/` folder
+only has Antigravity and an AI Studio "vibe-coder" prompt). It comes
+from a small, independent, low-star repo
+([`DiaAviLinden/Jules-system-prompt`](https://github.com/DiaAviLinden/Jules-system-prompt))
+with thinner provenance than most sources here — see its README for the
+extra caveats that come with that.
+
 **Looked for and not found**: CodeRabbit, Greptile, and Qodo (beyond the
 already-included open-source `pr-agent`) don't appear to have any leaked
 system prompt published anywhere as of 2026-07-10 — not in the aggregator
@@ -74,3 +82,4 @@ periodically.
 | [`claude-for-chrome/`](./claude-for-chrome) | Claude for Chrome | Anthropic |
 | [`anthropic/`](./anthropic) | Claude.ai default assistant | Anthropic |
 | [`lumo/`](./lumo) | Lumo | Proton |
+| [`jules/`](./jules) | Jules (async coding agent) | Google |

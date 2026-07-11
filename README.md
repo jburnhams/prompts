@@ -119,11 +119,17 @@ still retrievable, just no longer actively developed at those locations.
 
 A second category, kept separate from the open-source folders above: prompts
 from closed-source products, extracted by third parties rather than
-published by the vendor. 29 sources so far — see
+published by the vendor. 30 sources so far — see
 [`leaked/README.md`](./leaked/README.md) for the full list and caveats on
 provenance and reliability. Most came in bulk from one community aggregator
-repo; a couple (Factory/Droid, Lumo) from standalone gists/mirror-repo
-subfolders.
+repo; a few (Factory/Droid, Lumo, **Jules**) from standalone gists/
+mirror-repo subfolders. Jules (Google's async coding agent) is worth
+flagging specifically: its leaked prompt has the most granular self-review
+discipline found anywhere in this collection — mandatory verification
+after *every* file-modifying action (not just before submission), plus a
+dedicated pre-commit tool, an explicit code-review-request tool, and
+Playwright-generated screenshots as proof of frontend verification. See
+[`leaked/jules/README.md`](./leaked/jules/README.md).
 
 **Checked and no leak found (as of 2026-07-10)**: CodeRabbit, Greptile, and
 Qodo's closed-source products (its open-source `pr-agent` is already
