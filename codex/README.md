@@ -350,3 +350,103 @@ the cross-source comparison this feeds into.
   switch into a "code review mindset" whenever a user asks for a
   "review" in normal chat — bypassing the `ReviewTask` subsystem
   entirely and staying in the regular agent loop.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. Sourced from a live
+clone of `openai/codex` (`codex-rs/`) — the single richest permission
+architecture found across every source checked for this doc: not one
+mechanism but **five cooperating subsystems** (a static command-safety
+classifier, a Starlark rule engine, an LLM-based auto-reviewer, a
+real OS-level sandbox, and a network proxy), several of them coupled
+to each other by explicit design.
+
+- **Four modes** (`AskForApproval`, not a continuous scale):
+  `UnlessTrusted` (only a hardcoded read-only safelist auto-runs),
+  `OnRequest` (default — "the model decides when to ask"), `Granular`
+  (five independent sub-toggles: sandbox-escalation prompts,
+  execpolicy `prompt` rules, skill-script execution, the
+  `request_permissions` tool, MCP elicitations — each can be
+  independently auto-rejected without ever reaching the user), and
+  `Never` (no prompts; failures return straight to the model). The
+  true "YOLO" switch, `--dangerously-bypass-approvals-and-sandbox`,
+  force-sets `AskForApproval::Never` **and** full sandbox bypass
+  together — approval-bypass and sandbox-bypass are one coupled flag,
+  not two independent knobs.
+- **Two-layer risk classification — a real, code-confirmed fast/slow
+  split**:
+  - **Fast, static**: a hardcoded read-only-command allowlist (`cat`,
+    `ls`, `grep`, `pwd`, `whoami`, ...) with per-command carve-outs
+    (`base64` is safe unless `-o/--output` is passed; `find` is unsafe
+    with exec/delete/write flags), plus an inverse dangerous-pattern
+    heuristic that parses `git`'s global options to find the real
+    subcommand. Compound `bash -lc "cmd1 && cmd2"` invocations are
+    recursively split and each sub-command checked independently.
+  - **Slow, LLM-based — "Guardian"**: only active when explicitly opted
+    into (`approvals_reviewer = auto_review`) and only for `OnRequest`/
+    `Granular` modes. A dedicated, separate, faster/cheaper model
+    (`codex-auto-review`, low reasoning effort where supported — even
+    overridable per-provider) reviews the exact planned action against
+    a written risk-taxonomy document (`guardian/policy.md` — sections
+    on data exfiltration, credential probing, persistent security
+    weakening, destructive git actions) and returns a structured
+    `{risk_level: Low/Medium/High/Critical, user_authorization,
+    outcome: Allow/Deny, rationale}` verdict. Runs in a **locked-down,
+    cached sub-session** — "pinned to a read-only sandbox with
+    `approval_policy = never`... intentionally runs without inherited
+    exec-policy rules" — with a hard 90-second timeout and an explicit
+    **fail-closed** guarantee: timeout, parse error, or session error
+    all resolve to rejection, never silent allow. A circuit breaker
+    (3 consecutive denials, or 10 in a trailing 50-entry window) force-
+    interrupts the turn back to the human rather than letting the
+    agent grind against auto-denial forever. Guardian gates shell
+    exec, MCP tool calls, *and* network access — not just shell
+    commands.
+- **Rule/policy mechanism — Starlark, not TOML/YAML/JSON**: `.rules`
+  files are real Starlark (Python-like) programs with `prefix_rule()`
+  declarations carrying `pattern`/`decision` (`allow`/`prompt`/
+  `forbidden`)/`justification`/unit-test-style `match`/`not_match`
+  assertions, loaded from built-in/user/project config layers and
+  merged strictest-wins. `codex execpolicy check --rules path.rules
+  git status` is a real CLI subcommand for testing rules offline
+  before deploying them.
+- **Five persistence tiers, not four** (correcting/extending an
+  earlier partial finding): one-off `Approved`;
+  `ApprovedExecpolicyAmendment` (written directly into
+  `codex_home/rules/default.rules`, survives process restart, applies
+  to future sessions); `ApprovedForSession` (in-memory cache, this
+  session only); `NetworkPolicyAmendment` (the same permanent-write
+  pattern, scoped per-host for network egress); plus `TimedOut` and
+  `Abort` as distinct non-approval outcomes (`TimedOut` is
+  Guardian-specific — the review simply didn't finish; `Abort` stops
+  the whole turn, distinct from an ordinary denial). Which decisions
+  are even offered to the user is itself dynamic — an amendment option
+  only appears when a concrete rule/prefix was actually derivable from
+  the request.
+- **Escalation reaches inside a running sandboxed process, not just
+  the top-level command string**: a patched shell forwards every
+  individual `exec()` call to a server over a Unix socket mid-execution,
+  which can independently `Run`, `Escalate` (out of the sandbox),
+  re-sandbox, or `Deny` that one syscall — approval isn't only a
+  pre-flight gate on the command as typed; a compound command already
+  running inside the sandbox can have one of its internal `exec()`
+  calls separately intercepted and judged.
+- **Sandbox/isolation — real, platform-specific, and explicitly
+  coupled to approval, not a substitute for it**: Landlock (Linux),
+  Seatbelt Profile Language (macOS), and a native Windows sandbox back
+  a `SandboxPolicy` enum (`DangerFullAccess`/`ReadOnly`/
+  `ExternalSandbox`/`WorkspaceWrite`). Even under `AskForApproval::Never`,
+  an unsandboxed dangerous command stays `Forbidden` unless the sandbox
+  is *explicitly* disabled too — a deliberate defense-in-depth design,
+  confirmed by a source comment explaining even a patch provably
+  confined to writable paths still runs sandboxed "to prevent hard
+  link exploitation."
+- **A dedicated network-layer firewall, not just an LLM judgment
+  call**: a separate `codex_network_proxy` crate intercepts outbound
+  traffic and evaluates per-host policy before allowing egress
+  (`NetworkPolicyDecider`), with immediate vs. deferred approval modes
+  for network calls that occur inside an already-running sandboxed
+  process — Guardian and the static policy both sit in front of this
+  layer, and accepted decisions persist via the same
+  `NetworkPolicyAmendment` mechanism as file-system rules.

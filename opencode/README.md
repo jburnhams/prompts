@@ -286,3 +286,77 @@ the cross-source comparison this feeds into.
   invocation after the fact — nothing auto-chains it after a normal
   edit turn, the same "review-as-a-general-tool, not a completion gate"
   pattern found in Codex's `/review`/`ReviewTask`.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. Sourced from a live
+clone of `github.com/anomalyco/opencode` (`dev` branch) — a real
+rule-priority engine with genuine syntax-aware command parsing, though
+no LLM-based risk classification anywhere in the path.
+
+- **Named agent modes each carry a baked-in permission ruleset**, a
+  different shape from a single global mode switch: `build` (default),
+  `plan` ("Disallows all edit tools" except `.opencode/plans/*.md`),
+  `explore` (deny-all except read-only tools), plus hidden system
+  agents (`compaction`/`title`/`summary`, deny-all). A separate,
+  orthogonal `auto`/`yolo` flag exists on top of these, with two
+  **hidden CLI aliases** not in the public help text:
+  `--dangerously-skip-permissions` and `--yolo`.
+- **Fails closed, not open, in headless mode**: without `--auto`,
+  running `opencode run` non-interactively auto-*rejects* every
+  permission ask with a visible warning, rather than blocking forever
+  or silently allowing — the opposite default from what "no one's
+  watching" might suggest.
+- **Rule matching is last-match-wins over a flattened array**, not
+  first-match or most-specific-wins: `{ permission, pattern, action }`
+  triples with wildcard patterns (`*`→`.*`), evaluated via
+  `rulesets.flat().findLast(...)`, defaulting to `ask` if nothing
+  matches. Config is JSON (`opencode.json`), layered global →
+  project-discovered, with per-agent overrides merged on top (agent
+  rules win over global).
+- **Bash commands get real syntax-aware parsing, not regex-on-the-
+  whole-string** — the standout finding for this source: actual
+  tree-sitter WASM grammars for bash and PowerShell parse each command
+  into an AST, split compound commands into individual sub-command
+  nodes, and permission-check each one separately. File-path arguments
+  are resolved and checked against the working directory to trigger a
+  distinct `external_directory` ask if they resolve outside the
+  project root.
+- **A static, offline-generated lookup table, not a runtime
+  classifier**: to suggest a sensible "always allow" pattern rather
+  than the full literal command, a hardcoded `arity` table (e.g.
+  `git: 2` → suggest `git checkout *`, `docker compose: 3`) determines
+  how many tokens form the "human-understandable" command prefix. The
+  file's own comment records the exact LLM prompt used to generate the
+  table *offline* — this is not a live LLM risk classifier, just a
+  static dictionary that happened to be produced by one.
+- **No risk classification found anywhere in the permission path** —
+  confirmed by source search, not just absence of prompt text: safety
+  is entirely rule-matching plus the tree-sitter parse/whitelist
+  mechanics above.
+- **Scope/persistence is more layered than a simple session/forever
+  split**: an "always" reply is explicitly **session-scoped only** — the
+  TUI's own copy says "This will allow ... until OpenCode is
+  restarted." A separate, genuinely persistent SQLite-backed
+  `PermissionSaved` table exists in the schema/DB layer, but no call
+  sites writing to it were found outside its own definition — flagged
+  as an unresolved, possibly-unwired feature rather than a confirmed
+  persistence mechanism.
+- **`doom_loop` — the most distinctive single mechanism found across
+  every source investigated for this doc**: if the exact same tool
+  call (same tool, same JSON-stringified input) repeats **three times
+  in a row**, a fresh permission ask fires regardless of any prior
+  "allow" rule — a hard circuit-breaker against a stuck agent looping
+  on an identical failing call, structurally unlike every other
+  escalation mechanism surveyed (which all re-ask because something
+  *changed*, not because something *repeated*).
+- **Session-lineage inheritance for sub-agents**: a spawned task
+  session's auto-accept state is resolved by walking up its
+  `parentID` chain, so a child inherits the parent's auto-accept
+  setting rather than starting from a clean default.
+- **No OS-level sandboxing found** — the only "sandbox" terminology in
+  the codebase refers to git worktree directories, not process
+  isolation. OpenCode relies entirely on the rule-engine + tree-sitter
+  layer for safety, a real contrast with Gemini CLI's separate
+  OS-native sandbox managers (see that source's Permissions section).

@@ -115,20 +115,38 @@ exceptions" language — without any confirmed code-level enforcement
 (Copilot Chat's `vscModelPrompts.tsx` "iron law" block, Factory/Droid's
 PR-draft-state gate).
 
+**[→ `agent-permissions-approval.md`](./agent-permissions-approval.md)**
+— a further drill-down on how a scaffold decides whether an action
+needs a human first, across 17 sources. This turned out to be the
+richest single doc in the whole collection: Codex CLI's permission
+architecture is not one mechanism but five cooperating subsystems
+(a static command-safety classifier, a Starlark rule-engine DSL, an
+LLM-based "Guardian" auto-reviewer running a separate cheaper/faster
+model with its own risk taxonomy, a real OS-level sandbox on three
+platforms, and a network-egress proxy), and Gemini CLI's "TOML policy
+engine" turned out to include an opt-in second LLM ("Conseca") that
+generates a least-privilege policy for the user's request and then
+re-judges every subsequent tool call against it — an entire separate
+model acting as judge over the first model's actions, layered on top
+of (not replacing) a 5-tier admin/user/workspace/extension/default
+priority engine. Also covers: static-vs-LLM risk classification
+(OpenHands's genuinely pluggable choice between trusting the model's
+own self-tag or a separate Dockerized static analyzer), scope/
+persistence of a granted approval (five distinct tiers in Codex vs.
+Roo Code's two, with no session-only cache at all), escalation
+mechanisms (OpenCode's `doom_loop` circuit breaker on repeated
+identical calls, Codex's mid-execution syscall-level interception),
+sandbox/isolation as a complementary-not-substitute layer, and the
+cross-cutting finding that most of this machinery is invisible to the
+model's own system prompt — the harness gates the model, but rarely
+tells it the rules.
+
 ### Other candidate drill-downs (not started)
 
 Same four-axis pattern as the docs above — system prompts,
 tool surfaces, and sub-agents are covered; code review has its own
-top-level doc. Candidates for the same treatment, roughly in priority
-order:
+top-level doc. One candidate remains:
 
-- **Permissions & approval architecture** — ask/allow/deny rule
-  systems, sandbox levels, auto/"YOLO" modes, human-in-the-loop
-  approval gates. Substantial material already surfaced as asides
-  while researching sub-agents (Codex's six-mode permission engine
-  with an LLM fast/slow classifier, OpenCode's permission rulesets,
-  Gemini CLI's TOML policy engine, Roo Code's approval flow) but never
-  pulled together as its own axis.
 - **Git/VCS interaction mechanics** — commit message conventions,
   checkpoint/undo systems, worktree isolation, branch-management
   rules.

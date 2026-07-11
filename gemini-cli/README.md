@@ -261,3 +261,96 @@ the closest matches were unrelated `PREVIEW_GEMINI_*` model-name
 constants and human-facing review flows (commit-message review
 guidance, a `/memory inbox` human-approval step for auto-extracted
 memory patches) rather than the agent checking its own completed work.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. Sourced from a live
+clone of `github.com/google-gemini/gemini-cli` (`main`) — considerably
+deeper than the "TOML policy engine" aside that motivated this
+research: a genuine 5-tier priority-based RBAC engine, three
+independent OS-native sandbox implementations, and — the richest
+single finding across every source checked for this doc — an opt-in,
+dual-LLM policy-generation-and-enforcement pipeline layered on top of
+the static engine, not replacing it.
+
+- **Four modes, explicitly ordered by permissiveness in code**:
+  `plan` → `default` → `autoEdit` → `yolo`
+  (`MODES_BY_PERMISSIVENESS`), selected via `--yolo`/`-y` or
+  `--approval-mode`. The `--yolo` help text literally credits "aka YOLO
+  mode" with a joke link.
+- **A 5-tier priority engine with source-hierarchy guarantees**, not
+  just a flat rule list: `Admin(5) > User(4) > Workspace(3) >
+  Extension(2) > Default(1)`, computed as `tier_base +
+  (toml_priority/1000)` so the tier ordering can never be overridden by
+  a clever in-tier priority number. Nine default TOML policy files ship
+  built in (`read-only.toml`, `write.toml`, `plan.toml`, `yolo.toml`,
+  `sandbox-default.toml`, `conseca.toml`, etc.). One concrete hardcoded
+  guard: `sandbox-default.toml` denies any tool call whose arguments
+  match `gha-creds-.*\.json` (GitHub Actions credential files),
+  independent of the general rule engine. The Workspace tier is
+  currently documented as non-functional upstream (a known open issue)
+  — project-level policy files are silently ignored at the time of
+  this research.
+- **Admin policies require root/UID-0 ownership and locked-down
+  permissions or they're ignored entirely** — a real
+  privilege-escalation guard, not just a convention: standard-location
+  admin policy directories are checked for ownership and
+  non-group/other-writable permissions before being trusted; flag-
+  provided admin paths are exempt from that specific check but are
+  *ignored outright* if any standard-location policy files exist,
+  preventing a CLI flag from silently overriding centrally-managed
+  policy.
+- **The standout finding: an opt-in dual-LLM policy pipeline
+  ("Conseca"), off by default (`enableConseca: false`), layered on
+  top of the static engine rather than replacing it.** At the start of
+  a turn, a policy-generator sends the user's prompt plus tool
+  declarations to a fast model (`DEFAULT_GEMINI_FLASH_MODEL`) and asks
+  it to synthesize a least-privilege, per-tool JSON policy tailored to
+  that specific request: "Your primary goal is to enforce the
+  principle of least privilege... as restrictive as possible while
+  still allowing the main LLM to complete the user's requested task."
+  Then, for every actual tool call, a policy-enforcer sends that
+  generated policy plus the specific call back to the same fast model
+  with: "You are a security enforcement engine... Output a JSON object
+  with 'decision': allow/deny/ask_user, 'reason'." This is wired in as
+  just another rule in the same priority engine (`conseca.toml`,
+  priority 100) — architecturally a **second LLM acting as judge over
+  the primary LLM's tool calls**, running independently of and on top
+  of the static TOML rules, not a fallback or a replacement for them.
+  Every decision and rationale is logged to telemetry. This is the
+  cleanest example across the entire collection of "the LLM classifier
+  isn't instead of the static engine, it's an additional layer."
+- **Persistence has more granularity than "session vs. forever"**: a
+  `ProceedAlways` reply is in-memory/session-only, but
+  `ProceedAlwaysAndSave` writes atomically to a user- or
+  workspace-scoped TOML file on disk (write-to-tmp-then-rename to
+  avoid concurrent-write races, with automatic backup-and-recovery if
+  the TOML file gets corrupted) — genuinely durable across sessions.
+  Two further scoped variants, `ProceedAlwaysServer`/`ProceedAlwaysTool`,
+  grant "always" to an entire MCP server or an entire tool name rather
+  than one specific command shape.
+- **Trust propagates toward more permissive modes, never backward**:
+  approving something in `plan` mode (the most restrictive) grants
+  trust across all four modes; approving in `default` propagates only
+  to `autoEdit`/`yolo`; approving in `yolo` applies to `yolo` only.
+- **Escalation via shell-redirection downgrade**: even a command that
+  matches an ALLOW rule gets force-downgraded to `ASK_USER` if it
+  contains redirection (`>`, `>>`, `<`, etc.) unless the specific rule
+  explicitly allows it or the mode is `autoEdit`/`yolo` — checked
+  per-sub-command in a chain (`cmd1 > file && cmd2` evaluates each half
+  separately), the same "split the compound command" idea OpenCode
+  implements via tree-sitter, here via a `shell-quote`-based parser.
+- **A global deny removes the tool from the model's function-
+  declaration list entirely, not just refuses the call** — the model
+  literally never sees a globally-denied tool as an option, a stronger
+  and less probe-able form of denial than most sources' "the model can
+  try, but gets rejected" pattern.
+- **Sandbox/isolation is a fully separate, complementary layer, not a
+  substitute for the policy engine**: independent OS-native
+  implementations for macOS (Seatbelt), Linux, and Windows, unified
+  behind a common sandbox-manager interface, each governed by its own
+  mode-keyed TOML policy (`sandbox-default.toml`) with its own
+  `network`/`readonly`/`approvedTools` settings (a short allowlist like
+  `cat, ls, grep, head, tail`) — a second, independent gate running
+  underneath the tool-call policy engine, toggled via `--sandbox`/`-s`.

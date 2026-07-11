@@ -221,3 +221,72 @@ returning a tool error that forces the agent to keep working rather
 than finish. No model judgment involved; a structural precondition
 check on the completion tool itself, comparable in spirit to (but far
 simpler than) SWE-agent's `review_on_submit_m` re-prompt gate.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. Sourced from a live
+clone of `RooCodeInc/Roo-Code` (`src/core/`) — a materially simpler
+system than Codex CLI's, with **no LLM-based risk classification
+anywhere**, confirmed by reading every file in `src/core/auto-approval/`
+plus the protected/ignore controllers: pure boolean toggles and static
+string-pattern matching.
+
+- **Per-category booleans, not named discrete modes**: there's no
+  single "mode" the way Codex has `AskForApproval` — instead seven
+  independent settings (`alwaysAllowReadOnly`/`alwaysAllowWrite`/
+  `alwaysAllowMcp`/`alwaysAllowModeSwitch`/`alwaysAllowSubtasks`/
+  `alwaysAllowExecute`/`alwaysAllowFollowupQuestions`), each gating a
+  different tool category, all requiring a master
+  `autoApprovalEnabled` switch first — closer to a continuous
+  per-category policy vector than a small set of discrete states.
+  `updateTodoList` and the skill tool are unconditionally auto-approved
+  regardless of any setting — the skill tool's own code comment
+  explains why: "does not read arbitrary files - skills must be
+  explicitly installed/defined by the user."
+- **Command matching is deterministic longest-prefix-match, with one
+  hardcoded override that beats every list**: shell commands are split
+  on `&&`/`||`/`;`/`|`, each sub-command independently checked against
+  flat `allowedCommands`/`deniedCommands` string arrays (longest
+  matching prefix wins; ties favor deny), and a chain is only
+  auto-approved if every sub-command matched the allowlist. On top of
+  this, `containsDangerousSubstitution()` — a hardcoded regex bank
+  catching bash/zsh command-injection-via-parameter-expansion patterns
+  (`${var@P}` prompt-string expansion, escape-sequence smuggling,
+  `${!var}` indirect expansion, here-string/process substitution) —
+  **always** forces a manual ask regardless of what the allow/deny
+  lists say. This is Roo Code's closest analog to a "dangerous
+  command" classifier, and it's pure regex, not a model call.
+- **A hardcoded, non-configurable self-protection list, distinct from
+  the general write-approval system**: `.rooignore`, `.roomodes`,
+  `.roorules*`, `.clinerules*`, `.roo/**`, `.vscode/**`, `AGENTS.md`
+  and similar are write-protected "regardless of autoapproval
+  settings" — a real prompt-injection defense ensuring nothing can
+  talk the agent into silently rewriting its own config/instruction
+  files. A separate, project-scoped `.rooignore` (gitignore syntax,
+  live-reloaded via a file watcher) blocks *reading* matched paths —
+  read-access scoping, kept distinct from the write-protection list
+  above.
+- **Only two persistence tiers — no session-only cache at all**: a
+  decision is either asked every single time, or the user explicitly
+  promotes a command pattern into the persisted `allowedCommands`/
+  `deniedCommands` settings via an in-chat "manage commands" UI —
+  which mutates VS Code's persisted settings permanently, surviving
+  restarts and applying to future tasks. There is no analog to Codex's
+  `ApprovedForSession` — every command not already covered by the
+  persisted lists gets re-asked for the life of the extension, until
+  the user edits the lists themselves.
+- **A request-count/cost circuit breaker, unrelated to any single
+  command's risk**: `allowedMaxRequests`/`allowedMaxCost` settings
+  force a fresh manual approval once N auto-approved calls or $-cost
+  have accumulated since the last reset — a rate-limit-style re-ask
+  trigger, even when every individual action was independently
+  allowlisted. Codex CLI has no equivalent of this.
+- **Sandbox/isolation**: confirmed absent — no sandbox references
+  anywhere in `src/core/` beyond an unrelated CI/test context. Tool
+  actions run directly in the user's VS Code environment/terminal, so
+  the entire safety burden sits on the approval-settings, protected-
+  file, and dangerous-substitution layers above, with no complementary
+  isolation layer at all — a sharp contrast with Codex CLI's explicit
+  approval/sandbox coupling or Gemini CLI's separate OS-native sandbox
+  managers.
