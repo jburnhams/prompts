@@ -212,3 +212,49 @@ confirmed in these prompt-only files.
   (`task.md.tpl`, `agentic_fetch_prompt.md.tpl`) are read-only
   (`glob`/`grep`/`ls`/`view` only, per `agent_tool.md`), so neither
   could run or verify code even in principle.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. No named discrete
+modes — instead a continuous, principle-based policy built on a short
+enumerated stop-list, layered with hardcoded named-action gates for a
+handful of specific git operations.
+
+- **The general heuristic is consequence-based, not command-pattern-
+  based**: `<decision_making>`'s "Make decisions autonomously" list
+  ("Search to find the answer... Try most likely approach... make the
+  most reasonable assumptions... and proceed instead of waiting for
+  clarification") is bounded by an explicit stop-list — "Only
+  stop/ask user if: Truly ambiguous business requirement / Multiple
+  valid approaches with big tradeoffs / **Could cause data loss** /
+  Exhausted all attempts and hit actual blocking errors." This is the
+  cleanest example in this doc's survey of continuous, LLM-judged risk
+  classification stated directly as prompt text rather than a static
+  list.
+- **A separate, stronger tier: named-action rules inside
+  `<critical_rules>`, explicitly framed as overriding everything
+  else**: "**NEVER COMMIT**: Unless user explicitly says 'commit'."
+  / "**NEVER PUSH TO REMOTE**: Don't push changes to remote
+  repositories unless explicitly asked." / "**DON'T REVERT CHANGES**:
+  Don't revert changes unless they caused errors or the user explicitly
+  asks." These read as per-instance, ask-every-time rules — nothing in
+  the prompt suggests a standing "yes" persists once a user has
+  approved a commit or push once.
+- **A scoping rule that functions as a soft tool-level allowlist**:
+  "Never use `curl` through the bash tool it is not allowed use the
+  fetch tool instead" — forcing network calls through one specific
+  tool rather than raw shell, enforced entirely at the prompt level (no
+  evidence of code-level enforcement in these files).
+- **A transparency requirement for risky commands, distinct from a
+  hard block**: "When running non-trivial bash commands (especially
+  those that modify the system): Briefly explain what the command does
+  and why you're running it... Simple read-only commands (ls, cat,
+  etc.) don't need explanation." A binary read-only-vs-system-modifying
+  split, but the consequence of "risky" here is a mandatory one-line
+  explanation in the model's own output, not necessarily a UI approval
+  pause — the actual approval mechanism, if any, would live in Crush's
+  tool-call layer outside these prompt files.
+- **Sandbox/isolation**: confirmed absent — runs directly on the user's
+  machine, no containerization referenced anywhere in the captured
+  files.

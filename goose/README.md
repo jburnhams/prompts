@@ -205,3 +205,36 @@ checking the agent's own work.
   surrounding Rust orchestration code, not captured in this folder —
   the finding is "absent from every captured prompt," not "absent from
   the product."
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. Not found in any
+captured `.md` file — but this collection's own README already flags
+the reason as a real capture gap, not a confirmed absence, and the
+gap's shape is unusually well-evidenced.
+
+- **A named permission mechanism exists but its content was never
+  captured**: this folder's own README notes "Not included:
+  `permission_judge.md`, which was empty (0 bytes) at the retrieved
+  commit" — the filename alone strongly implies Goose has (or had) an
+  LLM-based judge specifically for permission/approval decisions,
+  structurally exactly this doc's "LLM classifies risk" axis, but the
+  content is unrecoverable from what's stored here.
+- **Extension activation, the closest analog to a policy mechanism
+  present in `system.md`, has no gating language at all**: extensions
+  are described purely additively ("You can dynamically enable or
+  disable extensions as needed to help complete tasks"), and once
+  listed as active, their tools carry no confirmation instruction.
+- **The one quasi-policy trigger found is about tool-selection
+  accuracy, not safety**: a soft limit warns when too many
+  extensions/tools are enabled ("exceeding recommended limits... Consider
+  asking if they'd like to disable some extensions to improve tool
+  selection accuracy") — unrelated to command risk.
+- **Sandbox/isolation, a different kind than command-approval**:
+  `apps_create.md`/`apps_iterate.md` describe CSP-based sandboxing of
+  *generated app output* ("strict CSP, so all JavaScript must be
+  inline") — sandboxing what the agent builds, not sandboxing the
+  agent's own shell/file actions.
+- No allow/deny list, no risk classification, no escalation language,
+  no user-override flags found anywhere in the captured files.

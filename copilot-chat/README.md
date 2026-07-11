@@ -366,3 +366,52 @@ conflation warning rather than an instance of it.
   call are present." A self-report completion signal with a summary
   requirement, not a verified-correctness gate — structurally similar
   to Cline's `attempt_completion`.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. Like the rest of this
+source, permission posture varies by model family — but the dominant
+pattern across nearly all of them is the prompt actively telling the
+model *not* to ask, with enforcement pushed out to the host application.
+
+- **A binary `permissionLevel` flag exists, but only one value is
+  visible in these files**: `agentPrompt.tsx`'s `task_complete` tool is
+  gated behind `isAutopilot = ...permissionLevel === 'autopilot'`. The
+  type backing `permissionLevel` (presumably an enum including a
+  default "ask" mode) is never declared in any captured file — a real
+  capture gap, not a confirmed two-value system.
+- **The near-universal base instruction is "don't ask"**: "No need to
+  ask permission before using a tool" appears verbatim or paraphrased
+  across the default prompt and the Anthropic, xAI, Gemini, GLM, and
+  OpenAI-family prompts alike. The actual ask/don't-ask gate is
+  enforced outside the prompt, by VS Code's own confirmation UI — a
+  `SafetyRules` class is imported into several prompt files from
+  `../base/safetyRules`, a file not present in this collection, so its
+  content is a known unknown rather than a confirmed absence.
+- **One model family has a real, concrete risk policy**: the
+  Anthropic-family prompt's `operationalSafety` tag classifies risk by
+  *reversibility*, not a fixed command list — "Take local, reversible
+  actions freely (editing files, running tests). For actions that are
+  hard to reverse, affect shared systems, or could be destructive, ask
+  the user before proceeding," followed by a named example list
+  (deleting files/branches, `rm -rf`, force-push, amending published
+  commits, pushing code, modifying shared infrastructure) and an
+  explicit anti-bypass rule: "Do not bypass safety checks (e.g.
+  `--no-verify`)." No other model-family prompt in this folder (xAI,
+  Gemini, GLM, base, most OpenAI variants) has an equivalent policy —
+  this is Anthropic/Codex-specific, not shared base-prompt content. The
+  OpenAI Codex variants carry a narrower echo: "NEVER use destructive
+  commands like `git reset --hard` or `git checkout --` unless
+  specifically requested or approved by the user."
+- **A distinct escalation-on-edit mechanism, gated per model family**:
+  two otherwise-unrelated families (Family H, MiniMax) share identical
+  text — "The user may need to approve commands before they execute —
+  if they modify a command before approving, incorporate their
+  changes" — confirming a propose-then-user-may-edit approval loop
+  exists at the harness level for `CoreRunInTerminal`, but only wired
+  into the prompt for these two families; Anthropic-, Gemini-, xAI-,
+  and GLM-family prompts expose the same terminal tool with no mention
+  of this loop at all.
+- **Sandbox/isolation**: confirmed absent — runs in the user's actual
+  VS Code workspace, no containerization referenced anywhere.

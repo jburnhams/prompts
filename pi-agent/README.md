@@ -197,3 +197,34 @@ matches.
   data model or CLI session-list code, so — unlike the Cline/Roo Code
   finding — this is a targeted-search-came-up-empty result across a
   narrow file set, not a schema-confirmed design choice.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. **Confirmed absent,
+and unusually well-evidenced**: `system-prompt.js` is fully readable
+executable code, not template text, and it contains no branch, flag,
+or conditional block related to permissions or approval anywhere in its
+120 lines. A full-file grep across every file in this folder (including
+`compaction/prompts.js`) for permission/confirm/approv/allowlist/risk/
+sandbox/autonomous/destructive/dangerous returns zero matches.
+
+- The entire base prompt assembles from a persona line, a dynamically
+  built tool list, a small guidelines list (two hardcoded defaults —
+  "Be concise in your responses," "Show file paths clearly when
+  working with files" — plus caller-supplied ones), documentation
+  routing, project-context injection, and skills — none of these
+  sections reference confirmation, approval, or risk.
+- **A real capture-gap caveat**: individual tool descriptions
+  (`toolSnippets`) are passed in as an external parameter and are
+  **not present in this repo** — if Pi has a destructive-command
+  warning or confirmation instruction, it would live in those
+  tool-snippet strings or in the harness's tool-execution layer,
+  neither of which is captured here. This should be read as "not found
+  in captured files," not "Pi has no such mechanism" — though it's a
+  stronger negative result than most such caveats in this collection,
+  since the one file that would carry a permission *branch* (rather
+  than a tool *description*) was read in full and is genuinely code,
+  not prose that could be summarizing an absent feature.
+- Consistent with the README's existing note that sandbox/isolation is
+  "not specified — runs as a local CLI process."
