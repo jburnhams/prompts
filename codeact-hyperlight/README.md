@@ -37,6 +37,15 @@ constraints section, but both of those are close to fixed text with minor
 branching, not fully assembled from a live tool/capability registry the
 way this is.
 
+**Scope note**: this folder name and its original research covered one
+specific feature of Microsoft's Agent Framework — CodeAct plus
+Hyperlight sandboxing. The framework turns out to have an entirely
+separate, more significant feature area for **multi-agent
+orchestration** (as opposed to what one agent does internally), covered
+in its own section below after being missed in the original pass — see
+[`agent-subagent-architectures.md`](../agent-subagent-architectures.md)
+for how it fits into this collection's broader sub-agent survey.
+
 ## Files
 
 - `_instructions.py` — the two prompt-building functions:
@@ -99,3 +108,73 @@ sandbox is currently configured with**, regenerated per run.
   CLI's macOS-Seatbelt-or-container split (also prompt-conditional, but
   branching over ~2 fixed descriptions rather than assembled from a live
   capability registry).
+
+## Multi-agent orchestration (a separate feature area, missed originally)
+
+CodeAct is about what **one** agent does inside a single tool call.
+Microsoft's Agent Framework separately ships — as its own installable
+package, `agent-framework-orchestrations`
+(`python/packages/orchestrations/agent_framework_orchestrations/`, a
+sibling of the `hyperlight` package this folder documents, both reached
+via lazy import shims in `agent_framework/core`) — a genuinely
+sophisticated layer for how **multiple** agents relate to each other.
+This is architecturally siloed from CodeAct (no code cross-references
+either direction) but **compositionally connected**: every orchestration
+participant just needs to satisfy a `SupportsAgentRun` protocol
+(`id`/`name`/`description`/`run()`), and `Workflow.as_agent()` lets a
+whole *orchestration* satisfy that same protocol — so a CodeAct-using
+agent can be one participant in an orchestration, and an entire
+orchestration (a Magentic team, a Handoff swarm) can itself become one
+tool-callable participant nested inside a larger structure. A concrete
+sample (`magentic_workflow_as_agent.py`) confirms this nesting is a real,
+demonstrated pattern, not just a theoretical possibility.
+
+Five named, `Builder`-configured patterns, all compiling down to a
+shared `Workflow` graph-execution engine (`agent_framework/_workflows`):
+
+- **Sequential** — participants run one after another; each sees the
+  full accumulated conversation by default (a flag switches this to
+  "only the immediately-prior response"). Last participant's output is
+  the workflow output unless `output_from` names someone else.
+- **Concurrent** — the same input is broadcast to every participant in
+  parallel, each with an *isolated* conversation history (not shared);
+  results converge via a default aggregator (pulls each participant's
+  final message) or a custom combination callback.
+- **Handoff** — decentralized, model-driven routing. Allowed handoffs
+  are injected into each agent's own toolset as synthetic
+  `handoff_to_{target_id}` tools; a middleware intercepts calls to them
+  and redirects the turn. Conversation is a single shared thread,
+  broadcast to all participants after every turn (internal handoff
+  plumbing stripped before broadcast). Positioned explicitly (per the
+  framework's own AutoGen-migration guide) as the successor to AutoGen's
+  `Swarm` pattern.
+- **GroupChat** — a central orchestrator owns history and decides turn
+  order, either via a plain selection function or an LLM-based manager
+  that outputs a structured "next speaker + terminate?" decision each
+  round.
+- **Magentic** — the most sophisticated of the five, modeled on
+  Magentic-One: a manager agent builds and maintains a structured "task
+  ledger" (facts + plan, via a dedicated three-stage prompt sequence),
+  runs an inner loop producing a "progress ledger" each round (task
+  satisfied? loop detected? next speaker + instruction?), detects
+  stalls and can trigger a full replan-and-reset, and synthesizes a
+  final answer from the complete history once the ledger reports the
+  task done. Optional human plan-sign-off before execution begins. The
+  framework's own samples position this for open-ended research tasks
+  — directly matching the pattern's public "deep research" use case.
+
+Each pattern differs in whether participants share one conversation
+(Handoff, GroupChat) or run isolated (Concurrent), and in how a final
+result is determined (last-speaker, aggregator, live-per-turn,
+full-history, or synthesized-by-manager) — there is no single unifying
+protocol across the five, each is a genuinely distinct design. A general
+single-agent "run until done" loop (`agent_framework/_harness`, with
+its own todo-list, tool-approval, and "judge"-pattern self-evaluation
+machinery) is a separate, orthogonal runtime concern — closer to a
+coding agent's own inner ReAct loop than to any of the five
+multi-agent patterns above. See
+[`agent-subagent-architectures.md`](../agent-subagent-architectures.md)
+for how Handoff/GroupChat/Magentic compare to every other source's
+sub-agent design in this collection — none of the other 16 sources
+there implement anything resembling GroupChat or Magentic's
+ledger-driven replanning.

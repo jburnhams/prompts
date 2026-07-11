@@ -33,45 +33,123 @@ prompt from many small, single-purpose section files, plus a mode system
 
 ## Tool surface
 
+**Correction**: this section originally covered only the prompt-assembly
+section files (`system.ts` + `sections/*.ts`), which describe tool
+*behavior* in prose but not the full tool *roster* — the actual tool
+implementations live in `src/core/tools/`, never fetched originally.
+Reading them directly (from the archived-but-still-browsable
+`RooCodeInc/Roo-Code` repo, Apache-2.0) corrects three of four claims
+below.
+
 - **Shell**: `execute_command`, runs in the user's actual VS Code
   terminal — explicitly notes commands run in "a new terminal instance"
   each time and that interactive/long-running/background commands are
   supported with status updates, unlike Cline's more generic framing.
-- **Search**: regex search + "view source code definitions" (per
-  `getCapabilitiesSection`) — same lightweight symbol-listing capability
-  as Cline's `list_code_definition_names`, consistent with the shared
-  Cline lineage. `system.ts` also instantiates a `CodeIndexManager`
-  (semantic code indexing service), though it's not obviously surfaced as
-  prompt text in the files captured here — worth revisiting if the
-  relevant section file is added later.
+- **Search — corrected, real semantic search exists**: regex search
+  ("view source code definitions," same lightweight symbol-listing as
+  Cline's `list_code_definition_names`) *plus* a confirmed
+  `CodebaseSearchTool.ts` (`codebase_search`) that's genuine
+  embedding-based vector search — OpenAI embeddings, a Qdrant vector
+  store, cosine-similarity-ranked results with file path/line range —
+  not a grep wrapper despite the original doubt about whether it was
+  "obviously surfaced." Backing service: `src/services/code-index/`.
+- **Editing — corrected, six live tools not one pluggable strategy**:
+  `write_to_file` (full overwrite) and `apply_diff` (pluggable
+  `DiffStrategy`, SEARCH/REPLACE-block unified diff) are the two core,
+  always-available editors; four more are opt-in "customTools" gated
+  per-mode or by experiment flag — `edit`/`search_replace` (literal
+  string match, exact-uniqueness or `replace_all`), `edit_file`
+  (three-tier fallback matcher: exact → whitespace-tolerant regex →
+  token-based regex), and `apply_patch` (an OpenAI/Codex-style V4A
+  envelope patch format — `*** Add File:`/`*** Update File:` markers).
+  `SearchAndReplaceTool.ts` is a deprecated re-export of `edit`, kept
+  only for back-compat. Six live tools plus one dead shim, not "a
+  pluggable `DiffStrategy`" — the evolution visibly tracks toward
+  Claude-Code/Codex-style conventions layered on top of the original
+  Cline-inherited `apply_diff`.
 - **Code execution**: none beyond the shell.
-- **Browser/web**: **no browser tool** in what's captured here — a real
-  divergence from Cline (its fork parent), which has a full
-  screenshot-driven Puppeteer `browser_action` tool (see
-  [`../cline/README.md`](../cline)).
-- **Multimodal**: not addressed (consistent with dropping the browser
-  tool).
+- **Multimodal — corrected**: `GenerateImageTool.ts` (`generate_image`)
+  calls OpenRouter's image-generation models for real text-to-image and
+  image-to-image generation, writing the result to a workspace file.
+  `UseMcpToolTool.ts`/`accessMcpResourceTool.ts` also extract image
+  content (not just text) from MCP tool responses/resources.
+- **Browser/web — corrected with important history, not a flat
+  absence**: Roo Code *did* ship a Puppeteer-based `browser_action`-style
+  tool ("Browser Use 2.0," added Nov 2025) and then **removed it
+  entirely** in v3.48.0 (Feb 2026, per `CHANGELOG.md`) — three months
+  before the repo was archived. `puppeteer-core`/
+  `puppeteer-chromium-resolver` remain as orphaned `package.json`
+  dependencies with no importing code left. "No browser tool" is
+  accurate for the final snapshot, but stating it as an inherent
+  architectural gap (as the original version of this doc did) is
+  misleading — it's a removed feature, not a never-had one.
 - **Sandbox/isolation**: none described — runs directly in the user's VS
   Code environment.
-- **Extensibility**: MCP support (conditionally included, same pattern as
-  Cline), plus its own **mode system** — different modes can expose
-  different *tool groups*, so the available tool surface itself, not just
-  the persona, changes per mode (see `coding-agent-approaches.md` §13).
-  Also imports a `SkillsManager` and a pluggable `DiffStrategy` for the
-  edit-format layer.
+- **Extensibility**: MCP support (`use_mcp_tool`/`access_mcp_resource`,
+  confirmed to handle image content too), plus its own **mode
+  system** — different modes expose different *tool groups*, so the
+  available tool surface itself, not just the persona, changes per mode
+  (see `coding-agent-approaches.md` §13). Also `SkillTool.ts`
+  (`skill`, mode-scoped skill lookup/execution) and
+  `RunSlashCommandTool.ts` (`run_slash_command`, can auto-switch mode
+  based on the resolved command's frontmatter) — both confirmed by
+  direct reading, not just inferred from `SkillsManager`/
+  `DiffStrategy` imports as before.
 
 ## Sub-agents
 
-**No sub-agent/delegation tool of any kind appears in the files captured
-here** — no `new_task`-as-delegate, no `Task`-equivalent, nothing
-matching Claude Code's, Gemini CLI's, or Copilot Chat's spawn-and-report
-pattern. This is a second real divergence from Cline (alongside the
-missing browser tool noted in "Tool surface" above): Roo Code's **mode
-system** is the closest thing it has to task-splitting, but modes change
-*what the single active agent is allowed to do* (which tool group is
-exposed, what persona framing applies), not *how many agents are
-running* — there's no fan-out, no separate context window for a
-delegated task, and no summarized-report-back step. If Roo Code added
-genuine sub-agent delegation after this snapshot (`main` branch,
-2026-07-10, on an archived/read-only repo — see the note above), it
-isn't reflected in these files.
+**Correction — this was wrong.** The original version of this section
+concluded Roo Code has no sub-agent/delegation mechanism, based only on
+the prompt-assembly files. It does: **`NewTaskTool.ts`
+(`new_task`) plus a built-in "Orchestrator" mode together implement
+real, tested, recursive task delegation** — publicly marketed as
+"Boomerang Tasks." This is a different `new_task` from Cline's (which
+really is just a user-facing context-handoff, no delegation at all —
+see `../cline/README.md`); Roo Code's fork diverged on this specific
+tool's actual behavior even though the name stayed the same.
+
+- **Orchestrator is a built-in mode** (slug `orchestrator`, "🪃
+  Orchestrator") with **no direct tool-execution groups of its own** —
+  its entire job is decomposing work and delegating: "Use this mode for
+  complex, multi-step projects that require coordination across
+  different specialties... break down large tasks into subtasks, manage
+  workflows, or coordinate work that spans multiple domains." Its
+  custom instructions explicitly script the loop: decompose into
+  subtasks via `new_task`, give each a clearly defined scope, require
+  each subtask to finish via `attempt_completion`, track progress after
+  each one, synthesize a final overview.
+- **`new_task` protocol — stateful and addressable, but sequential, not
+  concurrent**: calling it pushes a new `Task` onto a LIFO stack
+  (`clineStack`) with `rootTask`/`parentTask` references; the parent is
+  suspended (marked `status: "delegated"`, not destroyed) while the
+  child becomes the sole focused task. Only the top of the stack is
+  ever active — this is **effectively blocking** delegation (the parent
+  cannot proceed until the child finishes) but implemented as a
+  session/UI stack-switch, not an in-process function call the way
+  Claude Code's `Task` tool is.
+- **Result handoff is deferred, not synchronous**: `NewTaskTool.ts`
+  deliberately does *not* return a result for the `new_task` call
+  itself (a source comment explains why: an immediate result would be
+  orphaned since history is already persisted by that point). When the
+  child later calls `attempt_completion`, its summary gets injected
+  back into the **parent's actual conversation history** as the
+  deferred tool result for the original delegation call, and the parent
+  reactivates. Functionally similar in spirit to Codex's/OpenCode's/
+  OpenHands's addressable designs (a real, trackable parent/child
+  relationship survives across turns — even across VS Code reloads, via
+  `awaitingChildId` persisted in history), but single-threaded rather
+  than parallel.
+- **Recursion — confirmed supported and tested**: nested delegation
+  (parent delegates to child, child delegates to grandchild) works and
+  unwinds correctly, evidenced by test coverage for exactly this
+  scenario. No stated depth limit was found.
+- **No concurrency** — the single LIFO stack means Roo Code's model is
+  strictly sequential/depth-first, a real architectural difference from
+  Codex's/OpenHands's genuinely parallel addressable designs (see
+  `agent-subagent-architectures.md` §2).
+- **Mode-switching remains a separate, non-overlapping mechanism**:
+  `SwitchModeTool.ts` (`switch_mode`) changes the active mode
+  *within the same task* — no delegation, no new stack entry — confirming
+  Roo Code has two genuinely distinct concepts (in-place persona/tool-set
+  change vs. hierarchical task delegation) that happen to share the word
+  "mode."
