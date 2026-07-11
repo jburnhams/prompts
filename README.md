@@ -129,7 +129,15 @@ generates a least-privilege policy for the user's request and then
 re-judges every subsequent tool call against it — an entire separate
 model acting as judge over the first model's actions, layered on top
 of (not replacing) a 5-tier admin/user/workspace/extension/default
-priority engine. Also covers: static-vs-LLM risk classification
+priority engine. Claude Code's own leaked permission system has a
+third, independently-converged instance of the same idea —
+`yoloClassifier.ts`, a two-pass fast/slow LLM gate for its internal-only
+`auto` mode — confirmed real via Anthropic's own public hooks docs but
+also confirmed **ant-gated** (excluded from the externally-available
+mode set), the same internal-only pattern this collection's
+self-verification doc found for Claude Code's adversarial verification
+subagent, now showing up a second time in an unrelated subsystem. Also
+covers: static-vs-LLM risk classification
 (OpenHands's genuinely pluggable choice between trusting the model's
 own self-tag or a separate Dockerized static analyzer), scope/
 persistence of a granted approval (five distinct tiers in Codex vs.

@@ -84,9 +84,27 @@ widest spread of sophistication found anywhere in this collection.
 |---|---|
 | **Static only — no LLM classification anywhere in the approval path, confirmed by source-level search, not just absence of prompt text** | OpenCode (real tree-sitter WASM parsing of bash/PowerShell into an AST, sub-command-by-sub-command checking, plus a static offline-generated "arity" lookup table for suggesting allowlist patterns — but zero runtime risk-classification calls). Roo Code (deterministic longest-prefix-match over flat allow/deny string arrays, plus a hardcoded regex bank, `containsDangerousSubstitution()`, that unconditionally forces a manual ask regardless of the lists — pure pattern-matching, never a model call). |
 | **A single boolean, self-assigned by the acting model itself, every call** | Windsurf's `SafeToAutoRun`, Replit's `is_dangerous`, Cline's `requires_approval` — three sources with the same shape (the model tags its own action) but no external check on whether the tag is honest; enforcement is entirely in what the *client* does with the flag, not in the flag's accuracy. |
-| **Static rules PLUS an opt-in, fully separate LLM reviewer layered on top — not a fallback, not a replacement, a second independent gate** | Gemini CLI's "Conseca" (off by default, `enableConseca`): a fast model (`DEFAULT_GEMINI_FLASH_MODEL`) first synthesizes a least-privilege, per-tool JSON policy tailored to the specific user request, then a second call re-checks each actual tool call against that generated policy and returns `allow`/`deny`/`ask_user` — wired into the *same* priority-tiered rule engine as the static TOML rules (`conseca.toml`, priority 100), not a separate code path. Codex CLI's "Guardian" (off by default, `approvals_reviewer = auto_review`): a dedicated, cheaper/faster model (`codex-auto-review`, low reasoning effort) reviews the exact planned action against a written risk-taxonomy document and returns a structured `{risk_level: Low/Medium/High/Critical, user_authorization, outcome, rationale}` verdict — fail-closed on timeout (90s hard limit), running in a locked-down cached sub-session with no inherited exec-policy rules of its own. |
+| **Static rules PLUS an opt-in, fully separate LLM reviewer layered on top — not a fallback, not a replacement, a second independent gate** | Gemini CLI's "Conseca" (off by default, `enableConseca`): a fast model (`DEFAULT_GEMINI_FLASH_MODEL`) first synthesizes a least-privilege, per-tool JSON policy tailored to the specific user request, then a second call re-checks each actual tool call against that generated policy and returns `allow`/`deny`/`ask_user` — wired into the *same* priority-tiered rule engine as the static TOML rules (`conseca.toml`, priority 100), not a separate code path. Codex CLI's "Guardian" (off by default, `approvals_reviewer = auto_review`): a dedicated, cheaper/faster model (`codex-auto-review`, low reasoning effort) reviews the exact planned action against a written risk-taxonomy document and returns a structured `{risk_level: Low/Medium/High/Critical, user_authorization, outcome, rationale}` verdict — fail-closed on timeout (90s hard limit), running in a locked-down cached sub-session with no inherited exec-policy rules of its own. Claude Code's `auto` mode (leaked): `yoloClassifier.ts` runs a genuine **two-pass fast/slow LLM design** — a cheap first pass decides allow/no-allow, escalating to a slower "thinking" pass only if the fast pass leans toward blocking — built from recent conversation context plus the user's *own* configured allow/deny rules and `CLAUDE.md`, so the classifier's judgment is itself conditioned on the static rule layer rather than independent of it. A companion `bashClassifier.ts` exists for more granular bash-specific classification but is a confirmed stub in the public repo (see the caveat below). |
 | **A genuinely pluggable, operator-selectable choice between the static and LLM philosophies** | OpenHands — three interchangeable `SecurityAnalyzer` implementations: `LLMRiskAnalyzer` (trusts the model's own `security_risk` self-tag verbatim), `InvariantAnalyzer` (a separate, Dockerized static policy-analysis server evaluating the action trace independent of what the model claims), and a third, unexamined `GraySwanAnalyzer`. Unlike Gemini CLI/Codex (where the LLM layer is a fixed add-on), OpenHands makes the entire philosophy a config-time choice — the same "infrastructure over instruction" pattern this collection's compaction and sub-agent docs found distinguishing OpenHands elsewhere. |
 | **Confirmed absent — no flag, no tier, nothing** | Cursor (no risk field found in any of five dated prompt versions or the tools JSON — a real gap given `run_terminal_cmd`'s otherwise-detailed approval-flow text), Devin, Factory/Droid, Warp. |
+
+**The caveat that matters most for Claude Code's entry above**: the
+`auto` mode itself is confirmed **internal-only** — excluded from the
+externally-available mode set by an `isExternalPermissionMode()` type
+guard, gated behind a feature flag, the same pattern this collection's
+self-verification doc found for Claude Code's adversarial verification
+subagent. `bashClassifier.ts`'s own code comment is explicit:
+"classifier permissions feature is ANT-ONLY." So of this doc's three
+separate-LLM-reviewer implementations, two (Gemini CLI's Conseca, Codex's
+Guardian) are real, off-by-default-but-user-reachable features; the
+third (Claude Code's `yoloClassifier.ts`) is confirmed to exist and
+work as described, but not confirmed to be something an ordinary
+external user can actually turn on. Corroborating evidence this isn't
+just a leak artifact: Anthropic's own public hooks documentation names
+`PermissionRequest` and `PermissionDenied` hook events, the latter
+described as firing "when a tool call is denied by the auto mode
+classifier" — independent confirmation the classifier is real, without
+confirming external availability either way.
 
 **A finer point worth carrying forward**: OpenHands' risk tiers aren't
 even fixed — the LOW/MEDIUM/HIGH *definitions themselves* change via a
@@ -127,6 +145,7 @@ How long does "yes" last once granted?
 | **A rich, multi-scope save mechanism plus mode-aware trust propagation** | Gemini CLI — `ProceedOnce`/`ProceedAlways` (session only) vs. `ProceedAlwaysAndSave` (atomically written to a user- or workspace-scoped TOML file, with automatic backup-and-recovery from a corrupted policy file) vs. `ProceedAlwaysServer`/`ProceedAlwaysTool` (scoped to an entire MCP server or tool name, not one command shape). Distinctively, trust propagates only *toward* more permissive modes: approving in `plan` mode (the most restrictive) grants trust across all four modes; approving in `yolo` applies to `yolo` only. |
 | **Nominally session-scoped, with a separate persistent layer of unconfirmed reach** | OpenCode — an "always" reply is explicitly session-only (the TUI's own copy: "This will allow ... until OpenCode is restarted"), but a separate SQLite-backed `PermissionSaved` table exists in the schema/DB layer with no confirmed call sites writing to it outside its own definition — flagged as an unresolved, possibly-unwired feature rather than a working persistence tier. |
 | **Two tiers only, no session cache at all** | Roo Code — a decision is either asked every single time, or explicitly promoted into the persisted `allowedCommands`/`deniedCommands` settings via an in-chat UI (permanent, survives restarts). There is no analog of Codex's `ApprovedForSession` — everything not already on the persisted lists gets re-asked for the life of the extension. |
+| **A rule-source model with both a session tier and four persisted scopes, resolved together rather than layered as fallback tiers** | Claude Code (leaked) — a `PermissionRule` carries a `source` field valued at user/project/local/flag/policy-settings, CLI arg, command, **or session** — i.e. session-scoped rules are one first-class rule source among several, not a separate cache Codex-style. Rules from every source are aggregated into three maps (always-allow/always-deny/always-ask) that a single decision function consults in order (allow wins outright, deny blocks outright), rather than checking session first and falling through to disk. The four persisted scopes (policy/managed-enterprise > project > user > local) load in that precedence order, with a managed-settings flag able to restrict evaluation to policy rules only — an enterprise lockdown Codex/Gemini CLI have no direct equivalent of, closer in spirit to Gemini CLI's admin-tier ownership/permission requirements (§3) than to any of its own persistence peers. |
 | **Client-side, out-of-band, and explicitly unreachable by the model itself** | Windsurf — the only sanctioned override for `SafeToAutoRun` is a user-configured settings allowlist the model is told exists but is given no tool to read or write, and is explicitly told to keep opaque in conversation ("do not refer to any specific arguments of the run_command tool in your response"). |
 | **Not addressed / no persistence concept found** | Cline (no session-cache language beyond the client-side auto-approve toggle itself), Cursor, Devin, Replit, Factory/Droid, Warp. |
 
@@ -330,14 +349,22 @@ into "absent":
   out to be the two richest in the entire survey.
 - **"An LLM judges the primary model's actions" is a real, working
   pattern, not a hypothetical — and it's always additive, never a
-  replacement for the static rules.** Gemini CLI's Conseca and Codex's
-  Guardian arrived at structurally similar designs independently: both
-  are off by default, both run a separate, purpose-selected model
-  (deliberately cheaper/faster in Codex's case), both fail closed on
-  any error, and both sit *on top of*, not instead of, a static
-  rule/priority engine that keeps working regardless of whether the
-  LLM layer is enabled. Compare this to self-verification's §3 finding
-  about separate-LLM-call judges: the same design instinct (a second,
+  replacement for the static rules. Three vendors arrived at it
+  independently, not two.** Gemini CLI's Conseca, Codex's Guardian, and
+  Claude Code's `yoloClassifier.ts` (§2) share the same shape: off/
+  gated by default, a separate purpose-selected model (deliberately
+  cheaper/faster in Codex's and Claude Code's fast-pass), and layered
+  *on top of*, not instead of, a static rule/priority engine that keeps
+  working regardless of whether the LLM layer is enabled — Codex and
+  Gemini CLI additionally fail closed on any error. Claude Code's
+  version is the odd one out on availability, not on design: it's the
+  only one of the three confirmed **internal-only**, gated behind a
+  feature flag and excluded from the externally-available mode set —
+  the same ant-gating pattern this collection's self-verification doc
+  found for Claude Code's adversarial verification subagent, now found
+  a second time in a completely different subsystem. Compare this
+  three-way convergence to self-verification's §3 finding about
+  separate-LLM-call judges: the same design instinct (a second,
   differently-purposed model call checking the first) recurs across
   two entirely different problems in this collection — verifying
   completed work, and pre-authorizing work about to happen.
