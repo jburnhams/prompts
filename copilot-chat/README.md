@@ -160,3 +160,72 @@ comments):
   and unambiguous for the orchestrator to fold back into its own
   context — a tighter contract than Claude Code's free-text "concise
   summary" report.
+
+## Compaction
+
+Already fully captured in this folder's files, not previously written
+up as its own section — `summarizedConversationHistory.tsx`,
+`simpleSummarizedHistoryPrompt.tsx`, `backgroundSummarizer.ts`. See
+[`agent-context-compaction.md`](../agent-context-compaction.md) for the
+cross-source comparison this feeds into.
+
+- **A structured 8-section prompt**, more elaborate than most other
+  sources surveyed: Conversation Overview → Technical Foundation →
+  Codebase Status → Problem Resolution → Progress Tracking → Active
+  Work State → Recent Operations → Continuation Plan, each with its
+  own sub-bullets, wrapped in explicit `<analysis>`/`<summary>` tags (a
+  private reasoning pass before the structured output, same idea as
+  Gemini CLI's `<scratchpad>`). A dedicated "Recent Context Analysis"
+  section specifically captures the last agent commands/tool results
+  that triggered the summarization — not just the conversation in
+  general.
+- **Two independent tiers, not one strategy**: "Full" mode is the real
+  LLM summarization call (tools attached with `tool_choice: 'none'` so
+  the model can still see what's available without invoking anything);
+  "Simple" mode is a **non-LLM structural fallback** — no summarization
+  call at all, just packing as much raw history as fits into a
+  priority-ordered list (first message pinned highest priority, large
+  tool results/arguments truncated). Simple mode is used when Full mode
+  itself fails or would exceed budget — a fallback *for the
+  summarizer*, not just for the underlying task.
+- **Foreground vs. background summarization as an explicit, tracked
+  distinction**: `BackgroundSummarizer` is a small state machine
+  (Idle → InProgress → Completed/Failed) letting summarization run
+  concurrently with the agent continuing other work, rather than
+  always blocking the turn — the source/foreground-vs-background
+  distinction is even carried into telemetry.
+- **An inline-summarization mode as a third option**: instead of a
+  separate LLM call, the compaction instruction can be appended
+  directly into the ongoing agent loop as a user message, with the
+  model's next response expected to contain *only* a summary wrapped
+  in `<summary>` tags (parsed with a multi-level fallback: clean tags →
+  open tag with no close → give up and fall back to a separate call).
+- **Per-model-family quirk handling baked directly into the
+  summarization path**: Anthropic-family models get tool-search
+  messages stripped (the summarization call doesn't have tool search
+  enabled, so leaving them in causes an API rejection); Gemini-family
+  models get orphaned tool calls stripped (a strict function-call/
+  function-response pairing requirement); Claude Opus specifically gets
+  an explicit "do NOT call any tools" reinforcement.
+- **A `PreCompact` hook runs before summarization starts**, letting hook
+  scripts archive the transcript or perform cleanup — the same named
+  hook-point concept as Claude Code's own `PreCompact` hook.
+- **Recovery pointer to the full transcript**, same pattern as Claude
+  Code: when a session transcript is being tracked, the summary text
+  gets a trailing hint — "If you need specific details from before
+  compaction... use the ReadFile tool to look up the full uncompacted
+  conversation transcript at: `<path>`" — with the transcript's current
+  line count included, frozen into the summary text at compaction time
+  specifically so it doesn't change on later renders (preserving prompt
+  cache stability for the summary message itself).
+- **Cache breakpoints are explicitly stripped from the summarization
+  request** before it's sent — the summarization call is deliberately
+  excluded from the normal prompt-caching path rather than trying to
+  make it cache-compatible.
+- **Budget**: an optional hard cap on summary size —
+  `min(sizing.tokenBudget, maxSummaryTokens)` — with the summarization
+  attempt itself failing (`'Summary too large'`) if the model's output
+  exceeds that effective budget, rather than truncating it after the
+  fact. Rich per-attempt telemetry (prompt/cache/completion token
+  counts, duration, which mode ran, how many rounds since the last
+  summarization) is sent regardless of outcome.

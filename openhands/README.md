@@ -156,3 +156,73 @@ became **three coexisting mechanisms**:
   conversations for the cloud product — the "run OpenHands on 50
   different issues at once" kind of parallelism, structurally unrelated
   to the in-conversation `delegate`/`task`/`workflow` mechanisms above.
+
+## Compaction
+
+Sourced from the live `OpenHands/software-agent-sdk` repo, not files
+stored in this folder — see
+[`agent-context-compaction.md`](../agent-context-compaction.md) for the
+cross-source comparison this feeds into.
+
+- **A genuinely pluggable `Condenser` abstraction** — the only source
+  in this collection's compaction survey where the compression
+  *strategy itself* is a swappable component, not a fixed algorithm.
+  `CondenserBase` is an abstract base with a `"kind"` discriminator
+  field; confirmed concrete implementations: `LLMSummarizingCondenser`
+  (the real summarization strategy, detailed below), `NoOpCondenser`
+  (returns the view unchanged — explicit opt-out), and
+  `PipelineCondenser` (chains multiple condensers, short-circuiting if
+  any stage decides to condense). Any `Agent` — top-level or a spawned
+  sub-agent — selects its own condenser at config time.
+- **Condensation is a first-class, non-destructive event in an
+  append-only log, not a history rewrite**: a `Condensation` event is
+  just another entry appended to the conversation's event log; the
+  reduced "view" the LLM actually sees is computed on the fly by
+  replaying `Condensation.apply()` (which removes specific
+  `forgotten_event_ids` and splices in a summary) over the *full,
+  never-deleted* persisted log. The complete original history — and
+  the record of exactly which events were forgotten at each step —
+  stays on disk indefinitely, even though nothing currently lets the
+  agent itself re-query forgotten events mid-conversation.
+- **The summarization prompt asks for structured prose, not JSON**: a
+  Jinja2 template with named sections (`USER_CONTEXT`, `TASK_TRACKING`
+  — explicitly told to preserve exact task IDs/statuses — `COMPLETED`,
+  `PENDING`, `CURRENT_STATE`, plus `CODE_STATE`/`TESTS`/`CHANGES`/
+  `DEPS`/`VERSION_CONTROL_STATUS` for code tasks specifically), with
+  worked examples for both code and non-code tasks. Rendered and sent
+  as a fully separate LLM call under its own `usage_id: "condenser"` so
+  its token cost doesn't get folded into the main agent's usage stats.
+- **Both proactive and hard-reactive triggers, explicitly named as
+  such**: three condensation reasons checked each step — `EVENTS`
+  (view size exceeds a max-event count), `TOKENS` (only if a token
+  ceiling is configured, condenses down toward roughly half), and
+  `REQUEST` (an explicit unhandled request event — the hard-trigger
+  path). The SDK's own docs label the first two "soft" (can be
+  deferred/retried next step) and the request path "hard." A dedicated
+  emergency fallback (`hard_context_reset`) handles the case where
+  normal condensation still can't fit — it summarizes the entire view
+  in one shot, retrying up to 5 times with the event text shrunk by
+  20% per attempt if the single call itself overflows.
+- **A configurable "never forget" floor**: `keep_first` (default 4 in
+  the SDK's standard preset) always preserves that many initial events
+  verbatim — typically the original task framing — no matter how
+  aggressively later history gets condensed.
+- **A safety check against wasted/trivial condensation**:
+  `minimum_progress` (default 0.1) requires at least 10% of the current
+  view to actually be condensable, or the condenser raises rather than
+  performing a no-op-adjacent summarization.
+- **Every sub-agent gets its own fully independent condenser and event
+  history** — confirmed by reading the delegation executor: a spawned
+  sub-agent's `LocalConversation` is a brand-new event log, condensed
+  on its own schedule, with only aggregate LLM-cost metrics (not
+  events) merged back to the parent afterward. A code comment states
+  the reasoning directly: sub-agents get a summarizing condenser by
+  default "so deep runs auto-compact instead of erroring on context
+  overflow" — condensation is treated as a correctness requirement for
+  long delegated runs, not just a cost optimization. No cross-agent or
+  orchestration-level (e.g. Magentic-style) shared condensation exists
+  — each conversation in the delegation tree compacts in isolation.
+- **Concrete numeric defaults**: the class-level default is
+  `max_size=240`/`keep_first=2`, but the SDK's actual shipped preset
+  overrides this to `max_size=80`/`keep_first=4` for both the top-level
+  agent and any sub-agent that doesn't specify its own condenser.

@@ -57,10 +57,16 @@ in the collection.
 
 **[→ `agent-context-compaction.md`](./agent-context-compaction.md)** —
 a further drill-down on how a scaffold survives running out of context
-mid-task: when compaction triggers (proactive vs. reactive-on-error),
-what gets kept vs. discarded, whether it's a dedicated LLM call or a
-simple truncation, prompt-cache interaction, and how it composes with
-project-memory files and sub-agent context isolation.
+mid-task, across 9 sources: trigger model (proactive token-threshold
+checks vs. reactive-on-API-error vs. manual commands, and real
+combinations of these), prompt shape (free text vs. structured
+templates vs. XML), single-mechanism vs. layered-pipeline vs.
+pluggable-strategy architecture, incremental/anchored vs.
+from-scratch summarization, recovery philosophy (is the discarded
+detail actually gone), prompt-cache interaction, sub-agent isolation,
+and — compared in detail — actual numeric token budgets (reserved
+buffers, summary output caps, retention thresholds) across the sources
+that expose them.
 
 ### Other candidate drill-downs (not started)
 
@@ -80,7 +86,10 @@ order:
   fix → verify → edge cases → submit" workflow template shared across
   nearly every SWE-bench-lineage agent, plus review-before-submit
   patterns (SWE-agent's actual reviewer/chooser LLM calls, Augment's
-  ensembler, Codex's own review pass). Distinct from
+  ensembler, Codex's own review pass, and — the richest single example
+  found so far — Jules's per-action mandatory verification, hidden
+  pre-commit tool, and Playwright-screenshot-as-proof frontend
+  verification; see `leaked/jules/README.md`). Distinct from
   `code-review-approaches.md`, which is about reviewing *someone
   else's* PR — this is an agent checking its own work.
 - **Git/VCS interaction mechanics** — commit message conventions,

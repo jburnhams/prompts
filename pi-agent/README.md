@@ -124,3 +124,45 @@ tool's behavior is hardcoded into the system-prompt text itself.
   `~/.pi/agent/SYSTEM.md` replaces the entire tool-list/guidelines/
   self-documentation assembly described above, rather than layering on
   top of it.
+
+## Compaction
+
+Already fully captured in this folder's `compaction/prompts.js`, not
+previously written up as its own section. See
+[`agent-context-compaction.md`](../agent-context-compaction.md) for the
+cross-source comparison this feeds into.
+
+- **A dedicated, separate system prompt for the summarization call**,
+  distinct from the instruction prompt: `SUMMARIZATION_SYSTEM_PROMPT`
+  is a one-line role-lock — "You are a context summarization assistant...
+  Do NOT continue the conversation. Do NOT respond to any questions in
+  the conversation. ONLY output the structured summary" — a compact but
+  explicit version of the same "don't act, just summarize" guardrail
+  Claude Code's compaction prompt states more elaborately ("Tool calls
+  will be REJECTED").
+- **A 6-section structured template**: Goal, Constraints & Preferences,
+  Progress (split into Done/In Progress/Blocked checklists), Key
+  Decisions (with brief rationale per decision), Next Steps, Critical
+  Context — each section explicitly allowed to say "(none)" rather than
+  being padded with invented content.
+- **The one source in this collection with an explicit incremental
+  UPDATE mode, not just fresh-summarize-from-scratch**:
+  `UPDATE_SUMMARIZATION_PROMPT` is a second, distinct prompt for when a
+  `<previous-summary>` already exists — it must "PRESERVE all existing
+  information," "ADD new progress... from the new messages," move
+  completed items from "In Progress" to "Done," and may only drop
+  something if it's "no longer relevant." This means a long session
+  with multiple compaction events accumulates and edits one running
+  structured summary rather than re-summarizing the entire history
+  from zero each time — cheaper (only the new messages since the last
+  summary need to be read) and less lossy (the model is anchoring on
+  its own prior summary rather than re-deriving everything). OpenCode
+  independently arrives at a similar anchored/incremental design (its
+  `<previous-summary>` merge instruction), making this a second
+  convergent case of the same idea across unrelated codebases.
+- **No trigger/threshold information captured** — this file is the two
+  prompt constants alone; the surrounding cut-point-selection logic
+  (`core/compaction/utils.js`/`compaction.js`) that decides *when* and
+  *where* to cut was explicitly excluded when this file was originally
+  extracted (see the file's own header comment), so trigger mechanics
+  for Pi remain unconfirmed in this collection.

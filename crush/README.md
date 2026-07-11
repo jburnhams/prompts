@@ -98,3 +98,39 @@ orchestrator-side tool description.
   text — unlike Gemini CLI's explicit file-conflict concurrency mandate
   or Claude Code's "launch multiple agents concurrently" instruction,
   parallel-sub-agent guidance isn't captured in what's collected here.
+
+## Compaction
+
+Already fully captured in this folder's `summary.md`, not previously
+written up as its own section. See
+[`agent-context-compaction.md`](../agent-context-compaction.md) for the
+cross-source comparison this feeds into.
+
+- **The bluntest "you will lose everything" framing in this
+  collection**: "This summary will be the ONLY context available when
+  the conversation resumes. Assume all previous messages will be lost.
+  Be thorough." No transcript-lookup recovery pointer is offered the
+  way Claude Code's and Copilot Chat's compaction prompts provide — the
+  summary genuinely is treated as the sole surviving record, not a
+  lossy pointer into a still-readable full history.
+- **A 5-section structured template**, the shortest of the structured
+  templates surveyed but still opinionated about content: Current State
+  (exact user request, progress, current work, specific next steps —
+  explicitly "not vague"), Files & Changes (modified/read/not-yet-touched,
+  with file paths and line numbers), Technical Context (architecture
+  decisions and *why*, patterns followed, commands that worked vs.
+  failed and why), Strategy & Approach (why this approach over
+  alternatives, gotchas, assumptions, blockers), Exact Next Steps.
+- **The "Exact Next Steps" section is explicitly example-driven about
+  what NOT to do**: "Don't write 'implement authentication' — write:
+  1. Add JWT middleware to src/middleware/auth.js:15..." — a concrete
+  before/after example baked into the prompt itself, not just an
+  abstract instruction to be specific.
+- **No length limit stated** — "err on the side of too much detail
+  rather than too little. Critical context is worth the tokens" — the
+  opposite instinct from sources that cap summary output tokens
+  (Codex's minimal prompt, OpenCode's 4,096-token cap, Claude Code's
+  20,000-token summary budget).
+- **No trigger/threshold information captured** — same caveat as Goose:
+  this is the prompt text alone, not the surrounding Go orchestration
+  code that would show what actually decides when to compact.

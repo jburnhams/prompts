@@ -88,6 +88,90 @@ prompt text plus a flat tool list, not the surrounding session-engine
 architecture, since none of the other sources have a full-source leak
 to draw this distinction from.
 
+## Context compaction — a layered pipeline, not one mechanism
+
+The richest compaction architecture found anywhere in this collection
+(see [`agent-context-compaction.md`](../../agent-context-compaction.md)
+for the cross-source comparison this feeds into). Rather than a single
+"summarize when full" strategy, `query.ts` runs **several distinct
+mechanisms as a sequential pipeline on every turn**, cheapest first,
+plus a genuinely separate reactive fallback for actual API errors.
+Two of the pipeline's defining implementation files
+(`snipCompact.ts`, `snipProjection.ts`) and the reactive-compact
+implementation (`reactiveCompact.ts`) are absent from this leak
+(referenced by call sites but 404 on fetch, with `SnipTool.ts` an
+explicit stub reading "not included in the leaked source") — so the
+proactive pipeline's outer structure is confirmed by reading real code,
+but the exact snip-selection logic and reactive-compact internals are
+inferred from caller comments only.
+
+- **The pipeline, in order**: **snip** (a model-nudged, boundary-based
+  tool for trimming a specific region of context, not the whole
+  conversation — a periodic "context-efficiency nudge" prompts the
+  model to use it proactively) → **microcompact** (no LLM call at all —
+  heuristically strips/replaces old tool outputs with placeholders,
+  either via Anthropic's cache-editing API or direct replacement when
+  the prompt cache has likely already expired) → **context collapse**
+  (runs deliberately before autocompact, so that if it alone gets under
+  threshold, autocompact becomes a no-op) → **autocompact** (the real
+  LLM-summarization pass, gated by a token threshold). A comment in the
+  source states explicitly that snip and microcompact "are not mutually
+  exclusive" — this is a fallback *chain* of increasingly expensive
+  interventions, not a menu of alternative strategies.
+- **A genuinely separate reactive path**: triggered only by the literal
+  API error string `"Prompt is too long"`, independent of the proactive
+  pipeline — tries a cheap "collapse drain" first, then falls back to
+  full reactive compaction. This is the one place Claude Code's
+  compaction is reactive rather than proactive.
+- **A sixth, experimental path**: session-memory compaction reuses
+  pre-extracted "session memory" content instead of an LLM call when
+  available, falling back to the normal pipeline otherwise.
+- **The compaction prompt itself is structured, not free text**: a
+  9-section template (Primary Request and Intent, Key Technical
+  Concepts, Files and Code Sections, Errors and fixes, Problem Solving,
+  All user messages, Pending Tasks, Current Work, Optional Next Step),
+  wrapped in a scratchpad `<analysis>` tag that gets stripped after
+  generation ("a drafting scratchpad that improves summary quality but
+  has no informational value once the summary is written"). Three
+  variants exist — full-history, recent-only, and "up to a pivot
+  point" — confirming a directional partial-summarization mode
+  distinct from whole-history compaction. Tool use during the
+  compaction call itself is explicitly forbidden ("Tool calls will be
+  REJECTED and will waste your only turn").
+- **Recovery pointer to the full transcript**: the post-compaction
+  summary message includes a literal instruction — "If you need
+  specific details from before compaction... read the full transcript
+  at: `${transcriptPath}`" — the same transcript-lookup-hint pattern
+  independently found in this collection's Copilot Chat material (see
+  `copilot-chat/README.md`), except here confirmed to also carry a
+  distinct "you were already working autonomously before compaction"
+  framing when the compaction happens mid-unattended-run.
+- **Compaction and prompt caching**: compaction is treated as a
+  deliberate, accepted cache-reset point (`clearSystemPromptSections()`
+  runs on both `/compact` and `/clear`) rather than something the
+  system tries to hide from the cache — but microcompact's cache-editing
+  path is itself a cache-*preservation* optimization (deletes stale
+  tool-result cache entries without invalidating the surrounding cached
+  prefix), and full compaction can optionally fork off the main
+  conversation's already-cached prefix instead of a cold cache-miss
+  summarization call.
+- **Concrete numeric thresholds** (approximate, from an automated
+  research pass, not hand-verified against source): autocompact
+  triggers at the effective context window minus a **13,000-token
+  buffer** (overridable via an env var); a **20,000-token** warning
+  threshold before the hard limit; up to **20,000 tokens** reserved for
+  the compaction summary itself; a **50,000-token** post-compact budget
+  for re-attached files/skills (5,000 per file, 5,000 per skill, capped
+  at 25,000 total across skills); and a circuit breaker that gives up
+  after **3 consecutive autocompact failures** rather than retrying
+  forever.
+- **User-visible commands are structurally different, not just two
+  names for the same thing**: `/compact` is summarize-and-continue
+  (accepts custom free-text instructions, tries session-memory →
+  reactive → legacy compaction in order); `/clear` is a hard reset that
+  wipes rather than summarizes, sharing only the cache-cleanup step
+  with `/compact`.
+
 ## Tool definition and dispatch
 
 `Tool.ts` defines a generic `Tool<Input, Output>` contract: identity,

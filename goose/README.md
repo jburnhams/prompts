@@ -104,3 +104,47 @@ description that triggers delegation.
   similar to Copilot Chat's forced `<final_answer>` cutoff, but stated as
   a soft convention here rather than a hard turn-budget mechanism with an
   injected nudge message.
+
+## Compaction
+
+Already fully captured in this folder's `compaction.md`, not previously
+written up as its own section. See
+[`agent-context-compaction.md`](../agent-context-compaction.md) for the
+cross-source comparison this feeds into.
+
+- **Explicitly framed as removing only "the most verbose parts"**, not
+  a full rewrite from scratch: "Generate a version of the below
+  messages with only the most verbose parts removed... Include user
+  requests, your responses, all technical content, and as much of the
+  original context as possible" — closer to lossy compression of the
+  existing transcript than Claude Code's/Copilot Chat's "produce a
+  fresh structured handoff document" framing, though the output format
+  below is still fairly structured.
+- **Explicitly addressed to "you" (the agent), not a human reader**:
+  "Use framing and tone knowing the content will be read [by] an agent
+  (you) on a next exchange" and "this summary will only be read by you
+  so it is ok to make it much longer than a normal summary you would
+  show to a human" — an unusually direct statement that the summary's
+  audience is the model itself, not something a user will ever see.
+  Consistent with "Do not exclude any information that might be
+  important to continuing a session working with you."
+- **A private `<analysis>` reasoning pass before the output**, same
+  pattern as Claude Code's stripped `<analysis>` scratchpad and Gemini
+  CLI's `<scratchpad>` — chronological review, then per-part logging of
+  goals/method/decisions/file-and-code-details, explicitly told to
+  confirm completeness before finalizing.
+- **A 9-section structured template**: User Intent, Technical Concepts,
+  Files + Code, Errors + Fixes, Problem Solving, User Messages (with an
+  instruction to truncate long tool-call arguments/results but keep the
+  messages themselves), Pending Tasks, Current Work, and a conditional
+  Next Step ("include only if directly continues user instruction" —
+  i.e. don't invent a next step that isn't actually implied).
+- **An explicit no-invention guardrail**: "No new ideas unless user
+  confirmed" — the summarizer is told not to introduce plans or
+  suggestions that weren't already part of the conversation.
+- **No trigger/threshold information captured** — this file is the
+  prompt text alone; what actually decides *when* to compact (a token
+  budget check, a reactive error, a manual command) lives in
+  surrounding Rust orchestration code not fetched into this collection,
+  unlike the sources above where the trigger logic itself was
+  independently investigated.

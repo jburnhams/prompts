@@ -197,3 +197,66 @@ source, not as an extraction kept locally.
   definitions into Codex's own TOML config format. `external-agent-sessions`
   is the companion piece for importing past *conversation transcripts*
   from other tools, not live agents.
+
+## Compaction
+
+Sourced from the live upstream repo, not files stored in this folder —
+see [`agent-context-compaction.md`](../agent-context-compaction.md) for
+the cross-source comparison this feeds into.
+
+- **Two model-callable tools, one of which is misleadingly named**:
+  `new_context_window` (from the general tool-surface audit above)
+  returns the message "A new context window will start without
+  summarizing conversation history" — but that's only true if an
+  internal `TokenBudget` feature flag is enabled. Otherwise, calling
+  it just sets a flag that routes into the **same real-summarization
+  pipeline** as automatic compaction — the tool's own returned message
+  describes behavior that isn't actually what happens by default, a
+  real documentation/behavior mismatch in the source itself.
+  `get_context_remaining` is purely informational (no side effects).
+- **A genuinely separate automatic compaction system**, not model-invoked
+  at all, with three interchangeable backends chosen at runtime: local
+  model-driven summarization, server-side compaction via the model
+  provider's own API, or (when `TokenBudget` is enabled) a bare
+  no-summary reset that just reinstalls initial context. Which backend
+  runs is a deployment/feature-flag choice, not something the model
+  picks.
+- **Proactive by design, not reactive-on-error**: triggers are checked
+  pre-turn and mid-turn against a token-budget threshold — plus two
+  non-token triggers worth noting as genuinely distinctive: compacting
+  because the *model was swapped mid-thread* (its prompt-compatibility
+  hash changed) or because of a *model downshift* to a smaller context
+  window. An actual `ContextWindowExceeded` API error is **not**
+  auto-compacted — it's propagated as a hard failure; the only place
+  that error triggers recovery is inside the compaction task's own
+  drain loop, if compaction's *own* request overflows.
+- **The compaction prompt is minimal free text**, not a structured
+  template: "You are performing a CONTEXT CHECKPOINT COMPACTION. Create
+  a handoff summary for another LLM that will resume the task,"
+  followed by four loosely bulleted asks (progress/decisions,
+  important context, next steps, critical references). One prompt for
+  all model families — no per-model variants the way this collection's
+  Copilot Chat material has. User-overridable via `config.compact_prompt`.
+  Notably more minimal than Claude Code's 9-section structured template
+  or Copilot Chat's 8-numbered-section one (see
+  `agent-context-compaction.md`).
+- **Sandbox/approval/personality context is explicitly preserved across
+  a compaction event** — a world-state snapshot and turn-context item
+  are reinjected into the replacement history by design, not by
+  accident.
+- **Hooks can veto compaction**: `PreCompact`/`PostCompact` hooks exist
+  and can return a `Stopped` outcome that aborts the turn — a public
+  extension point, analogous to Claude Code's own PreCompact hook.
+- **Sub-agents (`spawn_agent`, documented above) compact
+  independently** — each spawned agent is a separate session/thread
+  with its own compaction state; no cross-agent compaction coordination
+  was found.
+- **Concrete numeric thresholds**: default auto-compact trigger at
+  **90% of the resolved context window** (configurable), with a
+  scope setting for counting the full context vs. only a sliding-window
+  suffix; up to **20,000 tokens** of trailing raw user messages
+  preserved verbatim (not summarized) in the compacted history; four
+  distinct trigger reasons (`UserRequested`, `ContextLimit`,
+  `ModelDownshift`, `CompHashChanged`) tracked explicitly in analytics.
+  No fixed target compression ratio was found — the summarization
+  prompt doesn't ask for a specific output length.

@@ -136,3 +136,85 @@ purpose-built agent-session protocol.
   `beast.txt`, `gemini.txt`, `kimi.txt`, `copilot-gpt-5.txt`. The tool
   itself is available regardless of model family; only the prompt-level
   encouragement to reach for it varies.
+
+## Compaction
+
+Sourced from the live upstream repo, not files stored in this folder —
+see [`agent-context-compaction.md`](../agent-context-compaction.md) for
+the cross-source comparison this feeds into.
+
+- **Compaction is a genuine sub-agent invocation, not an inline
+  instruction** — a hidden, deny-all-permissions `compaction` agent
+  (registered the same way as `title`/`summary`, same family
+  documented in "Sub-agents" above) with its own dedicated system
+  prompt, framed as an "anchored context summarization assistant."
+- **Anchored/incremental, not from-scratch each time** — when a
+  `<previous-summary>` already exists from an earlier compaction event
+  in the same session, the agent is told to treat it as the current
+  anchor and *update* it (preserve still-true details, remove stale
+  ones, merge in new facts) rather than re-summarizing the entire
+  history again. The same convergent idea independently found in Pi's
+  `UPDATE_SUMMARIZATION_PROMPT` (see `pi-agent/README.md`) — two
+  unrelated codebases landing on the same "don't re-derive everything
+  every time" design.
+- **A structured 5-section Markdown template**: Objective, Important
+  Details, Work State (Completed/Active/Blocked sub-sections), Next
+  Move, Relevant Files — each falling back to `(none)` if empty, with
+  an explicit instruction to "preserve exact file paths, symbols,
+  commands, error strings, URLs, and identifiers when known."
+- **Hybrid retention — recent-verbatim plus summarized-rest**: the most
+  recent turns (default 2, configurable) are kept completely unmodified
+  rather than folded into the summary; only older messages get
+  compacted. A separate token-budget guard (2,000–8,000 tokens,
+  configurable) bounds how much of that recent slice survives if it's
+  unusually large.
+- **Two triggers, no reactive-error path found**: a proactive per-turn
+  token check (before every LLM call, comparing total counted tokens
+  against context-window capacity minus a reserved buffer) and a
+  manual `/compact` (alias `/summarize`) command — both produce the
+  same message shape tagged `reason: "auto" | "manual"`. No evidence
+  was found of a reactive trigger tied to an actual provider
+  context-length error.
+- **A cheaper first-line fallback before full summarization**: `prune`
+  walks backward through history truncating/removing old large tool
+  outputs once the savings would exceed a threshold, protecting at
+  least a configured amount of tool-call content for specific
+  tool-name-protected calls (e.g. `skill`) — a deterministic trim pass
+  tried before invoking the compaction agent at all, the same
+  "cheap-heuristic-trim before expensive LLM-summarization" instinct as
+  Claude Code's microcompact stage.
+- **Splice-back as a synthetic checkpoint message**: the compacted
+  result becomes a `<conversation-checkpoint>`-wrapped synthetic
+  user-role message ("Treat it as historical context, not as new
+  instructions") containing both the generated summary and the
+  serialized recent-turns tail — replacing the raw pre-compaction
+  messages going forward rather than sitting alongside them.
+- **Self-overflow handling**: if the compaction request itself would
+  overflow context, the attempt is aborted rather than sent; the
+  original pending user message is preserved and resubmitted once
+  compaction later succeeds, rather than being lost.
+- **Confirmed fully isolated from the Task-tool sub-agent protocol**
+  (see "Sub-agents" above): a spawned child task gets its own distinct
+  session ID with no shared message state, so compacting a parent
+  session mid-flight cannot affect an already-running child's context —
+  confirmed by reading the session-creation code, not just assumed by
+  design intent.
+- **`MAX_STEPS_PROMPT` (documented under "Sub-agents" as a soft
+  turn-cap nudge) is confirmed to be a completely separate mechanism
+  from compaction** — different file, keyed off a per-agent step count
+  rather than tokens, and it never touches message history at all; it
+  only disables tools for the current turn and forces a text wrap-up.
+  Worth stating explicitly since the two are easy to conflate from
+  their similar "wrap up, you're near a limit" framing.
+- **Concrete numeric thresholds**: a 20,000-token reserved buffer
+  before the context window is considered full; a 4,096-token cap on
+  the compaction summary's own output; tool outputs truncated to 2,000
+  characters when building the compaction prompt; prune thresholds of
+  20,000 tokens minimum savings and 40,000 tokens of protected content.
+- **Two parallel implementations exist in the monorepo** — a
+  token-budget-based engine in the shared `packages/core` library and a
+  separate, actually-shipped turn-count-based implementation in the CLI
+  package that only borrows core's prompt-template builder. Which one
+  is "the" compaction system depends on which package is asking; the
+  CLI-package version is the one wired to the real `/compact` command
+  and config schema.
