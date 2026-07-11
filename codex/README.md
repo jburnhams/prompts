@@ -27,15 +27,44 @@ agent's system prompt.
 
 ## Tool surface
 
-- **Shell**: unnamed generic shell, but with an explicit ripgrep
-  preference: "prefer using `rg` or `rg --files`... because `rg` is much
-  faster than alternatives like `grep`. (If the `rg` command is not
-  found, then use alternatives.)" — the clearest, most explicit
-  fast-search-tool endorsement in this collection.
-- **Search**: no dedicated search tool named beyond shell + `rg` — file
-  discovery and code search both go through the shell.
-- **Code execution**: none beyond the shell (scripts run via shell
-  invocation, same as any other command).
+**Correction, same root cause as the Sub-agents section below**: this
+subsection was originally built entirely from the per-model prompt
+text, which — as with delegation — undersells what's actually there.
+The bullets below are corrected/extended against `openai/codex`'s live
+`codex-rs/core/src/tools/` tree (a full tool-registry module: `registry.rs`,
+`router.rs`, `orchestrator.rs`, `approvals.rs`, `sandboxing.rs`,
+`parallel.rs`, plus a `handlers/` directory of ~25 individual tool
+implementations and a `code_mode/` subdirectory), not from the prompt
+files stored in this folder.
+
+- **Shell**: unnamed generic shell (`shell.rs`, `unified_exec.rs`), but
+  with an explicit ripgrep preference: "prefer using `rg` or `rg
+  --files`... because `rg` is much faster than alternatives like
+  `grep`. (If the `rg` command is not found, then use alternatives.)" —
+  the clearest, most explicit fast-search-tool endorsement in this
+  collection.
+- **Search**: no dedicated grep/glob *tool* beyond shell + `rg` was
+  found even in the live registry — file discovery and code search
+  genuinely do go through the shell here, corroborating the original
+  prompt-text finding rather than correcting it. There is, however, a
+  **`tool_search` meta-tool** (`tool_search.rs`) — BM25 full-text search
+  over the *tool registry itself* (MCP tools and dynamically-loaded
+  tools included), letting the model discover which tools exist by
+  natural-language query rather than relying on a fixed list always
+  being in context. Not a code-search tool; a tool-*discovery* tool.
+- **Code execution — a real CodeAct-style mechanism, missed entirely by
+  the prompt-text-only pass**: `tools/code_mode/` implements a
+  `CodeModeService` (`execute()`/`wait()`/`terminate()`) that runs a
+  model-generated script in a managed runtime, where the script can
+  call other registered tools mid-execution via a nested
+  `call_nested_tool()`-style mechanism (routed back through the main
+  tool dispatcher via `delegate.rs` in the same directory) — the same
+  "model writes a program that chains tool calls" pattern documented
+  for Microsoft's CodeAct+Hyperlight elsewhere in this collection (see
+  [`../codeact-hyperlight/README.md`](../codeact-hyperlight) and
+  [`agent-tool-surfaces.md`](../agent-tool-surfaces.md) §3), just native
+  to Codex rather than a separate framework layer. Self-recursion is
+  explicitly blocked (`"{PUBLIC_TOOL_NAME} cannot invoke itself"`).
 - **Editing**: `apply_patch` preferred for single-file edits, but
   explicitly *not* mandatory — "it is fine to explore other options...
   Do not use apply_patch for changes that are auto-generated... or when
@@ -43,16 +72,41 @@ agent's system prompt.
   across a codebase)." A distinct `prompt_with_apply_patch_instructions.md`
   variant exists for models that need the format spelled out rather than
   relying on native tool-calling.
-- **Planning**: a "Plan tool," explicitly told to skip it for the
-  "easiest 25%" of tasks and never use it for single-step plans — the
-  only source in the collection with a quantified threshold for when
-  *not* to plan.
-- **Browser/web**: not addressed in this prompt.
-- **Multimodal**: not addressed.
-- **Sandbox/isolation**: not specified here — see
-  [`../github-pr-bots/codex-review/`](../github-pr-bots/codex-review) for
-  a `sandbox: read-only` example from the Action wiring, and
-  `openai/codex-action`'s documented credential-isolation strategy.
+- **Planning**: a "Plan tool" (`plan.rs`), explicitly told to skip it
+  for the "easiest 25%" of tasks and never use it for single-step plans
+  — the only source in the collection with a quantified threshold for
+  when *not* to plan. Also confirmed: separate context-budget tools
+  (`new_context_window.rs`, `get_context_remaining.rs`) not mentioned
+  anywhere in the prompt text.
+- **Browser/web**: still not addressed in the prompt text, and no
+  dedicated web-fetch/search tool handler was found in the live
+  registry either — a rare case where the correction confirms the
+  original absence rather than overturning it.
+- **Multimodal — wrongly marked absent originally**: `view_image.rs`
+  implements a real `view_image` tool — reads an image file, base64-encodes
+  it into a data URL, and returns it as an `InputImage` content item,
+  gated on the active model actually supporting image input ("`view_image`
+  is not allowed because you do not support image inputs" otherwise).
+- **User interaction**: `request_user_input.rs` and
+  `request_permissions.rs` — dedicated tools for asking the user a
+  clarifying question or requesting a specific permission grant, rather
+  than folding either into free-text turns.
+- **Extensibility — plugins, not previously documented at all**:
+  `request_plugin_install.rs` and `list_available_plugins_to_install.rs`
+  give the model tools to discover and request installation of plugins
+  mid-conversation, plus `extension_tools.rs` and `dynamic.rs` for
+  runtime-registered tool sets. No plugin system was visible from the
+  prompt text alone.
+- **Utility tools**: `current_time.rs`, `sleep.rs`,
+  `wait_for_environment.rs` (block until a sandbox/environment is
+  ready) — small but concrete capabilities absent from every prompt
+  file.
+- **Sandbox/isolation**: `sandboxing.rs` and `network_approval.rs`
+  confirm sandboxing and network-access approval are real, dedicated
+  subsystems in the tools module (consistent with — though not read in
+  as much detail as — the `github-pr-bots/codex-review/` Action-level
+  `sandbox: read-only` example and `openai/codex-action`'s documented
+  credential-isolation strategy already noted here).
 
 ## Sub-agents
 

@@ -48,7 +48,7 @@ and how a scaffold spawns another agent. Covers delegation triggers,
 calling protocol (stateless tool-call vs. persistent addressable child
 vs. shared-conversation handoff vs. async background process), whether
 the sub-agent gets its own system prompt, turn/output bounding,
-concurrency and write-safety, and recursion limits, across the 15
+concurrency and write-safety, and recursion limits, across the 16
 sources with a documented sub-agent mechanism.
 
 ## Sources so far

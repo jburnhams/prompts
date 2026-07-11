@@ -92,8 +92,8 @@ shell.
 
 | Approach | Sources |
 |---|---|
-| Code execution is just shell commands (`python3 script.py`, etc.) — no dedicated code-exec tool | Nearly everyone with a shell tool (OpenHands, OpenCode, Cline, Roo Code, Codex, Augment SWE-bench Agent, mini-swe-agent, SWE-agent) |
-| **CodeAct**: a single `execute_code` tool runs a whole Python program per call, chaining multiple *other* tools together via an in-sandbox `call_tool(name, **kwargs)` built-in, instead of one tool call per model turn | CodeAct+Hyperlight — the only source built entirely around this pattern; OpenHands's `CodeActAgent` naming references the same underlying research but the prompt captured here doesn't show the mechanism itself |
+| Code execution is just shell commands (`python3 script.py`, etc.) — no dedicated code-exec tool | Nearly everyone with a shell tool (OpenHands, OpenCode, Cline, Roo Code, Augment SWE-bench Agent, mini-swe-agent, SWE-agent) |
+| **CodeAct**: a single tool runs a whole model-generated program per call, chaining multiple *other* tools together mid-script instead of one tool call per model turn | CodeAct+Hyperlight (`execute_code`, an in-sandbox `call_tool(name, **kwargs)` built-in) — the source this pattern is named after in this collection; OpenHands's `CodeActAgent` naming references the same underlying research but the prompt captured here doesn't show the mechanism itself. **Correction**: Codex CLI independently implements the same pattern natively — `tools/code_mode/` (`CodeModeService`, a `call_nested_tool()`-style mechanism, self-recursion explicitly blocked) — invisible to this collection until its prompt-text-only extraction was checked against the live source; see `codex/README.md`'s "Tool surface" section. Not one source built entirely around CodeAct plus one naming reference, but at least two independent working implementations. |
 | Notebook cell execution as its own tool, distinct from both shell and file-edit tools | Copilot Chat (`RunNotebookCell`, paired with `EditNotebook`/`GetNotebookSummary` — explicitly forbidden to use `EditFile` or shell out to `jupyter` for notebook work) |
 | Stdlib-only Python (no `pip`), no C/C++ compiler at all — code execution is real but deliberately capability-limited by the runtime itself | Bolt.new (WebContainer) |
 | The agent can **write and then execute its own new tools** mid-task (Python scripts invoked via bash), rather than being limited to pre-registered tools | Live-SWE-agent — unique in this collection; the "tool" that gets created is just a script the existing bash tool then runs, not a new entry in the model's function-calling schema |
@@ -137,10 +137,11 @@ directly as a named tool concern.
 
 | Approach | Sources |
 |---|---|
-| Not addressed at all in what's captured | The large majority — OpenHands, OpenCode, Codex, Roo Code, Aider, SWE-agent, Augment SWE-bench Agent, mini/Live-SWE-agent, Composio SWE-Kit, Goose, Bolt.new, Gemini CLI, Claude Code's extracted tool list, Cursor's extracted tool list, Pi |
+| Not addressed at all in what's captured | The large majority — OpenHands, OpenCode, Roo Code, Aider, SWE-agent, Augment SWE-bench Agent, mini/Live-SWE-agent, Composio SWE-Kit, Goose, Bolt.new, Gemini CLI, Claude Code's extracted tool list, Cursor's extracted tool list, Pi |
 | Screenshots as the closest analog — captured for visual inspection as a side effect of browser automation, not a standalone "look at this image" tool | Cline (`browser_action`'s implicit screenshot feedback loop), Windsurf (`capture_browser_screenshot`) |
 | Notebook **output mimetypes** as the only other multimodal-adjacent surface (a cell's output can be an image, surfaced through `GetNotebookSummary`) | Copilot Chat |
 | A dedicated **create_diagram** tool for generating (not consuming) visual output | Cursor |
+| A dedicated **view an image file** tool, model-gated on actual vision support | **Correction**: Codex CLI — `view_image` (base64-encodes a file into a data URL, returned as an `InputImage` content item; errors explicitly if "you do not support image inputs") — wrongly marked absent in an earlier prompt-text-only pass; found only by checking the live tool registry. See `codex/README.md`. |
 
 **Takeaway**: despite most underlying models being vision-capable, almost
 none of these scaffolds give the model a dedicated "attach/view an image"
