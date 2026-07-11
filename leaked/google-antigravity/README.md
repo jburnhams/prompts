@@ -1,12 +1,43 @@
 # Google Antigravity
 
-- **Type**: Coding agent (Google's agentic IDE) · **Vendor**: Google
+- **Type**: Coding agent (Google's agentic IDE, plus a terminal
+  sibling — see below) · **Vendor**: Google
 - **Status**: closed source (leaked)
-- **Mirror source**: https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools/tree/main/Google/Antigravity (2026-07-10)
+- **Mirror sources**:
+  - `Fast Prompt.txt`, `planning-mode.txt` —
+    https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools/tree/main/Google/Antigravity
+    (2026-07-10)
+  - `CLI Prompt.md` —
+    https://github.com/asgeirtj/system_prompts_leaks/blob/main/Google/antigravity-cli.md
+    (2026-07-11), a separate, independently-maintained aggregator from
+    the x1xhlol one used everywhere else in this collection.
+
+**Two real products, one shared harness, captured separately.** Google
+launched Antigravity 2.0 in May 2026 as the official successor to
+Gemini CLI (which is being sunset for non-enterprise users), shipping
+simultaneously as a desktop IDE, a terminal CLI (`agy`), an SDK, and a
+managed API tier. The terminal CLI's own GitHub repo
+(`google-antigravity/antigravity-cli`) is a binary-distribution shell
+only — no source, no prompt templates — so it doesn't qualify for this
+collection's main `sources/` list; both captures here remain `leaked/`.
+Diffing `CLI Prompt.md` against `Fast Prompt.txt` (451 vs. 611 lines):
+same opening identity line, but the CLI capture drops the XML
+structural tags (`<identity>`, `<user_information>`, `<tool_calling>`)
+present in the IDE version, and — more substantively — has **zero**
+mentions of `browser_subagent` or the Knowledge Subagent (both
+GUI-dependent features documented below), consistent with a genuinely
+distinct terminal-harness variant of the same underlying prompt rather
+than a re-mirror of the same file. It does carry its own
+`<planning_mode_artifacts>` section with a "Walkthrough" file
+convention (`<appDataDir>/brain/<conversation-id>/walkthrough.md`) not
+present in what's captured for the IDE.
 
 ## Files
-- `Fast Prompt.txt` — prompt for a lower-latency/"fast" response mode.
-- `planning-mode.txt` — prompt for a planning-first mode.
+- `Fast Prompt.txt` — IDE prompt for a lower-latency/"fast" response
+  mode.
+- `planning-mode.txt` — IDE prompt for a planning-first mode.
+- `CLI Prompt.md` — the terminal (`agy`) harness's own system prompt;
+  no accompanying tool-schema/JSON file was found for this capture.
 
 ## Sub-agents
 
