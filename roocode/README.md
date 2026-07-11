@@ -153,3 +153,140 @@ tool's actual behavior even though the name stayed the same.
   Roo Code has two genuinely distinct concepts (in-place persona/tool-set
   change vs. hierarchical task delegation) that happen to share the word
   "mode."
+
+## Compaction
+
+See [`agent-context-compaction.md`](../agent-context-compaction.md) for
+the cross-source comparison this feeds into. **Confirmed absent** —
+a stronger finding than "not checked," since every file that assembles
+the system prompt was read in full (`system.ts`, `responses.ts`, and
+all nine `sections/*.ts` files) and a keyword search across the whole
+folder (condense, summarize, context window, truncate, compact,
+sliding, prune, shrink, overflow, max tokens) came up empty except for
+an unrelated directory-listing truncation notice shared with Cline
+("File list truncated," `responses.ts:185`) and a stray leftover
+comment from the Cline fork's shared lineage. No compaction-prompt
+template, no summarization sub-agent or tool, and no context-window
+threshold logic appears anywhere in the assembled prompt.
+
+- **`new_task`/Orchestrator mode (documented above) doesn't layer any
+  compaction on top**: the Boomerang-task delegation protocol addresses
+  task decomposition, not what happens if the *parent* task's own
+  history grows too large — nothing in the delegation protocol gates
+  `new_task`, `attempt_completion`, or mode-switching on context size.
+- **Caveat on confidence**: this pass re-read every prompt-assembly
+  file but did not re-check Roo Code's tool *implementations*
+  (`src/core/tools/*.ts`) live against upstream the way the Tool
+  surface and Sub-agents sections above did (both of which turned out
+  to be wrong on the first pass, before live-source correction) — so if
+  a `CondenseContextTool.ts` or similar exists in
+  `src/core/tools/`/`src/core/condense/` upstream, it wouldn't be
+  visible from the files in this collection. Treat this as confirmed
+  absence *in the captured prompt-assembly code*, with the same caveat
+  that made the earlier Tool-surface/Sub-agents corrections necessary.
+
+## Turn output: session titles
+
+See [`agent-turn-output.md`](../agent-turn-output.md) for the
+cross-source comparison this feeds into.
+
+**Confirmed absence, mirroring Cline almost exactly** (same lineage) —
+verified directly against the schema rather than inferred from a
+keyword-search miss (this archived repo's code isn't indexed by
+GitHub's cross-repo search at all, so files had to be fetched directly).
+`historyItemSchema` (`packages/types/src/history.ts`) has `id`,
+`rootTaskId`, `parentTaskId`, `task`, `tokensIn`/`tokensOut`,
+`totalCost`, `workspace`, `mode`, `status`, and more — **no `title`
+field anywhere**. The webview's task-history list renders straight from
+this schema, so what looks like a "task list" is really just the raw
+task text, not an AI-generated title. Same design answer as Cline: skip
+the extra LLM call entirely.
+
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into.
+
+**No review-specific mode, custom instructions, or LLM-judge mechanism
+found** — checked all five built-in modes (architect/code/ask/debug/
+orchestrator) and the shared objective/rules prompt sections; Debug
+mode's closest instruction ("Explicitly ask the user to confirm the
+diagnosis before fixing the problem") is human-in-the-loop diagnosis
+confirmation, not self-review of completed work. **What does exist is a
+purely mechanical, non-LLM completion gate**: `AttemptCompletionTool.ts`
+blocks the `attempt_completion` call outright if a tool failed earlier
+in the same turn, and — behind a `preventCompletionWithOpenTodos`
+setting — blocks it if any todo item isn't marked `"completed"`,
+returning a tool error that forces the agent to keep working rather
+than finish. No model judgment involved; a structural precondition
+check on the completion tool itself, comparable in spirit to (but far
+simpler than) SWE-agent's `review_on_submit_m` re-prompt gate.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. Sourced from a live
+clone of `RooCodeInc/Roo-Code` (`src/core/`) — a materially simpler
+system than Codex CLI's, with **no LLM-based risk classification
+anywhere**, confirmed by reading every file in `src/core/auto-approval/`
+plus the protected/ignore controllers: pure boolean toggles and static
+string-pattern matching.
+
+- **Per-category booleans, not named discrete modes**: there's no
+  single "mode" the way Codex has `AskForApproval` — instead seven
+  independent settings (`alwaysAllowReadOnly`/`alwaysAllowWrite`/
+  `alwaysAllowMcp`/`alwaysAllowModeSwitch`/`alwaysAllowSubtasks`/
+  `alwaysAllowExecute`/`alwaysAllowFollowupQuestions`), each gating a
+  different tool category, all requiring a master
+  `autoApprovalEnabled` switch first — closer to a continuous
+  per-category policy vector than a small set of discrete states.
+  `updateTodoList` and the skill tool are unconditionally auto-approved
+  regardless of any setting — the skill tool's own code comment
+  explains why: "does not read arbitrary files - skills must be
+  explicitly installed/defined by the user."
+- **Command matching is deterministic longest-prefix-match, with one
+  hardcoded override that beats every list**: shell commands are split
+  on `&&`/`||`/`;`/`|`, each sub-command independently checked against
+  flat `allowedCommands`/`deniedCommands` string arrays (longest
+  matching prefix wins; ties favor deny), and a chain is only
+  auto-approved if every sub-command matched the allowlist. On top of
+  this, `containsDangerousSubstitution()` — a hardcoded regex bank
+  catching bash/zsh command-injection-via-parameter-expansion patterns
+  (`${var@P}` prompt-string expansion, escape-sequence smuggling,
+  `${!var}` indirect expansion, here-string/process substitution) —
+  **always** forces a manual ask regardless of what the allow/deny
+  lists say. This is Roo Code's closest analog to a "dangerous
+  command" classifier, and it's pure regex, not a model call.
+- **A hardcoded, non-configurable self-protection list, distinct from
+  the general write-approval system**: `.rooignore`, `.roomodes`,
+  `.roorules*`, `.clinerules*`, `.roo/**`, `.vscode/**`, `AGENTS.md`
+  and similar are write-protected "regardless of autoapproval
+  settings" — a real prompt-injection defense ensuring nothing can
+  talk the agent into silently rewriting its own config/instruction
+  files. A separate, project-scoped `.rooignore` (gitignore syntax,
+  live-reloaded via a file watcher) blocks *reading* matched paths —
+  read-access scoping, kept distinct from the write-protection list
+  above.
+- **Only two persistence tiers — no session-only cache at all**: a
+  decision is either asked every single time, or the user explicitly
+  promotes a command pattern into the persisted `allowedCommands`/
+  `deniedCommands` settings via an in-chat "manage commands" UI —
+  which mutates VS Code's persisted settings permanently, surviving
+  restarts and applying to future tasks. There is no analog to Codex's
+  `ApprovedForSession` — every command not already covered by the
+  persisted lists gets re-asked for the life of the extension, until
+  the user edits the lists themselves.
+- **A request-count/cost circuit breaker, unrelated to any single
+  command's risk**: `allowedMaxRequests`/`allowedMaxCost` settings
+  force a fresh manual approval once N auto-approved calls or $-cost
+  have accumulated since the last reset — a rate-limit-style re-ask
+  trigger, even when every individual action was independently
+  allowlisted. Codex CLI has no equivalent of this.
+- **Sandbox/isolation**: confirmed absent — no sandbox references
+  anywhere in `src/core/` beyond an unrelated CI/test context. Tool
+  actions run directly in the user's VS Code environment/terminal, so
+  the entire safety burden sits on the approval-settings, protected-
+  file, and dangerous-substitution layers above, with no complementary
+  isolation layer at all — a sharp contrast with Codex CLI's explicit
+  approval/sandbox coupling or Gemini CLI's separate OS-native sandbox
+  managers.

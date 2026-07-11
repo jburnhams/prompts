@@ -124,3 +124,107 @@ tool's behavior is hardcoded into the system-prompt text itself.
   `~/.pi/agent/SYSTEM.md` replaces the entire tool-list/guidelines/
   self-documentation assembly described above, rather than layering on
   top of it.
+
+## Compaction
+
+Already fully captured in this folder's `compaction/prompts.js`, not
+previously written up as its own section. See
+[`agent-context-compaction.md`](../agent-context-compaction.md) for the
+cross-source comparison this feeds into.
+
+- **A dedicated, separate system prompt for the summarization call**,
+  distinct from the instruction prompt: `SUMMARIZATION_SYSTEM_PROMPT`
+  is a one-line role-lock — "You are a context summarization assistant...
+  Do NOT continue the conversation. Do NOT respond to any questions in
+  the conversation. ONLY output the structured summary" — a compact but
+  explicit version of the same "don't act, just summarize" guardrail
+  Claude Code's compaction prompt states more elaborately ("Tool calls
+  will be REJECTED").
+- **A 6-section structured template**: Goal, Constraints & Preferences,
+  Progress (split into Done/In Progress/Blocked checklists), Key
+  Decisions (with brief rationale per decision), Next Steps, Critical
+  Context — each section explicitly allowed to say "(none)" rather than
+  being padded with invented content.
+- **The one source in this collection with an explicit incremental
+  UPDATE mode, not just fresh-summarize-from-scratch**:
+  `UPDATE_SUMMARIZATION_PROMPT` is a second, distinct prompt for when a
+  `<previous-summary>` already exists — it must "PRESERVE all existing
+  information," "ADD new progress... from the new messages," move
+  completed items from "In Progress" to "Done," and may only drop
+  something if it's "no longer relevant." This means a long session
+  with multiple compaction events accumulates and edits one running
+  structured summary rather than re-summarizing the entire history
+  from zero each time — cheaper (only the new messages since the last
+  summary need to be read) and less lossy (the model is anchoring on
+  its own prior summary rather than re-deriving everything). OpenCode
+  independently arrives at a similar anchored/incremental design (its
+  `<previous-summary>` merge instruction), making this a second
+  convergent case of the same idea across unrelated codebases.
+- **No trigger/threshold information captured** — this file is the two
+  prompt constants alone; the surrounding cut-point-selection logic
+  (`core/compaction/utils.js`/`compaction.js`) that decides *when* and
+  *where* to cut was explicitly excluded when this file was originally
+  extracted (see the file's own header comment), so trigger mechanics
+  for Pi remain unconfirmed in this collection.
+
+## Turn output
+
+See [`agent-turn-output.md`](../agent-turn-output.md) for the
+cross-source comparison this feeds into. **Not found** in either local
+prompt file — a full-text grep for title/thinking/reasoning/thought
+across `system-prompt.js` and `compaction/prompts.js` returned zero
+matches.
+
+- **The compaction prompt was checked and explicitly ruled out as a
+  disguised title generator.** `SUMMARIZATION_SYSTEM_PROMPT` produces a
+  full structured multi-section Markdown document (`## Goal` / `##
+  Constraints & Preferences` / `## Progress` / `## Key Decisions` / `##
+  Next Steps` / `## Critical Context`) — the opposite shape of a title
+  — and is explicit that the call must not produce conversational
+  output at all: "Do NOT continue the conversation. Do NOT respond to
+  any questions in the conversation. ONLY output the structured
+  summary." No length cap, no worked examples, nothing resembling
+  Goose's/Crush's/OpenCode's/Claude Code's title-generation format
+  constraints.
+- Consistent with, but not proof of, Pi's stated minimalism: the base
+  system prompt is built as "a small function rather than a long static
+  document" with only two unconditional guidelines ("Be concise in your
+  responses," "Show file paths clearly when working with files") — the
+  same instinct that could plausibly extend to skipping title
+  generation by design, the way Cline and Roo Code confirmably did
+  (via a direct schema read showing no title field). This folder
+  contains only two prompt-construction files, not Pi's session-history
+  data model or CLI session-list code, so — unlike the Cline/Roo Code
+  finding — this is a targeted-search-came-up-empty result across a
+  narrow file set, not a schema-confirmed design choice.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. **Confirmed absent,
+and unusually well-evidenced**: `system-prompt.js` is fully readable
+executable code, not template text, and it contains no branch, flag,
+or conditional block related to permissions or approval anywhere in its
+120 lines. A full-file grep across every file in this folder (including
+`compaction/prompts.js`) for permission/confirm/approv/allowlist/risk/
+sandbox/autonomous/destructive/dangerous returns zero matches.
+
+- The entire base prompt assembles from a persona line, a dynamically
+  built tool list, a small guidelines list (two hardcoded defaults —
+  "Be concise in your responses," "Show file paths clearly when
+  working with files" — plus caller-supplied ones), documentation
+  routing, project-context injection, and skills — none of these
+  sections reference confirmation, approval, or risk.
+- **A real capture-gap caveat**: individual tool descriptions
+  (`toolSnippets`) are passed in as an external parameter and are
+  **not present in this repo** — if Pi has a destructive-command
+  warning or confirmation instruction, it would live in those
+  tool-snippet strings or in the harness's tool-execution layer,
+  neither of which is captured here. This should be read as "not found
+  in captured files," not "Pi has no such mechanism" — though it's a
+  stronger negative result than most such caveats in this collection,
+  since the one file that would carry a permission *branch* (rather
+  than a tool *description*) was read in full and is genuinely code,
+  not prose that could be summarizing an absent feature.
+- Consistent with the README's existing note that sandbox/isolation is
+  "not specified — runs as a local CLI process."

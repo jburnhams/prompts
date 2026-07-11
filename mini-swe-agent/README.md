@@ -28,7 +28,10 @@ diff.
   `finish_reason`/`has_tool_calls`, an API-level tool-calling signal, not
   text-parsed action blocks), and the same 6-step reproduce → fix →
   verify → edge-cases → submit workflow lineage seen in
-  `../swe-agent/default.yaml` and `../augment-swebench-agent/`.
+  `../swe-agent/default.yaml` and `../augment-swebench-agent/` — see
+  [`agent-self-verification.md`](../agent-self-verification.md) §1 for
+  the full step-by-step comparison across all four SWE-bench-lineage
+  sources.
 - `config/benchmarks/swebench.yaml` — the actual SWE-bench-tuned variant
   used for benchmark runs, meaningfully different from `mini.yaml`:
   wraps the task in a `<pr_description>` tag, adds explicit **modify vs.

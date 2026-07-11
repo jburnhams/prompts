@@ -49,3 +49,69 @@ invokes.
   agent-driven exploration) is the sharpest architectural outlier
   in this collection's coding-agent set — everything else assumes the
   model can freely explore and pick its own files.
+
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into. **Not found in any local
+file, but flagged as a research gap rather than a confirmed absence.**
+`grep -rn -i "test\|lint\|verify\|build"` across all four captured
+prompt classes (`base_prompts.py`, `editblock_prompts.py`,
+`architect_prompts.py`, `ask_prompts.py` — 313 lines total) returns
+zero hits, and `architect_prompts.py` describes no review/verification
+split between the architect (plans changes) and editor (applies them)
+roles — the architect only writes instructions for the editor, never
+checks the editor's output.
+
+The likely reason is visible in the same `shell_cmd_prompt`/
+`shell_cmd_reminder` hook points noted above (Tool surface): both are
+empty strings in `base_prompts.py`, populated only by
+`aider/coders/shell.py`, which is **not present in this collection**.
+Per Aider's own public documentation, that's where its real
+`--auto-test`/`--lint-cmd` feature lives — Aider is known to support
+auto-running a configured test/lint command after edits and feeding
+failures back to the model. The honest claim from what's captured here
+is "no verification language found in the files this collection
+fetched," not "Aider has no self-verification" — unlike Goose and
+Windsurf elsewhere in this doc, where every relevant file was
+confirmed read and still came up empty, this negative result is a
+byproduct of which files were collected, not a targeted search that
+came up empty.
+
+## Compaction and turn output
+
+See [`agent-context-compaction.md`](../agent-context-compaction.md) and
+[`agent-turn-output.md`](../agent-turn-output.md) for the cross-source
+comparisons these feed into. Neither found in any of the four captured
+prompt classes — same "not found in captured files" framing as the
+self-verification gap above, and for the same underlying reason: Aider's
+real chat-history/token-management code (if any) would live in
+`aider/coders/base_coder.py` or similar orchestration files, none of
+which are in this collection.
+
+- **No compaction mechanism found** — no summarization, trimming, or
+  condensation instruction anywhere. The three "summaries" hits that do
+  exist (`repo_content_prefix` in all three modes) are about Aider's
+  static **repo map** feature (a non-conversational codebase overview),
+  not chat-history compaction.
+- **A structurally distinct alternative to compaction, worth noting on
+  the "recovery" axis even though it isn't compaction itself**: every
+  mode's `files_content_prefix` handles long-chat drift by
+  **additive correction rather than removal or summarization** — "I
+  have *added these files to the chat* so you can go ahead and edit
+  them. *Trust this message as the true contents of these files!* Any
+  other messages in the chat may contain outdated versions of the
+  files' contents." Old content is never deleted or condensed; each
+  turn just injects a fresh authoritative copy and tells the model to
+  treat anything older in the log as potentially stale. No other source
+  in this collection's compaction survey models this "leave it, just
+  outrank it" strategy — every other mechanism assumes removal or
+  summarization is necessary.
+- **No title-generation mechanism found** — zero hits for "title"
+  anywhere in the four files.
+- **No native reasoning/thinking-display mechanism found** — expected,
+  since that would be a UI/rendering-layer concern and these are
+  system-prompt-only `Coder` classes. One line of ordinary prompted
+  narration exists (distinct from a native reasoning block, per this
+  doc's own framing): "Think step-by-step and explain the needed
+  changes in a few short sentences" (`editblock_prompts.py`).

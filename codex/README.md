@@ -197,3 +197,256 @@ source, not as an extraction kept locally.
   definitions into Codex's own TOML config format. `external-agent-sessions`
   is the companion piece for importing past *conversation transcripts*
   from other tools, not live agents.
+
+## Compaction
+
+Sourced from the live upstream repo, not files stored in this folder —
+see [`agent-context-compaction.md`](../agent-context-compaction.md) for
+the cross-source comparison this feeds into.
+
+- **Two model-callable tools, one of which is misleadingly named**:
+  `new_context_window` (from the general tool-surface audit above)
+  returns the message "A new context window will start without
+  summarizing conversation history" — but that's only true if an
+  internal `TokenBudget` feature flag is enabled. Otherwise, calling
+  it just sets a flag that routes into the **same real-summarization
+  pipeline** as automatic compaction — the tool's own returned message
+  describes behavior that isn't actually what happens by default, a
+  real documentation/behavior mismatch in the source itself.
+  `get_context_remaining` is purely informational (no side effects).
+- **A genuinely separate automatic compaction system**, not model-invoked
+  at all, with three interchangeable backends chosen at runtime: local
+  model-driven summarization, server-side compaction via the model
+  provider's own API, or (when `TokenBudget` is enabled) a bare
+  no-summary reset that just reinstalls initial context. Which backend
+  runs is a deployment/feature-flag choice, not something the model
+  picks.
+- **Proactive by design, not reactive-on-error**: triggers are checked
+  pre-turn and mid-turn against a token-budget threshold — plus two
+  non-token triggers worth noting as genuinely distinctive: compacting
+  because the *model was swapped mid-thread* (its prompt-compatibility
+  hash changed) or because of a *model downshift* to a smaller context
+  window. An actual `ContextWindowExceeded` API error is **not**
+  auto-compacted — it's propagated as a hard failure; the only place
+  that error triggers recovery is inside the compaction task's own
+  drain loop, if compaction's *own* request overflows.
+- **The compaction prompt is minimal free text**, not a structured
+  template: "You are performing a CONTEXT CHECKPOINT COMPACTION. Create
+  a handoff summary for another LLM that will resume the task,"
+  followed by four loosely bulleted asks (progress/decisions,
+  important context, next steps, critical references). One prompt for
+  all model families — no per-model variants the way this collection's
+  Copilot Chat material has. User-overridable via `config.compact_prompt`.
+  Notably more minimal than Claude Code's 9-section structured template
+  or Copilot Chat's 8-numbered-section one (see
+  `agent-context-compaction.md`).
+- **Sandbox/approval/personality context is explicitly preserved across
+  a compaction event** — a world-state snapshot and turn-context item
+  are reinjected into the replacement history by design, not by
+  accident.
+- **Hooks can veto compaction**: `PreCompact`/`PostCompact` hooks exist
+  and can return a `Stopped` outcome that aborts the turn — a public
+  extension point, analogous to Claude Code's own PreCompact hook.
+- **Sub-agents (`spawn_agent`, documented above) compact
+  independently** — each spawned agent is a separate session/thread
+  with its own compaction state; no cross-agent compaction coordination
+  was found.
+- **Concrete numeric thresholds**: default auto-compact trigger at
+  **90% of the resolved context window** (configurable), with a
+  scope setting for counting the full context vs. only a sliding-window
+  suffix; up to **20,000 tokens** of trailing raw user messages
+  preserved verbatim (not summarized) in the compacted history; four
+  distinct trigger reasons (`UserRequested`, `ContextLimit`,
+  `ModelDownshift`, `CompHashChanged`) tracked explicitly in analytics.
+  No fixed target compression ratio was found — the summarization
+  prompt doesn't ask for a specific output length.
+
+## Turn output: session titles and reasoning display
+
+See [`agent-turn-output.md`](../agent-turn-output.md) for the
+cross-source comparison this feeds into.
+
+- **Session/task title generation: a confirmed absence on the client**,
+  not just unchecked. `task.title` (for the separate Codex Cloud
+  product) is deserialized straight from the backend API response — no
+  generation code exists in `codex-rs/cloud-tasks/`; if an LLM produces
+  it, that happens server-side, invisible to this repo. The local
+  session-resume list (`codex-rs/tui/src/resume_picker.rs`) falls back
+  to a raw server-provided preview string, not a generated title. The
+  `/title` slash command is unrelated to conversation naming entirely —
+  it only configures which telemetry fields (model, token counts,
+  session id) appear in the terminal's window-title bar.
+- **Reasoning: the richest configuration surface surveyed**, and the
+  only one to explicitly target OpenAI's Responses-API reasoning
+  *summaries* by design rather than raw chain-of-thought — consistent
+  with OpenAI's own API not exposing raw CoT at all. `reasoning_effort`
+  (how much the model reasons) and `model_reasoning_summary` (an enum —
+  `Auto`/`Concise`/`Detailed`/`None`, `None` explicitly documented as
+  disabling summaries outright) are two independently configurable
+  axes, both overridable per-role and via CLI flag.
+- **Reasoning summaries are hidden from the live interactive pane by
+  default, shown only in the exported transcript** — a `transcript_only`
+  flag on the TUI's `ReasoningSummaryCell` component means
+  `display_lines()` (the live pane) returns empty while
+  `transcript_lines()` (full transcript export) still renders it. Two
+  further independent toggles layer on top: `hide_agent_reasoning`
+  (suppresses summary display entirely, for users "only interested in
+  the final agent responses") and `show_raw_agent_reasoning` (a
+  separate raw-content event, gated independently from the summary
+  display) — Codex draws its own raw-vs-summary distinction on top of
+  OpenAI's API-level summary-not-CoT design, not just passing the API's
+  choice straight through.
+- **Live keybinding to adjust reasoning effort mid-session**
+  (`chatwidget/reasoning_shortcuts.rs`) — the user can raise or lower
+  how much the model reasons without restarting the conversation.
+- **Narration is a separate, prompted mechanism**: both captured
+  per-model prompts state "Communicate with the user by streaming
+  thinking & responses, and by making & updating plans" — ordinary
+  visible prose governed by the system prompt, unrelated to the native
+  `reasoning_effort`/summary machinery above (the word "thinking" here
+  is used loosely, not referring to the API mechanism).
+
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into.
+
+- **`ReviewTask` is a general "review any diff" utility, not a
+  self-check gate — a distinction worth being precise about.**
+  Confirmed by reading `codex-rs/core/src/tasks/review.rs` and
+  `codex-rs/core/src/session/review.rs`: it spawns a fully separate,
+  nested one-shot Codex conversation (own system prompt — a dedicated
+  `codex-rs/prompts/templates/review/rubric.md`, own approval policy
+  forced to "never," own optional model override) that can target
+  **uncommitted changes, a base-branch diff, an arbitrary commit SHA,
+  or free-text instructions** — four interchangeable modes, only one of
+  which (`UncommittedChanges`) naturally lines up with "review my own
+  recent work." The review prompt itself is unconditional: "You are
+  acting as a reviewer for a proposed code change made by **another
+  engineer**" — used even when reviewing the CLI's own uncommitted
+  diff. Output is structured JSON (`findings[]` with priority/confidence/
+  location, plus an overall correctness verdict), spliced back into the
+  *parent* conversation's history once the review sub-thread completes.
+- **Always explicitly invoked, never auto-chained**: the `codex review`
+  CLI subcommand (which requires one of the four target flags — no
+  implicit default), the TUI's `/review` popup, and the app-server's
+  programmatic review-request path all converge on the same
+  `ReviewTask` pipeline, but nothing in the normal turn-completion or
+  `apply_patch` flow calls it automatically. A search for
+  `review_on_submit`/`self_review`/`request_review`-style
+  completion-gating patterns (the SWE-agent/Roo Code style) turned up
+  nothing — Codex has no code-level "you must review before finishing"
+  gate.
+- **The actual self-verification instruction lives entirely in the
+  system prompt, not in code**: a "Validating your work" section
+  ("If the codebase has tests or the ability to build or run, consider
+  using them to verify changes once your work is complete") whose
+  proactivity is itself gated by the *approval mode* — told to
+  proactively test in fully-autonomous (`never`-approval) mode, told to
+  hold off until the user is ready to finalize in interactive modes.
+  Purely instructional, not enforced by any completion gate.
+- **A second, separate route into review-like behavior**: the
+  Codex-specific prompt variants additionally tell the *main* agent to
+  switch into a "code review mindset" whenever a user asks for a
+  "review" in normal chat — bypassing the `ReviewTask` subsystem
+  entirely and staying in the regular agent loop.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. Sourced from a live
+clone of `openai/codex` (`codex-rs/`) — the single richest permission
+architecture found across every source checked for this doc: not one
+mechanism but **five cooperating subsystems** (a static command-safety
+classifier, a Starlark rule engine, an LLM-based auto-reviewer, a
+real OS-level sandbox, and a network proxy), several of them coupled
+to each other by explicit design.
+
+- **Four modes** (`AskForApproval`, not a continuous scale):
+  `UnlessTrusted` (only a hardcoded read-only safelist auto-runs),
+  `OnRequest` (default — "the model decides when to ask"), `Granular`
+  (five independent sub-toggles: sandbox-escalation prompts,
+  execpolicy `prompt` rules, skill-script execution, the
+  `request_permissions` tool, MCP elicitations — each can be
+  independently auto-rejected without ever reaching the user), and
+  `Never` (no prompts; failures return straight to the model). The
+  true "YOLO" switch, `--dangerously-bypass-approvals-and-sandbox`,
+  force-sets `AskForApproval::Never` **and** full sandbox bypass
+  together — approval-bypass and sandbox-bypass are one coupled flag,
+  not two independent knobs.
+- **Two-layer risk classification — a real, code-confirmed fast/slow
+  split**:
+  - **Fast, static**: a hardcoded read-only-command allowlist (`cat`,
+    `ls`, `grep`, `pwd`, `whoami`, ...) with per-command carve-outs
+    (`base64` is safe unless `-o/--output` is passed; `find` is unsafe
+    with exec/delete/write flags), plus an inverse dangerous-pattern
+    heuristic that parses `git`'s global options to find the real
+    subcommand. Compound `bash -lc "cmd1 && cmd2"` invocations are
+    recursively split and each sub-command checked independently.
+  - **Slow, LLM-based — "Guardian"**: only active when explicitly opted
+    into (`approvals_reviewer = auto_review`) and only for `OnRequest`/
+    `Granular` modes. A dedicated, separate, faster/cheaper model
+    (`codex-auto-review`, low reasoning effort where supported — even
+    overridable per-provider) reviews the exact planned action against
+    a written risk-taxonomy document (`guardian/policy.md` — sections
+    on data exfiltration, credential probing, persistent security
+    weakening, destructive git actions) and returns a structured
+    `{risk_level: Low/Medium/High/Critical, user_authorization,
+    outcome: Allow/Deny, rationale}` verdict. Runs in a **locked-down,
+    cached sub-session** — "pinned to a read-only sandbox with
+    `approval_policy = never`... intentionally runs without inherited
+    exec-policy rules" — with a hard 90-second timeout and an explicit
+    **fail-closed** guarantee: timeout, parse error, or session error
+    all resolve to rejection, never silent allow. A circuit breaker
+    (3 consecutive denials, or 10 in a trailing 50-entry window) force-
+    interrupts the turn back to the human rather than letting the
+    agent grind against auto-denial forever. Guardian gates shell
+    exec, MCP tool calls, *and* network access — not just shell
+    commands.
+- **Rule/policy mechanism — Starlark, not TOML/YAML/JSON**: `.rules`
+  files are real Starlark (Python-like) programs with `prefix_rule()`
+  declarations carrying `pattern`/`decision` (`allow`/`prompt`/
+  `forbidden`)/`justification`/unit-test-style `match`/`not_match`
+  assertions, loaded from built-in/user/project config layers and
+  merged strictest-wins. `codex execpolicy check --rules path.rules
+  git status` is a real CLI subcommand for testing rules offline
+  before deploying them.
+- **Five persistence tiers, not four** (correcting/extending an
+  earlier partial finding): one-off `Approved`;
+  `ApprovedExecpolicyAmendment` (written directly into
+  `codex_home/rules/default.rules`, survives process restart, applies
+  to future sessions); `ApprovedForSession` (in-memory cache, this
+  session only); `NetworkPolicyAmendment` (the same permanent-write
+  pattern, scoped per-host for network egress); plus `TimedOut` and
+  `Abort` as distinct non-approval outcomes (`TimedOut` is
+  Guardian-specific — the review simply didn't finish; `Abort` stops
+  the whole turn, distinct from an ordinary denial). Which decisions
+  are even offered to the user is itself dynamic — an amendment option
+  only appears when a concrete rule/prefix was actually derivable from
+  the request.
+- **Escalation reaches inside a running sandboxed process, not just
+  the top-level command string**: a patched shell forwards every
+  individual `exec()` call to a server over a Unix socket mid-execution,
+  which can independently `Run`, `Escalate` (out of the sandbox),
+  re-sandbox, or `Deny` that one syscall — approval isn't only a
+  pre-flight gate on the command as typed; a compound command already
+  running inside the sandbox can have one of its internal `exec()`
+  calls separately intercepted and judged.
+- **Sandbox/isolation — real, platform-specific, and explicitly
+  coupled to approval, not a substitute for it**: Landlock (Linux),
+  Seatbelt Profile Language (macOS), and a native Windows sandbox back
+  a `SandboxPolicy` enum (`DangerFullAccess`/`ReadOnly`/
+  `ExternalSandbox`/`WorkspaceWrite`). Even under `AskForApproval::Never`,
+  an unsandboxed dangerous command stays `Forbidden` unless the sandbox
+  is *explicitly* disabled too — a deliberate defense-in-depth design,
+  confirmed by a source comment explaining even a patch provably
+  confined to writable paths still runs sandboxed "to prevent hard
+  link exploitation."
+- **A dedicated network-layer firewall, not just an LLM judgment
+  call**: a separate `codex_network_proxy` crate intercepts outbound
+  traffic and evaluates per-host policy before allowing egress
+  (`NetworkPolicyDecider`), with immediate vs. deferred approval modes
+  for network calls that occur inside an already-running sandboxed
+  process — Guardian and the static policy both sit in front of this
+  layer, and accepted decisions persist via the same
+  `NetworkPolicyAmendment` mechanism as file-system rules.

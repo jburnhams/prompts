@@ -156,3 +156,203 @@ became **three coexisting mechanisms**:
   conversations for the cloud product — the "run OpenHands on 50
   different issues at once" kind of parallelism, structurally unrelated
   to the in-conversation `delegate`/`task`/`workflow` mechanisms above.
+
+## Compaction
+
+Sourced from the live `OpenHands/software-agent-sdk` repo, not files
+stored in this folder — see
+[`agent-context-compaction.md`](../agent-context-compaction.md) for the
+cross-source comparison this feeds into.
+
+- **A genuinely pluggable `Condenser` abstraction** — the only source
+  in this collection's compaction survey where the compression
+  *strategy itself* is a swappable component, not a fixed algorithm.
+  `CondenserBase` is an abstract base with a `"kind"` discriminator
+  field; confirmed concrete implementations: `LLMSummarizingCondenser`
+  (the real summarization strategy, detailed below), `NoOpCondenser`
+  (returns the view unchanged — explicit opt-out), and
+  `PipelineCondenser` (chains multiple condensers, short-circuiting if
+  any stage decides to condense). Any `Agent` — top-level or a spawned
+  sub-agent — selects its own condenser at config time.
+- **Condensation is a first-class, non-destructive event in an
+  append-only log, not a history rewrite**: a `Condensation` event is
+  just another entry appended to the conversation's event log; the
+  reduced "view" the LLM actually sees is computed on the fly by
+  replaying `Condensation.apply()` (which removes specific
+  `forgotten_event_ids` and splices in a summary) over the *full,
+  never-deleted* persisted log. The complete original history — and
+  the record of exactly which events were forgotten at each step —
+  stays on disk indefinitely, even though nothing currently lets the
+  agent itself re-query forgotten events mid-conversation.
+- **The summarization prompt asks for structured prose, not JSON**: a
+  Jinja2 template with named sections (`USER_CONTEXT`, `TASK_TRACKING`
+  — explicitly told to preserve exact task IDs/statuses — `COMPLETED`,
+  `PENDING`, `CURRENT_STATE`, plus `CODE_STATE`/`TESTS`/`CHANGES`/
+  `DEPS`/`VERSION_CONTROL_STATUS` for code tasks specifically), with
+  worked examples for both code and non-code tasks. Rendered and sent
+  as a fully separate LLM call under its own `usage_id: "condenser"` so
+  its token cost doesn't get folded into the main agent's usage stats.
+- **Both proactive and hard-reactive triggers, explicitly named as
+  such**: three condensation reasons checked each step — `EVENTS`
+  (view size exceeds a max-event count), `TOKENS` (only if a token
+  ceiling is configured, condenses down toward roughly half), and
+  `REQUEST` (an explicit unhandled request event — the hard-trigger
+  path). The SDK's own docs label the first two "soft" (can be
+  deferred/retried next step) and the request path "hard." A dedicated
+  emergency fallback (`hard_context_reset`) handles the case where
+  normal condensation still can't fit — it summarizes the entire view
+  in one shot, retrying up to 5 times with the event text shrunk by
+  20% per attempt if the single call itself overflows.
+- **A configurable "never forget" floor**: `keep_first` (default 4 in
+  the SDK's standard preset) always preserves that many initial events
+  verbatim — typically the original task framing — no matter how
+  aggressively later history gets condensed.
+- **A safety check against wasted/trivial condensation**:
+  `minimum_progress` (default 0.1) requires at least 10% of the current
+  view to actually be condensable, or the condenser raises rather than
+  performing a no-op-adjacent summarization.
+- **Every sub-agent gets its own fully independent condenser and event
+  history** — confirmed by reading the delegation executor: a spawned
+  sub-agent's `LocalConversation` is a brand-new event log, condensed
+  on its own schedule, with only aggregate LLM-cost metrics (not
+  events) merged back to the parent afterward. A code comment states
+  the reasoning directly: sub-agents get a summarizing condenser by
+  default "so deep runs auto-compact instead of erroring on context
+  overflow" — condensation is treated as a correctness requirement for
+  long delegated runs, not just a cost optimization. No cross-agent or
+  orchestration-level (e.g. Magentic-style) shared condensation exists
+  — each conversation in the delegation tree compacts in isolation.
+- **Concrete numeric defaults**: the class-level default is
+  `max_size=240`/`keep_first=2`, but the SDK's actual shipped preset
+  overrides this to `max_size=80`/`keep_first=4` for both the top-level
+  agent and any sub-agent that doesn't specify its own condenser.
+
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into.
+
+- **Confirmed at the prompt level** (`system_prompt.j2`, stored in this
+  folder): a numbered "TESTING"/"VERIFICATION" pair of rules — create
+  tests to verify issues before implementing fixes, consider
+  test-driven development for new features, don't write tests for
+  non-functional changes, ask the user before investing in test
+  infrastructure that doesn't exist, and "test your implementation
+  thoroughly, including edge cases" if the environment supports it.
+  Purely instructional — no code-level enforcement confirmed for this
+  layer.
+- **No dedicated review/verification sub-agent in the current SDK** —
+  confirmed absence: the complete built-in sub-agent set is exactly
+  `general-purpose`/`code-explorer`/`bash-runner`/`web-researcher`
+  (already documented in "Sub-agents" above), no fifth
+  "reviewer"/"verifier" agent exists.
+- **Correction to what a filename might suggest**: the old (`0.60.0`)
+  tag's `security_risk_assessment.j2` prompt file is **not** a
+  self-review-of-completed-work mechanism — confirmed by reading it in
+  full, it's a pre-execution risk-classification policy, requiring the
+  agent to tag each proposed tool call's `security_risk` as
+  LOW/MEDIUM/HIGH before running it. This gates *proposed actions*, a
+  different concern from checking *completed* work — worth flagging
+  since the name alone invites the opposite assumption.
+
+## Turn output
+
+See [`agent-turn-output.md`](../agent-turn-output.md) for the
+cross-source comparison this feeds into. **Not found** in any of this
+folder's three local prompt files (`system_prompt.j2`,
+`additional_info.j2`, `in_context_learning_example.j2`) — a targeted
+grep for title/thinking/reasoning/thought turned up nothing relevant.
+The one "title" hit is unrelated to session naming: "When updating a
+PR, preserve the original PR title and purpose, updating description
+only when necessary" (`system_prompt.j2:46`).
+
+This is a genuine capture gap, not a confirmed design choice, for two
+independent reasons: this folder's Compaction section above is itself
+sourced from the *live* `OpenHands/software-agent-sdk` repo rather than
+anything stored locally, meaning this folder only ever held CodeAct-
+agent prompt text, never harness/session-management code where a title
+feature would live; and the Sub-agents section documents a separate
+`openhands/app_server/` FastAPI layer "hosting many independent
+sandboxed conversations for the cloud product" — exactly where
+session-naming logic would plausibly live, and it isn't represented by
+any file in this folder. The closest tangential hit is prompted
+narration, not a reasoning-display mechanism: the TROUBLESHOOTING block
+tells the model to "Document your reasoning process" after repeated
+failed fix attempts — ordinary prose in a debugging workflow, not a
+native thinking/reasoning content-block toggle.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. This is the doc where
+`security_risk_assessment.j2` — previously filed only as an
+"adjacent-but-different" note under Self-verification above — is the
+central finding, not a footnote. Sourced partly from live upstream
+fetches (`raw.githubusercontent.com/All-Hands-AI/OpenHands` at tag
+`0.60.0`), since this folder never stored the file itself or the
+controller code that enforces it.
+
+- **The full risk policy, context-dependent on execution mode**: three
+  tiers (LOW/MEDIUM/HIGH), but the *definitions themselves* change via
+  a Jinja conditional depending on whether the agent is running in CLI
+  mode (host filesystem) or sandboxed/container mode — e.g. LOW is
+  "Safe, read-only actions" in CLI mode vs. "Read-only actions inside
+  sandbox" in container mode; HIGH is "elevated (`sudo`) commands,
+  deleting critical files" in CLI mode vs. "connecting to host
+  filesystem, privileged container ops" in container mode. A closing
+  global rule overrides both: "Always escalate to **HIGH** if
+  sensitive data leaves the environment." No other source checked for
+  this doc couples its risk tiers this tightly to the actual isolation
+  boundary in play.
+- **The self-tag is advisory, not trusted by default — a genuine,
+  operator-selectable static-vs-LLM-based choice**: the model's own
+  `security_risk` tag is only *one* of three interchangeable
+  `SecurityAnalyzer` implementations the harness can be configured
+  with — `LLMRiskAnalyzer` (trusts the model's self-reported tag
+  verbatim), `InvariantAnalyzer` (spins up a genuinely separate,
+  Dockerized static policy-analysis server and evaluates the action
+  trace independent of what the model claims), and a third,
+  unexamined `GraySwanAnalyzer`. This is the clearest static-vs-
+  LLM-based contrast found across every source checked for this doc —
+  most sources pick one philosophy; OpenHands makes it a pluggable
+  operator choice, the same "infrastructure over instruction" pattern
+  this collection's other docs found distinguishing OpenHands's
+  `Condenser` (compaction) and delegation system (sub-agents).
+- **Fail-safe default when no analyzer is configured**: "When no
+  security analyzer is configured, treat all actions as UNKNOWN
+  risk... This is a fail-safe approach that ensures confirmation is
+  required" — the system defaults to asking for *everything* rather
+  than trusting the model's tag by omission.
+- **Only HIGH (or UNKNOWN) actually pauses execution**: `confirmation_mode`
+  is a single boolean (a global always-ask/never-ask switch, not a
+  named-mode enum like Claude Code's six modes), scoped to five action
+  types (`CmdRunAction`, `IPythonRunCellAction`,
+  `BrowseInteractiveAction`, `FileEditAction`, `FileReadAction`). LOW
+  and MEDIUM never pause even with `confirmation_mode` on — only a
+  HIGH tag, or an UNKNOWN tag when no analyzer is configured at all.
+- **An acknowledged rough edge in CLI mode**: in CLI mode, every
+  runnable action of the gated types sets `AWAITING_CONFIRMATION`
+  regardless of risk tier when `confirmation_mode` is on — the source
+  code's own comment reads "this is not ideal... we should refactor,"
+  meaning CLI mode is effectively closer to always-ask than the
+  tri-level policy elsewhere suggests.
+- **Scope/persistence**: risk assessment runs per-action, every time —
+  no persistent "remember this decision" cache was found in the
+  controller; `confirmation_mode` itself is a session/config-level
+  toggle, not a per-rule persisted allowlist.
+- **Distinct, narrower prompted rules also present in `system_prompt.j2`**:
+  a `<SECURITY>` block on credential use ("Only use GITHUB_TOKEN and
+  other credentials in ways the user has explicitly requested and would
+  expect"), and a specific process-safety rule against broad `pkill`
+  patterns ("Prefer using `ps aux` to find the exact process ID (PID)
+  first, then kill that specific PID") — both prompted-only, no
+  structural enforcement confirmed. The TROUBLESHOOTING block's "propose
+  a new plan and confirm with the user before proceeding" on major
+  issues is likewise a prompted, non-structural escalation trigger —
+  detecting a "major issue" is left entirely to the model's judgment.
+- No PreToolUse-equivalent hook mechanism or rule-file/allowlist
+  concept exists in the local `.j2` files — the entire enforcement
+  layer lives in `agent_controller.py`, mirroring Claude Code's split
+  between silent prompt text and harness-internal gating, except that
+  here the model *is* an active participant (it sets the tag), just
+  not a trusted one.

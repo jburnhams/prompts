@@ -88,6 +88,155 @@ prompt text plus a flat tool list, not the surrounding session-engine
 architecture, since none of the other sources have a full-source leak
 to draw this distinction from.
 
+## Context compaction — a layered pipeline, not one mechanism
+
+The richest compaction architecture found anywhere in this collection
+(see [`agent-context-compaction.md`](../../agent-context-compaction.md)
+for the cross-source comparison this feeds into). Rather than a single
+"summarize when full" strategy, `query.ts` runs **several distinct
+mechanisms as a sequential pipeline on every turn**, cheapest first,
+plus a genuinely separate reactive fallback for actual API errors.
+Two of the pipeline's defining implementation files
+(`snipCompact.ts`, `snipProjection.ts`) and the reactive-compact
+implementation (`reactiveCompact.ts`) are absent from this leak
+(referenced by call sites but 404 on fetch, with `SnipTool.ts` an
+explicit stub reading "not included in the leaked source") — so the
+proactive pipeline's outer structure is confirmed by reading real code,
+but the exact snip-selection logic and reactive-compact internals are
+inferred from caller comments only.
+
+- **The pipeline, in order**: **snip** (a model-nudged, boundary-based
+  tool for trimming a specific region of context, not the whole
+  conversation — a periodic "context-efficiency nudge" prompts the
+  model to use it proactively) → **microcompact** (no LLM call at all —
+  heuristically strips/replaces old tool outputs with placeholders,
+  either via Anthropic's cache-editing API or direct replacement when
+  the prompt cache has likely already expired) → **context collapse**
+  (runs deliberately before autocompact, so that if it alone gets under
+  threshold, autocompact becomes a no-op) → **autocompact** (the real
+  LLM-summarization pass, gated by a token threshold). A comment in the
+  source states explicitly that snip and microcompact "are not mutually
+  exclusive" — this is a fallback *chain* of increasingly expensive
+  interventions, not a menu of alternative strategies.
+- **A genuinely separate reactive path**: triggered only by the literal
+  API error string `"Prompt is too long"`, independent of the proactive
+  pipeline — tries a cheap "collapse drain" first, then falls back to
+  full reactive compaction. This is the one place Claude Code's
+  compaction is reactive rather than proactive.
+- **A sixth, experimental path**: session-memory compaction reuses
+  pre-extracted "session memory" content instead of an LLM call when
+  available, falling back to the normal pipeline otherwise.
+- **The compaction prompt itself is structured, not free text**: a
+  9-section template (Primary Request and Intent, Key Technical
+  Concepts, Files and Code Sections, Errors and fixes, Problem Solving,
+  All user messages, Pending Tasks, Current Work, Optional Next Step),
+  wrapped in a scratchpad `<analysis>` tag that gets stripped after
+  generation ("a drafting scratchpad that improves summary quality but
+  has no informational value once the summary is written"). Three
+  variants exist — full-history, recent-only, and "up to a pivot
+  point" — confirming a directional partial-summarization mode
+  distinct from whole-history compaction. Tool use during the
+  compaction call itself is explicitly forbidden ("Tool calls will be
+  REJECTED and will waste your only turn").
+- **Recovery pointer to the full transcript**: the post-compaction
+  summary message includes a literal instruction — "If you need
+  specific details from before compaction... read the full transcript
+  at: `${transcriptPath}`" — the same transcript-lookup-hint pattern
+  independently found in this collection's Copilot Chat material (see
+  `copilot-chat/README.md`), except here confirmed to also carry a
+  distinct "you were already working autonomously before compaction"
+  framing when the compaction happens mid-unattended-run.
+- **Compaction and prompt caching**: compaction is treated as a
+  deliberate, accepted cache-reset point (`clearSystemPromptSections()`
+  runs on both `/compact` and `/clear`) rather than something the
+  system tries to hide from the cache — but microcompact's cache-editing
+  path is itself a cache-*preservation* optimization (deletes stale
+  tool-result cache entries without invalidating the surrounding cached
+  prefix), and full compaction can optionally fork off the main
+  conversation's already-cached prefix instead of a cold cache-miss
+  summarization call.
+- **Concrete numeric thresholds** (approximate, from an automated
+  research pass, not hand-verified against source): autocompact
+  triggers at the effective context window minus a **13,000-token
+  buffer** (overridable via an env var); a **20,000-token** warning
+  threshold before the hard limit; up to **20,000 tokens** reserved for
+  the compaction summary itself; a **50,000-token** post-compact budget
+  for re-attached files/skills (5,000 per file, 5,000 per skill, capped
+  at 25,000 total across skills); and a circuit breaker that gives up
+  after **3 consecutive autocompact failures** rather than retrying
+  forever.
+- **User-visible commands are structurally different, not just two
+  names for the same thing**: `/compact` is summarize-and-continue
+  (accepts custom free-text instructions, tries session-memory →
+  reactive → legacy compaction in order); `/clear` is a hard reset that
+  wipes rather than summarizes, sharing only the cache-cleanup step
+  with `/compact`.
+
+## Turn output: session titles and reasoning display
+
+See [`agent-turn-output.md`](../../agent-turn-output.md) for the
+cross-source comparison this feeds into.
+
+**Three separate title generators exist, not one** — all calling Haiku
+explicitly (a distinct cheap/fast model, never the main Sonnet/Opus
+agent loop), all with narrow, non-overlapping triggers rather than
+running for every session:
+
+- `src/utils/sessionTitle.ts`'s `generateSessionTitle()` — a
+  3-7-word sentence-case title, JSON-schema-constrained output
+  (`{"title": "..."}`), with good/bad worked examples embedded in the
+  prompt. Triggered from `src/hooks/useRemoteSession.ts` exactly once,
+  after the first user message, but **only for remote/background
+  sessions started without an initial prompt** — a comment explains why:
+  "gives the session a meaningful title on claude.ai instead of
+  'Background task'." Ordinary interactive terminal sessions with an
+  initial prompt don't appear to get this treatment at all.
+- `teleport.tsx`'s `generateTitleAndBranch` — a 6-word title *plus* a
+  git branch name in one call, for the remote/CCR teleport flow.
+- `rename/generateSessionName.ts`'s `generateSessionName` — a
+  kebab-case 2-4-word name, used only by the explicit `/rename` command.
+
+All three share an `extractConversationText` helper that tail-slices to
+the last 1,000 characters of the conversation rather than reading the
+full history — titling is deliberately cheap even before considering
+the small-model choice.
+
+**Reasoning display is raw-but-collapsible by default, not
+summarized** — a real design choice distinct from every other source
+surveyed defaulting to hidden-unless-opted-in (Codex's interactive
+pane, Gemini CLI, OpenCode):
+
+- `AssistantThinkingMessage.tsx` shows a collapsed one-line "∴
+  Thinking" hint by default; expanding (via a verbose/transcript mode)
+  reveals the model's *actual, unmodified* thinking text rendered as
+  markdown — nothing passes through a summarization step the way
+  visible chat responses might.
+- A dedicated on/off setting (`ThinkingToggle.tsx`, bound to `alt+t`)
+  controls whether extended thinking is requested from the API at all,
+  with an explicit latency/quality tradeoff warning if toggled
+  mid-conversation.
+- A magic keyword, literally the word **"ultrathink"**, typed anywhere
+  in a user message, is detected (`src/utils/thinking.ts`,
+  `src/utils/ultraplan/keyword.ts`) and boosts the thinking budget for
+  that turn — with its own rainbow-highlighted UI treatment as you type
+  it. (This collection's own conversational surface uses the same
+  keyword convention — see the system-reminder in the turn that
+  triggered this very research pass.)
+- `redacted_thinking` blocks (Anthropic's API-level safety redaction of
+  certain thinking content) render only as an opaque "✻ Thinking…"
+  placeholder — genuinely hidden by the model provider, not a Claude
+  Code display choice.
+- **Transcript noise control**: only the *most recent* thinking block
+  stays expanded as a long session scrolls on; older ones automatically
+  collapse away, independent of the verbose/transcript-mode toggle —
+  a scaffold-level UI decision layered on top of the raw-display default.
+
+**Narration is a separate mechanism entirely**: ordinary visible
+assistant prose (what most sources' "communication style"/terseness
+rules govern — see `coding-agent-approaches.md`) is governed by the
+system prompt's conciseness rules, not by anything to do with the
+native thinking-block machinery above.
+
 ## Tool definition and dispatch
 
 `Tool.ts` defines a generic `Tool<Input, Output>` contract: identity,
@@ -180,6 +329,58 @@ seek permission, not the enforcement architecture behind it).
   string-pattern arrays per behavior, with a managed-settings flag that
   can restrict evaluation to policy rules only (an enterprise lockdown
   mechanism).
+- **The model's own prompt text is silent on all of this** — a targeted
+  search of `Prompt.txt` (the plain extracted system prompt, distinct
+  from this architecture doc) found zero language about permission
+  modes, risk classification, or approval mechanics anywhere. The
+  entire machinery above lives in the harness, invisible to the model;
+  unlike OpenHands (below, in a cross-source companion doc) or Cline,
+  Claude Code's model isn't told the rules, it's just gated by them.
+- **Cross-source corroboration, not just a leak claim**: Anthropic's
+  own public hooks documentation (`code.claude.com/docs/en/hooks`)
+  independently confirms the exact same six-value `permission_mode`
+  enum (`default`/`plan`/`acceptEdits`/`auto`/`dontAsk`/
+  `bypassPermissions`, with `default` labeled "Manual" in the UI) as a
+  field passed into hook payloads — strong evidence the leaked
+  architecture reflects the real shipped product, not just this
+  extraction's interpretation.
+- **`PreToolUse`, missing from this repo's own leaked source, is real
+  and fully documented publicly** — worth flagging since it's easy to
+  assume every hook event this doc cites came from the leak; this one
+  didn't. Per the public docs: fires "before a tool call executes,"
+  can inspect `tool_name`/`tool_input`/the current `permission_mode`,
+  and returns a `permissionDecision` of `deny`/`allow`/`ask`/`defer`
+  (defer falls through to the normal permission system) plus a
+  `permissionDecisionReason` shown to the model — and, distinctively,
+  an `updatedInput` field that lets the hook **rewrite** the tool's
+  arguments before execution, not just block or allow it. Exit code 0
+  with JSON output processes `permissionDecision`; exit code 2 is a
+  hard block. Matchers operate on tool name (including regex like
+  `"mcp__.*"`) with an `if` field using the same pattern syntax as
+  settings rules (`"Bash(git *)"`). Two further hook events named in
+  the public docs but not in the leak — `PermissionRequest` ("when a
+  permission dialog appears") and `PermissionDenied` ("when a tool
+  call is denied by the auto mode classifier") — directly confirm the
+  `auto` mode's LLM classifier above is real and has its own
+  hook-observable denial event, not just an internal implementation
+  detail.
+- **`ExitPlanMode`, the tool that ends `plan` mode**: per its own tool
+  description, "Use this tool when you are in plan mode and have
+  finished presenting your plan and are ready to code. This will
+  prompt the user to exit plan mode" — with explicit good/bad examples
+  distinguishing "planning implementation steps" (should trigger it)
+  from pure research tasks (should not) — the model has a dedicated
+  tool to request the mode transition, unlike Cline's Plan/Act split
+  (see `cline/README.md`'s Permissions section), where the model can
+  only ask in prose and has no equivalent forcing tool.
+- **Provenance discipline worth keeping straight when citing this
+  section**: the six-mode enum, rule model, `yoloClassifier.ts`/
+  `bashClassifier.ts`, and settings-file storage are all leak-confirmed
+  (this repo's own extraction); the `PreToolUse` mechanics,
+  `permissionDecision`/exit-code protocol, and the `PermissionRequest`/
+  `PermissionDenied` event names are confirmed only via Anthropic's
+  public docs, fetched separately — don't conflate the two
+  provenances when citing this section elsewhere.
 
 ## Multi-agent "Team" coordination
 
@@ -362,6 +563,82 @@ own memory.
   synthetic-output tool used specifically by coordinator mode, a
   terminal-capture tool, and others whose purpose is inferred from
   naming only.
+
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../../agent-self-verification.md) for
+the cross-source comparison this feeds into. **Read the caveat below
+before the findings** — it changes how to interpret nearly everything
+in this section.
+
+**The critical caveat: most of what's interesting here is an
+internal-only experiment, not shipped behavior.** Almost every
+mechanism below is gated behind `process.env.USER_TYPE === 'ant'` (an
+Anthropic-employee-only flag) or a GrowthBook flag explicitly commented
+"3P default: false — ant-only A/B" — meaning it's dead-code-eliminated
+out of ordinary external builds. What's confirmed is Anthropic testing
+verification mechanisms internally, not necessarily what ships to
+regular Claude Code users. One mechanism (Stop hooks, below) is the
+exception — genuinely general, not ant-gated, consistent with Claude
+Code's publicly documented hook system.
+
+- **A built-in adversarial "verification" subagent**
+  (`src/tools/AgentTool/built-in/verificationAgent.ts`) — the single
+  most distinctive finding. A structurally separate LLM instance, no
+  file-write access, whose entire prompt is built around **not trusting
+  the implementer's own self-report**: it must gather command-output
+  evidence for every check rather than accept claims, run the build,
+  run the full test suite ("failing tests are an automatic FAIL"), run
+  linters/type-checkers, apply type-specific strategies
+  (frontend/backend/CLI/infra/migration), and perform mandatory
+  "adversarial probes" (concurrency, boundary values, idempotency)
+  before issuing a **PASS/FAIL/PARTIAL verdict the implementer cannot
+  self-assign**. Internal-only, per the caveat above.
+- **`VerifyPlanExecutionTool` is a stub**, but the wiring around it is
+  real: gated behind `CLAUDE_CODE_VERIFY_PLAN=true` plus the ant-only
+  flag, model-invoked (not automatically triggered by `ExitPlanMode`),
+  with a periodic nudge — every 10 human turns since a plan was
+  approved, if verification hasn't started, a system-reminder is
+  injected: "You have completed implementing the plan. Please call the
+  'VerifyPlanExecution' tool directly (NOT the Task tool or an agent)."
+  The nudge's own trigger logic is a naive text-match (checks todo text
+  for the substring "verif"), not diff-aware — no automated mechanism
+  compares the actual code diff against the plan; that's left entirely
+  to whatever the verification subagent itself does when it runs.
+- **A quantified, empirically-motivated problem statement, disclosed in
+  the leak's own code comments**: two ant-gated system-prompt lines
+  ("verify it actually works before reporting complete"; "never claim
+  'all tests pass' when output shows failures... to manufacture a green
+  result") are annotated with an internal measurement — "False-claims
+  mitigation for Capybara v8 (29-30% FC rate vs v4's 16.7%)" — i.e. an
+  internal model version was observed falsely claiming task completion
+  roughly 3 times in 10, and this specific mitigation was built and put
+  under A/B test in response. Rare, concrete evidence (rather than
+  speculation) that false-completion-claiming is a real, measured
+  failure mode significant enough to drive dedicated engineering.
+- **The one genuinely shipped, general mechanism: `Stop` hooks can
+  force continuation.** Not ant-gated. A 26-member `HookEvent` union
+  includes `Stop`, `StopFailure`, `SubagentStop`, `PostToolUse`,
+  `PostToolUseFailure`, `TaskCompleted`, `TeammateIdle` alongside the
+  already-documented `PreCompact`/`PostCompact`. If a user-configured
+  `Stop` hook returns `preventContinuation: true`, the agent loop does
+  **not** end — it keeps running with the hook's stated reason surfaced
+  as a message. This is the concrete mechanism behind "wire up `npm
+  test` on Stop and block the agent from finishing if it fails" — a
+  real, user-configurable verification gate, just one the user sets up
+  rather than the agent choosing to use.
+- **A softer, genuinely-shipped "autonomy" framing**: a non-ant-gated
+  "Autonomous work" section (gated only by a real feature flag) tells
+  the model it can "run tests, check types, run linters — all without
+  asking" (a permission statement, not a mandate) and poses a rhetorical
+  self-check: "what would I want to verify before calling this done?" —
+  softer than the verification subagent's hard PASS/FAIL gate, but
+  present in ordinary builds.
+- **`SyntheticOutputTool` is real infrastructure, not a stub** — Ajv
+  JSON-schema validation of arbitrary agent output, used as supporting
+  plumbing for both agent hooks and "background verification" broadly;
+  it's a building block the verification machinery uses, not itself a
+  correctness-checker.
 
 ## Why this is worth having alongside the prompt-only extraction
 

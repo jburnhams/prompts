@@ -55,6 +55,110 @@ orchestration patterns (Sequential/Concurrent/Handoff/GroupChat/
 Magentic), a structurally different N-party design found nowhere else
 in the collection.
 
+**[→ `agent-context-compaction.md`](./agent-context-compaction.md)** —
+a further drill-down on how a scaffold survives running out of context
+mid-task, across 18 sources: trigger model (proactive token-threshold
+checks vs. reactive-on-API-error vs. manual commands vs. Cline's
+model-proposes/user-approves third shape), prompt shape (free text vs.
+structured templates vs. XML), single-mechanism vs. layered-pipeline
+vs. pluggable-strategy vs. Cline's multiple-uncoordinated-mechanisms
+architecture, incremental/anchored vs. from-scratch summarization,
+recovery philosophy (is the discarded detail actually gone, down to
+Cline's plain-deletion-no-summary floor and Windsurf's "externalize
+before compaction happens" strategy via a persistent memory tool),
+prompt-cache interaction, sub-agent isolation, and — compared in
+detail — actual numeric token budgets (reserved buffers, summary
+output caps, retention thresholds) across the sources that expose them.
+
+**[→ `agent-turn-output.md`](./agent-turn-output.md)** — a further
+drill-down on what a single LLM turn actually produces, across 18
+sources: session/task title generation (a dedicated cheap-model side
+call vs. no generation at all vs. folded into the main model's own tool
+calls — ten sources now confirmed or likely "don't bother," though only
+Cline and Roo Code are schema-confirmed rather than just
+capture-gapped), reasoning/thinking display defaults
+(shown-collapsed-by-default vs. hidden-until-opted-in), Codex's
+unusually layered raw/summary/effort reasoning-visibility controls,
+Devin's `<think>` tool (a mandatory, categorically-hidden reasoning
+mechanism that fits neither "native API block" nor "prompted
+narration"), Windsurf's schema-embedded per-tool-call narration
+requirement, and the recurring but easy-to-conflate distinction between
+native model-API reasoning blocks and ordinary prompted narration text.
+
+**[→ `agent-self-verification.md`](./agent-self-verification.md)** — a
+further drill-down on how (and whether) a scaffold checks its own work
+before calling a task done, distinct from `code-review-approaches.md`
+(which is about reviewing *someone else's* PR). Covers: the shared
+"reproduce bug → fix → verify → edge cases → submit" workflow template
+running through nearly every SWE-bench-lineage agent (SWE-agent,
+mini-swe-agent, Live-SWE-agent, Augment SWE-bench Agent), deterministic
+non-LLM completion gates (Roo Code's `AttemptCompletionTool`, SWE-agent's
+templated `review_on_submit_m`), separate-LLM-call judge/reviewer
+patterns and what happens on a failed verdict (SWE-agent's
+`ScoreRetryLoop`/`ChooserRetryLoop`, Augment's o1 ensembler, Microsoft
+Agent Framework's `with_judge()` nudge-not-restart pattern), the
+"review-as-a-general-tool" conflation trap (Codex's `ReviewTask` and
+OpenCode's `/review` command are general diff-review utilities, not
+self-checks), hook-based user-configured gates (Claude Code's `Stop`
+hooks — the one such mechanism actually shipped externally, alongside a
+leaked internal-only adversarial verification subagent), and Jules's
+per-action mandatory verification, hidden pre-commit tool, and
+Playwright-screenshot-as-proof frontend verification — the most
+granular self-review discipline found anywhere in this collection. A
+second research pass roughly doubled the source count (20 sources
+covered in depth) and surfaced two more patterns not in the original
+typology: verification authority handed to the *human user* instead of
+the model (Replit's automated-evidence-plus-confirmation tools, Warp's
+inverted "ask before verifying" default) and "prompt-simulated"
+gates that borrow deterministic-gate rhetoric — numbered steps, "no
+exceptions" language — without any confirmed code-level enforcement
+(Copilot Chat's `vscModelPrompts.tsx` "iron law" block, Factory/Droid's
+PR-draft-state gate).
+
+**[→ `agent-permissions-approval.md`](./agent-permissions-approval.md)**
+— a further drill-down on how a scaffold decides whether an action
+needs a human first, across 17 sources. This turned out to be the
+richest single doc in the whole collection: Codex CLI's permission
+architecture is not one mechanism but five cooperating subsystems
+(a static command-safety classifier, a Starlark rule-engine DSL, an
+LLM-based "Guardian" auto-reviewer running a separate cheaper/faster
+model with its own risk taxonomy, a real OS-level sandbox on three
+platforms, and a network-egress proxy), and Gemini CLI's "TOML policy
+engine" turned out to include an opt-in second LLM ("Conseca") that
+generates a least-privilege policy for the user's request and then
+re-judges every subsequent tool call against it — an entire separate
+model acting as judge over the first model's actions, layered on top
+of (not replacing) a 5-tier admin/user/workspace/extension/default
+priority engine. Claude Code's own leaked permission system has a
+third, independently-converged instance of the same idea —
+`yoloClassifier.ts`, a two-pass fast/slow LLM gate for its internal-only
+`auto` mode — confirmed real via Anthropic's own public hooks docs but
+also confirmed **ant-gated** (excluded from the externally-available
+mode set), the same internal-only pattern this collection's
+self-verification doc found for Claude Code's adversarial verification
+subagent, now showing up a second time in an unrelated subsystem. Also
+covers: static-vs-LLM risk classification
+(OpenHands's genuinely pluggable choice between trusting the model's
+own self-tag or a separate Dockerized static analyzer), scope/
+persistence of a granted approval (five distinct tiers in Codex vs.
+Roo Code's two, with no session-only cache at all), escalation
+mechanisms (OpenCode's `doom_loop` circuit breaker on repeated
+identical calls, Codex's mid-execution syscall-level interception),
+sandbox/isolation as a complementary-not-substitute layer, and the
+cross-cutting finding that most of this machinery is invisible to the
+model's own system prompt — the harness gates the model, but rarely
+tells it the rules.
+
+### Other candidate drill-downs (not started)
+
+Same four-axis pattern as the docs above — system prompts,
+tool surfaces, and sub-agents are covered; code review has its own
+top-level doc. One candidate remains:
+
+- **Git/VCS interaction mechanics** — commit message conventions,
+  checkpoint/undo systems, worktree isolation, branch-management
+  rules.
+
 ## Sources so far
 
 | Folder | Project | Type | License |
@@ -87,11 +191,17 @@ still retrievable, just no longer actively developed at those locations.
 
 A second category, kept separate from the open-source folders above: prompts
 from closed-source products, extracted by third parties rather than
-published by the vendor. 29 sources so far — see
+published by the vendor. 30 sources so far — see
 [`leaked/README.md`](./leaked/README.md) for the full list and caveats on
 provenance and reliability. Most came in bulk from one community aggregator
-repo; a couple (Factory/Droid, Lumo) from standalone gists/mirror-repo
-subfolders.
+repo; a few (Factory/Droid, Lumo, **Jules**) from standalone gists/
+mirror-repo subfolders. Jules (Google's async coding agent) is worth
+flagging specifically: its leaked prompt has the most granular self-review
+discipline found anywhere in this collection — mandatory verification
+after *every* file-modifying action (not just before submission), plus a
+dedicated pre-commit tool, an explicit code-review-request tool, and
+Playwright-generated screenshots as proof of frontend verification. See
+[`leaked/jules/README.md`](./leaked/jules/README.md).
 
 **Checked and no leak found (as of 2026-07-10)**: CodeRabbit, Greptile, and
 Qodo's closed-source products (its open-source `pr-agent` is already

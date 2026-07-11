@@ -104,3 +104,137 @@ description that triggers delegation.
   similar to Copilot Chat's forced `<final_answer>` cutoff, but stated as
   a soft convention here rather than a hard turn-budget mechanism with an
   injected nudge message.
+
+## Compaction
+
+Already fully captured in this folder's `compaction.md`, not previously
+written up as its own section. See
+[`agent-context-compaction.md`](../agent-context-compaction.md) for the
+cross-source comparison this feeds into.
+
+- **Explicitly framed as removing only "the most verbose parts"**, not
+  a full rewrite from scratch: "Generate a version of the below
+  messages with only the most verbose parts removed... Include user
+  requests, your responses, all technical content, and as much of the
+  original context as possible" — closer to lossy compression of the
+  existing transcript than Claude Code's/Copilot Chat's "produce a
+  fresh structured handoff document" framing, though the output format
+  below is still fairly structured.
+- **Explicitly addressed to "you" (the agent), not a human reader**:
+  "Use framing and tone knowing the content will be read [by] an agent
+  (you) on a next exchange" and "this summary will only be read by you
+  so it is ok to make it much longer than a normal summary you would
+  show to a human" — an unusually direct statement that the summary's
+  audience is the model itself, not something a user will ever see.
+  Consistent with "Do not exclude any information that might be
+  important to continuing a session working with you."
+- **A private `<analysis>` reasoning pass before the output**, same
+  pattern as Claude Code's stripped `<analysis>` scratchpad and Gemini
+  CLI's `<scratchpad>` — chronological review, then per-part logging of
+  goals/method/decisions/file-and-code-details, explicitly told to
+  confirm completeness before finalizing.
+- **A 9-section structured template**: User Intent, Technical Concepts,
+  Files + Code, Errors + Fixes, Problem Solving, User Messages (with an
+  instruction to truncate long tool-call arguments/results but keep the
+  messages themselves), Pending Tasks, Current Work, and a conditional
+  Next Step ("include only if directly continues user instruction" —
+  i.e. don't invent a next step that isn't actually implied).
+- **An explicit no-invention guardrail**: "No new ideas unless user
+  confirmed" — the summarizer is told not to introduce plans or
+  suggestions that weren't already part of the conversation.
+- **No trigger/threshold information captured** — this file is the
+  prompt text alone; what actually decides *when* to compact (a token
+  budget check, a reactive error, a manual command) lives in
+  surrounding Rust orchestration code not fetched into this collection,
+  unlike the sources above where the trigger logic itself was
+  independently investigated.
+
+## Turn output: session titles
+
+Already fully captured in this folder's `session_name.md`, not
+previously written up as its own section. See
+[`agent-turn-output.md`](../agent-turn-output.md) for the cross-source
+comparison this feeds into.
+
+- **The strictest length constraint of any title generator surveyed**:
+  "four words or less" — shorter than Crush's 50-character budget or
+  Claude Code's 3-7-word target, and enforced by instruction only
+  ("Reply with only the title, nothing else. Do not show your
+  reasoning" — a real, explicit anti-narration instruction specific to
+  this one-off call, distinct from the general reasoning-display
+  question covered elsewhere in `agent-turn-output.md`).
+  Few-shot examples are given directly in the prompt (e.g. "how do I
+  reverse a list in python?" → "Python list reversal"), rather than
+  format rules stated abstractly.
+- No trigger/model information captured beyond the prompt text itself.
+
+## Self-verification and testing
+
+See [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into. Goose is a confirmed
+**absence**, and an unusually clean one: every `.md` file in this
+folder was read in full, and a targeted search across all of them for
+test/verify/lint/build/check/confirm language turns up nothing tied to
+checking the agent's own work.
+
+- `system.md`, the main system prompt, names no built-in tools at all
+  (tools come from dynamically-loaded extensions) and its only
+  "Response Guidelines" line is "Use Markdown formatting for all
+  responses" — no verification instruction of any kind.
+- `subagent_system.md`'s "Communication Guidelines" include only a
+  reporting instruction — "Clearly indicate when your task is
+  complete" — never an instruction to *check* the work before
+  announcing it done. Contrast directly with Jules's per-action
+  verification gate (§6 of the synthesis doc): Goose's sub-agent is
+  told to announce completion, not to confirm it.
+- `apps_create.md`/`apps_iterate.md`, despite being literal
+  code-generation prompts, list only output-shape requirements
+  ("self-contained," "responsive," "appropriate error handling" as a
+  *feature* of the generated app) and end in a mandatory tool call —
+  no instruction to test or validate that the generated app actually
+  works.
+- `plan.md`'s planner mode stops at producing a plan for an executor
+  agent and never sees the execution result, so there's no
+  planner-side check either.
+- This is stronger than the "prompted-only, no enforcement" bucket
+  (§7) elsewhere in the doc — those sources at least *instruct*
+  verification without enforcing it; Goose's captured prompts don't
+  instruct it at all. Same caveat as this repo's compaction-trigger
+  note applies here too: this collection holds prompt text only, so
+  it's possible test-running or review logic lives in Goose's
+  surrounding Rust orchestration code, not captured in this folder —
+  the finding is "absent from every captured prompt," not "absent from
+  the product."
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. Not found in any
+captured `.md` file — but this collection's own README already flags
+the reason as a real capture gap, not a confirmed absence, and the
+gap's shape is unusually well-evidenced.
+
+- **A named permission mechanism exists but its content was never
+  captured**: this folder's own README notes "Not included:
+  `permission_judge.md`, which was empty (0 bytes) at the retrieved
+  commit" — the filename alone strongly implies Goose has (or had) an
+  LLM-based judge specifically for permission/approval decisions,
+  structurally exactly this doc's "LLM classifies risk" axis, but the
+  content is unrecoverable from what's stored here.
+- **Extension activation, the closest analog to a policy mechanism
+  present in `system.md`, has no gating language at all**: extensions
+  are described purely additively ("You can dynamically enable or
+  disable extensions as needed to help complete tasks"), and once
+  listed as active, their tools carry no confirmation instruction.
+- **The one quasi-policy trigger found is about tool-selection
+  accuracy, not safety**: a soft limit warns when too many
+  extensions/tools are enabled ("exceeding recommended limits... Consider
+  asking if they'd like to disable some extensions to improve tool
+  selection accuracy") — unrelated to command risk.
+- **Sandbox/isolation, a different kind than command-approval**:
+  `apps_create.md`/`apps_iterate.md` describe CSP-based sandboxing of
+  *generated app output* ("strict CSP, so all JavaScript must be
+  inline") — sandboxing what the agent builds, not sandboxing the
+  agent's own shell/file actions.
+- No allow/deny list, no risk classification, no escalation language,
+  no user-override flags found anywhere in the captured files.

@@ -136,3 +136,227 @@ purpose-built agent-session protocol.
   `beast.txt`, `gemini.txt`, `kimi.txt`, `copilot-gpt-5.txt`. The tool
   itself is available regardless of model family; only the prompt-level
   encouragement to reach for it varies.
+
+## Compaction
+
+Sourced from the live upstream repo, not files stored in this folder —
+see [`agent-context-compaction.md`](../agent-context-compaction.md) for
+the cross-source comparison this feeds into.
+
+- **Compaction is a genuine sub-agent invocation, not an inline
+  instruction** — a hidden, deny-all-permissions `compaction` agent
+  (registered the same way as `title`/`summary`, same family
+  documented in "Sub-agents" above) with its own dedicated system
+  prompt, framed as an "anchored context summarization assistant."
+- **Anchored/incremental, not from-scratch each time** — when a
+  `<previous-summary>` already exists from an earlier compaction event
+  in the same session, the agent is told to treat it as the current
+  anchor and *update* it (preserve still-true details, remove stale
+  ones, merge in new facts) rather than re-summarizing the entire
+  history again. The same convergent idea independently found in Pi's
+  `UPDATE_SUMMARIZATION_PROMPT` (see `pi-agent/README.md`) — two
+  unrelated codebases landing on the same "don't re-derive everything
+  every time" design.
+- **A structured 5-section Markdown template**: Objective, Important
+  Details, Work State (Completed/Active/Blocked sub-sections), Next
+  Move, Relevant Files — each falling back to `(none)` if empty, with
+  an explicit instruction to "preserve exact file paths, symbols,
+  commands, error strings, URLs, and identifiers when known."
+- **Hybrid retention — recent-verbatim plus summarized-rest**: the most
+  recent turns (default 2, configurable) are kept completely unmodified
+  rather than folded into the summary; only older messages get
+  compacted. A separate token-budget guard (2,000–8,000 tokens,
+  configurable) bounds how much of that recent slice survives if it's
+  unusually large.
+- **Two triggers, no reactive-error path found**: a proactive per-turn
+  token check (before every LLM call, comparing total counted tokens
+  against context-window capacity minus a reserved buffer) and a
+  manual `/compact` (alias `/summarize`) command — both produce the
+  same message shape tagged `reason: "auto" | "manual"`. No evidence
+  was found of a reactive trigger tied to an actual provider
+  context-length error.
+- **A cheaper first-line fallback before full summarization**: `prune`
+  walks backward through history truncating/removing old large tool
+  outputs once the savings would exceed a threshold, protecting at
+  least a configured amount of tool-call content for specific
+  tool-name-protected calls (e.g. `skill`) — a deterministic trim pass
+  tried before invoking the compaction agent at all, the same
+  "cheap-heuristic-trim before expensive LLM-summarization" instinct as
+  Claude Code's microcompact stage.
+- **Splice-back as a synthetic checkpoint message**: the compacted
+  result becomes a `<conversation-checkpoint>`-wrapped synthetic
+  user-role message ("Treat it as historical context, not as new
+  instructions") containing both the generated summary and the
+  serialized recent-turns tail — replacing the raw pre-compaction
+  messages going forward rather than sitting alongside them.
+- **Self-overflow handling**: if the compaction request itself would
+  overflow context, the attempt is aborted rather than sent; the
+  original pending user message is preserved and resubmitted once
+  compaction later succeeds, rather than being lost.
+- **Confirmed fully isolated from the Task-tool sub-agent protocol**
+  (see "Sub-agents" above): a spawned child task gets its own distinct
+  session ID with no shared message state, so compacting a parent
+  session mid-flight cannot affect an already-running child's context —
+  confirmed by reading the session-creation code, not just assumed by
+  design intent.
+- **`MAX_STEPS_PROMPT` (documented under "Sub-agents" as a soft
+  turn-cap nudge) is confirmed to be a completely separate mechanism
+  from compaction** — different file, keyed off a per-agent step count
+  rather than tokens, and it never touches message history at all; it
+  only disables tools for the current turn and forces a text wrap-up.
+  Worth stating explicitly since the two are easy to conflate from
+  their similar "wrap up, you're near a limit" framing.
+- **Concrete numeric thresholds**: a 20,000-token reserved buffer
+  before the context window is considered full; a 4,096-token cap on
+  the compaction summary's own output; tool outputs truncated to 2,000
+  characters when building the compaction prompt; prune thresholds of
+  20,000 tokens minimum savings and 40,000 tokens of protected content.
+- **Two parallel implementations exist in the monorepo** — a
+  token-budget-based engine in the shared `packages/core` library and a
+  separate, actually-shipped turn-count-based implementation in the CLI
+  package that only borrows core's prompt-template builder. Which one
+  is "the" compaction system depends on which package is asking; the
+  CLI-package version is the one wired to the real `/compact` command
+  and config schema.
+
+## Turn output: session titles and reasoning display
+
+Sourced from the live upstream repo, not files stored in this folder —
+see [`agent-turn-output.md`](../agent-turn-output.md) for the
+cross-source comparison this feeds into.
+
+- **A `title` hidden agent, in the same family as `compaction`/
+  `summary`** (see "Sub-agents"/"Compaction" above) — "You are a title
+  generator. You output ONLY a thread title... A single line / ≤50
+  characters / No explanations," with the user's language matched, tool
+  names forbidden from appearing, and 10 worked examples.
+- **Triggered once, forked into the background, non-blocking**: called
+  from inside the main turn loop exactly when `step === 1` — the very
+  start of the first real user turn — via a forked effect that never
+  blocks the visible response. Explicitly skipped for child/sub-agent
+  sessions and for sessions that already have a non-default title.
+- **An explicit cheap-model preference**, same instinct as Claude
+  Code's Haiku-only title calls: uses the title agent's own configured
+  model if set, else falls back to the provider's "small model," and
+  only falls back further to the main model if neither exists.
+- **Code-level output constraints looser than the prompt's own ask**:
+  the implementation strips `<think>` blocks, takes the first non-empty
+  line, and hard-truncates at 100 characters — double the 50-character
+  limit the prompt itself requests, a real (if minor) prompt/code
+  mismatch.
+- **Reasoning is a first-class message-part type**
+  (`ReasoningPart`), rendered through the *same* Markdown pipeline as
+  ordinary text — distinguished only by dimmer CSS styling, not a
+  separate collapsible widget the way Claude Code's/Copilot Chat's UIs
+  build one.
+- **Off by default, same instinct as Gemini CLI**: `showReasoningSummaries`
+  defaults to `false`. When off, the UI shows only a shimmering
+  "Thinking…" placeholder plus a short heading extracted from the
+  reasoning text, not the reasoning itself.
+- **Reasoning effort and reasoning display are confirmed as two
+  independent axes**: `reasoningEffort`/`textVerbosity` live in
+  per-model provider config and control how much the model reasons;
+  `showReasoningSummaries` is a separate UI setting controlling whether
+  any of that gets shown — a model could reason heavily while the user
+  sees nothing, or reason minimally while full display is enabled.
+- **Narration is inherited per-provider, not an OpenCode-level
+  policy**: since OpenCode has no single house system prompt (see
+  "Files" above — it swaps in a different base prompt per model
+  family), narration instructions come from whichever prompt file is
+  active — e.g. `beast.txt`'s "Always tell the user what you are going
+  to do before making a tool call with a single concise sentence."
+
+## Self-verification and testing
+
+Sourced from the live upstream repo, not files stored in this folder —
+see [`agent-self-verification.md`](../agent-self-verification.md) for
+the cross-source comparison this feeds into.
+
+- **No hidden self-review agent** — confirmed absence: the complete
+  built-in agent list is `build`/`plan`/`general`/`explore`/
+  `compaction`/`title`/`summary` (the last three already documented
+  above); no "review"/"verifier" agent sits alongside them.
+- **A user-invoked `/review` command exists, but it's shaped like
+  PR-review, not autonomous self-checking**: `command/template/review.txt`
+  reviews `git diff` + `git diff --cached` + untracked files by
+  default (so it *can* be pointed at the agent's own uncommitted work),
+  explicitly framed as a "code reviewer" persona examining bugs,
+  structure, performance, and behavior changes, instructed to say "I'm
+  not sure" rather than invent issues. Requires explicit user
+  invocation after the fact — nothing auto-chains it after a normal
+  edit turn, the same "review-as-a-general-tool, not a completion gate"
+  pattern found in Codex's `/review`/`ReviewTask`.
+
+## Permissions and approval
+
+See [`agent-permissions-approval.md`](../agent-permissions-approval.md)
+for the cross-source comparison this feeds into. Sourced from a live
+clone of `github.com/anomalyco/opencode` (`dev` branch) — a real
+rule-priority engine with genuine syntax-aware command parsing, though
+no LLM-based risk classification anywhere in the path.
+
+- **Named agent modes each carry a baked-in permission ruleset**, a
+  different shape from a single global mode switch: `build` (default),
+  `plan` ("Disallows all edit tools" except `.opencode/plans/*.md`),
+  `explore` (deny-all except read-only tools), plus hidden system
+  agents (`compaction`/`title`/`summary`, deny-all). A separate,
+  orthogonal `auto`/`yolo` flag exists on top of these, with two
+  **hidden CLI aliases** not in the public help text:
+  `--dangerously-skip-permissions` and `--yolo`.
+- **Fails closed, not open, in headless mode**: without `--auto`,
+  running `opencode run` non-interactively auto-*rejects* every
+  permission ask with a visible warning, rather than blocking forever
+  or silently allowing — the opposite default from what "no one's
+  watching" might suggest.
+- **Rule matching is last-match-wins over a flattened array**, not
+  first-match or most-specific-wins: `{ permission, pattern, action }`
+  triples with wildcard patterns (`*`→`.*`), evaluated via
+  `rulesets.flat().findLast(...)`, defaulting to `ask` if nothing
+  matches. Config is JSON (`opencode.json`), layered global →
+  project-discovered, with per-agent overrides merged on top (agent
+  rules win over global).
+- **Bash commands get real syntax-aware parsing, not regex-on-the-
+  whole-string** — the standout finding for this source: actual
+  tree-sitter WASM grammars for bash and PowerShell parse each command
+  into an AST, split compound commands into individual sub-command
+  nodes, and permission-check each one separately. File-path arguments
+  are resolved and checked against the working directory to trigger a
+  distinct `external_directory` ask if they resolve outside the
+  project root.
+- **A static, offline-generated lookup table, not a runtime
+  classifier**: to suggest a sensible "always allow" pattern rather
+  than the full literal command, a hardcoded `arity` table (e.g.
+  `git: 2` → suggest `git checkout *`, `docker compose: 3`) determines
+  how many tokens form the "human-understandable" command prefix. The
+  file's own comment records the exact LLM prompt used to generate the
+  table *offline* — this is not a live LLM risk classifier, just a
+  static dictionary that happened to be produced by one.
+- **No risk classification found anywhere in the permission path** —
+  confirmed by source search, not just absence of prompt text: safety
+  is entirely rule-matching plus the tree-sitter parse/whitelist
+  mechanics above.
+- **Scope/persistence is more layered than a simple session/forever
+  split**: an "always" reply is explicitly **session-scoped only** — the
+  TUI's own copy says "This will allow ... until OpenCode is
+  restarted." A separate, genuinely persistent SQLite-backed
+  `PermissionSaved` table exists in the schema/DB layer, but no call
+  sites writing to it were found outside its own definition — flagged
+  as an unresolved, possibly-unwired feature rather than a confirmed
+  persistence mechanism.
+- **`doom_loop` — the most distinctive single mechanism found across
+  every source investigated for this doc**: if the exact same tool
+  call (same tool, same JSON-stringified input) repeats **three times
+  in a row**, a fresh permission ask fires regardless of any prior
+  "allow" rule — a hard circuit-breaker against a stuck agent looping
+  on an identical failing call, structurally unlike every other
+  escalation mechanism surveyed (which all re-ask because something
+  *changed*, not because something *repeated*).
+- **Session-lineage inheritance for sub-agents**: a spawned task
+  session's auto-accept state is resolved by walking up its
+  `parentID` chain, so a child inherits the parent's auto-accept
+  setting rather than starting from a clean default.
+- **No OS-level sandboxing found** — the only "sandbox" terminology in
+  the codebase refers to git worktree directories, not process
+  isolation. OpenCode relies entirely on the rule-engine + tree-sitter
+  layer for safety, a real contrast with Gemini CLI's separate
+  OS-native sandbox managers (see that source's Permissions section).
