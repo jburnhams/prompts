@@ -115,3 +115,44 @@ which are in this collection.
   narration exists (distinct from a native reasoning block, per this
   doc's own framing): "Think step-by-step and explain the needed
   changes in a few short sentences" (`editblock_prompts.py`).
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../agent-git-vcs.md) for the cross-source
+comparison this feeds into. **Every AI-made edit becomes its own git
+commit, automatically — this is Aider's entire checkpoint/undo system,
+not a separate feature layered alongside commits.**
+
+- **The mechanism is confirmed via a confirmation-message template,
+  not a direct instruction to the model**: `base_prompts.py`'s
+  `files_content_gpt_edits` — "I committed the changes with git hash
+  {hash} & commit msg: {message}" — is fed back into the chat *after*
+  Aider's own Python harness applies an edit and commits it. A
+  companion `files_content_gpt_edits_no_repo` ("I updated the files.")
+  confirms the commit step is conditional on the project actually
+  being a git repo — outside one, edits apply with no commit at all,
+  no fallback checkpoint mechanism of any kind.
+  `files_content_local_edits` ("I edited the files myself.") is the
+  parallel case for human-made edits, confirming the harness
+  distinguishes who made a change even in its own internal bookkeeping.
+- **The decision and the act both belong to the surrounding harness,
+  not the model** — nothing in the four prompt files describes this
+  as configurable or gives the model any say in whether to commit;
+  Aider's real `--auto-commits`/`--no-auto-commits` CLI flag (per
+  public docs) lives outside what's captured here.
+- **No commit-message format guidance found in these files** — the
+  `{message}` fill-in is produced elsewhere in Aider's codebase (likely
+  `aider/repo.py`), not among the four `Coder`-class prompt files
+  collected here. A capture gap, not a confirmed absence of a
+  convention.
+- **No worktree isolation, no branch-management rules, no PR/push
+  workflow found anywhere** — Aider's prompt-level scope stops at
+  local commits; consistent with the README's existing note that
+  edits are "applied straight to the user's local files by the CLI
+  process itself," no sandbox/isolation layer.
+- **Structurally distinctive relative to every other source in this
+  survey**: this is the only source where version control isn't a
+  defensive, reactive safety net (snapshot before a risky edit) but an
+  unconditional, retrospective one (every edit, risky or not, becomes
+  a commit after the fact) — no separate "checkpoint" concept is
+  needed because the commit history *is* the checkpoint history.

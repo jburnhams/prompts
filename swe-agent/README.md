@@ -139,3 +139,31 @@ single-loop config this folder documents.
   (multiple candidate solutions, a separate LLM picks/scores the best),
   different selection mechanism (majority vote there vs. a
   score/chooser LLM call here).
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../agent-git-vcs.md) for the cross-source
+comparison this feeds into. Git shows up only in service of the
+submission/review mechanism — this is a benchmark-harness agent with
+no agent-directed commit/PR workflow at all.
+
+- **The final artifact is a git diff, not a commit** — the
+  `review_on_submit_m` checklist (already covered under Self-
+  verification) ends by re-displaying the currently-staged diff and
+  requiring test-file changes to be reverted via a targeted `git
+  checkout -- /path/to/test/file.py` before the second, confirming
+  `submit` call: "If you have modified any TEST files, please revert
+  them to the state they had before you started fixing the issue. You
+  can do this with `git checkout -- /path/to/test/file.py`. Use below
+  `<diff>` to find the files you need to revert."
+- **The only git subcommand the agent is ever instructed to run is
+  that targeted revert** — a narrow, single-purpose usage embedded in
+  a deterministic re-prompting checklist, not a general git policy.
+  `GIT_PAGER: cat` is set purely so git-invoking commands don't hang
+  on a pager in headless operation — not evidence of general git
+  usage.
+- **No commit, no worktree isolation, no branch rules, no push/PR
+  workflow found** — the agent never runs `git commit`; isolation is
+  Docker-based and external to the prompt; the harness presumably
+  applies the produced diff externally to score against a held-out
+  test suite.

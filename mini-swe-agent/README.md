@@ -73,3 +73,38 @@ at all, because there's no edit tool to teach it for.
 - **Extensibility**: none built in — this is the deliberately minimal
   "100 line agent" baseline that `live-swe-agent` forks specifically to
   add a tool-creation capability on top of (see below).
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../agent-git-vcs.md) for the cross-source
+comparison this feeds into. The two configs diverge sharply — `mini.yaml`
+has essentially no git involvement at all; `config/benchmarks/swebench.yaml`
+has the single richest, most procedurally rigorous git-diff submission
+mechanism found anywhere in this collection.
+
+- **`mini.yaml`**: submission is a magic bash echo with zero git
+  involvement — "Submit your changes and finish your work by issuing
+  the following command: `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`.
+  Do not combine it with any other command." No `git diff`, commit,
+  checkout, branch, or worktree language anywhere in the file.
+- **`swebench.yaml`'s three-step create → verify → submit patch
+  protocol, with commits explicitly, capitally forbidden**:
+  - Step 1: "Run `git diff -- path/to/file1 path/to/file2 > patch.txt`
+    listing only the source files you modified. **Do NOT commit your
+    changes.**" The diff is deliberately scoped (not a bare `git diff`)
+    and explicitly excludes test/reproduction files, helper
+    scripts/tools the model created, and build/config/setup files
+    "unless they are directly part of the issue."
+  - Step 2: "Inspect patch.txt to confirm it only contains your
+    intended changes and headers show `--- a/` and `+++ b/` paths."
+  - Step 3: "You MUST use this EXACT command to submit: `echo
+    COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt`."
+  - **Two hard procedural rules not seen phrased this way
+    elsewhere in this collection**: "Creating/viewing the patch and
+    submitting it MUST be separate commands (not combined with
+    `&&`)," and "If you modify patch.txt after verifying, you SHOULD
+    verify again before submitting."
+- **No checkpoint/undo, no worktree isolation, no branch-management
+  rules, no push/PR workflow found in either config** — consistent
+  with the shared SWE-bench-lineage design of submitting a diff for
+  external scoring rather than interacting with a live remote.

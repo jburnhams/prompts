@@ -149,15 +149,26 @@ cross-cutting finding that most of this machinery is invisible to the
 model's own system prompt — the harness gates the model, but rarely
 tells it the rules.
 
-### Other candidate drill-downs (not started)
-
-Same four-axis pattern as the docs above — system prompts,
-tool surfaces, and sub-agents are covered; code review has its own
-top-level doc. One candidate remains:
-
-- **Git/VCS interaction mechanics** — commit message conventions,
-  checkpoint/undo systems, worktree isolation, branch-management
-  rules.
+**[→ `agent-git-vcs.md`](./agent-git-vcs.md)** — the last of the
+planned drill-downs, across 22 sources: when (and whether) an agent
+commits, checkpoint/undo systems, worktree isolation, branch-management
+rules, and PR/push workflow. The headline finding: two unrelated teams
+(OpenCode, Gemini CLI) independently built a **hidden shadow git
+repository used purely as a checkpoint engine**, structurally separate
+from the user's real `.git` — OpenCode's captures bare content-
+addressed trees automatically on every LLM step and is wired into a
+real session-level `/undo`/redo feature; Gemini CLI's captures full
+commits only before file-edit proposals and bundles the **conversation
+history** into the same checkpoint as the code state, restoring both
+together. Also covers three independently-converged worktree-isolation
+services (Gemini CLI, OpenCode, Claude Code — the last confirmed via
+this session's own live tool schema, not a leak), the one code-level
+(not merely prompted) git restriction found anywhere in this
+collection (Augment SWE-bench Agent's hardcoded ban on `git commit`/
+`git add`/`git init`), and "don't commit unless explicitly asked" as
+close to a universal cross-vendor convention — including one exact,
+word-for-word match between Claude Code's leaked prompt and OpenCode's
+own base persona.
 
 ## Sources so far
 

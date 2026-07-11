@@ -415,3 +415,73 @@ model *not* to ask, with enforcement pushed out to the host application.
   of this loop at all.
 - **Sandbox/isolation**: confirmed absent — runs in the user's actual
   VS Code workspace, no containerization referenced anywhere.
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../agent-git-vcs.md) for the cross-source
+comparison this feeds into. The headline finding matches this source's
+pattern everywhere else in this collection: git policy isn't unified
+but split three ways by model family, and most families have none at
+all.
+
+- **Anthropic family — the fullest general policy, reversibility-based
+  not git-specific**: `operationalSafety`'s example list names several
+  git actions directly among its confirmation-worthy destructive
+  actions — "`git push --force`, `git reset --hard`, amending
+  published commits" — alongside a "don't bypass safety checks (e.g.
+  `--no-verify`)" clause functioning as a prompted analog to a
+  stash-safety rule (advisory text, not a structural snapshot
+  mechanism).
+- **OpenAI Codex-style prompts — a distinct, git-specific "dirty
+  worktree" defensive policy**, recurring near-verbatim across six
+  files (`gpt51CodexPrompt.tsx`, `gpt53CodexPrompt.tsx`,
+  `gpt54ConcisePrompt.tsx`, `gpt54LargePrompt.tsx`, `gpt54Prompt.tsx`,
+  `gpt5CodexPrompt.tsx`): "You may be in a dirty git worktree" here
+  means the single checkout may already have uncommitted/unrelated
+  changes, **not** a separate-worktree-per-task isolation concept —
+  worth flagging since the terminology could mislead. Core rules:
+  "NEVER revert existing changes you did not make unless explicitly
+  requested," "Do not amend a commit unless explicitly requested," "if
+  you notice unexpected changes... STOP IMMEDIATELY and ask the
+  user," and "**NEVER** use destructive commands like `git reset
+  --hard` or `git checkout --` unless specifically requested or
+  approved." One version adds a distinct capability caveat: "You
+  struggle using the git interactive console. **ALWAYS** prefer using
+  non-interactive git commands."
+- **Non-Codex OpenAI-family prompts — the clearest "auto-commit is off
+  by default" statement found anywhere in this collection**, recurring
+  verbatim across six files: "Do not `git commit` your changes or
+  create new git branches unless explicitly requested" — committing
+  and branch creation are bundled into one gate, so no separate
+  branch-naming convention exists (branches simply aren't created
+  without being asked). The corresponding pattern is to *propose*
+  committing as a next step rather than do it: "concisely ask the
+  user if they want you to do so. Good examples... are running tests,
+  committing changes, or building out the next logical component."
+- **`git log`/`git blame`/`git show` as read-only research tools**
+  recur across the same OpenAI-family prompts ("search the history of
+  the codebase if additional context is required") — git used purely
+  as codebase archaeology, unrelated to commit/checkpoint behavior.
+- **`git diff` as a last-resort validation fallback**, not a primary
+  self-review method: the experimental `gpt54LargePrompt.tsx` ranks
+  it explicitly below running actual tests/lint/typecheck — "`git
+  diff` does not count as sufficient validation when [a] narrower
+  executable check exists."
+- **Confirmed absent**: Gemini, xAI, GLM/zai, MiniMax, and Family H
+  prompts have no git-specific content at all (fully grepped, not
+  inferred). No PR-description template, no "search for a PR
+  template" instruction, and no explicit self-review-before-PR step
+  were found anywhere in this source — PR mechanics are left entirely
+  to whatever GitHub MCP/extension tools are available at runtime
+  rather than prescribed in the system prompt, a real gap relative to
+  OpenHands's `<PULL_REQUESTS>` block.
+- **No worktree-isolation-for-parallelism mechanism found anywhere** —
+  the sub-agent prompts (`executionSubagentPrompt.tsx`,
+  `searchSubagentPrompt.tsx`) describe persona/prompt swaps operating
+  in the same workspace, not separate checkouts.
+- **A "checkpoint" false-friend worth flagging**: the word appears
+  twice in this source and neither is a git/undo mechanism — both use
+  "checkpoint" to mean a progress-narration point in conversation
+  ("Maintaining checkpoints for feedback and validation"; "post a
+  short checkpoint summarizing what you found or did"), not a
+  snapshot or rollback point.

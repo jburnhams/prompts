@@ -290,3 +290,40 @@ string-pattern matching.
   isolation layer at all — a sharp contrast with Codex CLI's explicit
   approval/sandbox coupling or Gemini CLI's separate OS-native sandbox
   managers.
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../agent-git-vcs.md) for the cross-source
+comparison this feeds into. Confirmed empty across all six axes in the
+captured prompt-assembly layer (`system.ts`, `responses.ts`, all nine
+`sections/*.ts` files) — the only "branch"/"commit"/"push" hits found
+are false positives (JS array `.push()` calls, a "Step 2: Branching
+Decision" heading inside skill-selection control flow, a "Git Bash"
+shell-detection mention).
+
+- **Same methodological caveat this source's own README has already
+  established elsewhere applies here too, and should carry equal
+  weight**: this collection's earlier research on Roo Code found its
+  Tool-surface and Sub-agents sections were originally wrong when
+  based only on these prompt-assembly files, corrected only after a
+  live fetch of `src/core/tools/*.ts`. Roo Code, like Cline (its
+  parent lineage), is publicly known to ship a "Checkpoints" feature —
+  the absence of any trace of it here should be read as the same kind
+  of capture gap, not a confirmed absence, pending a live-source check
+  of the tool-implementation layer.
+- **A related, narrower divergence from Cline worth flagging
+  directly**: despite sharing Cline's lineage and even some function
+  names (`toolDenied`, `toolError`, `formatFilesList`), Roo Code's
+  `responses.ts` has **no `taskResumption` function and no
+  file-revert-on-failure language** — Cline's automatic
+  interrupted-edit/failed-diff reversion mechanism (see
+  `cline/README.md`'s Git section) simply isn't present in Roo Code's
+  version of this file, which was restructured toward JSON-shaped
+  status objects rather than Cline's free-text strings. Confirmed
+  absent in the captured prompt-assembly code specifically, not
+  confirmed absent from the live product.
+- No commit tool, commit-message convention, worktree concept, branch
+  rule, or PR/push workflow found anywhere. Roo Code runs directly in
+  the user's VS Code workspace with no sandbox layer (per the
+  Permissions section above), consistent with no worktree-isolation
+  concept being present.

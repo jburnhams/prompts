@@ -105,3 +105,42 @@ multimodal input.
 - **Sandbox/isolation**: runs inside a Docker container for SWE-bench
   evaluation (per the symlinked-paths gotcha note); not itself
   micro-VM/browser-sandboxed like Bolt.new or Hyperlight.
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../agent-git-vcs.md) for the cross-source
+comparison this feeds into. The only source in this collection's
+git-vcs survey with a **code-level, not merely prompted**, git
+restriction — and the only one whose undo mechanism exists specifically
+*because* git write access is locked out.
+
+- **A hardcoded, deterministic ban on git history creation**:
+  `tools/bash_tool.py`'s `banned_command_strs = ["git init", "git
+  commit", "git add"]`, enforced by substring match before the command
+  ever reaches the shell — "Command not executed due to banned string
+  in command" — a code-level gate, not a prompt instruction the model
+  could in principle ignore. An `additional_banned_command_strs`
+  constructor parameter lets a caller extend the list (e.g. with `git
+  push`) at deployment time, though nothing beyond the three above is
+  present in this file.
+- **A genuine per-file undo stack substitutes for git-based
+  checkpointing, precisely because commits are banned**:
+  `str_replace_tool.py` maintains `_file_history = defaultdict(list)`,
+  pushing the pre-edit content onto a per-path stack before every
+  mutating command (`create`/`str_replace`/`insert`), with `undo_edit`
+  popping the most recent entry and restoring it — "The undo_edit
+  command will revert the last edit made to the file at path." This is
+  an agent-tool-level undo, scoped per file, held in the Python
+  process's own memory — it doesn't survive tool re-instantiation, and
+  it's the *only* undo mechanism available precisely because the agent
+  has no git write access to fall back on.
+- **No commit-message conventions** (moot — commits are banned
+  outright), **no worktree isolation** (Docker-container-based, not
+  `git worktree`-based; the "ensembler" pattern runs N entirely
+  separate full agent trajectories, likely N separate containers at
+  the harness level, rather than parallel worktrees within one), **no
+  branch-management rules**, and **no PR/push workflow** — the final
+  artifact is a diff extracted externally by the harness (the
+  ensembler's own prompt wraps each candidate's `{diff}` for the o1
+  judge to compare), consistent with the shared SWE-bench-lineage
+  submission model documented for SWE-agent and mini-swe-agent above.

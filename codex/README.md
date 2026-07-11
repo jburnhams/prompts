@@ -450,3 +450,94 @@ to each other by explicit design.
   process — Guardian and the static policy both sit in front of this
   layer, and accepted decisions persist via the same
   `NetworkPolicyAmendment` mechanism as file-system rules.
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../agent-git-vcs.md) for the cross-source
+comparison this feeds into. Sourced from a fresh live clone of
+`openai/codex` (`codex-rs/`). Codex is the outlier of the three
+CLI-shaped sources checked in depth for this doc (alongside OpenCode
+and Gemini CLI): it has **no user-facing checkpoint/undo system and no
+worktree-creation mechanism at all** — the richest git-adjacent
+findings here are a not-yet-executed markdown-directive protocol and a
+maintainer-only PR-babysitting skill, not features shipped to ordinary
+users.
+
+- **Commit/branch defaults split by prompt family, with a real content
+  gap between them**: non-`codex`-suffixed model prompts state "Do not
+  `git commit` your changes or create new git branches unless
+  explicitly requested"; the `*-codex` variants drop that line
+  entirely and instead carry a "dirty git worktree" section (working-
+  tree-cleanliness sense, not isolated worktrees) — "never revert
+  changes you did not make," "do not amend a commit unless explicitly
+  requested," "**NEVER** use destructive commands like `git reset
+  --hard` or `git checkout --` unless specifically requested or
+  approved." The codex-suffixed prompts never explicitly restate "no
+  commit without asking."
+- **No user-facing checkpoint/undo system for the user's actual repo.**
+  A genuine git-based "baseline diff" mechanism does exist
+  (`git-utils/src/baseline.rs`, replacing `.git` with a fresh
+  one-commit baseline via `gix` and diffing against it) but its only
+  confirmed caller is Codex's own memory-writing subsystem
+  (`memories/write/src/workspace.rs`), diffing `MEMORY.md`/
+  `rollout_summaries/` against their last "init" — git used purely as
+  a resettable diff primitive for Codex's *own* files, explicitly
+  documented as such: "a lightweight baseline API for internal
+  directories that use git only as a resettable diff mechanism." The
+  internal baseline commit itself carries a real `Co-authored-by:
+  Codex <noreply@openai.com>` trailer, but on that internal bookkeeping
+  repo, never the user's project.
+- **No worktree-creation mechanism** — Codex is worktree-*aware*, never
+  worktree-*creating*, a real structural contrast with OpenCode's and
+  Gemini CLI's dedicated worktree services (see those sources' Git
+  sections). `spawn_agent`'s tool schema has no `cwd`/directory
+  parameter at all — sub-agents share the parent's working directory,
+  relying on prompt-level conflict avoidance rather than filesystem
+  isolation. Two places acknowledge worktrees exist without creating
+  them: `get_git_repo_root`'s own doc comment admits it "does **not**
+  detect *work-trees* created with `git worktree add`... pass
+  `--allow-no-git-exec`" to work around it; and hook-config resolution
+  explicitly handles "is (1) part of a git repo, (2) a git worktree,
+  or (3) just using the cwd" as three distinct cases when the user is
+  already inside a linked worktree. Codex Cloud's background tasks
+  don't create client-side worktrees either — `resolve_git_ref` only
+  picks which branch/ref to send to the backend; actual isolation
+  happens server-side, outside this repo.
+- **A structurally novel, not-yet-wired-up mechanism**: the model can
+  emit inline "git action directives" in its own markdown response —
+  `::git-stage{cwd="..."}`, `::git-commit{...}`, `::git-create-branch{...
+  branch="..."}`, `::git-push{...}`, `::git-create-pr{... branch="..."
+  url="..." isDraft="true"}` — parsed by `git_action_directives.rs` and
+  stripped from what the user sees. **Only `CreateBranch` is actually
+  acted on** (re-syncing the tracked branch name for the UI thread);
+  `Stage`/`Commit`/`Push`/`CreatePr` are parsed but have no confirmed
+  call site that executes them anywhere in this codebase — real git
+  mutation happens via the model's own shell calls instead. Worth
+  flagging as a known-unknown (plausibly wired up in a separate "Codex
+  App" client not present in this repo) rather than a verified
+  feature.
+- **No built-in `gh pr create` call site in the product code at all**
+  — PR creation, when it happens, is the model shelling out to `gh`
+  itself. Self-review before/around a PR is handled entirely by the
+  separate, always-explicit `ReviewTask` subsystem (already documented
+  under Self-verification above) — never auto-chained after a commit
+  or PR-creation step.
+- **A maintainer-only dogfooding skill bundle** (`.codex/skills/`, for
+  working on the Codex repo itself, not shipped to all users) is
+  nonetheless the richest git-workflow content found in the whole
+  codebase: `babysit-pr/SKILL.md` polls `gh pr checks`, classifies CI
+  failures as branch-related (auto-fix) vs. flaky (bounded retry),
+  restricts itself to published review comments from trusted authors,
+  and enforces a strict mutation policy (never close/reopen PRs, never
+  toggle draft status, never reply to other humans' threads without
+  confirmation, always prefixes bot replies with `[codex]`).
+  `codex-pr-body/SKILL.md` gives PR-description-writing guidance
+  (explain why before what, preserve existing images verbatim, strip
+  abandoned approaches, use GitHub permalinks) with explicit support
+  for Sapling-SCM stacked PRs.
+- **A rich, best-effort git-info surface for host/IDE integrations**:
+  an `app-server` RPC (`git_diff_to_remote`) and per-thread tracked
+  git metadata (sha/branch/origin URL), plus a TUI status-line probe
+  that resolves the open PR for the current branch via `gh pr view`/
+  `gh api` — explicitly designed to degrade to "absent optional
+  metadata" rather than a visible error on failure.

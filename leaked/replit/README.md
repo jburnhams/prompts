@@ -146,3 +146,34 @@ files represent two different approval philosophies.
 - No allow/deny list, no persistence/session-memory language, no
   escalation behavior, and no sandbox/isolation framed as a safety
   layer in either file.
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../../agent-git-vcs.md) for the cross-source
+comparison this feeds into. The cleanest "not found" case checked for
+this doc — genuinely near-zero git/VCS content in either file, despite
+Replit's public product being well known for its own "Checkpoints"
+feature. Consistent with the provenance-mismatch caveat already
+documented above, this reads as a capture gap, not evidence the
+feature doesn't exist in the real product.
+
+- **No commit-message conventions, no branch-management rules, no
+  PR/push workflow found in either file.**
+- **No git-based checkpoint system found** — the only rollback
+  primitive present is file-scoped and editor-level, not git:
+  `str_replace_editor`'s `command` parameter lists `undo_edit` as an
+  allowed option, structurally identical in shape to Devin's
+  single-file `undo_edit` (see `leaked/devin/README.md`'s Git
+  section).
+- **The one git-string match in either file is incidental, not a
+  workflow rule**: `Tools.json`'s `secret_keys` example array uses
+  `"GITHUB_TOKEN"` as a sample secret-key identifier — unrelated to
+  version control itself.
+- **Auto-commit behavior is unaddressed on both sides of the
+  provenance split**: `Prompt.txt`'s `is_dangerous` flag on proposed
+  shell commands would presumably flag a `git commit`/`git push` if
+  proposed via that tag, but git is never named specifically, and
+  nothing confirms git commands are even routed through that tag
+  rather than some other proposal type; `Tools.json`'s `bash` tool has
+  no safety/danger/approval field at all, so a git command there would
+  run with the same unconditional execution as anything else.

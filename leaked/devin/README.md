@@ -146,3 +146,52 @@ third parties* — not about running shell commands.
   isolated cloud VM per task, by product design) but the prompt never
   points to that isolation as a reason approval can be skipped; it
   simply isn't discussed as a safety layer.
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../../agent-git-vcs.md) for the cross-source
+comparison this feeds into.
+
+- **A fixed committer identity, with an explicit don't-change-it
+  rule**: "Do not change your git config unless the user explicitly
+  asks you to do so. Your default username is 'Devin AI' and your
+  default email is 'devin-ai-integration[bot]@users.noreply.github.com'."
+- **A staging-safety rule, same shape as this doc's other "don't be
+  overbroad" findings**: "Never use `git add .`; instead be careful to
+  only add the files that you actually want to commit." No enforced
+  commit-message *format* is specified — the one worked example (`git
+  commit -m "example commit"`) is purely illustrative of shell syntax.
+- **A dedicated branch-naming convention**: "Default branch name
+  format: `devin/{timestamp}-{feature-name}`. Generate timestamps with
+  `date +%s`. Use this if the user or do not specify a branch format."
+  No explicit protected-branch prohibition exists, but the naming
+  default implicitly keeps Devin off `main`.
+- **The strongest, most explicit force-push prohibition found in this
+  survey**: "Never force push, instead ask the user for help if your
+  push fails."
+- **A mandatory-reasoning gate before git decisions specifically — not
+  seen phrased this way in any other source checked**: the `<think>`
+  tool (see Turn-output and Self-verification above) is *required*
+  "Before critical git Github-related decisions such as deciding what
+  branch to branch off, what branch to check out, whether to make a
+  new PR or update an existing one, or other non-trivial actions that
+  you must get right."
+- **Checkpoint/undo — file-level only, not git-based**: `undo_edit`
+  "Reverts the last change that you made to the file at the specified
+  path. Will return a diff that shows the change" — no codebase-wide
+  git-based checkpoint/snapshot system (no `git stash`, no
+  reset-to-commit convention) is documented anywhere.
+- **PR workflow tools, beyond the already-documented `gh_pr_checklist`
+  (see Self-verification above)**: `git_view_pr` — "like gh pr view
+  but better formatted... allows you to view PR comments, review
+  requests and CI status. For viewing the diff, use `git diff
+  --merge-base {merge_base}` in the shell" — a read-only lookup tool,
+  no PR-creation tool or description template found. "When a user
+  follows up and you already created a PR, push changes to the same
+  PR unless explicitly told otherwise," and "When iterating on getting
+  CI to pass, ask the user for help if CI does not pass after the
+  third attempt" (the same bounded-retry pattern documented for
+  Devin's self-verification section, applied here to CI specifically).
+- **No worktree isolation found** — no mention of `git worktree`,
+  parallel sandboxes, or multiple simultaneous checkouts anywhere in
+  the prompt.

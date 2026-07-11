@@ -372,6 +372,106 @@ seek permission, not the enforcement architecture behind it).
   from pure research tasks (should not) — the model has a dedicated
   tool to request the mode transition, unlike Cline's Plan/Act split
   (see `cline/README.md`'s Permissions section), where the model can
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../../agent-git-vcs.md) for the cross-source
+comparison this feeds into. Sourced from `Prompt.txt`/`Tools.json`
+(the leak) plus, for worktree isolation specifically, this live
+session's own current tool schemas (fetched directly, not read from
+any file — flagged explicitly below since it's a different provenance
+than everything else in this document).
+
+- **Commit message conventions, fully specified**: the Bash tool's own
+  description carries a dedicated "# Committing changes with git"
+  section — gather `git status`/`git diff`/`git log` in parallel first
+  (the log read specifically "so that you can follow this repository's
+  commit message style"), draft a concise 1-2 sentence message
+  focused on "why" not "what," pass it via HEREDOC, and append a
+  trailer. **The trailer text has visibly evolved between the leaked
+  snapshot and this live session** — the leak (captured with Sonnet 4,
+  dated 2025-08-19) ends commits with "🤖 Generated with [Claude
+  Code](https://claude.ai/code)\n\nCo-Authored-By: Claude
+  &lt;noreply@anthropic.com&gt;"; this live session's own Bash-tool
+  description instead ends with a model-version-specific author name
+  and an added session-URL trailer, with the emoji/"Generated with"
+  line dropped — a real, dated convention change, not a discrepancy
+  between two captures of the same thing.
+- **Pre-commit hook handling is the one place amending is explicitly
+  sanctioned**: "If the commit fails due to pre-commit hook changes,
+  retry the commit ONCE... If it fails again, it usually means a
+  pre-commit hook is preventing the commit. If the commit succeeds but
+  you notice that files were modified by the pre-commit hook, you MUST
+  amend your commit to include them." Elsewhere amending is treated as
+  a destructive action requiring explicit authorization (consistent
+  with the general "hard to reverse" framing this doc's §6 covers for
+  other sources).
+- **When to commit at all is a hardcoded prompt-level prohibition,
+  not tied to the configurable permission-mode system**: "NEVER commit
+  changes unless the user explicitly asks you to. It is VERY IMPORTANT
+  to only commit when explicitly asked, otherwise the user will feel
+  that you are being too proactive." No environment variable or
+  settings-file key was found anywhere in this doc's Permission-system
+  research (six modes, settings-file scopes, LLM classifier) that
+  toggles this specifically — file edits and bash commands get the
+  full permission-mode machinery, but committing is gated by one
+  separate, non-configurable rule layered independently on top of
+  whatever mode is active.
+- **PR workflow, fully specified with a literal template**: the same
+  parallel-gather-then-analyze pattern as commits, extended to look at
+  the *entire* branch's commit history since divergence ("NOT just the
+  latest commit, but ALL commits that will be included"), then:
+  ```
+  gh pr create --title "the pr title" --body "$(cat <<'EOF'
+  ## Summary
+  <1-3 bullet points>
+
+  ## Test plan
+  [Checklist of TODOs for testing the pull request...]
+
+  🤖 Generated with [Claude Code](https://claude.ai/code)
+  EOF
+  )"
+  ```
+  No distinct self-review-before-opening step is described — the model
+  is told to *analyze* the diff/history to draft the summary, but
+  there's no instruction to critique its own diff for bugs first, the
+  way this collection's self-verification doc found the (ant-gated)
+  verification subagent does for general task completion; PR creation
+  isn't wired to that mechanism in what's captured.
+- **Branch naming**: no explicit convention or template found (unlike,
+  say, a `feature/xyz` pattern) — the current repo's main branch name
+  is injected as live environment context at conversation start rather
+  than assumed, and branch creation is just "create new branch if
+  needed," one of three parallel steps in the PR flow.
+- **Worktree isolation — the richest finding on this axis in the whole
+  survey, confirmed via this live session's own current tool
+  schemas** (not the leak, which only names `EnterWorktreeTool`/
+  `ExitWorktreeTool` as conditionally-added, confirmed-non-stub tools
+  without reading their bodies): a dedicated, **user/project-invoked**
+  session-mode-switching mechanism, not a background implementation
+  detail.
+  - **Explicitly gated to avoid being confused with ordinary branch
+    work**: "Use this tool ONLY when explicitly instructed to work in
+    a worktree — either by the user directly, or by project
+    instructions (CLAUDE.md / memory)... Never use this tool unless
+    'worktree' is explicitly mentioned."
+  - **Mechanism**: creates a real `git worktree` inside
+    `.claude/worktrees/` on a new branch, with a `worktree.baseRef`
+    setting (`fresh`, default, branches from `origin/<default-branch>`;
+    `head` branches from local HEAD) governing what it forks from.
+    Outside a git repo, it "delegates to WorktreeCreate/WorktreeRemove
+    hooks for VCS-agnostic isolation" — a genuinely pluggable non-git
+    fallback.
+  - **Composes with sub-agent isolation**: works from agents whose
+    working directory was pinned at launch, and "the switch only
+    affects this agent, not the parent session."
+  - **Fail-closed removal**: exiting with `"remove"` "will REFUSE to
+    remove it unless [`discard_changes`] is set to `true`" if the
+    worktree has uncommitted files or commits not on the original
+    branch — no silent data loss, and "on session exit, if still in
+    the worktree, the user will be prompted to keep or remove it,"
+    never removed silently.
   only ask in prose and has no equivalent forcing tool.
 - **Provenance discipline worth keeping straight when citing this
   section**: the six-mode enum, rule model, `yoloClassifier.ts`/

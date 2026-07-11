@@ -220,3 +220,31 @@ explicit and unusually strong anti-override clause.
 - No sandbox/isolation is invoked anywhere as a complementary safety
   layer, and no escalation language exists for a modified command — the
   flag is simply re-derived fresh on every single call.
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../../agent-git-vcs.md) for the cross-source
+comparison this feeds into. Almost entirely absent as its own topic —
+what git handling exists is folded into the general `SafeToAutoRun`
+command-approval mechanism (§ Permissions above), with no git-specific
+carve-out anywhere.
+
+- **A "checkpoint" false positive worth flagging explicitly, so it
+  isn't miscounted**: the only use of the word refers to *conversation*
+  checkpoints, not code/git state — "ALL CONVERSATION CONTEXT,
+  INCLUDING checkpoint summaries, will be deleted" (from the memory-
+  system block already covered in Compaction above). No file-level
+  undo tool, no `git stash`/`git reset` convention, no code-state
+  snapshot mechanism of any kind is documented anywhere.
+- **No commit-message conventions, no worktree isolation, no branch-
+  management rules found.** Git commands, like all shell commands,
+  fall under the general `SafeToAutoRun` boolean — `git commit`/`git
+  push` would presumably be judged unsafe under "mutating state," but
+  git is never named specifically anywhere in either file; this is
+  inference from the general rule, not a stated git-specific policy.
+- **The one concrete git-specific line found**: a pager-avoidance
+  tooling note — "Commands will be run with PAGER=cat. You may want to
+  limit the length of output for commands that usually rely on paging
+  and may contain very long output (e.g. git log, use git log -n
+  &lt;N&gt;)." No PR-creation tool, no description template, no `gh` CLI
+  guidance beyond this note.

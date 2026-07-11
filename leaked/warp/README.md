@@ -80,3 +80,41 @@ prompt actively discourages seeking confirmation on ordinary work.
   behavior for a modified command — there's no approval step to
   escalate from. The weakest, most unstructured approval posture found
   across the sources checked for this doc.
+
+## Git and version control
+
+See [`agent-git-vcs.md`](../../agent-git-vcs.md) for the cross-source
+comparison this feeds into. The only source in this collection with a
+**dedicated, named, VCS-agnostic-by-design "# Version control"
+section** — git is the assumed default but explicitly not the only
+option.
+
+- **VCS-agnostic framing, distinctive among every source checked**:
+  "You can usually assume that the user's is using `git`, unless
+  stated in memories or rules above. If you do notice that the user is
+  using a different system, like Mercurial or SVN, then work with
+  those systems." No other source in this survey hedges its git
+  guidance this way.
+- **Confirm-before-commit is a named exception to Warp's general
+  bias-toward-action stance** (already covered under Self-verification
+  above, repeated here as it's equally a git-specific rule): "don't
+  automatically commit and push the changes without confirmation" —
+  the model may act on the requested task without asking, but
+  committing/pushing that work is carved out as needing confirmation
+  regardless.
+- **A pager-avoidance instruction stated three times across the
+  file**, underscoring it as an operationally important, tool-agnostic
+  constraint: "When using VCS CLIs, you cannot run commands that
+  result in a pager... With `git`, for example, use the `--no-pager`
+  flag when possible (not every git subcommand supports it)." Also
+  applies to `gh`: "you can also use CLIs for the repository host, if
+  available (like `gh` for GitHub)... The same guidance regarding
+  avoiding pagers applies to these CLIs as well."
+- **No commit-message conventions, no checkpoint/undo system, no
+  worktree isolation, no branch-management rules found.** No PR-
+  creation tool or description template — Warp only reads PR/issue
+  info via `gh`, per "you can use the `gh` CLI to fetch information
+  about pull requests and issues"; PR creation itself would be an
+  ordinary `gh pr create` shell command subject to the same general
+  "bias strongly against unsafe commands" judgment and the confirm-
+  before-commit/push rule above.
