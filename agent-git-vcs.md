@@ -200,17 +200,24 @@ checkpoint/undo system at all**.
 - **User/project-invoked session-mode-switching, not a background
   parallelism primitive** — Claude Code: `EnterWorktreeTool`/
   `ExitWorktreeTool` (confirmed via this live session's own current
-  tool schemas, not the leak) are explicitly gated to avoid being
-  confused with ordinary branch work — "Use this tool ONLY when
-  explicitly instructed to work in a worktree... Never use this tool
-  unless 'worktree' is explicitly mentioned." Creates a real
-  `git worktree` inside `.claude/worktrees/`, with a pluggable
+  tool schemas and independently corroborated by a richer leaked
+  prompt capture — see `leaked/claude-code/README.md`) are explicitly
+  gated to avoid being confused with ordinary branch work — "Use this
+  tool ONLY when explicitly instructed to work in a worktree... Never
+  use this tool unless 'worktree' is explicitly mentioned." Creates a
+  real `git worktree` inside `.claude/worktrees/`, with a pluggable
   non-git fallback outside a git repo ("delegates to
   WorktreeCreate/WorktreeRemove hooks for VCS-agnostic isolation").
   Composes with sub-agent isolation (works from agents whose cwd was
-  pinned at launch). Fail-closed removal: refuses to remove a worktree
-  with uncommitted changes unless explicitly told to discard them, and
-  never removes one silently on session exit.
+  pinned at launch). A `path` parameter enters an already-*existing*
+  worktree rather than always creating a new one, with its own
+  concurrency rule (can't create a new worktree while already in one,
+  but switching into an existing one via `path` is fine). Fail-closed
+  removal: refuses to remove a worktree with uncommitted changes
+  unless explicitly told to discard them, and never removes one
+  silently on session exit — the two dispositions (`keep`/`remove`)
+  also govern any tmux session running inside the worktree, left
+  running for reattachment on `keep`, killed on `remove`.
 - **Worktree-*aware*, never worktree-*creating***: Codex CLI — no
   mechanism anywhere in the codebase creates a `git worktree` for
   parallel tasks or sub-agents (`spawn_agent`'s schema has no

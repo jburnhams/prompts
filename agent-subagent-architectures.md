@@ -344,6 +344,47 @@ is Composio SWE-Kit's fixed 3-role keyword-handoff pipeline (§2), which
 is a single hardcoded sequence with no dynamic turn-selection, LLM-based
 routing, or stall-recovery mechanism at all.
 
+### 7a. Claude Code's "Team" system — a second N-party design, now confirmed rather than inferred
+
+`leaked/claude-code/architecture-notes.md`'s Multi-agent "Team"
+coordination section was originally built entirely from source-code
+inference (file names, comments, constant names — never a captured
+prompt). A later, much richer prompt-text capture
+(`deferred-tools.md`, see that folder's README) has since confirmed
+the core of it directly: real `TeamCreate`/`TeamDelete`/`SendMessage`
+tool schemas exist, `TeamCreate`'s own description states "Teams have
+a 1:1 correspondence with task lists (Team = TaskList)," and
+`SendMessage`'s structured message types
+(`shutdown_request`/`shutdown_response`/`plan_approval_request`/
+`plan_approval_response`) match what had only been inferred before.
+This is a genuinely different shape from anything in the §7 table
+above — a **supervisor-worker structure layered as a tool-allowlist
+policy over the same primitive as ordinary two-party delegation**
+(`COORDINATOR_MODE_ALLOWED_TOOLS` vs. `ASYNC_AGENT_ALLOWED_TOOLS`
+picking which policy applies), broadcast/direct/cross-session
+messaging via `bridge:`/`uds:` prefixes, and a idle-state UX rule not
+seen in any Microsoft Agent Framework pattern ("Teammates go idle
+after every turn... going idle immediately after sending you a message
+does NOT mean they are done").
+
+The same richer capture also surfaces a **structurally distinct
+second mechanism**, `Workflow` — a deterministic, JS-scripted
+orchestration tool (`agent()`/`parallel()`/`pipeline()`/`phase()`
+primitives, a concurrency cap of `min(16, cpu cores - 2)`, a
+1000-agent lifetime cap) explicitly gated behind user opt-in ("the
+user must request that scale, not have it inferred") because of its
+cost. Its standout feature is **resumability**: `resumeFromRunId`
+replays cached `agent()` results for an unchanged script prefix ("Same
+script + same args → 100% cache hit"), which is specifically why
+`Date.now()`/`Math.random()` are banned inside workflow scripts —
+either would break the cache-hit guarantee. This is closer in spirit
+to a deterministic fan-out/fan-in primitive (like §7's Concurrent
+pattern) than to Team's persistent supervisor/worker structure, but
+implemented as scripted orchestration rather than a `Builder`-configured
+topology — a third distinct shape (Team, Workflow, and Microsoft Agent
+Framework's five patterns) for solving overlapping but not identical
+problems, none of which were designed with the others in mind.
+
 ## 8. Absences worth noting
 
 - **Codex CLI, OpenHands, OpenCode, Roo Code, SWE-agent, Gemini CLI,
