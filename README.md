@@ -82,6 +82,20 @@ order:
   with an LLM fast/slow classifier, OpenCode's permission rulesets,
   Gemini CLI's TOML policy engine, Roo Code's approval flow) but never
   pulled together as its own axis.
+- **Turn output structure: titles, reasoning display, and user-facing
+  narration** — a single LLM turn returns several distinct things at
+  once (narration text, tool calls, and, for reasoning models,
+  thinking/CoT content); the underlying interleaved-content-block
+  mechanism is a model-API capability every scaffold just consumes, but
+  real scaffold-level variation sits on top of it: dedicated
+  session/task-title generation as its own tiny LLM call (Crush's
+  `title.md`, Goose's `session_name.md`, OpenCode's hidden `title`/
+  `summary` agents — three sources already stored, never synthesized),
+  whether extended-thinking/reasoning output is shown raw, summarized,
+  or stripped before the user or before history, and how much prose
+  narration is expected between tool calls (partially covered already
+  under "communication style" in `coding-agent-approaches.md`, but not
+  the title-generation or reasoning-display halves).
 - **Testing/verification & self-review loops** — the "reproduce bug →
   fix → verify → edge cases → submit" workflow template shared across
   nearly every SWE-bench-lineage agent, plus review-before-submit
