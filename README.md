@@ -55,6 +55,38 @@ orchestration patterns (Sequential/Concurrent/Handoff/GroupChat/
 Magentic), a structurally different N-party design found nowhere else
 in the collection.
 
+**[→ `agent-context-compaction.md`](./agent-context-compaction.md)** —
+a further drill-down on how a scaffold survives running out of context
+mid-task: when compaction triggers (proactive vs. reactive-on-error),
+what gets kept vs. discarded, whether it's a dedicated LLM call or a
+simple truncation, prompt-cache interaction, and how it composes with
+project-memory files and sub-agent context isolation.
+
+### Other candidate drill-downs (not started)
+
+Same four-axis pattern as the docs above — system prompts,
+tool surfaces, and sub-agents are covered; code review has its own
+top-level doc. Candidates for the same treatment, roughly in priority
+order:
+
+- **Permissions & approval architecture** — ask/allow/deny rule
+  systems, sandbox levels, auto/"YOLO" modes, human-in-the-loop
+  approval gates. Substantial material already surfaced as asides
+  while researching sub-agents (Codex's six-mode permission engine
+  with an LLM fast/slow classifier, OpenCode's permission rulesets,
+  Gemini CLI's TOML policy engine, Roo Code's approval flow) but never
+  pulled together as its own axis.
+- **Testing/verification & self-review loops** — the "reproduce bug →
+  fix → verify → edge cases → submit" workflow template shared across
+  nearly every SWE-bench-lineage agent, plus review-before-submit
+  patterns (SWE-agent's actual reviewer/chooser LLM calls, Augment's
+  ensembler, Codex's own review pass). Distinct from
+  `code-review-approaches.md`, which is about reviewing *someone
+  else's* PR — this is an agent checking its own work.
+- **Git/VCS interaction mechanics** — commit message conventions,
+  checkpoint/undo systems, worktree isolation, branch-management
+  rules.
+
 ## Sources so far
 
 | Folder | Project | Type | License |
