@@ -153,3 +153,20 @@ tool's actual behavior even though the name stayed the same.
   Roo Code has two genuinely distinct concepts (in-place persona/tool-set
   change vs. hierarchical task delegation) that happen to share the word
   "mode."
+
+## Turn output: session titles
+
+See [`agent-turn-output.md`](../agent-turn-output.md) for the
+cross-source comparison this feeds into.
+
+**Confirmed absence, mirroring Cline almost exactly** (same lineage) —
+verified directly against the schema rather than inferred from a
+keyword-search miss (this archived repo's code isn't indexed by
+GitHub's cross-repo search at all, so files had to be fetched directly).
+`historyItemSchema` (`packages/types/src/history.ts`) has `id`,
+`rootTaskId`, `parentTaskId`, `task`, `tokensIn`/`tokensOut`,
+`totalCost`, `workspace`, `mode`, `status`, and more — **no `title`
+field anywhere**. The webview's task-history list renders straight from
+this schema, so what looks like a "task list" is really just the raw
+task text, not an AI-generated title. Same design answer as Cline: skip
+the extra LLM call entirely.

@@ -148,3 +148,22 @@ cross-source comparison this feeds into.
   surrounding Rust orchestration code not fetched into this collection,
   unlike the sources above where the trigger logic itself was
   independently investigated.
+
+## Turn output: session titles
+
+Already fully captured in this folder's `session_name.md`, not
+previously written up as its own section. See
+[`agent-turn-output.md`](../agent-turn-output.md) for the cross-source
+comparison this feeds into.
+
+- **The strictest length constraint of any title generator surveyed**:
+  "four words or less" — shorter than Crush's 50-character budget or
+  Claude Code's 3-7-word target, and enforced by instruction only
+  ("Reply with only the title, nothing else. Do not show your
+  reasoning" — a real, explicit anti-narration instruction specific to
+  this one-off call, distinct from the general reasoning-display
+  question covered elsewhere in `agent-turn-output.md`).
+  Few-shot examples are given directly in the prompt (e.g. "how do I
+  reverse a list in python?" → "Python list reversal"), rather than
+  format rules stated abstractly.
+- No trigger/model information captured beyond the prompt text itself.

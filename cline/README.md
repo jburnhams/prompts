@@ -48,6 +48,26 @@ classic, single-file prompt layout, so it's used here for a clean read.
   `load_mcp_documentation` for MCP servers, plus `new_task` for spawning a
   follow-on task and `plan_mode_respond` for its plan/act mode split.
 
+## Turn output: session titles
+
+Sourced from the live upstream repo's current monorepo layout (not the
+`v3.20.4` tag stored in this folder) — see
+[`agent-turn-output.md`](../agent-turn-output.md) for the cross-source
+comparison this feeds into.
+
+**Confirmed absence, not just unchecked**: Cline generates no AI
+session title at all. `HistoryItem` (both the VS Code extension and the
+newer CLI SDK) has only a raw `task`/`prompt` string field — no
+dedicated title field exists in the data model. The CLI's history
+rendering falls back to `metadata?.title || prompt || "Untitled"`,
+truncated to 40 characters — and `metadata.title` is populated only by
+an explicit user command (`cline history update --title`), never by an
+LLM call. Fork-session titling is pure string manipulation (reuse the
+source title or first message text, append " (fork)") — confirmed by
+reading the function body directly, no model call inside it. The
+cheapest possible answer to "how do you title a session": don't
+generate one, format the raw first message instead.
+
 ## Sub-agents
 
 **Cline has no sub-agent delegation tool in this snapshot** — `new_task`

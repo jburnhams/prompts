@@ -218,3 +218,50 @@ the cross-source comparison this feeds into.
   is "the" compaction system depends on which package is asking; the
   CLI-package version is the one wired to the real `/compact` command
   and config schema.
+
+## Turn output: session titles and reasoning display
+
+Sourced from the live upstream repo, not files stored in this folder —
+see [`agent-turn-output.md`](../agent-turn-output.md) for the
+cross-source comparison this feeds into.
+
+- **A `title` hidden agent, in the same family as `compaction`/
+  `summary`** (see "Sub-agents"/"Compaction" above) — "You are a title
+  generator. You output ONLY a thread title... A single line / ≤50
+  characters / No explanations," with the user's language matched, tool
+  names forbidden from appearing, and 10 worked examples.
+- **Triggered once, forked into the background, non-blocking**: called
+  from inside the main turn loop exactly when `step === 1` — the very
+  start of the first real user turn — via a forked effect that never
+  blocks the visible response. Explicitly skipped for child/sub-agent
+  sessions and for sessions that already have a non-default title.
+- **An explicit cheap-model preference**, same instinct as Claude
+  Code's Haiku-only title calls: uses the title agent's own configured
+  model if set, else falls back to the provider's "small model," and
+  only falls back further to the main model if neither exists.
+- **Code-level output constraints looser than the prompt's own ask**:
+  the implementation strips `<think>` blocks, takes the first non-empty
+  line, and hard-truncates at 100 characters — double the 50-character
+  limit the prompt itself requests, a real (if minor) prompt/code
+  mismatch.
+- **Reasoning is a first-class message-part type**
+  (`ReasoningPart`), rendered through the *same* Markdown pipeline as
+  ordinary text — distinguished only by dimmer CSS styling, not a
+  separate collapsible widget the way Claude Code's/Copilot Chat's UIs
+  build one.
+- **Off by default, same instinct as Gemini CLI**: `showReasoningSummaries`
+  defaults to `false`. When off, the UI shows only a shimmering
+  "Thinking…" placeholder plus a short heading extracted from the
+  reasoning text, not the reasoning itself.
+- **Reasoning effort and reasoning display are confirmed as two
+  independent axes**: `reasoningEffort`/`textVerbosity` live in
+  per-model provider config and control how much the model reasons;
+  `showReasoningSummaries` is a separate UI setting controlling whether
+  any of that gets shown — a model could reason heavily while the user
+  sees nothing, or reason minimally while full display is enabled.
+- **Narration is inherited per-provider, not an OpenCode-level
+  policy**: since OpenCode has no single house system prompt (see
+  "Files" above — it swaps in a different base prompt per model
+  family), narration instructions come from whichever prompt file is
+  active — e.g. `beast.txt`'s "Always tell the user what you are going
+  to do before making a tool call with a single concise sentence."

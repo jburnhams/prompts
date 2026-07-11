@@ -7,6 +7,14 @@
   read-only as of 2026-05-20**
 - **Retrieved from**: `main` branch,
   `src/extension/prompts/node/agent/` (2026-07-10)
+- **Provenance note (found during later research)**: as of a subsequent
+  pass, the same extension code appears to have been vendored into the
+  main `microsoft/vscode` monorepo (`extensions/copilot/src/...`) rather
+  than staying at this standalone repo — code-search hits for this
+  functionality now resolve there, not here. Not re-verified against
+  every file in this folder; noted as a heads-up for anyone trying to
+  find the current live location rather than a correction to what's
+  stored here.
 
 Microsoft open-sourced the VS Code Copilot Chat extension in mid-2025.
 Prompts are written as `.tsx` components using Microsoft's `@vscode/prompt-tsx`
@@ -229,3 +237,43 @@ cross-source comparison this feeds into.
   fact. Rich per-attempt telemetry (prompt/cache/completion token
   counts, duration, which mode ran, how many rounds since the last
   summarization) is sent regardless of outcome.
+
+## Turn output: reasoning display
+
+Sourced from a later research pass into the live codebase (now vendored
+into `microsoft/vscode`, see the provenance note above), not files
+stored in this folder — see
+[`agent-turn-output.md`](../agent-turn-output.md) for the cross-source
+comparison this feeds into. (Title generation wasn't investigated for
+this source in this pass.)
+
+- **`ThinkingData` is explicitly documented in-code as user-facing**:
+  one call site carries the comment "Summary text shown to the user"
+  directly on the field — confirming this is meant to be a genuine
+  displayed summary, not raw internal chain-of-thought leaking through.
+- **Copilot Chat doesn't render thinking itself** — it converts
+  `ThinkingData` into VS Code's own (proposed) extension API type,
+  `vscode.LanguageModelThinkingPart`, and streams it as ordinary chat
+  progress; the actual UI work happens in VS Code core
+  (`ChatThinkingContentPart extends ChatCollapsibleContentPart`), not
+  in the Copilot extension.
+- **Three distinct display modes**, more than any other source
+  surveyed: `Collapsed` (default), `CollapsedPreview` (force-applied on
+  narrow/phone layouts), `FixedScrolling` (pinned, scrollable while
+  actively streaming, auto-collapsing once the block completes).
+- **A small extra title-generation instance, easy to miss**: once a
+  thinking block finishes streaming, the collapsed summary can carry an
+  LLM-generated short title alongside its checkmark — a second,
+  much smaller instance of "generate a short label for this content"
+  distinct from session-title generation (not confirmed for this
+  source — see `agent-turn-output.md`), specific to labeling one
+  completed reasoning block.
+- **A separate accessibility-specific toggle**: whether thinking
+  content gets read aloud in the screen-reader "accessible view" is
+  controlled independently of the visual collapsed/expanded state.
+- **The real per-model-family branching is about whether to request
+  thinking at all, not about hiding it in the UI**: Anthropic-family
+  models get thinking force-disabled on a continuation turn if the
+  accumulated history has no prior thinking blocks — an API
+  continuity-validation requirement Anthropic's own API imposes, not a
+  Copilot display policy.

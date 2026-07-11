@@ -68,6 +68,17 @@ and — compared in detail — actual numeric token budgets (reserved
 buffers, summary output caps, retention thresholds) across the sources
 that expose them.
 
+**[→ `agent-turn-output.md`](./agent-turn-output.md)** — a further
+drill-down on what a single LLM turn actually produces, across 9
+sources: session/task title generation (a dedicated cheap-model side
+call vs. no generation at all vs. folded into the main model's own tool
+calls — Cline and Roo Code are the only confirmed "don't bother"
+cases), reasoning/thinking display defaults (shown-collapsed-by-default
+vs. hidden-until-opted-in, split roughly down the middle), Codex's
+unusually layered raw/summary/effort reasoning-visibility controls, and
+the recurring but easy-to-conflate distinction between native
+model-API reasoning blocks and ordinary prompted narration text.
+
 ### Other candidate drill-downs (not started)
 
 Same four-axis pattern as the docs above — system prompts,
@@ -82,20 +93,6 @@ order:
   with an LLM fast/slow classifier, OpenCode's permission rulesets,
   Gemini CLI's TOML policy engine, Roo Code's approval flow) but never
   pulled together as its own axis.
-- **Turn output structure: titles, reasoning display, and user-facing
-  narration** — a single LLM turn returns several distinct things at
-  once (narration text, tool calls, and, for reasoning models,
-  thinking/CoT content); the underlying interleaved-content-block
-  mechanism is a model-API capability every scaffold just consumes, but
-  real scaffold-level variation sits on top of it: dedicated
-  session/task-title generation as its own tiny LLM call (Crush's
-  `title.md`, Goose's `session_name.md`, OpenCode's hidden `title`/
-  `summary` agents — three sources already stored, never synthesized),
-  whether extended-thinking/reasoning output is shown raw, summarized,
-  or stripped before the user or before history, and how much prose
-  narration is expected between tool calls (partially covered already
-  under "communication style" in `coding-agent-approaches.md`, but not
-  the title-generation or reasoning-display halves).
 - **Testing/verification & self-review loops** — the "reproduce bug →
   fix → verify → edge cases → submit" workflow template shared across
   nearly every SWE-bench-lineage agent, plus review-before-submit

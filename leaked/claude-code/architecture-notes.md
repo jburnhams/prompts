@@ -172,6 +172,71 @@ inferred from caller comments only.
   wipes rather than summarizes, sharing only the cache-cleanup step
   with `/compact`.
 
+## Turn output: session titles and reasoning display
+
+See [`agent-turn-output.md`](../../agent-turn-output.md) for the
+cross-source comparison this feeds into.
+
+**Three separate title generators exist, not one** — all calling Haiku
+explicitly (a distinct cheap/fast model, never the main Sonnet/Opus
+agent loop), all with narrow, non-overlapping triggers rather than
+running for every session:
+
+- `src/utils/sessionTitle.ts`'s `generateSessionTitle()` — a
+  3-7-word sentence-case title, JSON-schema-constrained output
+  (`{"title": "..."}`), with good/bad worked examples embedded in the
+  prompt. Triggered from `src/hooks/useRemoteSession.ts` exactly once,
+  after the first user message, but **only for remote/background
+  sessions started without an initial prompt** — a comment explains why:
+  "gives the session a meaningful title on claude.ai instead of
+  'Background task'." Ordinary interactive terminal sessions with an
+  initial prompt don't appear to get this treatment at all.
+- `teleport.tsx`'s `generateTitleAndBranch` — a 6-word title *plus* a
+  git branch name in one call, for the remote/CCR teleport flow.
+- `rename/generateSessionName.ts`'s `generateSessionName` — a
+  kebab-case 2-4-word name, used only by the explicit `/rename` command.
+
+All three share an `extractConversationText` helper that tail-slices to
+the last 1,000 characters of the conversation rather than reading the
+full history — titling is deliberately cheap even before considering
+the small-model choice.
+
+**Reasoning display is raw-but-collapsible by default, not
+summarized** — a real design choice distinct from every other source
+surveyed defaulting to hidden-unless-opted-in (Codex's interactive
+pane, Gemini CLI, OpenCode):
+
+- `AssistantThinkingMessage.tsx` shows a collapsed one-line "∴
+  Thinking" hint by default; expanding (via a verbose/transcript mode)
+  reveals the model's *actual, unmodified* thinking text rendered as
+  markdown — nothing passes through a summarization step the way
+  visible chat responses might.
+- A dedicated on/off setting (`ThinkingToggle.tsx`, bound to `alt+t`)
+  controls whether extended thinking is requested from the API at all,
+  with an explicit latency/quality tradeoff warning if toggled
+  mid-conversation.
+- A magic keyword, literally the word **"ultrathink"**, typed anywhere
+  in a user message, is detected (`src/utils/thinking.ts`,
+  `src/utils/ultraplan/keyword.ts`) and boosts the thinking budget for
+  that turn — with its own rainbow-highlighted UI treatment as you type
+  it. (This collection's own conversational surface uses the same
+  keyword convention — see the system-reminder in the turn that
+  triggered this very research pass.)
+- `redacted_thinking` blocks (Anthropic's API-level safety redaction of
+  certain thinking content) render only as an opaque "✻ Thinking…"
+  placeholder — genuinely hidden by the model provider, not a Claude
+  Code display choice.
+- **Transcript noise control**: only the *most recent* thinking block
+  stays expanded as a long session scrolls on; older ones automatically
+  collapse away, independent of the verbose/transcript-mode toggle —
+  a scaffold-level UI decision layered on top of the raw-display default.
+
+**Narration is a separate mechanism entirely**: ordinary visible
+assistant prose (what most sources' "communication style"/terseness
+rules govern — see `coding-agent-approaches.md`) is governed by the
+system prompt's conciseness rules, not by anything to do with the
+native thinking-block machinery above.
+
 ## Tool definition and dispatch
 
 `Tool.ts` defines a generic `Tool<Input, Output>` contract: identity,

@@ -134,3 +134,24 @@ cross-source comparison this feeds into.
 - **No trigger/threshold information captured** — same caveat as Goose:
   this is the prompt text alone, not the surrounding Go orchestration
   code that would show what actually decides when to compact.
+
+## Turn output: session titles
+
+Already fully captured in this folder's `title.md`, not previously
+written up as its own section. See
+[`agent-turn-output.md`](../agent-turn-output.md) for the cross-source
+comparison this feeds into.
+
+- **Generated from the first message only**: "You will generate a
+  short title based on the first message a user begins a conversation
+  with" — a one-shot decision at session start, not something
+  reconsidered as the conversation evolves.
+- **Concrete, code-adjacent format rules stated directly in the
+  prompt**: same language as the user's message, ≤50 characters, one
+  line, no quotes or colons, and — notably — "the entire text you
+  return will be used as the title," meaning there's no separate
+  parsing/extraction step expected on the code side; the model's raw
+  output is the title verbatim.
+- No trigger/model information captured beyond the prompt text itself
+  (not confirmed whether this runs on a separate cheap model or the
+  main session model).

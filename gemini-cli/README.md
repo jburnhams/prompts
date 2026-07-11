@@ -201,3 +201,47 @@ cross-source comparison this feeds into.
   wires `getCompressionPrompt()` into the assembly, but the actual
   token-threshold check that decides when to call it lives in
   surrounding orchestration code not fetched into this collection.
+
+## Turn output: session titles and reasoning display
+
+See [`agent-turn-output.md`](../agent-turn-output.md) for the
+cross-source comparison this feeds into.
+
+- **No classic sidebar-title generator found** — but a structurally
+  different, adjacent mechanism exists instead: `update_topic`
+  (`packages/core/src/tools/topicTool.ts`) is a tool the **main model
+  itself chooses to call mid-conversation**, with a `title`/`summary`/
+  `strategic_intent` schema, described as managing "narrative flow"
+  when "starting a new Chapter (logical phase) or shifting strategic
+  intent." This is folded into the ordinary agent turn as a tool call,
+  not a separate cheap-model side-call the way OpenCode's and Claude
+  Code's title generation works — the opposite architectural choice.
+  Whether this actually drives a persistent session-list/sidebar title
+  couldn't be confirmed (no references to the underlying `TopicState`
+  were found anywhere in the CLI package) — it reads more like an
+  internal narrative-chaptering aid than a confirmed UI-title feature.
+- **Reasoning is off by default, unlike Claude Code's default-shown
+  design**: `thinkingConfig` (`includeThoughts`, `thinkingBudget` — `-1`
+  is adaptive, `thinkingLevel` for Gemini-3-era models) is a real,
+  per-model-catalog-gated config surface, but the UI setting
+  `ui.inlineThinkingMode` (`'off' | 'full'`) defaults to **`"off"`** —
+  thinking is not shown inline in the transcript unless the user
+  explicitly opts in.
+- **A lighter-weight surfacing persists even with full display off**:
+  the current thought's `subject` line drives the status-row/loading
+  spinner label while the model works, and optionally the terminal
+  window title — so the user always sees *some* indication of what the
+  model is currently thinking about, just not the full reasoning text,
+  unless they turn that on.
+- **Sub-agent thinking gets its own independent display** (dedicated
+  component, distinct icons), separate from the main-agent thinking
+  setting — consistent with how much of Gemini CLI's sub-agent
+  architecture (documented in "Sub-agents" above) is kept genuinely
+  separate from the main loop.
+- Thoughts persist in session history and are explicitly stripped on
+  auth/logout.
+- **Narration is a separate, prompted mechanism**, already documented
+  in this collection: "Explain Before Acting: Never call tools in
+  silence... a concise, one-sentence explanation of your intent...
+  before executing tool calls" plus "No Chitchat" — ordinary system-prompt
+  rules, unrelated to the native `thinkingConfig` machinery above.

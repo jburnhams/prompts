@@ -260,3 +260,48 @@ the cross-source comparison this feeds into.
   `ModelDownshift`, `CompHashChanged`) tracked explicitly in analytics.
   No fixed target compression ratio was found — the summarization
   prompt doesn't ask for a specific output length.
+
+## Turn output: session titles and reasoning display
+
+See [`agent-turn-output.md`](../agent-turn-output.md) for the
+cross-source comparison this feeds into.
+
+- **Session/task title generation: a confirmed absence on the client**,
+  not just unchecked. `task.title` (for the separate Codex Cloud
+  product) is deserialized straight from the backend API response — no
+  generation code exists in `codex-rs/cloud-tasks/`; if an LLM produces
+  it, that happens server-side, invisible to this repo. The local
+  session-resume list (`codex-rs/tui/src/resume_picker.rs`) falls back
+  to a raw server-provided preview string, not a generated title. The
+  `/title` slash command is unrelated to conversation naming entirely —
+  it only configures which telemetry fields (model, token counts,
+  session id) appear in the terminal's window-title bar.
+- **Reasoning: the richest configuration surface surveyed**, and the
+  only one to explicitly target OpenAI's Responses-API reasoning
+  *summaries* by design rather than raw chain-of-thought — consistent
+  with OpenAI's own API not exposing raw CoT at all. `reasoning_effort`
+  (how much the model reasons) and `model_reasoning_summary` (an enum —
+  `Auto`/`Concise`/`Detailed`/`None`, `None` explicitly documented as
+  disabling summaries outright) are two independently configurable
+  axes, both overridable per-role and via CLI flag.
+- **Reasoning summaries are hidden from the live interactive pane by
+  default, shown only in the exported transcript** — a `transcript_only`
+  flag on the TUI's `ReasoningSummaryCell` component means
+  `display_lines()` (the live pane) returns empty while
+  `transcript_lines()` (full transcript export) still renders it. Two
+  further independent toggles layer on top: `hide_agent_reasoning`
+  (suppresses summary display entirely, for users "only interested in
+  the final agent responses") and `show_raw_agent_reasoning` (a
+  separate raw-content event, gated independently from the summary
+  display) — Codex draws its own raw-vs-summary distinction on top of
+  OpenAI's API-level summary-not-CoT design, not just passing the API's
+  choice straight through.
+- **Live keybinding to adjust reasoning effort mid-session**
+  (`chatwidget/reasoning_shortcuts.rs`) — the user can raise or lower
+  how much the model reasons without restarting the conversation.
+- **Narration is a separate, prompted mechanism**: both captured
+  per-model prompts state "Communicate with the user by streaming
+  thinking & responses, and by making & updating plans" — ordinary
+  visible prose governed by the system prompt, unrelated to the native
+  `reasoning_effort`/summary machinery above (the word "thinking" here
+  is used loosely, not referring to the API mechanism).
