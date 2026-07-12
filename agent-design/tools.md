@@ -52,7 +52,8 @@ instruction" (`agent-subagent-architectures.md` §6). `Bash` stays wired
 in read-only modes (read-only git inspection and read-only commands are
 legitimate there); its no-write rule remains prompt-enforced in v1,
 since command-level filtering is a real permission engine — see
-`README.md`'s "not in v1" list. The system-prompt mode rules in
+`future.md`'s "Command-level `Bash` permission filtering" entry. The
+system-prompt mode rules in
 `system-prompts.md` remain as the behavioral layer on top of this
 structural one.
 
@@ -316,7 +317,7 @@ structural one.
 >   *candidate* only — that's what the validator step is for; don't
 >   act on a specialist's finding directly.
 > - `general-purpose` cannot itself call Task — no recursive delegation
->   in v1 (see `README.md`'s decision log for the planned upgrade path).
+>   in v1 (see `future.md`'s "Addressable/resumable sub-agents" entry).
 
 ```json
 {

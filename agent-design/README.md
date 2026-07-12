@@ -153,62 +153,11 @@ subsequent doc assumes.
 
 ## What's deliberately not in v1
 
-Every one of these is a documented, well-precedented pattern in this
-collection — left out for leanness, not because it's a bad idea:
-
-- **Typed sub-agent registry beyond three types.** Coding mode has one
-  delegate type; review mode has two (`reviewer`, `validator`). Claude
-  Code, Gemini CLI, and Amp all show the next step (named, narrower
-  types for specific jobs) once there's a concrete need.
-- **Addressable/resumable sub-agents.** Codex CLI's `spawn_agent`/
-  `send_input`/`wait_agent`/`close_agent` and OpenCode's queue-onto-a-
-  running-job model (`agent-subagent-architectures.md` §2) are the
-  natural upgrade once a coding task needs to steer a sub-agent
-  mid-flight rather than fire-and-forget it.
-- **Numeric confidence scoring for review findings.** The validator
-  pass here is binary (confirmed / not confirmed), matching Anthropic's
-  own skill. TuringMind's 0-100 rubric or BMAD's 4-bucket triage
-  (`code-review-approaches.md` §6) are richer but add real tuning
-  surface — worth adding once false-positive rate is actually measured.
-- **`MultiEdit`, `NotebookEdit`, `WebFetch`/`WebSearch`, browser/deploy
-  tooling.** None are load-bearing for "implement a Jira ticket" or
-  "review a diff."
-- **Memory-file conventions (`AGENTS.md`/`CLAUDE.md`-equivalent).**
-  Reading a project's own convention file is just a `Read` call in the
-  coding-mode prompt's workflow, not a dedicated tool — no need to
-  invent one.
-- **A tiered permission/approval subsystem.** Codex CLI's five
-  cooperating subsystems and Gemini CLI's policy engine
-  (`agent-permissions-approval.md`) are the eventual ceiling; v1 gets a
-  single hard rule (destructive git operations and anything outside the
-  task's declared `mode` require `AskUser`) rather than a graded system.
-- **Context compaction.** A run that outgrows its budgets ends via the
-  final-turn nudge with an honest partial report (`formats.md` §7)
-  rather than summarizing and continuing — compaction is a genuine
-  subsystem (`agent-context-compaction.md`) and the natural v2 lever if
-  budget-exhausted runs turn out to be common.
-- **An LLM judge over completed work.** Claude Code's internal
-  adversarial verification subagent is the ceiling
-  (`agent-self-verification.md` §3); v1's completion-integrity story is
-  deterministic only (checklist gate + harness `git status`
-  cross-check), which can't be prompt-injected or talked out of firing.
-- **Diff-as-file instead of diff-in-prompt-thrice.** The review
-  orchestrator currently carries the diff in its envelope *and* copies
-  slices into each specialist's `Task` prompt. Having the harness also
-  write the diff to a scratch-dir file and letting sub-agents `Read` it
-  would cut the duplication for large PRs — at the cost of sub-agents
-  starting cold on what they should read. Worth measuring before
-  adopting.
-- **Double-coverage on the bugs lens.** Anthropic's `/code-review` skill
-  runs *two* bug-finder agents in parallel for recall and lets
-  validation handle the overlap; Forge runs one specialist per lens.
-  Cheap to add later if recall measures low — the validator + dedup
-  machinery already handles the duplicate-findings consequence.
-- **Turn caps for sub-agents.** Copilot Chat's `isLastTurn` nudge
-  (the same mechanism `formats.md` §7 uses for the whole run) applied
-  one level down, to individual `Task` calls. The run-level budget is
-  enough for v1; a runaway sub-agent still terminates when the parent
-  run's own budget is hit.
+Leanness cuts, not verdicts — every one is a documented,
+well-precedented pattern in this collection, tracked rather than
+dropped. See `future.md` for the full list and the specific upgrade
+each item points to, kept separate so it doesn't distract from
+implementing v1 itself.
 
 ## Reading order
 
@@ -219,9 +168,11 @@ collection — left out for leanness, not because it's a bad idea:
    Forge's output back out: the context envelope, the completion
    schema, the review-finding schema, the `AskUser` suspend/resume
    protocol, and the run-bounding contract.
+4. `future.md` — deferred work and named escalation triggers, tracked
+   separately so v1 implementation isn't the place that carries them.
 
 This design went through a full review pass against the rest of this
 repo's research after its first draft; every finding from that pass has
-since been folded directly into the three documents above (and into
-this decision log) rather than kept as a separate write-up — there is
-no residual open question left unresolved.
+since been folded directly into the documents above (and into this
+decision log) rather than kept as a separate write-up — there is no
+residual open question left unresolved.

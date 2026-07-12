@@ -118,10 +118,10 @@ to keep the format lean; the orchestrator passes the relevant slice of
 this same diff text into each specialist's `Task` prompt rather than
 re-fetching per specialist. (If mis-anchored comments show up in
 practice, PR-Agent's per-hunk new-file line-number injection is the
-documented upgrade path — `code-review-approaches.md` §3 — since
-deriving new-file line numbers by hunk arithmetic is the error-prone
-step; `AddComment`'s harness-side anchor validation in `tools.md` is
-the v1 backstop.)
+documented upgrade path — see `future.md`'s "PR-Agent-style per-hunk
+line-number injection" entry — since deriving new-file line numbers by
+hunk arithmetic is the error-prone step; `AddComment`'s harness-side
+anchor validation in `tools.md` is the v1 backstop.)
 
 **Harness guarantees for review mode**: the working tree is checked out
 at `Head SHA`, and `<diff>` is exactly `base_sha...head_sha`. This is
@@ -167,9 +167,9 @@ design, and the harness may express it either way:
   actual window rather than a number picked for one model and left
   stale after a model swap, and it can additionally divide by
   `(1 + number of specialist lenses)` to account for the diff being
-  copied into every specialist's `Task` prompt in v1 (see `README.md`'s
-  "not in v1" list, "Diff-as-file instead of diff-in-prompt-thrice," for
-  the fix that would remove that multiplier).
+  copied into every specialist's `Task` prompt in v1 (see `future.md`'s
+  "Diff-as-file instead of diff-in-prompt-thrice" entry for the fix
+  that would remove that multiplier).
 
 Which shape a deployment uses is a harness config choice, not a Forge
 behavior difference — either way Forge only ever sees a run that either
@@ -382,9 +382,9 @@ and a *new* run resumes it later.
 
 A task can suspend and resume more than once. There is no built-in cap
 in v1 — a real deployment would likely want one (e.g. "escalate instead
-of asking a third time"), left as a v2 addition per `README.md`'s
-"what's not in v1" list rather than specified here without a concrete
-reason to pick a specific number.
+of asking a third time"), left as a v2 addition per `future.md` rather
+than specified here without a concrete reason to pick a specific
+number.
 
 ---
 

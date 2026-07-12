@@ -378,7 +378,8 @@ matches the brief's "leaner initial tool set" by using one prompt with a
 role slot rather than a distinct file per specialist (the richer version
 of this — Claude Code's own typed-registry style, one named sub-agent
 type per role — is the natural v2 upgrade once roles need genuinely
-different tool scopes, per the README's decision log).
+different tool scopes; see `future.md`'s "Typed sub-agent registry
+beyond three types" entry).
 
 Tool scope: `Read`, `Grep`, `Glob` only — no `Edit`, `Write`, or `Bash`.
 A specialist finds issues; it never touches code.
