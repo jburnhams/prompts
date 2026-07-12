@@ -278,7 +278,7 @@ it was never judged wrong, just already reported.
 ```json
 {
   "ticket": "PROJ-1234",
-  "approach": "string — a few sentences: what will change and why, in plain terms",
+  "approach": "string — a few sentences: what will change and why (or, if steps is empty, what was investigated and why no change is needed), in plain terms",
   "steps": [
     { "order": 1, "description": "string, concrete and specific", "files": ["string, ..."] }
   ],
@@ -302,6 +302,19 @@ what makes handing this to a *different* run viable at all: without it,
 an implement run has to redo the investigation from scratch, which
 defeats the point of planning first. See §6 for how this schema actually
 reaches that later run.
+
+`steps: []` is a valid, deliberate outcome, not an incomplete plan — it
+represents a `plan`-mode run that investigated and concluded no code
+change is needed (the ticket was a question, the behavior was already
+correct, the report wasn't reproducible). This is how `mode: plan`
+covers what an earlier draft of this design called a separate
+`investigate` mode: both are the same read-only investigation, and only
+the *outcome* differs, not the mode. `status` on the `Complete` call is
+`"done"` rather than `"planned"` in this case (`tools.md`); `approach`,
+`context_gathered`, and `risks_and_assumptions` are still populated to
+explain the finding, and step 5 of the plan-mode workflow
+(`system-prompts.md`) still posts it — a ticket that asked a question
+gets an answer on the ticket either way.
 
 ---
 
@@ -394,14 +407,17 @@ How a `mode: plan` run's output becomes a `mode: implement` run's
 input. Deliberately underspecified in one place, on purpose — see the
 callout at the end.
 
-1. A `mode: plan` run ends one of two ways: `AskUser` (per §5, same
+1. A `mode: plan` run ends one of three ways: `AskUser` (per §5, same
    suspend/resume mechanics — the run pauses on a question, and when it
-   resumes, it's still `mode: plan`, producing a plan only once
-   unblocked), or `Complete` with `status: "planned"` and the §3c plan
-   in `report`. Either way, if a plan was produced, its text was also
-   already posted to the originating Jira issue via `AddComment` (plan
-   mode workflow step 5, `system-prompts.md`) — that posting is
-   unconditional and happens regardless of what occurs next.
+   resumes, it's still `mode: plan`, concluding only once unblocked),
+   `Complete` with `status: "planned"` and a §3c plan with a non-empty
+   `steps` list in `report`, or `Complete` with `status: "done"` and an
+   empty `steps` list — a no-action finding, per §3c's note. Either way
+   the text was also already posted to the originating Jira issue via
+   `AddComment` (plan mode workflow step 5, `system-prompts.md`) — that
+   posting is unconditional and happens regardless of what occurs next.
+   Only the `status: "planned"` case has anything left to hand off; the
+   rest of this section doesn't apply to a no-action finding.
 2. Whatever invoked the plan run decides whether, and when, to dispatch
    a follow-up `mode: implement` run. This document does not specify
    that policy — it's a deployment-time choice, not something Forge's

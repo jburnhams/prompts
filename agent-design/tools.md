@@ -39,8 +39,8 @@ target.
 
 The table above is by *role*; run `mode` narrows it further, and the
 harness enforces that narrowing at wiring time, not just in prompt
-text: in `plan` and `investigate` runs, `Edit` and
-`Write` are **not registered at all** — for the coding orchestrator or
+text: in `plan` runs, `Edit` and `Write` are **not registered at
+all** — for the coding orchestrator or
 for any `general-purpose` sub-agent it spawns ("full tool parity"
 means parity with the orchestrator *as wired for this run*, so a
 read-only run cannot launder writes through a delegate). This follows
@@ -49,7 +49,7 @@ structural boundary can't be forgotten, and the precedent is strong —
 Gemini CLI strips agent-kind tools from sub-agent registries in code,
 and Composio scopes permissions "at the tool level, not just by
 instruction" (`agent-subagent-architectures.md` §6). `Bash` stays wired
-in read-only modes (read-only git inspection and read-only commands are
+in `plan` mode (read-only git inspection and read-only commands are
 legitimate there); its no-write rule remains prompt-enforced in v1,
 since command-level filtering is a real permission engine — see
 `future.md`'s "Command-level `Bash` permission filtering" entry. The
@@ -536,12 +536,16 @@ for its conditional requirements.
 > for `mode: plan`).
 >
 > Calling this is always the last action in a run. `status: "planned"`
-> is `plan`-mode-only — it means a plan was produced and posted, not
+> is `plan`-mode-only, for the case where the investigation found an
+> actual change to make — it means a plan was produced and posted, not
 > that any code changed; it says nothing about whether an `implement`
-> run will follow, since that's decided outside this run. `status:
-> "blocked"` is for a run resuming after AskUser that still didn't fully
-> resolve things; within a single run, use AskUser directly instead of
-> reaching Complete with status `blocked`.
+> run will follow, since that's decided outside this run. A `plan`-mode
+> run that instead concludes no code change is needed uses
+> `status: "done"` with an empty `steps` list in `report` — the finding
+> was still posted per the same workflow, there's just nothing to hand
+> off. `status: "blocked"` is for a run resuming after AskUser that
+> still didn't fully resolve things; within a single run, use AskUser
+> directly instead of reaching Complete with status `blocked`.
 >
 > In `implement` mode, the **first** `Complete(status: "done")` call
 > does not complete the run. It returns a fixed checklist as the tool
