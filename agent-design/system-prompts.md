@@ -310,16 +310,16 @@ standing procedure:
    comment body. Use a committable suggestion block only when the fix
    is small and self-contained enough that applying it verbatim
    resolves the issue completely — otherwise describe the fix in prose.
-   If no findings survived, post one short summary comment saying so
-   rather than staying silent — silence is indistinguishable from "the
-   run failed" to whoever is waiting on it. That summary comment is
-   itself subject to step 4's dedup: if `<existing_comments>` already
-   carries a prior no-findings summary from a previous review run and
-   no findings have been posted since, skip it — a re-review that found
-   nothing new should not add a fresh "nothing to report" comment on
-   every push.
+   If no findings survived, post nothing — do not post a "nothing to
+   report" comment. AddComment is for findings only; the fact that a
+   run happened and found nothing is carried in the Complete report's
+   summary (next step), not as a PR comment. What, if anything, gets
+   surfaced from a no-findings run is a call for whatever invoked
+   Forge, not something Forge posts itself.
 7. **Report.** Call Complete with the full list of findings (posted and
-   filtered-out, per `formats.md`'s schema) and a short summary.
+   filtered-out, per `formats.md`'s schema) and a short summary — this
+   is the single place a run's overall outcome is recorded; nothing
+   about it is duplicated onto the PR as a comment.
 
 # Constraints
 

@@ -202,12 +202,20 @@ run-level skip gate:
 
 **Applied**: pipeline reordered — existing-comment dedup now sits
 between specialist fan-out and validation; intra-run same-location
-dedup stays after validation. The no-findings summary is now itself
-subject to dedup: skip it when `<existing_comments>` already contains a
-prior no-findings summary and no findings have been posted since. Both
-`findings` and `filtered` accounting in the `Complete` report are
-unchanged (filtered-before-validation entries record `validated: null`
-plus the dedup reason).
+dedup stays after validation. Both `findings` and `filtered` accounting
+in the `Complete` report are unchanged (filtered-before-validation
+entries record `validated: null` plus the dedup reason).
+
+**Superseded (see "Review delivery shape" below)**: the no-findings
+summary comment and its dedup are removed entirely, not just deduped.
+`AddComment` is now findings-only — a no-findings run posts nothing to
+the PR at all. The run's outcome (including "nothing found") is
+reported solely via `Complete`'s summary field; surfacing that to the
+PR, if desired, is the invoking harness's decision, not something Forge
+does through its own tool calls. This also resolves open question 3
+below: `AddComment` stays create/reply-only (no `UpdateComment`), and
+there is no tracking-comment mechanism in v1 — with summary comments
+gone entirely, there's nothing left for a tracking comment to update.
 
 ## F8 — No large-diff policy (medium; open question + placeholder applied)
 
@@ -349,12 +357,13 @@ prefixes each comment body with its severity. (An actual severity
    adjustable for specialist fan-out). No source in the collection,
    including Anthropic's own `/code-review` skill, does automated
    sharding-with-merge — see F8 above.
-3. **Review delivery shape.** V1 posts N inline comments per run.
-   `claude-code-action`'s alternative — one continuously-updated
-   tracking comment plus inline comments only for findings — handles
-   re-review noise even better than F7's dedup, but requires an
-   `UpdateComment` capability the v1 `AddComment` deliberately doesn't
-   have. Worth deciding before implementation rather than after.
+3. ~~**Review delivery shape.**~~ **Resolved: no `UpdateComment`, no
+   tracking comment, no summary comment at all.** `AddComment` stays
+   create/reply-only and findings-only. A no-findings run — and a run's
+   overall outcome generally — is reported through `Complete`'s summary
+   field only; whether/how that reaches the PR (a tracking comment, a
+   check-run annotation, nothing) is the invoking harness's decision,
+   not Forge's. See F7's "Superseded" note above.
 4. **Jira body format.** `AddComment.body` is Markdown; Jira Cloud
    wants ADF (or legacy wiki markup). Assumed harness-side conversion —
    confirm that's where you want that complexity to live.
