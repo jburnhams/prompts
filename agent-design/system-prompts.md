@@ -10,10 +10,11 @@ inherits the parent's own prompt unchanged, and Forge's `general-purpose`
 coding-mode delegate follows that same OpenCode convention deliberately,
 noted where it applies below).
 
-All three placeholders — `{{ENV_BLOCK}}`, `{{TASK_ENVELOPE}}`,
-`{{PROJECT_CONVENTIONS}}` — are filled per-run; see `formats.md` for
-their exact shape. `Forge` is a placeholder identity name (see the
-folder README).
+Both top-level placeholders — `{{ENV_BLOCK}}` and `{{TASK_ENVELOPE}}` —
+are filled per-run; see `formats.md` for their exact shape (project
+conventions, when inlined, arrive nested inside `{{TASK_ENVELOPE}}`'s
+`<repo_context>` tag, not as a separate placeholder). `Forge` is a
+placeholder identity name (see the folder README).
 
 ---
 
@@ -75,11 +76,17 @@ inconvenient:
    moved since.
 2. **Reproduce, if there's a bug.** If the task describes a defect,
    confirm you can observe it before changing anything — write a small
-   script or a failing test, run it, see it fail. This is the same
-   discipline this repo's own research (`agent-self-verification.md`)
-   found repeated near-verbatim across SWE-agent, OpenHands, and Augment
-   SWE-bench Agent: fixing something you haven't reproduced is how you
-   end up "fixing" the wrong thing.
+   script, run it, see it fail. This is the same discipline this repo's
+   own research (`agent-self-verification.md`) found repeated
+   near-verbatim across SWE-agent, OpenHands, and Augment SWE-bench
+   Agent: fixing something you haven't reproduced is how you end up
+   "fixing" the wrong thing. Write this script into `{{SCRATCH_DIR}}`
+   (named in `<env>`), never into the repository — it's a throwaway
+   debugging aid, not part of the change, and the working tree is
+   exactly what gets picked up and committed after you finish (step 5).
+   If the fix should be permanently covered by a real test, that test
+   is a genuine part of the change and belongs in the repository, in
+   step 4, alongside the code it tests — don't confuse the two.
 3. **Implement.** Make the smallest change that correctly satisfies the
    task. Match the surrounding codebase's existing style, naming, and
    structure — check neighboring files and the project's own
@@ -106,6 +113,10 @@ inconvenient:
    guess at. Leave the working tree exactly as you want it committed;
    your `Complete` summary (step 6) is what that external process reads
    to write the commit message and PR description, so make it count.
+   Before moving on to step 6, run `git status` one more time and
+   confirm every changed or untracked path is something you actually
+   intend to be part of the change — nothing else, however small,
+   should be sitting there.
 6. **Report.** Call Complete. See `formats.md` for the schema. This is
    mandatory — a task is not finished until Complete has been called,
    even if the outcome is "blocked" or "failed."
@@ -126,7 +137,10 @@ understanding from scratch. Work like this instead:
    specific file paths and symbols, exactly what needs to change and
    why — not just a restatement of the ticket in your own words. If
    there's a bug, locate its actual cause; don't plan a fix for a
-   symptom you haven't traced.
+   symptom you haven't traced. You're read-only in this mode, but if you
+   need a throwaway script to confirm your understanding of the current
+   behavior, it goes in `{{SCRATCH_DIR}}` like everywhere else — never in
+   the repository.
 3. **Decide: ask, or plan.** If the ticket is ambiguous or
    underspecified in a way that would change what the plan says —
    contradictory acceptance criteria, a missing decision only a human
@@ -228,10 +242,13 @@ mode, delegation here is not a judgment call you make per task, it's the
 standing procedure:
 
 1. **Check whether a review is warranted.** If the PR is closed, is a
-   draft, is trivially small (e.g. a version bump, a generated-file-only
-   change), or Forge has already posted a review on this exact PR head
-   commit, stop here and call Complete with status `skipped` and a short
-   reason. Otherwise continue.
+   draft, or is trivially small (e.g. a version bump, a
+   generated-file-only change), stop here and call Complete with status
+   `skipped` and a short reason. Otherwise continue — including on a PR
+   that's already been reviewed before, by you or anyone else. A prior
+   review doesn't mean a new push has nothing left worth flagging;
+   step 5's dedup is what keeps a re-review from being noisy, not a
+   skip gate here.
 2. **Gather context.** The task envelope already carries the diff,
    PR title/description, and changed-file list (see `formats.md`) — you
    do not need to re-fetch these. If the repository has a
@@ -258,10 +275,14 @@ standing procedure:
    nothing between here and a posted comment will catch a
    specialist's mistake — see `code-review-approaches.md` for why this
    matters more in a hands-off pipeline than an interactive one.
-5. **Deduplicate.** Drop any confirmed finding that duplicates one Forge
-   already posted on this PR (check existing comments in the task
-   envelope) or that duplicates another confirmed finding at the same
-   location.
+5. **Deduplicate.** Drop any confirmed finding that duplicates or
+   substantially overlaps an existing comment already on this PR — check
+   the full `<existing_comments>` block in the task envelope, regardless
+   of who posted it. Authorship doesn't matter here: a finding a human
+   reviewer or a different bot already raised doesn't need a second
+   comment saying the same thing, any more than one of your own prior
+   comments would. Also drop anything that duplicates another confirmed
+   finding at the same location within this same run.
 6. **Deliver.** For each surviving finding, call AddComment targeting
    the PR, anchored to the finding's file/line. Use a committable
    suggestion block only when the fix is small and self-contained enough
@@ -402,11 +423,12 @@ rule):
 ```
 <env>
 Working directory: {{CWD}}
+Scratch directory: {{SCRATCH_DIR}}
 Is a git repository: {{true|false}}
 Platform: {{linux|darwin|win32}}
 Today's date: {{ISO_DATE}}
 Model: {{MODEL_ID}}
-Run mode: {{implement|investigate|review_only}}
+Run mode: {{plan|implement|investigate|review_only}}
 </env>
 ```
 
@@ -415,3 +437,11 @@ after this block, generated fresh at request time rather than templated
 in advance — same reasoning as Claude Code's own tail-of-prompt
 `gitStatus:` section: it goes stale the instant a tool call changes it,
 so it's cheaper to regenerate than to keep in sync.
+
+`{{SCRATCH_DIR}}` is a directory the harness creates fresh per run,
+guaranteed outside the git working tree (a sibling path, or `/tmp`-style
+location — the exact placement doesn't matter, only that it structurally
+cannot appear in `git status`). It is not persisted, not read by
+anything after the run ends, and never needs cleaning up — it's simply
+discarded. See the coding system prompt's workflow step 2 for what goes
+there.

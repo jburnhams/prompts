@@ -130,6 +130,12 @@ mode" for the behavioral rule this table doesn't enforce on its own.
 > for genuinely new files, or when a rewrite is so extensive that
 > reconstructing it via Edit calls would be less reliable than writing
 > it fresh.
+>
+> Only write into the repository working tree for files meant to be
+> part of the actual change. Anything throwaway — a reproduction
+> script, a scratch note, exploratory output — goes in the scratch
+> directory named in `<env>` instead, never in the repository, even
+> temporarily (see the coding system prompt's workflow, step 2).
 
 ```json
 {
@@ -166,7 +172,9 @@ mode" for the behavioral rule this table doesn't enforce on its own.
 >   server, a watch task) you need to keep running while you do other
 >   work; poll it with the same tool call shape and its process id.
 > - Output over 30000 characters is truncated. If you need to inspect
->   something larger, redirect it to a file and Read the relevant slice.
+>   something larger, redirect it to a file in the scratch directory
+>   (named in `<env>`) and Read the relevant slice — never redirect into
+>   the repository working tree.
 > - Before a command that creates a new directory or file, confirm the
 >   parent exists (Glob or a quick `ls`) rather than assuming.
 >
@@ -304,14 +312,32 @@ mode" for the behavioral rule this table doesn't enforce on its own.
       "subagent_type": { "type": "string", "enum": ["general-purpose", "reviewer", "validator"] },
       "description": { "type": "string", "description": "A short (3-5 word) label for this call." },
       "prompt": { "type": "string", "description": "The complete, self-contained task for the sub-agent, including exactly what it should return." },
-      "role": { "type": "string", "description": "Required when subagent_type is \"reviewer\": one of \"bugs\", \"security\", \"conventions\"." },
+      "role": { "type": "string", "enum": ["bugs", "security", "conventions"], "description": "Required when subagent_type is \"reviewer\": the lens that specialist reviews through." },
       "finding": { "type": "object", "description": "Required when subagent_type is \"validator\": the single candidate finding to check, in the review-finding schema (see formats.md)." }
     },
     "required": ["subagent_type", "description", "prompt"],
-    "additionalProperties": false
+    "additionalProperties": false,
+    "allOf": [
+      {
+        "if": { "properties": { "subagent_type": { "const": "reviewer" } } },
+        "then": { "required": ["role"] }
+      },
+      {
+        "if": { "properties": { "subagent_type": { "const": "validator" } } },
+        "then": { "required": ["finding"] }
+      }
+    ]
   }
 }
 ```
+
+The `allOf`/`if`/`then` block makes the two conditional requirements
+schema-enforced, not just prose the model has to remember: a `reviewer`
+call missing `role`, or a `validator` call missing `finding`, fails
+validation before it ever reaches Forge — rather than being accepted and
+only failing at runtime when the sub-agent doesn't get the parameter it
+needs. (Both keywords are plain JSON Schema draft-07+, so this doesn't
+change the schema dialect used elsewhere in this document.)
 
 ---
 
