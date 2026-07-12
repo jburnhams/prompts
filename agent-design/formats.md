@@ -272,7 +272,14 @@ after the run is a hard integrity failure the harness flags regardless.
 In `plan` mode the harness additionally checks that at least one
 successful `AddComment` call happened before `Complete` — the plan-mode
 workflow's step 5 posting is unconditional, so its absence means the
-run claimed an outcome it never delivered to the ticket. Together with
+run claimed an outcome it never delivered to the ticket. The same
+post-run cross-check specifically flags any diff touching a
+project-conventions file (`AGENTS.md`/`CLAUDE.md`/equivalent): that
+file is instruction to every future run, so a change to it is
+prompt-injection surface, not an ordinary edit — the coding prompt
+forbids touching it except when the ticket is explicitly about it, and
+the flag makes a violation (or a legitimate, ticket-driven change)
+visible to whoever reviews the handoff either way. Together with
 the first-call checklist gate (`tools.md`), these are the design's
 answer to the false-completion-claim failure mode
 `agent-self-verification.md` documents as real and measured —
@@ -496,7 +503,17 @@ harness bounds every run with two budgets, and the design takes an
 explicit position on what happens at each:
 
 1. **A turn budget and a context high-water mark**, both set by the
-   harness per run. Crossing either doesn't kill the run — it triggers
+   harness per run. For the high-water mark's headroom there's a real
+   field convergence to anchor on: of the sources with code-confirmed
+   reserved-buffer numbers, Claude Code reserves 13,000 tokens and
+   OpenCode 20,000 (twice, in two parallel implementations), with
+   Codex's 90%-of-window threshold landing in the same absolute range
+   on a large window (`agent-context-compaction.md` §6) — three
+   unrelated codebases independently settling on a five-figure token
+   buffer. Forge's mark should leave at least that much room, plus
+   whatever a worst-case final `Complete` report costs, since the nudge
+   turn still has to fit. Crossing either budget doesn't kill the run —
+   it triggers
    a **final-turn nudge**: an injected message stating that this is the
    last turn and the only acceptable actions are `AskUser` or
    `Complete`, with whatever status honestly describes the state —

@@ -50,9 +50,12 @@ Gemini CLI strips agent-kind tools from sub-agent registries in code,
 and Composio scopes permissions "at the tool level, not just by
 instruction" (`agent-subagent-architectures.md` §6). `Bash` stays wired
 in `plan` mode (read-only git inspection and read-only commands are
-legitimate there); its no-write rule remains prompt-enforced in v1,
-since command-level filtering is a real permission engine — see
-`future.md`'s "Command-level `Bash` permission filtering" entry. The
+legitimate there); its general no-write rule remains prompt-enforced in
+v1, with one narrow structural exception — the git-write blocklist
+described in the Bash tool's own section below, which the harness
+applies in every mode. Filtering arbitrary commands beyond that one
+family is a real permission engine — see `future.md`'s "General
+command-level `Bash` permission filtering" entry. The
 system-prompt mode rules in
 `system-prompts.md` remain as the behavioral layer on top of this
 structural one.
@@ -208,6 +211,21 @@ structural one.
 > your run starts; leaving a finished, uncommitted working tree is the
 > entire delivery mechanism (see the coding system prompt's workflow) —
 > whatever invoked you owns turning it into a commit.
+>
+> The git-write rule is not only prompt text: the harness rejects Bash
+> commands matching git write subcommands before they reach the shell,
+> returning an error naming the rule. This is a narrow substring/
+> pattern blocklist on one command family, not a general permission
+> engine (that stays deferred — `future.md`): the precedent is Augment
+> SWE-bench Agent's hardcoded `banned_command_strs` check, the only
+> code-level git restriction found anywhere in this repo's collection
+> (`agent-git-vcs.md` §2), and it's a few lines of harness code
+> protecting the design's single most load-bearing invariant. Like any
+> blocklist it's bypassable in principle (a git write can be laundered
+> through a script), so the prompt rule and the post-run `git status`
+> cross-check remain as the layers around it — but the common case
+> can't happen by accident or by prompt injection naming the command
+> directly.
 
 ```json
 {

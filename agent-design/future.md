@@ -40,9 +40,16 @@ Two shapes of deferred work:
   invent one.
 - **A tiered permission/approval subsystem.** Codex CLI's five
   cooperating subsystems and Gemini CLI's policy engine
-  (`agent-permissions-approval.md`) are the eventual ceiling; v1 gets a
-  single hard rule (destructive git operations and anything outside the
-  task's declared `mode` require `AskUser`) rather than a graded system.
+  (`agent-permissions-approval.md`) are the eventual ceiling; v1 gets
+  structural mode wiring, the git-write blocklist, and one hard prompt
+  rule (anything outside the task's declared `mode` requires `AskUser`)
+  rather than a graded system. If this is ever built, the field's most
+  interesting converged pattern is worth knowing about up front: three
+  vendors independently arrived at "a second, cheaper LLM judges the
+  first model's proposed actions" (Gemini CLI's Conseca, Codex's
+  Guardian, Claude Code's internal-only `yoloClassifier`), always
+  layered *on top of* a static rule engine that keeps working without
+  it, and failing closed on error (`agent-permissions-approval.md` §2).
 - **Context compaction.** A run that outgrows its budgets ends via the
   final-turn nudge with an honest partial report (`formats.md` §7)
   rather than summarizing and continuing — compaction is a genuine
@@ -86,6 +93,20 @@ Two shapes of deferred work:
   (`agent-subagent-architectures.md` §3). A cheap-model triage pass and
   an expensive-model validator are the natural first split once cost
   per review run is measured.
+- **A hard write-protect on the project-conventions file.** V1 defends
+  the conventions file (instruction to every future run, so a
+  self-instruction-poisoning target) with a prompt rule plus a post-run
+  harness flag on any diff touching it (`formats.md` §3a). The
+  structural upgrade is Roo Code's `RooProtectedController`
+  (`agent-permissions-approval.md` §3): `.roorules*`/`AGENTS.md` and
+  kin are write-protected in code "regardless of autoapproval
+  settings" — the only source in the collection that hard-protects the
+  agent's own instruction files from the agent. For Forge that would
+  mean the harness rejecting `Edit`/`Write` calls targeting the
+  conventions path unless the run was dispatched with an explicit
+  this-ticket-may-edit-conventions flag. Deferred because the post-run
+  flag already makes the failure visible rather than silent; upgrade if
+  flagged violations actually occur.
 - **Repo-file content sanitization.** The envelope/FetchJira sanitizer
   (`formats.md` §1) deliberately does not touch file contents returned
   by Read/Grep — mangling source bytes would break Edit's exact-match
@@ -106,14 +127,20 @@ Two shapes of deferred work:
   format with line numbers injected per hunk (`code-review-approaches.md`
   §3) removes the hunk-arithmetic step that causes mis-anchoring in the
   first place, at the cost of a less lean diff format.
-- **Command-level `Bash` permission filtering**, once destructive- or
-  out-of-scope-command risk from the prompt-only read-only-git rule
-  becomes a real problem. `Bash` stays wired in read-only modes for
-  legitimate read-only commands; its no-write rule is prompt-enforced
-  only in v1 because command-level filtering is a real permission
-  engine (`tools.md`) — the natural first instance of the tiered
-  permission/approval subsystem above, scoped down to just this one
-  tool.
+- **General command-level `Bash` permission filtering**, beyond the
+  narrow git-write blocklist v1 does ship (`tools.md`). The v1
+  blocklist covers exactly one command family (git write subcommands),
+  because Augment SWE-bench Agent's precedent shows that specific check
+  is a few lines of code; everything else about Bash — read-only-mode
+  no-write rules, destructive non-git commands, network use — remains
+  prompt-enforced in v1, because filtering *arbitrary* commands
+  correctly (compound commands, subshells, `xargs`, script files) is a
+  real permission engine: OpenCode's tree-sitter AST parsing of
+  bash/PowerShell and Gemini CLI's per-sub-command redirection
+  detection (`agent-permissions-approval.md` §2-3) are the field's
+  benchmarks for doing it properly, and both are whole subsystems. The
+  natural first instance of the tiered permission/approval subsystem
+  above, scoped down to just this one tool.
 - **Read-only-git `Bash` for `reviewer`/`validator` sub-agents**, if
   pre-existing-vs-introduced misjudgments show up in posted findings.
   V1 gives review sub-agents no `Bash` at all (`tools.md`), so a
