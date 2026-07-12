@@ -544,10 +544,12 @@ for its conditional requirements.
 > the scratch directory — and only a second `Complete` call actually
 > ends the run. This is deliberate and deterministic (no extra model
 > call), directly following SWE-agent's `review_on_submit_m` gate
-> (`agent-self-verification.md` §2): a mechanical gate can't be talked
+> (`agent-self-verification.md` %2): a mechanical gate can't be talked
 > out of firing, and false completion claims are the best-measured
 > failure mode in this design's source research. Other statuses and
-> other modes complete on the first call.
+> other modes complete on the first call. The harness resets this
+> gate (requiring the checklist again) if any state-modifying tools
+> (like Edit or Write) are called after the first Complete call.
 
 ```json
 {

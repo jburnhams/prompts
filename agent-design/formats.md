@@ -209,8 +209,8 @@ harness does not take them on faith: after the run it computes the real
 changed-path list from `git status` and attaches any mismatch to the
 report it hands downstream (so the external committer sees the
 discrepancy, not just a log line). In read-only modes, a non-empty
-working-tree diff after the run is a hard integrity failure the harness
-flags regardless of what the report claims. Together with `Complete`'s
+working-tree diff of tracked files (e.g., via `git diff --exit-code`)
+after the run is a hard integrity failure the harness flags regardless
 first-call checklist gate (`tools.md`), this is the design's answer to
 the false-completion-claim failure mode `agent-self-verification.md`
 documents as real and measured — deterministic checks that can't be
@@ -412,10 +412,11 @@ explicit position on what happens at each:
    `Complete`, with whatever status honestly describes the state —
    `Complete(status: "failed")` carrying a partial report (what was
    done, what was verified, what remains) is a *successful* use of the
-   mechanism, not a failure of it. The precedent is Copilot Chat's
-   forced last-turn cutoff message ("OK, your allotted iterations are
-   finished...") — deterministic string injection, no extra model call
-   (`agent-self-verification.md` §4).
+   mechanism, not a failure of it. The harness structurally blocks and
+   rejects any other tool calls on this turn to guarantee termination.
+   The precedent is Copilot Chat's forced last-turn cutoff message
+   ("OK, your allotted iterations are finished...") — deterministic
+   string injection, no extra model call (`agent-self-verification.md` %7).
 2. **No compaction in v1.** Summarize-and-continue is a genuine
    subsystem (triggers, templates, incremental anchoring — see
    `agent-context-compaction.md`) that this design deliberately does

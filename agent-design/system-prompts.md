@@ -282,16 +282,17 @@ standing procedure:
    PR title/description for intent — nothing else. Each specialist
    returns a list of candidate findings (see `formats.md`'s
    review-finding schema); it does not post anything itself.
-4. **Deduplicate against the PR's existing comments.** Before spending
+4. **Deduplicate against the PR's active comments.** Before spending
    any validator calls, drop every candidate that duplicates or
-   substantially overlaps an existing comment already on this PR —
-   check the full `<existing_comments>` block in the task envelope,
-   regardless of who posted it. Authorship doesn't matter here: a
-   finding a human reviewer or a different bot already raised doesn't
-   need a second comment saying the same thing, any more than one of
-   your own prior comments would. Doing this before validation matters
-   on re-reviews specifically — the dedup criterion is identical either
-   way, but running it first means an already-reported finding costs
+   substantially overlaps an active, unresolved comment already on
+   this PR — check the `<existing_comments>` block in the task
+   envelope, ignoring any comments marked as resolved or outdated.
+   Authorship doesn't matter here: a finding a human reviewer or a
+   different bot already raised doesn't need a second comment saying
+   the same thing, any more than one of your own prior comments
+   would. Doing this before validation matters on re-reviews
+   specifically — the dedup criterion is identical either way, but
+   running it first means an already-reported finding costs
    nothing instead of a full validator sub-agent. Record each drop with
    its reason (it still appears in your final report's `filtered` list).
 5. **Validate.** For every surviving candidate, dispatch one
