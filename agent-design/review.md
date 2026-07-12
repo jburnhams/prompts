@@ -368,10 +368,11 @@ prefixes each comment body with its severity. (An actual severity
    Markdown, always — conversion to whatever the target platform
    actually needs (Jira Cloud's ADF, legacy wiki markup, anything else)
    is entirely a harness-side concern, never something Forge's schema
-   or prompts encode.** Language across `tools.md`/`formats.md` updated
-   to say "issue-tracker issue" rather than assuming Jira specifically
-   wherever the concept is platform-generic (the `AddComment`/`AskUser`
-   mechanics apply to whatever tracker the harness is wired to);
-   `FetchJira` itself stays Jira-named, since first-class Jira
-   integration is a named requirement in the brief, not a
-   platform-generic capability.
+   or prompts encode.** Naming stays Jira-specific throughout
+   (`tools.md`/`formats.md`/`system-prompts.md`) rather than genericized
+   to "issue-tracker issue" — "Jira" is useful, unambiguous shorthand
+   for "issue/story/task" that a more generic term isn't (it also avoids
+   colliding with GitHub's own "issue" concept, which this design
+   doesn't otherwise touch). Only the underlying behavior changed: the
+   body format is platform-agnostic Markdown and conversion is the
+   harness's job, not the words used to describe the target.
