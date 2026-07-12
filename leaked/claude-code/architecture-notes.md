@@ -928,6 +928,133 @@ Code's publicly documented hook system.
   — pattern+LLM two-pass, fires on edit/commit without being asked).
   Both mechanisms coexist in the shipped product; don't conflate them.
 
+## The Desktop/SDK capture — a genuinely distinct variant, not a near-duplicate
+
+`claude-desktop-code.md` ("Claude Code (Desktop App - Code Mode)," Opus
+4.6, captured 2026-02-21) is the fourth capture in this folder and the
+first whose own text makes a real, self-attested claim about its own
+harness: "You are Claude Code, Anthropic's official CLI for Claude,
+**running within the Claude Agent SDK**." Every other capture here
+either says nothing about SDK-vs-CLI (`Prompt.txt`, the docs-assistant
+file) or is a CLI build (`claude-code-2.1.172-*.md`, versioned as
+`2.1.172`). A full read plus a direct diff of opening sections and tool
+list against `claude-code-2.1.172-opus-4.8.md` (same rough era, closest
+comparable CLI capture) confirms this is a real product-surface split,
+not a relabeled duplicate — several load-bearing differences, not just
+model-identity strings:
+
+- **Verbose-era prompt text, not the condensed rewrite.** Opus 4.8's
+  `# Harness`/`# Session-specific guidance`/`# Environment`/`# Context
+  management` four-section condensed structure (see the folder's
+  README) is entirely absent here. The Desktop capture instead carries
+  the older, fully-spelled-out section style — `# Tone and style`, `#
+  Task Management` with the full two worked TodoWrite examples, `#
+  Asking questions as you work`, `# Doing tasks` — matching the more
+  verbose lineage (closer to `Prompt.txt`/`opus-4.6` than to `opus-4.8`/
+  `fable-5`'s rewrite). Whether this means Desktop/SDK mode hasn't
+  received the condensed rewrite yet, or runs a permanently different,
+  more-explicit prompt style by design, isn't resolvable from a single
+  dated snapshot — but the two are clearly different prompt lineages,
+  not the same text with a different label.
+- **The elaborate git and PR sections survive intact, while the CLI's
+  equivalent has visibly shrunk.** Opus 4.8's Bash tool description
+  condenses git guidance to three bullets under a bare `## Git` heading
+  ("Interactive flags... not supported," "Use `gh` CLI," "Commit or
+  push only when the user asks") — the numbered `git status`/`diff`/
+  `log`-in-parallel workflow, the full Git Safety Protocol bullet list,
+  and the literal `gh pr create` template are simply gone from that
+  file. The Desktop capture keeps the full elaborate version of all
+  three: numbered commit steps, the complete Git Safety Protocol list,
+  and the full `## Summary`/`## Test plan` PR template — the same
+  elaborate shape `Prompt.txt` and `opus-4.6` have, and (worth noting
+  directly, since it's independently checkable) the same shape this
+  very research session's own Bash tool description uses. **The commit
+  trailer itself differs in a way that isn't just model-version
+  substitution**: Desktop's trailer is `Co-Authored-By: Claude Opus 4.6
+  <noreply@anthropic.com>` with no further line — the CLI captures (and
+  this live session) append a second `Claude-Session: https://claude.ai/
+  code/session_...` trailer line the Desktop capture doesn't have at
+  all. A real, structural omission, not a version-string diff.
+- **Planning-tool descriptions are dramatically terser.** `EnterPlanMode`
+  is one sentence here ("Use this tool proactively when you're about to
+  start a non-trivial implementation task") versus `opus-4.8`'s full
+  7-condition rubric with worked good/bad examples (~90 lines); likewise
+  `ExitPlanMode` is a two-sentence description here versus the CLI's
+  worked-example-laden version. This terseness pattern isn't universal
+  across the file — the browser-safety material below runs to hundreds
+  of lines of highly elaborate prose — so it reads as a deliberate
+  compactness choice specific to planning-tool documentation in this
+  variant, not evidence of a truncated capture.
+- **Still `Task`, not `Agent`, and a smaller, differently-populated agent
+  registry.** Where the CLI captures renamed the sub-agent tool `Agent`
+  (see the folder's README), the Desktop capture's sub-agent tool is
+  still named `Task`, with a registry of `Bash`, `general-purpose`,
+  `statusline-setup`, `Explore`, `Plan`, `claude-code-guide` — six
+  types, including a `Bash: Command execution specialist (Tools: Bash)`
+  agent type not documented anywhere else in this collection (not in
+  the CLI's `Agent` registry, not in `deferred-tools.md`). The CLI's
+  `claude` catch-all type is absent here.
+- **`TodoWrite`, not the newer `Task{Create,Get,List,Output,Stop,
+  Update}` system.** The Desktop capture's task-tracking tool is the
+  older single `TodoWrite` tool with the classic pending/in_progress/
+  completed states — the structured, ID-based, `blocks`/`blockedBy`
+  dependency-graph task system `deferred-tools.md` documents for the
+  CLI (with its "Team = TaskList (1:1)" relationship to multi-agent
+  coordination) isn't present here at all.
+- **A visibly smaller autonomy/scheduling tool surface.** Comparing
+  against `deferred-tools.md`'s 23-tool CLI catalog, the Desktop capture
+  has no `CronCreate`/`CronDelete`/`CronList`, no `RemoteTrigger`, no
+  `ScheduleWakeup`, no `Monitor`, and no `PushNotification` — the entire
+  scheduling/background-watching/notification cluster documented
+  elsewhere in this file is missing. It also has no `EnterWorktree`/
+  `ExitWorktree` — the worktree-isolation mechanism this document's Git
+  section treats as "the richest finding on this axis in the whole
+  survey" has no counterpart here. What it *does* still have: `Skill`,
+  `TaskStop` (a bare stop-by-ID, not the fuller CLI `TaskGet`/`TaskList`/
+  `TaskUpdate` family), `TeamCreate`/`TeamDelete`/`SendMessage` (present
+  but documented in one-line stubs rather than the CLI's fuller
+  schemas). Net effect: this variant's tool surface reads as scoped for
+  an interactive desktop session rather than an unattended/background
+  or scheduling-heavy one — consistent with "Code Mode" being a
+  desktop-app feature rather than the CLI's own remote/background
+  execution paths.
+- **An entirely new, ~300-line browser-automation safety persona with no
+  counterpart in any other capture in this folder.** Triggered by the
+  presence of `Claude in Chrome`, `Claude Preview` (a `.claude/
+  launch.json`-driven local dev-server + browser-inspection MCP
+  surface), an MCP-connector-suggestion tool, and Playwright MCP tools
+  (55 MCP tools total across the four servers — 18 Chrome, 13 Preview,
+  2 registry, 22 Playwright — concretely enumerated by name, the first
+  time this collection has a fully-named MCP tool catalog for Claude
+  Code rather than just the `mcp__servername__toolname` naming
+  convention this document's MCP section describes abstractly). The
+  persona layers `<critical_injection_defense>`/
+  `<critical_security_rules>` prompt-injection countermeasures,
+  `<user_privacy>`/`<download_instructions>`/`<harmful_content_safety>`
+  rules, a three-tier Prohibited/Explicit-permission/Regular action
+  taxonomy, and `<mandatory_copyright_requirements>` (20-word quote cap,
+  no song lyrics, no 30+-word "displacive summaries") on top of the
+  ordinary coding-agent prompt above it. See
+  `agent-permissions-approval.md` (new §1 addendum) for why the
+  three-tier action taxonomy is a structurally distinct permission
+  mechanism from the six-mode `permission_mode` system documented
+  elsewhere in this file, not a restatement of it. None of this material
+  appears in `Prompt.txt`, any of the three versioned CLI captures, or
+  `claude-code-docs-assistant.md` — it's specific to sessions where
+  computer-use-style tools are actually available, not a general Claude
+  Code behavior.
+- **What's unchanged, and worth stating plainly rather than padding this
+  section further**: the core coding-agent prompt structure (Tone and
+  style, Task Management/TodoWrite examples, Doing tasks, Tool usage
+  policy, Code References) is close to verbatim identical to
+  `Prompt.txt`'s and `opus-4.6`'s equivalent sections — same
+  "over-engineering" bullet list, same `file_path:line_number` citation
+  convention, same professional-objectivity and no-time-estimates
+  sections, same AskUserQuestion tool. Roughly the back half of the file
+  (the non-browser-safety two-thirds) is a real but unsurprising
+  confirmation of what this folder already had, not a new finding — the
+  genuinely new material is concentrated in the six bullets above.
+
 ## Why this is worth having alongside the prompt-only extraction
 
 Three independently-sourced captures now corroborate each other on the

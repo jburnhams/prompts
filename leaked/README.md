@@ -42,6 +42,41 @@ from a small, independent, low-star repo
 with thinner provenance than most sources here — see its README for the
 extra caveats that come with that.
 
+`github-copilot-cli/` is also **not from the x1xhlol aggregator** —
+both its files were mirrored from a different, independently-maintained
+leak aggregator, [`asgeirtj/system_prompts_leaks`](https://github.com/asgeirtj/system_prompts_leaks)
+(retrieved 2026-07-12). Distinct from [`copilot-chat/`](../copilot-chat)
+already in this collection, which covers the separate, open-source VS
+Code Copilot Chat *extension* — GitHub Copilot CLI is a different
+product with no prior coverage here. See that folder's README for how
+its two captures (a standalone terminal prompt and a shorter "Copilot
+CLI runtime in VS Code" variant) relate to each other.
+
+`grok-build/` is likewise from the `asgeirtj/system_prompts_leaks`
+aggregator (`xAI/grok-build.md`, retrieved 2026-07-12), not x1xhlol's —
+this collection's first xAI coding-agent coverage. Notable for a
+tool-description surface that closely, in places verbatim, matches
+Claude Code's own leaked tool descriptions already stored in
+[`claude-code/`](./claude-code) — see that folder's README for the
+side-by-side quotes.
+
+`codex-supplement/` is also from `asgeirtj/system_prompts_leaks`
+(`OpenAI/Codex/`, retrieved 2026-07-12), not x1xhlol's — six files
+supplementing, not duplicating, this collection's official
+[`../codex/`](../codex) folder (which is sourced from the real,
+open-source `openai/codex` GitHub repo, not from any leak). Covers a
+later model variant (`gpt-5.6`), a swappable personality-template
+system, a Plan Mode prompt, and a Chrome-browser-control skill that's
+very likely a *different* Codex-branded product surface than the
+terminal CLI `../codex/` documents — see that folder's own README for
+the full provenance distinction, including a note on one file
+(`codex-auto-review.md`) whose name is misleading about its content.
+`cursor/` also gained a sixth file from this same aggregator (`Agent
+Prompt (asgeirtj capture).md`) alongside its five original
+x1xhlol-sourced captures — see that folder's own README for what's new
+in it, including this collection's first confirmed Cursor
+worktree-isolation and sub-agent-delegation findings.
+
 **Looked for and not found**: CodeRabbit, Greptile, and Qodo (beyond the
 already-included open-source `pr-agent`) don't appear to have any leaked
 system prompt published anywhere as of 2026-07-10 — not in the aggregator
@@ -83,3 +118,6 @@ periodically.
 | [`anthropic/`](./anthropic) | Claude.ai default assistant | Anthropic |
 | [`lumo/`](./lumo) | Lumo | Proton |
 | [`jules/`](./jules) | Jules (async coding agent) | Google |
+| [`github-copilot-cli/`](./github-copilot-cli) | GitHub Copilot CLI | GitHub (Microsoft) |
+| [`grok-build/`](./grok-build) | Grok Build | xAI |
+| [`codex-supplement/`](./codex-supplement) | Codex (supplementary leaked captures) | OpenAI |

@@ -48,6 +48,22 @@ authenticity notes:
 - `claude-code-docs-assistant.md` — a different product: the docs-site
   "Ask AI" chat assistant, not the CLI's own system prompt. Kept for
   completeness, tangential to the rest of this collection.
+- `claude-desktop-code.md` — a fourth, structurally distinct capture:
+  "Claude Code (Desktop App - Code Mode)," captured 2026-02-21 on Opus
+  4.6, from the same `asgeirtj/system_prompts_leaks` aggregator
+  (retrieved 2026-07-12). Unlike the three versioned CLI captures above,
+  this one's own text states it's "running within the Claude Agent SDK"
+  — a real, self-attested SDK-vs-CLI distinction, not just a filename
+  guess. See "The Desktop/SDK capture" in `architecture-notes.md` for
+  the full diff against `claude-code-2.1.172-opus-4.8.md`: it turns out
+  to *not* be a near-duplicate — genuinely older/more-verbose git and
+  planning-tool instructions, a smaller and differently-shaped tool
+  surface (still `Task` not `Agent`, no Cron/RemoteTrigger/
+  ScheduleWakeup/Monitor/worktree tools), and roughly 300 lines of an
+  entirely separate browser-automation safety persona (prompt-injection
+  defense, a three-tier action-permission model, privacy/copyright
+  rules) triggered by the presence of Chrome/Preview/Playwright MCP
+  tools that the CLI captures never show.
 - `deferred-tools.md` — the catalog of tools loaded on-demand rather
   than always-present (23 tools: `Cron{Create,Delete,List}`,
   `Enter/ExitPlanMode`, `Enter/ExitWorktree`, `Monitor`, `NotebookEdit`,

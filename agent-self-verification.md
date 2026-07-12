@@ -13,7 +13,7 @@ benchmark-lineage workflow template, through mechanical non-LLM
 completion gates, up to a dedicated adversarial verification subagent
 that can't trust the implementer's self-report.
 
-**Methodology note**: twenty sources are covered in real depth, plus
+**Methodology note**: twenty-plus sources are covered in real depth, plus
 brief cross-references from four more (SWE-agent, Augment SWE-bench
 Agent, mini-swe-agent, Live-SWE-agent) whose relevant material was
 already documented elsewhere in this collection during earlier research
@@ -48,7 +48,18 @@ record" pattern, both candidate additions to the typology below. Zed
 dedicated separate-LLM-call prompt that scores a diff 0-100 against a
 list of assertions with a required per-assertion `<analysis>` line
 before the `<score>`, though the surrounding retry/gating logic that
-calls it isn't captured.
+calls it isn't captured. GitHub Copilot CLI (leaked) — a §7
+prompted-only baseline, but with an Autopilot-mode named-checklist gate
+close to §10's rhetorical-escalation pattern, plus two sub-agents
+(`code-review`, a §4 conflation-trap instance; `rubber-duck`, a §3
+advisory judge with a three-tier severity taxonomy not matched
+elsewhere) — see the new subsection added to each of those sections
+below.
+
+**Fourth pass**: Grok Build (leaked) — mostly an ordinary §7
+prompted-only "green-run" instance, but with a genuinely new §2
+candidate: a harness-enforced gate on ending a turn at all while any
+todo is open, not on one specific completion tool (see §2 below).
 
 ---
 
@@ -123,6 +134,7 @@ no model judgment involved.
 |---|---|
 | **A canned checklist re-injected as ordinary tool output, gating repeated submission** | SWE-agent's `review_on_submit_m` bundle — `submit` is wrapped so that, on its first call, it prints a fixed checklist (rerun the reproduction script, delete it, revert any modified test files) as the *next turn's observation* instead of actually submitting; only a second `submit` call (or an internal `-f`/force flag never shown to the model) lets the real submission through. Purely deterministic string templating — no separate model call, and nothing automatically blocks submission if the agent ignores the checklist and just calls `submit` again with only one configured stage. |
 | **A structural precondition check on the completion tool itself** | Roo Code's `AttemptCompletionTool.ts` — blocks `attempt_completion` outright if a tool call failed earlier in the same turn, and (behind a `preventCompletionWithOpenTodos` setting) blocks it if any todo item isn't marked `"completed"`. No model judgment; a code-level guard on one specific tool. |
+| **A gate on ending the turn at all, not on one named completion tool** — the broadest-scoped mechanism in this table | Grok Build (leaked), `<task_completion_discipline>`'s "End-of-turn todo gate": "Before ending a turn (= producing a content-only assistant message with no tool calls), re-read your current todo list. If any item is `pending` or `in_progress` AND that item is not backed by a live background subagent, monitor, or background command, the turn may NOT end... The harness enforces this: if you try to end a turn with unbacked pending/in_progress todos, you will receive a system-reminder and be forced into another turn." Unlike Roo Code's `preventCompletionWithOpenTodos` (which blocks calling one specific tool, `attempt_completion`), this blocks the act of ending a turn with *no tool call whatsoever* while work remains open — a structurally broader gate, since it applies regardless of which (if any) completion-signaling tool the model tries to use. Three explicit exceptions are carved out (a live background subagent/command still running, a destructive operation awaiting authorization, or a hard external blocker with todos marked `cancelled`), each requiring the model to state the exception rather than just going quiet. |
 
 Both are cheap, both are easy to bypass in principle (the model could
 just not report a todo as incomplete, or ignore SWE-agent's checklist
@@ -164,6 +176,7 @@ evaluating completed work, distinct from the agent that produced it.
 | **A general single-agent "run until done" loop with an optional LLM judge**, checked against the original request text | Microsoft Agent Framework's `AgentLoopMiddleware.with_judge()` (`agent_framework/_harness/_loop.py`) — a fully separate chat-client call returns a structured `JudgeVerdict` (`answered: bool`, `reasoning: str`), checked against the *original user request*, not a todo list; failure produces a nudge (the judge's own reasoning fed back as a new user turn), not a restart; capped tighter than a non-judge loop (5 iterations vs. 10) specifically because judge calls are "costly and probabilistic"; never wired in by default, one of several interchangeable strategies alongside non-LLM alternatives (`todos_remaining()`, `background_tasks_running()`) in the same file. |
 | **A dedicated adversarial verification subagent, structurally unable to trust the implementer** | Claude Code (leaked, **internal-only — see the caveat in §7**) — `src/tools/AgentTool/built-in/verificationAgent.ts`: a separate LLM instance with no file-write access, required to gather command-output evidence for every check rather than accept the implementer's claims, run the build and full test suite ("failing tests are an automatic FAIL"), run linters/type-checkers, and perform mandatory "adversarial probes" (concurrency, boundary values, idempotency) before issuing a PASS/FAIL/PARTIAL verdict the implementer "cannot self-assign." |
 | **A minimal, rubric-scored judge prompt — the mechanism in isolation, without the surrounding retry/gating logic** | Zed (genuinely open source) — `diff_judge.hbs`: a separate call scores a `{{diff}}` 0-100 against a list of `{{assertions}}`, required to emit a one-line `<analysis>` per assertion before the final `<score>` — auditable per-criterion rather than a single opaque verdict, but this template alone doesn't reveal what calls it or what happens on a low score. |
+| **An advisory, non-gating judge with a three-tier named severity taxonomy per issue, rather than one score or verdict for the whole attempt** | GitHub Copilot CLI (leaked) — its `rubber-duck` sub-agent: "Call this agent for any non-trivial task to get a second opinion — the best time is after planning but before implementing," with each finding classified "Blocking," "Non-Blocking," or "Suggestion." Distinct from every other judge in this table's output shape — SWE-agent's Reviewer emits one numeric score, Microsoft Agent Framework's judge emits one boolean, Zed's emits one 0-100 score — here severity is assigned per-issue rather than to the attempt as a whole. Explicitly non-directive about consequence: "It is not your role to give an overall recommendation on what the agent does with your feedback... let the agent decide how to proceed" — even a "Blocking" verdict is advisory, with no automatic retry or gate tied to it, unlike SWE-agent's `ScoreRetryLoop` or Claude Code's verification subagent. |
 
 **A cross-cutting design question all four answer differently**: what
 happens when the judge/reviewer says "not good enough"? SWE-agent's
@@ -178,8 +191,8 @@ working agent repeating whatever mistake it already made.
 
 ## 4. Review-as-a-general-tool — the conflation trap
 
-**Two sources have something literally named "review" that is *not* an
-autonomous self-check gate, and it's easy to mistake it for one from
+**Three sources have something literally named "review" that is *not*
+an autonomous self-check gate, and it's easy to mistake it for one from
 the name alone.**
 
 - **Codex CLI's `ReviewTask`/`codex review`/`/review`**: confirmed by
@@ -201,15 +214,26 @@ the name alone.**
   explicitly framed as a "code reviewer" persona examining bugs,
   structure, performance, and behavior changes. Requires explicit user
   invocation after the fact.
+- **GitHub Copilot CLI's `code-review` sub-agent** (leaked): the same
+  shape again — a dedicated, high-signal-only reviewer ("finding your
+  feedback should feel like finding a $20 bill in your jeans after
+  doing laundry"), explicitly barred from editing code ("You Must
+  NEVER Modify Code... access to all tools for investigation purposes
+  only") and gated on `git diff`/`git log` inspection. Reachable via the
+  general `task` delegation tool like any other sub-agent, with nothing
+  in the captured prompt auto-chaining it after an edit turn — a third
+  independent instance of "a general diff-reviewer the orchestrator can
+  optionally point at its own work," not a completion gate.
 
-**Why this matters**: both are architecturally identical to reviewing
-someone else's PR — the same mechanism, just optionally pointed at
-your own diff instead of someone else's. Neither is a completion gate,
-neither runs automatically, and neither is what SWE-agent's
+**Why this matters**: all three are architecturally identical to
+reviewing someone else's PR — the same mechanism, just optionally
+pointed at your own diff instead of someone else's. None is a
+completion gate, none runs automatically, and none is what SWE-agent's
 `review_on_submit_m` or Roo Code's `attempt_completion` guard are (§2)
 — those actually sit in the completion path and (attempt to) block
-finishing. A source having a "/review" command is not evidence it has
-self-verification in the sense this doc is otherwise surveying.
+finishing. A source having a "/review" command or `code-review`
+sub-agent is not evidence it has self-verification in the sense this
+doc is otherwise surveying.
 
 ## 5. Hook-based, user-configured verification gates
 
@@ -309,7 +333,17 @@ code-level gate found backing it up.
   verification content itself ("Make sure you completed all
   verification steps... such as linting and/or testing") is ordinary
   §7 prose; what's structurally distinctive is that a specific tool
-  call is required at that point in the task.
+  call is required at that point in the task. **This is specific to
+  Devin's autonomous/background web product** — a second, later-mirrored
+  capture (`leaked/devin/CLI Prompt.md`, "an interactive command line
+  agent from Cognition") has no mandatory checkpoint tool at all: its
+  "Verification" section is ordinary prompted-only prose ("Before
+  considering a task complete, verify your work... Self-critique: review
+  changes for edge cases"), the same shape as the thinner §7 examples
+  elsewhere in this doc, with no tool call required to reach it. When
+  citing Devin's checkpoint-gated verification, specify the
+  background/web variant — see `leaked/devin/README.md`'s CLI-variant
+  section for the full comparison.
 - **Cline**: one of the thinner instances surveyed — no TESTING/
   VALIDATION section, no bounded-retry pattern, no "hidden tests"
   language anywhere in any of its three system-prompt variants. What
@@ -319,6 +353,40 @@ code-level gate found backing it up.
   "if you want to test your work, you might use browser_action to
   launch the site... [and check] screenshots" — conditional on browser
   support and phrased as optional, not mandatory.
+- **GitHub Copilot CLI** (leaked): ordinary §7 baseline instructions in
+  both captures — "Always validate that your changes don't break
+  existing behavior," "Run the repository linters, builds and tests to
+  understand baseline, then after making your changes" — plus a
+  `task_completion` block requiring evidence a background process
+  actually started ("verify it is running and responsive (e.g., test
+  with `curl`, check process status)"). No SWE-bench-lineage
+  reproduce-script echo, no bounded-retry cap. Its Autopilot mode goes
+  further, close to §10's rhetorical-escalation register though still
+  purely prompted: "Verify before claiming success - Before calling
+  `task_complete`, produce evidence the work satisfies the request: run
+  the relevant tests/build/lint, reproduce the original symptom and
+  confirm it's gone," paired with an explicit negative checklist —
+  "When NOT to call `task_complete`: ...Tests, build, or lint are
+  failing in code you just changed and you haven't fixed them... You
+  wrote code but never ran or otherwise validated it." See §10 for why
+  this is filed as prompt-simulated rather than a confirmed code-level
+  gate, and §3/§4 for its `rubber-duck` and `code-review` sub-agents.
+- **Grok Build** (leaked): an ordinary "green-run" instance —
+  `<making_code_changes>`: "Before reporting a task complete, verify it
+  actually works: run the test, execute the script, check the output...
+  If you can't verify (no test exists, can't run the code), say so
+  explicitly rather than claiming success" — the same idiom already
+  documented for Claude Code's "never fake a green result" and Cursor's
+  "ensure a green test/build run," another data point for that phrase
+  circulating cross-vendor rather than being one company's wording. Two
+  smaller, structurally distinct additions worth noting alongside it:
+  `update_goal`'s `blocked_reason` field states its own bounded-retry
+  threshold directly in the tool's JSON Schema description ("Set only
+  when truly stuck after 3+ consecutive failed attempts") rather than
+  as prose elsewhere in the prompt, and its harness-enforced
+  "End-of-turn todo gate" (see §2) is a broader-scoped deterministic
+  gate than anything else in this bucket. See
+  `leaked/grok-build/README.md` for the full section.
 
 **The critical caveat for Claude Code specifically**: nearly every
 verification mechanism this research pass found for Claude Code —
@@ -443,9 +511,26 @@ entry.
   far as the leaked prompt shows) is that the `<think>` tool gets
   called at that point — a real, nameable checkpoint — not that its
   contents constitute a genuine check; the verification itself is still
-  unchecked prose inside an unchecked tool call.
+  unchecked prose inside an unchecked tool call. **Product-surface
+  caveat**: this is Devin's autonomous/background web product
+  specifically — the separately-captured interactive CLI variant
+  (`leaked/devin/CLI Prompt.md`) has no `<think>` tool and no mandatory
+  checkpoint at all, just ordinary prompted §7-style verification prose.
+  See `leaked/devin/README.md`'s CLI-variant section.
+- **GitHub Copilot CLI's Autopilot-mode gate** belongs here too, and is
+  closer to Copilot Chat's "iron law" than to Devin's checkpoint-tool
+  variant in shape — it's a named negative checklist, not a required
+  tool call: "**Verify before claiming success** - Before calling
+  `task_complete`, produce evidence the work satisfies the request: run
+  the relevant tests/build/lint, reproduce the original symptom and
+  confirm it's gone," with an explicit "When NOT to call `task_complete`"
+  list (failing tests left unfixed, code "never run or otherwise
+  validated"). Nothing in the captured prompt confirms `task_complete`
+  itself refuses to fire if the checklist wasn't actually followed —
+  the enforcement, as far as this leak shows, is entirely rhetorical,
+  the same gap as every other row in this section.
 
-**The common thread**: all four escalate the *rhetoric* of §7 without
+**The common thread**: all five escalate the *rhetoric* of §7 without
 crossing into §2's territory (a structural precondition) or §5's (a
 user-configured hook actually wired into the agent loop). Whether the
 escalation changes model behavior in practice is an empirical question
