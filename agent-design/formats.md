@@ -4,7 +4,8 @@ The wire formats connecting a task to Forge and Forge's output back out:
 the context envelope each run starts with, `FetchJira`'s output shape,
 the `Complete` report schema for each mode (including the plan
 schema), the review-finding schema, the `AskUser` suspend/resume
-protocol, and the plan → implement handoff between runs.
+protocol, the plan → implement handoff between runs, and the run-
+bounding contract the harness enforces around every run.
 
 ---
 
@@ -19,6 +20,17 @@ visually and structurally separated from what Forge is being told to
 do — the review system prompt's "data, not instruction" rule depends on
 this separation actually existing in the envelope, not just being
 stated as a rule.
+
+Tag separation defends against structural confusion; it does nothing
+against invisible-character payloads. Before any untrusted content
+(ticket text, PR bodies, comments, diffs) is placed into an envelope,
+the harness sanitizes it **in code**: strip zero-width and other
+invisible Unicode, bidi-override characters, and hidden HTML
+attributes/comments. `claude-code-action`'s `sanitizer.ts` is the
+precedent — the only source in this collection doing this in code
+rather than by instruction (`code-review-approaches.md` §10), and the
+right layer for it, since a model can't be instructed to ignore
+characters it can't see.
 
 ### 1a. Coding mode
 
@@ -70,6 +82,8 @@ included here purely so Forge can reference the branch name in its
   Title: {{ title }}
   Author: {{ author }}
   Branch: {{ head }} -> {{ base }}
+  Head SHA: {{ head_sha }}
+  Base SHA: {{ base_sha }}
   State: {{ state }}
   Additions: {{ n }}  Deletions: {{ n }}  Changed files: {{ n }}
 </pull_request>
@@ -102,7 +116,30 @@ accuracy matters more when comments post with no human catching a
 mis-anchored one). Plain unified diff rather than a custom hunk format,
 to keep the format lean; the orchestrator passes the relevant slice of
 this same diff text into each specialist's `Task` prompt rather than
-re-fetching per specialist.
+re-fetching per specialist. (If mis-anchored comments show up in
+practice, PR-Agent's per-hunk new-file line-number injection is the
+documented upgrade path — `code-review-approaches.md` §3 — since
+deriving new-file line numbers by hunk arithmetic is the error-prone
+step; `AddComment`'s harness-side anchor validation in `tools.md` is
+the v1 backstop.)
+
+**Harness guarantees for review mode**: the working tree is checked out
+at `Head SHA`, and `<diff>` is exactly `base_sha...head_sha`. This is
+load-bearing, not incidental — `reviewer` and `validator` sub-agents
+are told to pull in surrounding context with Read/Grep/Glob, which is
+only sound if the tree they're reading is the code the diff describes.
+All line numbers in findings and comment anchors are new-file
+(post-change) line numbers at `Head SHA`.
+
+**Diff size**: the envelope inlines the full diff, so the harness must
+gate on size *before* dispatching a run — past the threshold there is
+no code path in which Forge even gets to call `Complete(skipped)`,
+because the run dies on context before its first turn. V1 behavior
+above the threshold is skip-with-reason, reported the same way a
+`skipped` run reports (BMAD's >3000-changed-lines chunking cascade is
+the collection's precedent for the richer alternative — sharding
+specialists per file group — deliberately not specified here; see
+`review.md`'s open questions).
 
 ---
 
@@ -167,6 +204,19 @@ working tree left behind, plus this report, is the complete handoff;
 `suggested_commit_message` exists so the external process that does
 commit doesn't have to re-derive intent from a diff alone.
 
+`files_changed` and `verification` are the model's self-report, and the
+harness does not take them on faith: after the run it computes the real
+changed-path list from `git status` and attaches any mismatch to the
+report it hands downstream (so the external committer sees the
+discrepancy, not just a log line). In read-only modes, a non-empty
+working-tree diff of tracked files (e.g., via `git diff --exit-code`)
+after the run is a hard integrity failure the harness flags regardless
+first-call checklist gate (`tools.md`), this is the design's answer to
+the false-completion-claim failure mode `agent-self-verification.md`
+documents as real and measured — deterministic checks that can't be
+talked out of firing, not a second LLM judge (which stays out of v1,
+per the README's leanness rule).
+
 ### 3b. Review mode
 
 ```json
@@ -185,7 +235,9 @@ commit doesn't have to re-derive intent from a diff alone.
 `findings` and `filtered` together account for every candidate a
 specialist raised — nothing silently disappears between step 3 and step
 7 of the review pipeline (`system-prompts.md` §2) without a recorded
-reason.
+reason. A candidate dropped by the pre-validation dedup (pipeline step
+4) appears in `filtered` with `validated: null` and the dedup reason —
+it was never judged wrong, just already reported.
 
 ### 3c. Plan mode
 
@@ -245,7 +297,10 @@ orchestrator's `Complete` report:
 pass runs; `true`/`false` is the validator's verdict. Only `true`
 findings are ever passed to `AddComment`. `severity` is set by the
 specialist and is not re-judged by the validator — the validator's job
-is "is this real," not "how bad is it."
+is "is this real," not "how bad is it." `line`/`line_end` are new-file
+(post-change) line numbers at the envelope's `Head SHA` — the same
+convention `AddComment`'s anchor uses, so a finding's location passes
+through to a posted comment without translation.
 
 ---
 
@@ -261,9 +316,11 @@ and a *new* run resumes it later.
 1. Forge calls `AskUser` with `question`, `context`, and optionally
    `options`.
 2. The harness formats this into a comment and posts it via `AddComment`
-   automatically, targeting the same PR or Jira issue the task
-   originated from (the envelope's `issue_key` or PR id) — Forge does
-   not call `AddComment` itself for this.
+   automatically, targeting the Jira issue the task originated from
+   (the envelope's `issue_key`; for a `source: manual` task, wherever
+   the harness routes that task's communication) — Forge does not call
+   `AddComment` itself for this. AskUser is coding-mode-only
+   (`tools.md`): review runs end in `Complete`, never a suspension.
 3. The harness records a suspended-task record keyed to that comment's
    id/URL, containing everything needed to resume: the original task
    envelope, the full transcript so far, and the question asked.
@@ -337,3 +394,40 @@ changes rather than approving) — that's a new `mode: plan` run, with the
 rejection/amendment appended to its envelope the same way
 `<resumed_answer>` works in §5, not a special case this schema needs its
 own field for.
+
+---
+
+## 7. Run bounding
+
+"The only way a run finishes is `Complete`" is only enforceable if
+something guarantees the run gets a last chance to call it. A hands-off
+run has no human to notice it drifting or to type `/compact` — so the
+harness bounds every run with two budgets, and the design takes an
+explicit position on what happens at each:
+
+1. **A turn budget and a context high-water mark**, both set by the
+   harness per run. Crossing either doesn't kill the run — it triggers
+   a **final-turn nudge**: an injected message stating that this is the
+   last turn and the only acceptable actions are `AskUser` or
+   `Complete`, with whatever status honestly describes the state —
+   `Complete(status: "failed")` carrying a partial report (what was
+   done, what was verified, what remains) is a *successful* use of the
+   mechanism, not a failure of it. The harness structurally blocks and
+   rejects any other tool calls on this turn to guarantee termination.
+   The precedent is Copilot Chat's forced last-turn cutoff message
+   ("OK, your allotted iterations are finished...") — deterministic
+   string injection, no extra model call (`agent-self-verification.md` %7).
+2. **No compaction in v1.** Summarize-and-continue is a genuine
+   subsystem (triggers, templates, incremental anchoring — see
+   `agent-context-compaction.md`) that this design deliberately does
+   not absorb at launch. A run that can't finish inside its budgets
+   ends via the nudge above, and the report says so; the ticket hears
+   "this didn't fit," which is actionable (split the ticket, raise the
+   budget), instead of silence, which isn't. Compaction is the natural
+   v2 lever if budget-exhausted runs turn out to be common on
+   legitimately-sized tasks.
+
+A run killed by infrastructure failure (crash, timeout at a layer below
+the harness) is the one case with no `Complete` — the harness itself
+posts the failure note to the originating ticket/PR, so silence still
+never reaches the person waiting.

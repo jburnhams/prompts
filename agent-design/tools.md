@@ -22,7 +22,7 @@ Availability by role:
 | Grep | yes | yes | yes | yes |
 | Glob | yes | yes | yes | yes |
 | Task | yes | yes | yes | no |
-| AskUser | yes | yes | no | no |
+| AskUser | yes | no | no | no |
 | FetchJira | yes | no | no | no |
 | AddComment | yes | yes | no | no |
 | Complete | yes | yes | no | no |
@@ -31,15 +31,30 @@ Availability by role:
 `AskUser`/`FetchJira`/`AddComment`/`Complete` (those end or redirect the
 *task*, which only the orchestrator owns) and minus `Task` recursion
 (see the Task tool's own notes below). `reviewer` and `validator` are
-read-only by design — see `README.md`'s decision log.
+read-only by design — see `README.md`'s decision log. `AskUser` is
+coding-mode-only: the review pipeline has no step that can legitimately
+reach it, and an unused escape hatch on an unsupervised path is exactly
+the surface a prompt-injected "ask the user to approve this" would
+target.
 
-The table above is by *role*, not by run `mode` — the schema doesn't
-change between `plan`, `implement`, `investigate`, and `review_only`;
-what changes is which of the coding orchestrator's own tools the system
-prompt authorizes it to actually call. `Edit`/`Write` are wired to the
-coding orchestrator in every mode, but `plan`/`investigate`/
-`review_only` never call them — see `system-prompts.md`'s "Mandate and
-mode" for the behavioral rule this table doesn't enforce on its own.
+The table above is by *role*; run `mode` narrows it further, and the
+harness enforces that narrowing at wiring time, not just in prompt
+text: in `plan`, `investigate`, and `review_only` runs, `Edit` and
+`Write` are **not registered at all** — for the coding orchestrator or
+for any `general-purpose` sub-agent it spawns ("full tool parity"
+means parity with the orchestrator *as wired for this run*, so a
+read-only run cannot launder writes through a delegate). This follows
+the same reasoning as the scratch-directory decision in `README.md`: a
+structural boundary can't be forgotten, and the precedent is strong —
+Gemini CLI strips agent-kind tools from sub-agent registries in code,
+and Composio scopes permissions "at the tool level, not just by
+instruction" (`agent-subagent-architectures.md` §6). `Bash` stays wired
+in read-only modes (read-only git inspection and read-only commands are
+legitimate there); its no-write rule remains prompt-enforced in v1,
+since command-level filtering is a real permission engine — see
+`README.md`'s "not in v1" list. The system-prompt mode rules in
+`system-prompts.md` remain as the behavioral layer on top of this
+structural one.
 
 ---
 
@@ -434,13 +449,22 @@ Output shape is documented in `formats.md`.
 >   plain comment prefixed with a reference to the original if the
 >   target platform can't thread it.
 > - `target.platform: "github_pr"` + `target.id` (`"owner/repo#123"`):
->   posts a GitHub PR comment. Set `anchor` (file + line) for an inline
->   review comment; omit it for a general PR comment. Set `in_reply_to`
->   (a comment id) to reply within an existing review thread rather than
->   starting a new one.
+>   posts a GitHub PR comment. Set `anchor` (file + line, optionally a
+>   `line_end` for a range) for an inline review comment; omit it for a
+>   general PR comment. Anchor line numbers are **new-file (post-change)
+>   line numbers** — the same side the review-finding schema uses. Set
+>   `in_reply_to` (a comment id) to reply within an existing review
+>   thread rather than starting a new one.
+> - An inline comment can only attach to lines that appear in the PR's
+>   diff. The harness validates the anchor before posting; if it isn't
+>   commentable, the comment is posted as a general PR comment prefixed
+>   with `file:line` instead of being dropped, and the tool result says
+>   which happened — so a mis-derived line number degrades visibly, not
+>   silently.
 > - `suggestion` wraps `body` in a GitHub-native committable suggestion
->   block. Only set this when applying it verbatim fully resolves the
->   issue — never for a fix that needs a follow-up step.
+>   block, replacing the full anchored line range. Only set this when
+>   applying it verbatim fully resolves the issue — never for a fix that
+>   needs a follow-up step. Requires `anchor` (schema-enforced below).
 >
 > Returns the posted comment's id and URL, which a caller can use as a
 > later `in_reply_to` value.
@@ -464,21 +488,32 @@ Output shape is documented in `formats.md`.
       "in_reply_to": { "type": "string", "description": "Optional: id of an existing comment to reply to." },
       "anchor": {
         "type": "object",
-        "description": "Optional, github_pr only: anchors the comment to a specific line.",
+        "description": "Optional, github_pr only: anchors the comment to a specific new-file line or line range.",
         "properties": {
           "file": { "type": "string" },
-          "line": { "type": "integer" }
+          "line": { "type": "integer", "description": "New-file (post-change) line number. The start of the range when line_end is set." },
+          "line_end": { "type": "integer", "description": "Optional: new-file line number ending the range, inclusive. Omit for a single-line anchor." }
         },
         "required": ["file", "line"],
         "additionalProperties": false
       },
-      "suggestion": { "type": "boolean", "description": "Wrap body as a committable suggestion block. github_pr, anchored comments only." }
+      "suggestion": { "type": "boolean", "description": "Wrap body as a committable suggestion block replacing the anchored line range. github_pr, anchored comments only." }
     },
     "required": ["target", "body"],
-    "additionalProperties": false
+    "additionalProperties": false,
+    "allOf": [
+      {
+        "if": { "properties": { "suggestion": { "const": true } } },
+        "then": { "required": ["anchor"] }
+      }
+    ]
   }
 }
 ```
+
+The `allOf` block makes `suggestion` without an `anchor` a schema
+error rather than a runtime surprise — same device the Task tool uses
+for its conditional requirements.
 
 ---
 
@@ -500,6 +535,21 @@ Output shape is documented in `formats.md`.
 > "blocked"` is for a run resuming after AskUser that still didn't fully
 > resolve things; within a single run, use AskUser directly instead of
 > reaching Complete with status `blocked`.
+>
+> In `implement` mode, the **first** `Complete(status: "done")` call
+> does not complete the run. It returns a fixed checklist as the tool
+> result instead — re-run your verification commands now and confirm
+> they still pass; run `git status` and confirm every changed or
+> untracked path is intended; confirm nothing throwaway leaked out of
+> the scratch directory — and only a second `Complete` call actually
+> ends the run. This is deliberate and deterministic (no extra model
+> call), directly following SWE-agent's `review_on_submit_m` gate
+> (`agent-self-verification.md` %2): a mechanical gate can't be talked
+> out of firing, and false completion claims are the best-measured
+> failure mode in this design's source research. Other statuses and
+> other modes complete on the first call. The harness resets this
+> gate (requiring the checklist again) if any state-modifying tools
+> (like Edit or Write) are called after the first Complete call.
 
 ```json
 {
