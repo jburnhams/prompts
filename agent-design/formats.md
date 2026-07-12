@@ -32,6 +32,16 @@ rather than by instruction (`code-review-approaches.md` §10), and the
 right layer for it, since a model can't be instructed to ignore
 characters it can't see.
 
+The same sanitizer applies to `FetchJira` results returned mid-run —
+a linked issue fetched in turn 12 is the same untrusted content as the
+ticket baked into the envelope at turn 0, arriving through a different
+door, and skipping it there would leave the envelope pass trivially
+bypassable by anything that can get Forge to fetch an issue. (Repo
+*file* contents read via Read/Grep are deliberately not sanitized in
+v1 — mangling source bytes would break Edit's exact-match contract;
+the residual invisible-Unicode risk from a malicious file in a
+reviewed PR is accepted and noted in `future.md`.)
+
 ### 1a. Coding mode
 
 ```
@@ -66,7 +76,11 @@ characters it can't see.
 
 `source` is `jira` or `manual`; when `manual`, `<ticket>` is replaced
 with a `<instruction>` tag carrying the free-text task instead of a
-fetched issue. `target_branch` names the branch the harness has
+fetched issue, and the envelope additionally carries a
+`<comment_target>` tag naming a valid `AddComment` target (platform +
+id) for anything the run needs to post — the plan-mode workflow's
+step 5 posting and the AskUser suspend protocol (§5) both route there
+when there's no originating issue to default to. `target_branch` names the branch the harness has
 **already checked out** before this run starts — Forge works directly
 in that working tree and never creates, names, or switches branches
 itself (see `system-prompts.md`'s coding-mode workflow, step 5). It's
@@ -103,12 +117,22 @@ included here purely so Forge can reference the branch name in its
 </diff>
 
 <existing_comments>
-  [{{ author }} at {{ timestamp }}]: {{ body }}
+  [{{ comment_id }} | {{ author }} at {{ timestamp }}]: {{ body }}
   [Review by {{ author }} at {{ timestamp }}]: {{ state }}
-    [Comment on {{ path }}:{{ line }}]: {{ body }}
+    [{{ comment_id }} | Comment on {{ path }}:{{ line }}{{ , resolved | , outdated }}]: {{ body }}
   ...
 </existing_comments>
 ```
+
+Each entry carries the platform's comment id — that's what makes
+`AddComment`'s `in_reply_to` usable against a comment Forge didn't post
+itself (the brief's threaded-reply requirement), not just against ids
+returned by Forge's own earlier `AddComment` calls. Inline review
+comments that GitHub reports as resolved or outdated are annotated as
+such, in the envelope itself — the review pipeline's dedup step
+(`system-prompts.md` §2, step 4) is told to ignore resolved/outdated
+comments, and it can only do that if the envelope actually distinguishes
+them.
 
 `<diff>` is pre-fetched and baked in — the orchestrator does not run
 `git diff` itself (see `README.md`'s decision log for why: line-number
@@ -190,7 +214,7 @@ dispatches normally or never starts.
   "description": "string, Markdown-rendered",
   "acceptance_criteria": "string, Markdown-rendered, or null if the project doesn't use this field",
   "comments": [
-    { "author": "string", "created_at": "ISO 8601", "body": "string, Markdown-rendered" }
+    { "id": "string, the platform's comment id — usable as AddComment's in_reply_to", "author": "string", "created_at": "ISO 8601", "body": "string, Markdown-rendered" }
   ],
   "linked_issues": [
     { "issue_key": "string", "relationship": "string, e.g. \"blocks\", \"relates to\"", "title": "string" }
@@ -244,12 +268,23 @@ changed-path list from `git status` and attaches any mismatch to the
 report it hands downstream (so the external committer sees the
 discrepancy, not just a log line). In read-only modes, a non-empty
 working-tree diff of tracked files (e.g., via `git diff --exit-code`)
-after the run is a hard integrity failure the harness flags regardless
-first-call checklist gate (`tools.md`), this is the design's answer to
-the false-completion-claim failure mode `agent-self-verification.md`
-documents as real and measured — deterministic checks that can't be
-talked out of firing, not a second LLM judge (which stays out of v1,
-per the README's leanness rule).
+after the run is a hard integrity failure the harness flags regardless.
+In `plan` mode the harness additionally checks that at least one
+successful `AddComment` call happened before `Complete` — the plan-mode
+workflow's step 5 posting is unconditional, so its absence means the
+run claimed an outcome it never delivered to the ticket. The same
+post-run cross-check specifically flags any diff touching a
+project-conventions file (`AGENTS.md`/`CLAUDE.md`/equivalent): that
+file is instruction to every future run, so a change to it is
+prompt-injection surface, not an ordinary edit — the coding prompt
+forbids touching it except when the ticket is explicitly about it, and
+the flag makes a violation (or a legitimate, ticket-driven change)
+visible to whoever reviews the handoff either way. Together with
+the first-call checklist gate (`tools.md`), these are the design's
+answer to the false-completion-claim failure mode
+`agent-self-verification.md` documents as real and measured —
+deterministic checks that can't be talked out of firing, not a second
+LLM judge (which stays out of v1, per the README's leanness rule).
 
 ### 3b. Review mode
 
@@ -399,6 +434,18 @@ of asking a third time"), left as a v2 addition per `future.md` rather
 than specified here without a concrete reason to pick a specific
 number.
 
+One interaction worth stating explicitly: a resumed run inherits the
+suspended run's full transcript, so it starts with most of that run's
+context already spent. The run-bounding budgets (§7) apply to the
+resumed run as normal — which means a run that suspended near its
+context high-water mark can resume, act on the answer briefly, and hit
+the final-turn nudge almost immediately. That's the intended behavior,
+not a bug (the nudge guarantees an honest `Complete(failed)` with a
+partial report rather than a silent death), but a harness that wants
+resumed runs to have real headroom should suspend-and-resume with a
+raised budget or accept that late-run questions buy very little
+additional work.
+
 ---
 
 ## 6. Plan → implement handoff
@@ -456,7 +503,17 @@ harness bounds every run with two budgets, and the design takes an
 explicit position on what happens at each:
 
 1. **A turn budget and a context high-water mark**, both set by the
-   harness per run. Crossing either doesn't kill the run — it triggers
+   harness per run. For the high-water mark's headroom there's a real
+   field convergence to anchor on: of the sources with code-confirmed
+   reserved-buffer numbers, Claude Code reserves 13,000 tokens and
+   OpenCode 20,000 (twice, in two parallel implementations), with
+   Codex's 90%-of-window threshold landing in the same absolute range
+   on a large window (`agent-context-compaction.md` §6) — three
+   unrelated codebases independently settling on a five-figure token
+   buffer. Forge's mark should leave at least that much room, plus
+   whatever a worst-case final `Complete` report costs, since the nudge
+   turn still has to fit. Crossing either budget doesn't kill the run —
+   it triggers
    a **final-turn nudge**: an injected message stating that this is the
    last turn and the only acceptable actions are `AskUser` or
    `Complete`, with whatever status honestly describes the state —
@@ -466,7 +523,10 @@ explicit position on what happens at each:
    rejects any other tool calls on this turn to guarantee termination.
    The precedent is Copilot Chat's forced last-turn cutoff message
    ("OK, your allotted iterations are finished...") — deterministic
-   string injection, no extra model call (`agent-self-verification.md` %7).
+   string injection, no extra model call (`agent-self-verification.md` §7).
+   In review mode, where `AskUser` isn't wired at all (`tools.md`), the
+   nudge names `Complete` as the only acceptable action — the injected
+   text is mode-aware, not one fixed string.
    Grok Build's harder variant — refusing to end a turn at all while
    work is still open — is not adopted here, since it fights the same
    budget this mechanism exists to enforce.

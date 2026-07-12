@@ -24,7 +24,7 @@ Availability by role:
 | Task | yes | yes | yes | no |
 | AskUser | yes | no | no | no |
 | FetchJira | yes | no | no | no |
-| AddComment | yes | yes | no | no |
+| AddComment | `plan` runs only | yes | no | no |
 | Complete | yes | yes | no | no |
 
 `general-purpose` gets full tool parity with its orchestrator, minus
@@ -50,9 +50,25 @@ Gemini CLI strips agent-kind tools from sub-agent registries in code,
 and Composio scopes permissions "at the tool level, not just by
 instruction" (`agent-subagent-architectures.md` §6). `Bash` stays wired
 in `plan` mode (read-only git inspection and read-only commands are
-legitimate there); its no-write rule remains prompt-enforced in v1,
-since command-level filtering is a real permission engine — see
-`future.md`'s "Command-level `Bash` permission filtering" entry. The
+legitimate there); its general no-write rule remains prompt-enforced in
+v1, with one narrow structural exception — the git-write blocklist
+described in the Bash tool's own section below, which the harness
+applies in every mode. Filtering arbitrary commands beyond that one
+family is a real permission engine — see `future.md`'s "General
+command-level `Bash` permission filtering" entry.
+
+The narrowing runs the other way too: in `implement` runs, `AddComment`
+is **not registered**. Plan mode needs it (workflow step 5 posts the
+plan or finding to the ticket), but implement mode has no workflow step
+that posts anything — the Complete report is its only outward channel,
+and the harness owns what reaches the ticket or PR from it. Leaving the
+tool wired anyway would be exactly the unused-escape-hatch surface this
+design strips `AskUser` from review mode for: a tool with no legitimate
+caller in that mode is only reachable by a prompt-injected instruction.
+(`AskUser`'s suspend protocol is unaffected — the harness posts the
+question itself; Forge never calls `AddComment` for it. See
+`future.md`'s "Re-wiring `AddComment` in implement mode" entry for the
+tracked upgrade if mid-run ticket notes turn out to be wanted.) The
 system-prompt mode rules in
 `system-prompts.md` remain as the behavioral layer on top of this
 structural one.
@@ -186,7 +202,12 @@ structural one.
 >   command that legitimately needs longer.
 > - Set `run_in_background: true` for a long-running process (a dev
 >   server, a watch task) you need to keep running while you do other
->   work; poll it with the same tool call shape and its process id.
+>   work. The tool result returns the process id and the path of a log
+>   file (in the scratch directory) its output streams to; check on it
+>   with ordinary shell commands in later calls — the session is
+>   persistent, so `kill -0 <pid>` answers "still running?" and Read on
+>   the log file (or `tail` of it) shows progress. There is no separate
+>   polling tool in v1.
 > - Output over 30000 characters is truncated. If you need to inspect
 >   something larger, redirect it to a file in the scratch directory
 >   (named in `<env>`) and Read the relevant slice — never redirect into
@@ -203,6 +224,21 @@ structural one.
 > your run starts; leaving a finished, uncommitted working tree is the
 > entire delivery mechanism (see the coding system prompt's workflow) —
 > whatever invoked you owns turning it into a commit.
+>
+> The git-write rule is not only prompt text: the harness rejects Bash
+> commands matching git write subcommands before they reach the shell,
+> returning an error naming the rule. This is a narrow substring/
+> pattern blocklist on one command family, not a general permission
+> engine (that stays deferred — `future.md`): the precedent is Augment
+> SWE-bench Agent's hardcoded `banned_command_strs` check, the only
+> code-level git restriction found anywhere in this repo's collection
+> (`agent-git-vcs.md` §2), and it's a few lines of harness code
+> protecting the design's single most load-bearing invariant. Like any
+> blocklist it's bypassable in principle (a git write can be laundered
+> through a script), so the prompt rule and the post-run `git status`
+> cross-check remain as the layers around it — but the common case
+> can't happen by accident or by prompt injection naming the command
+> directly.
 
 ```json
 {
@@ -230,8 +266,9 @@ structural one.
 > pre-shaped for you.
 >
 > - `output_mode: "files_with_matches"` (default) returns matching file
->   paths only; `"content"` returns matching lines (supports `-A`/`-B`/
->   `-C` context and `-n` line numbers); `"count"` returns per-file match
+>   paths only; `"content"` returns matching lines, always prefixed with
+>   their 1-indexed line numbers (no flag needed) and supporting
+>   `context_before`/`context_after`; `"count"` returns per-file match
 >   counts.
 > - Filter with `glob` (e.g. `"*.ts"`) or `type` (e.g. `"python"`).
 > - Patterns are ripgrep regex, not shell-glob — escape literal braces
@@ -441,7 +478,10 @@ Output shape is documented in `formats.md`.
 > to a specific file/line on a PR, or a threaded reply to an existing
 > comment — on either a Jira issue or a PR. One tool for both platforms,
 > per the brief; platform differences are handled by which optional
-> fields you set, not by separate tools. `body` is always plain
+> fields you set, not by separate tools. Wired in review runs and
+> `plan`-mode coding runs only — an `implement` run's sole outward
+> channel is its Complete report (see the availability notes at the top
+> of this document). `body` is always plain
 > Markdown regardless of target — converting it to whatever the target
 > platform actually needs (e.g. Jira Cloud's ADF, or legacy wiki markup)
 > is a harness-side concern, not something this schema or Forge itself
@@ -470,6 +510,13 @@ Output shape is documented in `formats.md`.
 >   block, replacing the full anchored line range. Only set this when
 >   applying it verbatim fully resolves the issue — never for a fix that
 >   needs a follow-up step. Requires `anchor` (schema-enforced below).
+>   When set, `body` must contain **only the exact replacement source
+>   lines** — no prose, no Markdown fences, no explanation. GitHub
+>   commits the block's contents verbatim over the anchored range, so
+>   any explanatory text inside it becomes a syntax error in someone's
+>   codebase when they click "apply." Put the explanation in a separate
+>   unanchored or prose comment if one is needed, or skip the
+>   suggestion and describe the fix in prose instead.
 >
 > Returns the posted comment's id and URL, which a caller can use as a
 > later `in_reply_to` value.
@@ -555,12 +602,16 @@ for its conditional requirements.
 > the scratch directory — and only a second `Complete` call actually
 > ends the run. This is deliberate and deterministic (no extra model
 > call), directly following SWE-agent's `review_on_submit_m` gate
-> (`agent-self-verification.md` %2): a mechanical gate can't be talked
+> (`agent-self-verification.md` §2): a mechanical gate can't be talked
 > out of firing, and false completion claims are the best-measured
 > failure mode in this design's source research. Other statuses and
 > other modes complete on the first call. The harness resets this
-> gate (requiring the checklist again) if any state-modifying tools
-> (like Edit or Write) are called after the first Complete call.
+> gate (requiring the checklist again) if Edit, Write, or Bash is
+> called after the first Complete call — Bash included because it can
+> modify the working tree just as freely as Edit (a package-manager
+> run, a formatter, a code-generation script), and v1 has no
+> command-level filter to tell a read-only invocation from a mutating
+> one, so the reset has to be conservative.
 
 ```json
 {

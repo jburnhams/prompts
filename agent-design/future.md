@@ -40,9 +40,16 @@ Two shapes of deferred work:
   invent one.
 - **A tiered permission/approval subsystem.** Codex CLI's five
   cooperating subsystems and Gemini CLI's policy engine
-  (`agent-permissions-approval.md`) are the eventual ceiling; v1 gets a
-  single hard rule (destructive git operations and anything outside the
-  task's declared `mode` require `AskUser`) rather than a graded system.
+  (`agent-permissions-approval.md`) are the eventual ceiling; v1 gets
+  structural mode wiring, the git-write blocklist, and one hard prompt
+  rule (anything outside the task's declared `mode` requires `AskUser`)
+  rather than a graded system. If this is ever built, the field's most
+  interesting converged pattern is worth knowing about up front: three
+  vendors independently arrived at "a second, cheaper LLM judges the
+  first model's proposed actions" (Gemini CLI's Conseca, Codex's
+  Guardian, Claude Code's internal-only `yoloClassifier`), always
+  layered *on top of* a static rule engine that keeps working without
+  it, and failing closed on error (`agent-permissions-approval.md` §2).
 - **Context compaction.** A run that outgrows its budgets ends via the
   final-turn nudge with an honest partial report (`formats.md` §7)
   rather than summarizing and continuing — compaction is a genuine
@@ -76,6 +83,57 @@ Two shapes of deferred work:
   A real deployment would likely want one (e.g. "escalate instead of
   asking a third time") — left unspecified rather than picking a number
   with no concrete reason behind it.
+- **Per-role model selection.** V1 runs every orchestrator and
+  sub-agent on one model. The precedent for varying it per role is
+  strong and specific: Anthropic's own `/code-review` skill assigns
+  Haiku to triage, Sonnet to conventions checks, and Opus to bug-finding
+  and validation; Amp pins its `oracle` to a different vendor's model
+  entirely; GitHub Copilot CLI pins a model per sub-agent YAML with one
+  (`rubber-duck`) deliberately inheriting the user's live choice
+  (`agent-subagent-architectures.md` §3). A cheap-model triage pass and
+  an expensive-model validator are the natural first split once cost
+  per review run is measured.
+- **Re-wiring `AddComment` in implement mode, as a channel for
+  recording implementation decisions on the ticket.** V1 doesn't
+  register `AddComment` in `implement` runs at all (`tools.md`): no
+  workflow step posts anything there, and a wired-but-unused tool on an
+  unsupervised path is the same injection surface that keeps `AskUser`
+  out of review mode. The information itself isn't lost — judgment
+  calls, decisions, and caveats go in the Complete report's
+  `judgment_calls`/`summary` fields, and the harness decides what
+  reaches the ticket. The tracked upgrade is to bring the tool back
+  with a narrow, stated job: posting durable implementation-decision
+  notes to the originating Jira issue ("chose library X over Y because
+  Z", "the acceptance criteria's edge case is handled in <file>"), so
+  the decision record lives on the ticket itself rather than only in
+  whatever the harness does with the report. Worth doing only if real
+  deployments find the report → harness → ticket path insufficient —
+  e.g. wanting notes to land mid-run rather than after Complete, or
+  wanting them threaded against specific existing ticket comments —
+  and it should come with the same
+  scoped-to-one-job prompt guidance plan mode's posting step has, not
+  as a general-purpose comment ability. V1 defends
+  the conventions file (instruction to every future run, so a
+  self-instruction-poisoning target) with a prompt rule plus a post-run
+  harness flag on any diff touching it (`formats.md` §3a). The
+  structural upgrade is Roo Code's `RooProtectedController`
+  (`agent-permissions-approval.md` §3): `.roorules*`/`AGENTS.md` and
+  kin are write-protected in code "regardless of autoapproval
+  settings" — the only source in the collection that hard-protects the
+  agent's own instruction files from the agent. For Forge that would
+  mean the harness rejecting `Edit`/`Write` calls targeting the
+  conventions path unless the run was dispatched with an explicit
+  this-ticket-may-edit-conventions flag. Deferred because the post-run
+  flag already makes the failure visible rather than silent; upgrade if
+  flagged violations actually occur.
+- **Repo-file content sanitization.** The envelope/FetchJira sanitizer
+  (`formats.md` §1) deliberately does not touch file contents returned
+  by Read/Grep — mangling source bytes would break Edit's exact-match
+  contract. A malicious file in a reviewed PR could therefore still
+  carry invisible-Unicode payloads to a `reviewer` sub-agent that Reads
+  it. A display-layer-only strip (sanitize what the model sees, keep
+  the on-disk bytes canonical for Edit) is the plausible fix if this
+  ever shows up in practice; no source in the collection does it today.
 
 ## Escalation triggers (v1 ships simple; upgrade only if needed)
 
@@ -88,11 +146,39 @@ Two shapes of deferred work:
   format with line numbers injected per hunk (`code-review-approaches.md`
   §3) removes the hunk-arithmetic step that causes mis-anchoring in the
   first place, at the cost of a less lean diff format.
-- **Command-level `Bash` permission filtering**, once destructive- or
-  out-of-scope-command risk from the prompt-only read-only-git rule
-  becomes a real problem. `Bash` stays wired in read-only modes for
-  legitimate read-only commands; its no-write rule is prompt-enforced
-  only in v1 because command-level filtering is a real permission
-  engine (`tools.md`) — the natural first instance of the tiered
-  permission/approval subsystem above, scoped down to just this one
-  tool.
+- **General command-level `Bash` permission filtering**, beyond the
+  narrow git-write blocklist v1 does ship (`tools.md`). The v1
+  blocklist covers exactly one command family (git write subcommands),
+  because Augment SWE-bench Agent's precedent shows that specific check
+  is a few lines of code; everything else about Bash — read-only-mode
+  no-write rules, destructive non-git commands, network use — remains
+  prompt-enforced in v1, because filtering *arbitrary* commands
+  correctly (compound commands, subshells, `xargs`, script files) is a
+  real permission engine: OpenCode's tree-sitter AST parsing of
+  bash/PowerShell and Gemini CLI's per-sub-command redirection
+  detection (`agent-permissions-approval.md` §2-3) are the field's
+  benchmarks for doing it properly, and both are whole subsystems. The
+  natural first instance of the tiered permission/approval subsystem
+  above, scoped down to just this one tool.
+- **Read-only-git `Bash` for `reviewer`/`validator` sub-agents**, if
+  pre-existing-vs-introduced misjudgments show up in posted findings.
+  V1 gives review sub-agents no `Bash` at all (`tools.md`), so a
+  validator's only view of the pre-change code is the diff's own `-`
+  lines and context — it can't `git show base_sha:file`. The validator
+  prompt tells it to reject when that view is insufficient, which
+  trades recall for safety. Granting a git-inspection allowlist
+  (agent37/TuringMind's shape, `code-review-approaches.md` §10) is the
+  upgrade, but it depends on the command-level filtering entry above
+  existing first — without it, "read-only git only" would be
+  prompt-enforced, exactly what the structural-gates principle rejects.
+- **Batched review delivery via GitHub's pending-review flow**, if
+  per-finding notification noise draws complaints. V1's pipeline posts
+  one `AddComment` per finding, which means N findings = N separate
+  notification events for the PR author. `gemini-code-review` is the
+  collection's precedent for the alternative (create pending review →
+  add comments → submit once, event type locked to `COMMENT` —
+  `code-review-approaches.md` §9): one notification, atomic delivery,
+  and a natural place to hard-lock "never APPROVE/REQUEST_CHANGES" at
+  the API layer. Harness-side change to how `AddComment` calls are
+  flushed, not a schema change — the tool surface Forge sees can stay
+  identical.
