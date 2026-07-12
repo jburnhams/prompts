@@ -336,10 +336,10 @@ and a *new* run resumes it later.
 1. Forge calls `AskUser` with `question`, `context`, and optionally
    `options`.
 2. The harness formats this into a comment and posts it via `AddComment`
-   automatically, targeting the Jira issue the task originated from
-   (the envelope's `issue_key`; for a `source: manual` task, wherever
-   the harness routes that task's communication) — Forge does not call
-   `AddComment` itself for this. AskUser is coding-mode-only
+   automatically, targeting the issue-tracker issue the task originated
+   from (the envelope's `issue_key`; for a `source: manual` task,
+   wherever the harness routes that task's communication) — Forge does
+   not call `AddComment` itself for this. AskUser is coding-mode-only
    (`tools.md`): review runs end in `Complete`, never a suspension.
 3. The harness records a suspended-task record keyed to that comment's
    id/URL, containing everything needed to resume: the original task
@@ -352,8 +352,8 @@ and a *new* run resumes it later.
 **Resuming:**
 
 1. A reply lands on the comment thread from step 2 — the same webhook/
-   poll mechanism that already watches PR and Jira activity for other
-   purposes picks it up.
+   poll mechanism that already watches PR and issue-tracker activity
+   for other purposes picks it up.
 2. The harness matches the reply to its suspended-task record via the
    comment id, and starts a new run with the original task envelope,
    plus the transcript from the suspended run, plus a new
@@ -385,9 +385,9 @@ callout at the end.
    resumes, it's still `mode: plan`, producing a plan only once
    unblocked), or `Complete` with `status: "planned"` and the §3c plan
    in `report`. Either way, if a plan was produced, its text was also
-   already posted to the originating Jira issue via `AddComment` (plan
-   mode workflow step 5, `system-prompts.md`) — that posting is
-   unconditional and happens regardless of what occurs next.
+   already posted to the originating issue-tracker issue via
+   `AddComment` (plan mode workflow step 5, `system-prompts.md`) — that
+   posting is unconditional and happens regardless of what occurs next.
 2. Whatever invoked the plan run decides whether, and when, to dispatch
    a follow-up `mode: implement` run. This document does not specify
    that policy — it's a deployment-time choice, not something Forge's

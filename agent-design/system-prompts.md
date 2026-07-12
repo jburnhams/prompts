@@ -164,9 +164,9 @@ understanding from scratch. Work like this instead:
    re-investigating everything itself has failed at the one thing this
    mode exists to do.
 5. **Post it.** Call AddComment to post the plan on the originating
-   Jira issue (Markdown, human-readable) — this is the audit trail and
-   the thing a person actually reads, independent of whatever happens
-   next mechanically.
+   issue-tracker issue (Markdown, human-readable) — this is the audit
+   trail and the thing a person actually reads, independent of whatever
+   happens next mechanically.
 6. **Report.** Call Complete with `status: "planned"` and the plan in
    `report`, per `formats.md`. What happens after this call — whether
    an `implement` run is dispatched immediately or only after a human

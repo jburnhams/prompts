@@ -364,6 +364,14 @@ prefixes each comment body with its severity. (An actual severity
    field only; whether/how that reaches the PR (a tracking comment, a
    check-run annotation, nothing) is the invoking harness's decision,
    not Forge's. See F7's "Superseded" note above.
-4. **Jira body format.** `AddComment.body` is Markdown; Jira Cloud
-   wants ADF (or legacy wiki markup). Assumed harness-side conversion —
-   confirm that's where you want that complexity to live.
+4. ~~**Jira body format.**~~ **Resolved: `AddComment.body` stays plain
+   Markdown, always — conversion to whatever the target platform
+   actually needs (Jira Cloud's ADF, legacy wiki markup, anything else)
+   is entirely a harness-side concern, never something Forge's schema
+   or prompts encode.** Language across `tools.md`/`formats.md` updated
+   to say "issue-tracker issue" rather than assuming Jira specifically
+   wherever the concept is platform-generic (the `AddComment`/`AskUser`
+   mechanics apply to whatever tracker the harness is wired to);
+   `FetchJira` itself stays Jira-named, since first-class Jira
+   integration is a named requirement in the brief, not a
+   platform-generic capability.

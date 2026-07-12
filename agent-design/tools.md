@@ -438,16 +438,20 @@ Output shape is documented in `formats.md`.
 
 > Posts a comment — a new top-level comment, an inline comment anchored
 > to a specific file/line on a PR, or a threaded reply to an existing
-> comment — on either a Jira issue or a PR. One tool for both platforms,
-> per the brief; platform differences are handled by which optional
-> fields you set, not by separate tools.
+> comment — on either an issue-tracker issue or a PR. One tool for both
+> platforms, per the brief; platform differences are handled by which
+> optional fields you set, not by separate tools. `body` is always plain
+> Markdown regardless of target — converting it to whatever the target
+> platform actually needs (e.g. Jira Cloud's ADF, or legacy wiki markup)
+> is a harness-side concern, not something this schema or Forge itself
+> handles; see `review.md`'s decision log.
 >
 > - `target.platform: "jira"` + `target.id` (an issue key): posts a
->   Jira comment. `in_reply_to` is honored as a best-effort @-mention
->   reference — Jira's own comment model isn't fully threaded, so a true
->   nested reply isn't always possible; the tool falls back to a
->   plain comment prefixed with a reference to the original if the
->   target platform can't thread it.
+>   comment on the issue-tracker issue. `in_reply_to` is honored as a
+>   best-effort @-mention reference — Jira's own comment model isn't
+>   fully threaded, so a true nested reply isn't always possible; the
+>   tool falls back to a plain comment prefixed with a reference to the
+>   original if the target platform can't thread it.
 > - `target.platform: "github_pr"` + `target.id` (`"owner/repo#123"`):
 >   posts a GitHub PR comment. Set `anchor` (file + line, optionally a
 >   `line_end` for a range) for an inline review comment; omit it for a
@@ -479,12 +483,12 @@ Output shape is documented in `formats.md`.
         "type": "object",
         "properties": {
           "platform": { "type": "string", "enum": ["jira", "github_pr"] },
-          "id": { "type": "string", "description": "Jira issue key, or \"owner/repo#pr_number\" for a PR." }
+          "id": { "type": "string", "description": "Issue-tracker issue key, or \"owner/repo#pr_number\" for a PR." }
         },
         "required": ["platform", "id"],
         "additionalProperties": false
       },
-      "body": { "type": "string", "description": "Comment text, Markdown." },
+      "body": { "type": "string", "description": "Comment text, Markdown. The harness converts to the target platform's native format if needed (e.g. Jira ADF) — this schema always carries Markdown." },
       "in_reply_to": { "type": "string", "description": "Optional: id of an existing comment to reply to." },
       "anchor": {
         "type": "object",
@@ -523,10 +527,12 @@ for its conditional requirements.
 > stopping without calling it (running out of turns, trailing off) is a
 > failure mode to avoid, not an alternate ending. Carries the structured
 > report described in `formats.md`'s completion schema: status, a short
-> human-readable summary (this is what gets rendered into a PR/Jira
-> comment for a person to read), and mode-specific detail (files
-> changed and verification run, for `implement`; the full finding list,
-> for review mode; the plan itself, for `mode: plan`).
+> human-readable summary (Forge does not post this anywhere itself —
+> whether and how it reaches a PR, an issue-tracker comment, a CI
+> summary, or nowhere at all is entirely the invoking harness's call),
+> and mode-specific detail (files changed and verification run, for
+> `implement`; the full finding list, for review mode; the plan itself,
+> for `mode: plan`).
 >
 > Calling this is always the last action in a run. `status: "planned"`
 > is `plan`-mode-only — it means a plan was produced and posted, not
