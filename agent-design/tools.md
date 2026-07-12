@@ -444,7 +444,7 @@ Output shape is documented in `formats.md`.
 > Markdown regardless of target — converting it to whatever the target
 > platform actually needs (e.g. Jira Cloud's ADF, or legacy wiki markup)
 > is a harness-side concern, not something this schema or Forge itself
-> handles; see `review.md`'s decision log.
+> handles; see `README.md`'s decision log ("Comment body format").
 >
 > - `target.platform: "jira"` + `target.id` (an issue key): posts a
 >   Jira comment. `in_reply_to` is honored as a best-effort @-mention

@@ -192,6 +192,23 @@ collection — left out for leanness, not because it's a bad idea:
   (`agent-self-verification.md` §3); v1's completion-integrity story is
   deterministic only (checklist gate + harness `git status`
   cross-check), which can't be prompt-injected or talked out of firing.
+- **Diff-as-file instead of diff-in-prompt-thrice.** The review
+  orchestrator currently carries the diff in its envelope *and* copies
+  slices into each specialist's `Task` prompt. Having the harness also
+  write the diff to a scratch-dir file and letting sub-agents `Read` it
+  would cut the duplication for large PRs — at the cost of sub-agents
+  starting cold on what they should read. Worth measuring before
+  adopting.
+- **Double-coverage on the bugs lens.** Anthropic's `/code-review` skill
+  runs *two* bug-finder agents in parallel for recall and lets
+  validation handle the overlap; Forge runs one specialist per lens.
+  Cheap to add later if recall measures low — the validator + dedup
+  machinery already handles the duplicate-findings consequence.
+- **Turn caps for sub-agents.** Copilot Chat's `isLastTurn` nudge
+  (the same mechanism `formats.md` §7 uses for the whole run) applied
+  one level down, to individual `Task` calls. The run-level budget is
+  enough for v1; a runaway sub-agent still terminates when the parent
+  run's own budget is hit.
 
 ## Reading order
 
@@ -202,6 +219,9 @@ collection — left out for leanness, not because it's a bad idea:
    Forge's output back out: the context envelope, the completion
    schema, the review-finding schema, the `AskUser` suspend/resume
    protocol, and the run-bounding contract.
-4. `review.md` — the design-review pass over all of the above: what
-   was checked against the research, what changed as a result, and the
-   open questions still owned by the design's owner.
+
+This design went through a full review pass against the rest of this
+repo's research after its first draft; every finding from that pass has
+since been folded directly into the three documents above (and into
+this decision log) rather than kept as a separate write-up — there is
+no residual open question left unresolved.

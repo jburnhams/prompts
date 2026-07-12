@@ -136,16 +136,30 @@ gate on size *before* dispatching a run — past the threshold there is
 no code path in which Forge even gets to call `Complete(skipped)`,
 because the run dies on context before its first turn. V1 behavior
 above the threshold is skip-with-reason, reported the same way a
-`skipped` run reports (BMAD's >3000-changed-lines chunking cascade is
-the collection's precedent for the richer alternative — sharding
-specialists per file group — deliberately rejected; see `review.md`
-F8).
+`skipped` run reports.
+
+Skip, not shard: no source in this collection does automated
+sharding-with-merge (splitting specialists per file group and
+reconciling cross-file findings across batches), including Anthropic's
+own `/code-review` skill that this review pipeline is modeled on — its
+own troubleshooting guidance for large PRs is "consider splitting large
+PRs into smaller ones," a step taken by the PR author before review,
+not something the review harness does. BMAD's >3000-changed-lines
+chunking cascade, the field's other precedent, is human-mediated across
+separate runs (a person agrees the first file group, then the rest are
+noted for follow-up runs) — nobody has solved "which findings span a
+batch boundary" without a human arbitrating the split, which doesn't
+transfer to an unsupervised pipeline. Skip-with-reason is what every
+real source effectively falls back to once the human-mediation each one
+leans on is netted out.
 
 The threshold itself is a harness config value, not a constant in this
 design, and the harness may express it either way:
 
 - a fixed changed-line count (BMAD's shape — simple, diff-tool-native,
-  no model/tokenizer dependency), or
+  no model/tokenizer dependency; BMAD's own ~3000-line figure carries no
+  stated derivation, so it's a sanity-check anchor here, not a default
+  to inherit), or
 - a fraction of the deployed model's context-window token budget,
   estimated from diff character count via a fixed chars-per-token
   ratio (no real tokenizer call — this is a cheap guesstimate gate,
@@ -153,9 +167,9 @@ design, and the harness may express it either way:
   actual window rather than a number picked for one model and left
   stale after a model swap, and it can additionally divide by
   `(1 + number of specialist lenses)` to account for the diff being
-  copied into every specialist's `Task` prompt in v1 (see `review.md`'s
-  "Diff-as-file" v2 note for the fix that would remove that
-  multiplier).
+  copied into every specialist's `Task` prompt in v1 (see `README.md`'s
+  "not in v1" list, "Diff-as-file instead of diff-in-prompt-thrice," for
+  the fix that would remove that multiplier).
 
 Which shape a deployment uses is a harness config choice, not a Forge
 behavior difference — either way Forge only ever sees a run that either
@@ -437,6 +451,9 @@ explicit position on what happens at each:
    The precedent is Copilot Chat's forced last-turn cutoff message
    ("OK, your allotted iterations are finished...") — deterministic
    string injection, no extra model call (`agent-self-verification.md` %7).
+   Grok Build's harder variant — refusing to end a turn at all while
+   work is still open — is not adopted here, since it fights the same
+   budget this mechanism exists to enforce.
 2. **No compaction in v1.** Summarize-and-continue is a genuine
    subsystem (triggers, templates, incremental anchoring — see
    `agent-context-compaction.md`) that this design deliberately does
