@@ -76,6 +76,24 @@ Two shapes of deferred work:
   A real deployment would likely want one (e.g. "escalate instead of
   asking a third time") — left unspecified rather than picking a number
   with no concrete reason behind it.
+- **Per-role model selection.** V1 runs every orchestrator and
+  sub-agent on one model. The precedent for varying it per role is
+  strong and specific: Anthropic's own `/code-review` skill assigns
+  Haiku to triage, Sonnet to conventions checks, and Opus to bug-finding
+  and validation; Amp pins its `oracle` to a different vendor's model
+  entirely; GitHub Copilot CLI pins a model per sub-agent YAML with one
+  (`rubber-duck`) deliberately inheriting the user's live choice
+  (`agent-subagent-architectures.md` §3). A cheap-model triage pass and
+  an expensive-model validator are the natural first split once cost
+  per review run is measured.
+- **Repo-file content sanitization.** The envelope/FetchJira sanitizer
+  (`formats.md` §1) deliberately does not touch file contents returned
+  by Read/Grep — mangling source bytes would break Edit's exact-match
+  contract. A malicious file in a reviewed PR could therefore still
+  carry invisible-Unicode payloads to a `reviewer` sub-agent that Reads
+  it. A display-layer-only strip (sanitize what the model sees, keep
+  the on-disk bytes canonical for Edit) is the plausible fix if this
+  ever shows up in practice; no source in the collection does it today.
 
 ## Escalation triggers (v1 ships simple; upgrade only if needed)
 
@@ -96,3 +114,25 @@ Two shapes of deferred work:
   engine (`tools.md`) — the natural first instance of the tiered
   permission/approval subsystem above, scoped down to just this one
   tool.
+- **Read-only-git `Bash` for `reviewer`/`validator` sub-agents**, if
+  pre-existing-vs-introduced misjudgments show up in posted findings.
+  V1 gives review sub-agents no `Bash` at all (`tools.md`), so a
+  validator's only view of the pre-change code is the diff's own `-`
+  lines and context — it can't `git show base_sha:file`. The validator
+  prompt tells it to reject when that view is insufficient, which
+  trades recall for safety. Granting a git-inspection allowlist
+  (agent37/TuringMind's shape, `code-review-approaches.md` §10) is the
+  upgrade, but it depends on the command-level filtering entry above
+  existing first — without it, "read-only git only" would be
+  prompt-enforced, exactly what the structural-gates principle rejects.
+- **Batched review delivery via GitHub's pending-review flow**, if
+  per-finding notification noise draws complaints. V1's pipeline posts
+  one `AddComment` per finding, which means N findings = N separate
+  notification events for the PR author. `gemini-code-review` is the
+  collection's precedent for the alternative (create pending review →
+  add comments → submit once, event type locked to `COMMENT` —
+  `code-review-approaches.md` §9): one notification, atomic delivery,
+  and a natural place to hard-lock "never APPROVE/REQUEST_CHANGES" at
+  the API layer. Harness-side change to how `AddComment` calls are
+  flushed, not a schema change — the tool surface Forge sees can stay
+  identical.

@@ -186,7 +186,12 @@ structural one.
 >   command that legitimately needs longer.
 > - Set `run_in_background: true` for a long-running process (a dev
 >   server, a watch task) you need to keep running while you do other
->   work; poll it with the same tool call shape and its process id.
+>   work. The tool result returns the process id and the path of a log
+>   file (in the scratch directory) its output streams to; check on it
+>   with ordinary shell commands in later calls — the session is
+>   persistent, so `kill -0 <pid>` answers "still running?" and Read on
+>   the log file (or `tail` of it) shows progress. There is no separate
+>   polling tool in v1.
 > - Output over 30000 characters is truncated. If you need to inspect
 >   something larger, redirect it to a file in the scratch directory
 >   (named in `<env>`) and Read the relevant slice — never redirect into
@@ -230,8 +235,9 @@ structural one.
 > pre-shaped for you.
 >
 > - `output_mode: "files_with_matches"` (default) returns matching file
->   paths only; `"content"` returns matching lines (supports `-A`/`-B`/
->   `-C` context and `-n` line numbers); `"count"` returns per-file match
+>   paths only; `"content"` returns matching lines, always prefixed with
+>   their 1-indexed line numbers (no flag needed) and supporting
+>   `context_before`/`context_after`; `"count"` returns per-file match
 >   counts.
 > - Filter with `glob` (e.g. `"*.ts"`) or `type` (e.g. `"python"`).
 > - Patterns are ripgrep regex, not shell-glob — escape literal braces
@@ -470,6 +476,13 @@ Output shape is documented in `formats.md`.
 >   block, replacing the full anchored line range. Only set this when
 >   applying it verbatim fully resolves the issue — never for a fix that
 >   needs a follow-up step. Requires `anchor` (schema-enforced below).
+>   When set, `body` must contain **only the exact replacement source
+>   lines** — no prose, no Markdown fences, no explanation. GitHub
+>   commits the block's contents verbatim over the anchored range, so
+>   any explanatory text inside it becomes a syntax error in someone's
+>   codebase when they click "apply." Put the explanation in a separate
+>   unanchored or prose comment if one is needed, or skip the
+>   suggestion and describe the fix in prose instead.
 >
 > Returns the posted comment's id and URL, which a caller can use as a
 > later `in_reply_to` value.
@@ -555,12 +568,16 @@ for its conditional requirements.
 > the scratch directory — and only a second `Complete` call actually
 > ends the run. This is deliberate and deterministic (no extra model
 > call), directly following SWE-agent's `review_on_submit_m` gate
-> (`agent-self-verification.md` %2): a mechanical gate can't be talked
+> (`agent-self-verification.md` §2): a mechanical gate can't be talked
 > out of firing, and false completion claims are the best-measured
 > failure mode in this design's source research. Other statuses and
 > other modes complete on the first call. The harness resets this
-> gate (requiring the checklist again) if any state-modifying tools
-> (like Edit or Write) are called after the first Complete call.
+> gate (requiring the checklist again) if Edit, Write, or Bash is
+> called after the first Complete call — Bash included because it can
+> modify the working tree just as freely as Edit (a package-manager
+> run, a formatter, a code-generation script), and v1 has no
+> command-level filter to tell a read-only invocation from a mutating
+> one, so the reset has to be conservative.
 
 ```json
 {
