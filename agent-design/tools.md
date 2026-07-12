@@ -33,6 +33,14 @@ Availability by role:
 (see the Task tool's own notes below). `reviewer` and `validator` are
 read-only by design — see `README.md`'s decision log.
 
+The table above is by *role*, not by run `mode` — the schema doesn't
+change between `plan`, `implement`, `investigate`, and `review_only`;
+what changes is which of the coding orchestrator's own tools the system
+prompt authorizes it to actually call. `Edit`/`Write` are wired to the
+coding orchestrator in every mode, but `plan`/`investigate`/
+`review_only` never call them — see `system-prompts.md`'s "Mandate and
+mode" for the behavioral rule this table doesn't enforce on its own.
+
 ---
 
 ## Read
@@ -456,14 +464,16 @@ Output shape is documented in `formats.md`.
 > report described in `formats.md`'s completion schema: status, a short
 > human-readable summary (this is what gets rendered into a PR/Jira
 > comment for a person to read), and mode-specific detail (files
-> changed and verification run, for coding mode; the full finding list,
-> for review mode).
+> changed and verification run, for `implement`; the full finding list,
+> for review mode; the plan itself, for `mode: plan`).
 >
-> Calling this is always the last action in a run. `status: "blocked"`
-> is for AskUser having been called earlier in a *previous* run that's
-> now resuming with an answer that still didn't fully resolve things;
-> within a single run, use AskUser directly instead of reaching Complete
-> with status `blocked`.
+> Calling this is always the last action in a run. `status: "planned"`
+> is `plan`-mode-only — it means a plan was produced and posted, not
+> that any code changed; it says nothing about whether an `implement`
+> run will follow, since that's decided outside this run. `status:
+> "blocked"` is for a run resuming after AskUser that still didn't fully
+> resolve things; within a single run, use AskUser directly instead of
+> reaching Complete with status `blocked`.
 
 ```json
 {
@@ -471,7 +481,7 @@ Output shape is documented in `formats.md`.
   "input_schema": {
     "type": "object",
     "properties": {
-      "status": { "type": "string", "enum": ["done", "skipped", "failed", "blocked"] },
+      "status": { "type": "string", "enum": ["done", "planned", "skipped", "failed", "blocked"] },
       "summary": { "type": "string", "description": "Short, human-readable. This is what a person reads first." },
       "report": { "type": "object", "description": "Full structured report. Shape depends on mode — see formats.md." }
     },

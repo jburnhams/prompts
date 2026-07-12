@@ -2,8 +2,9 @@
 
 The wire formats connecting a task to Forge and Forge's output back out:
 the context envelope each run starts with, `FetchJira`'s output shape,
-the `Complete` report schema for each mode, the review-finding schema,
-and the `AskUser` suspend/resume protocol.
+the `Complete` report schema for each mode (including the plan
+schema), the review-finding schema, the `AskUser` suspend/resume
+protocol, and the plan → implement handoff between runs.
 
 ---
 
@@ -35,6 +36,14 @@ stated as a rule.
   {{ full FetchJira output for issue_key, pre-fetched so the model
      doesn't spend a turn fetching what it always needs — see §2 }}
 </ticket>
+
+<plan>
+  {{ optional — present only on an `implement` run dispatched as the
+     follow-up to an accepted `mode: plan` run against this same
+     issue_key. Carries that earlier run's Complete report.report
+     verbatim (the plan schema, §3c) — see §6, the plan/implement
+     handoff }}
+</plan>
 
 <repo_context>
   {{ optional: contents of the root project-conventions file, if one
@@ -178,6 +187,36 @@ specialist raised — nothing silently disappears between step 3 and step
 7 of the review pipeline (`system-prompts.md` §2) without a recorded
 reason.
 
+### 3c. Plan mode
+
+```json
+{
+  "ticket": "PROJ-1234",
+  "approach": "string — a few sentences: what will change and why, in plain terms",
+  "steps": [
+    { "order": 1, "description": "string, concrete and specific", "files": ["string, ..."] }
+  ],
+  "context_gathered": [
+    { "file": "string", "note": "string — why this file/area is relevant, what an implement run needs to know about it" }
+  ],
+  "risks_and_assumptions": [
+    "string — anything this plan assumes that could turn out false"
+  ],
+  "out_of_scope": [
+    "string — explicitly not covered by this plan, and why, so an implement run doesn't silently expand scope"
+  ],
+  "acceptance_criteria": "string — restated/clarified from the ticket, resolving any ambiguity AskUser didn't need to be raised for"
+}
+```
+
+`steps` is written for a fresh `implement` run with no memory of this
+one to consume — concrete enough to act on (`files`, not just prose)
+without forcing it to skip its own verification. `context_gathered` is
+what makes handing this to a *different* run viable at all: without it,
+an implement run has to redo the investigation from scratch, which
+defeats the point of planning first. See §6 for how this schema actually
+reaches that later run.
+
 ---
 
 ## 4. Review-finding schema
@@ -255,3 +294,46 @@ in v1 — a real deployment would likely want one (e.g. "escalate instead
 of asking a third time"), left as a v2 addition per `README.md`'s
 "what's not in v1" list rather than specified here without a concrete
 reason to pick a specific number.
+
+---
+
+## 6. Plan → implement handoff
+
+How a `mode: plan` run's output becomes a `mode: implement` run's
+input. Deliberately underspecified in one place, on purpose — see the
+callout at the end.
+
+1. A `mode: plan` run ends one of two ways: `AskUser` (per §5, same
+   suspend/resume mechanics — the run pauses on a question, and when it
+   resumes, it's still `mode: plan`, producing a plan only once
+   unblocked), or `Complete` with `status: "planned"` and the §3c plan
+   in `report`. Either way, if a plan was produced, its text was also
+   already posted to the originating Jira issue via `AddComment` (plan
+   mode workflow step 5, `system-prompts.md`) — that posting is
+   unconditional and happens regardless of what occurs next.
+2. Whatever invoked the plan run decides whether, and when, to dispatch
+   a follow-up `mode: implement` run. This document does not specify
+   that policy — it's a deployment-time choice, not something Forge's
+   own prompt encodes (see `README.md`'s decision log for why this was
+   left open deliberately rather than picked). Two patterns are equally
+   valid implementations of everything above:
+   - **Gated**: treat the posted plan like an `AskUser` question in
+     reverse — wait for an explicit approving reply on the same thread
+     before dispatching `implement`.
+   - **Auto-chained**: dispatch `implement` immediately once
+     `Complete(status: "planned")` returns; the posted comment is
+     audit trail, not a gate.
+3. When the `implement` run is dispatched, its task envelope (§1a)
+   carries the same `issue_key` as the plan run, `mode: implement`, and
+   a `<plan>` tag containing the plan run's `report` object verbatim —
+   this is the entire mechanism by which context transfers between the
+   two runs; there is no other channel, since each run starts with a
+   fresh context window.
+
+The one thing worth being explicit about even though the gating policy
+itself is left open: **whatever makes that decision is responsible for
+also handling a rejected or amended plan** (a human reply asking for
+changes rather than approving) — that's a new `mode: plan` run, with the
+rejection/amendment appended to its envelope the same way
+`<resumed_answer>` works in §5, not a special case this schema needs its
+own field for.

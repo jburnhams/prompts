@@ -84,12 +84,24 @@ session itself uses for `subscribe_pr_activity`) when a reply lands.
      │ for open-ended      │                │  Task→validator      │
      │ search/investigation│                │                      │
      └────────────────────┘                 └──────────────────────┘
+        4 modes: plan ·
+        implement · investigate ·
+        review_only
 ```
 
 Both entrypoints are the *same* model running under a different system
 prompt (`system-prompts.md`), sharing the identical tool schemas
 (`tools.md`). The difference is orchestration philosophy, matching the
 brief's "dynamic for coding, multi-agent for review":
+
+- **Coding mode is one system prompt covering four `mode` values**,
+  not four agents: `plan` (read-only — investigate, then either
+  `AskUser` or produce a plan for a later run), `implement` (the
+  default — edit and verify), `investigate` and `review_only` (both
+  read-only, reporting without a forward-looking plan). `plan` and
+  `implement` are two separate *runs*, not two phases of one run — see
+  `formats.md` §6 for exactly how a plan produced by one run reaches
+  the next.
 
 - **Coding mode** delegates the way Claude Code's `Task` tool does:
   ad hoc, model-decided, stateless one-shot calls to a single
@@ -124,7 +136,9 @@ subsequent doc assumes.
 | `AskUser` semantics | Suspend the run, post the question via `AddComment`, resume on reply | Synchronous in-process blocking prompt | Hands-off has no human watching the process to answer synchronously; the suspend/resume shape also reuses `AddComment` instead of adding a second communication channel |
 | Diff delivery to the review agent | Pre-formatted plain unified diff, baked into the task envelope | Custom hunk format (PR-Agent's `__new hunk__`/`__old hunk__`); leave it to the model to run `git diff`/`gh` itself (most Claude Code skills) | `code-review-approaches.md` §3's takeaway: pre-formatting trades a little build complexity for guaranteed line-number accuracy, which matters when comments post unsupervised. Plain unified diff (Codex-review's choice) rather than PR-Agent's custom hunks, to keep the format lean |
 | Git write operations | None in v1 — no commit, push, branch, or PR creation from inside the agent | Claude Code's interactive convention (commit/push once explicitly asked in the current turn); the coding agent's originally-designed default of committing/pushing/opening a PR itself under `mode: implement` | The harness checks out the task's target branch *before* the run starts; the agent edits files in that working tree and stops. A finished, uncommitted working tree **is** the deliverable — an external process (whatever invoked the run, which already owns git identity, signing, and PR-creation conventions) picks it up from there. Keeps git write concerns, and everything that comes with them (author identity, signing keys, commit-message conventions, PR templates), entirely outside the agent's tool surface in v1 |
-| Planning/todo tool | None in v1 | A `TodoWrite`-style stateful tool (near-universal in archetype 1, `coding-agent-approaches.md` §6) | No one is watching a live todo list update turn by turn; step tracking is folded into the `Complete` report's step list instead. First candidate to add back if multi-day/multi-ticket runs turn out to need visible incremental progress |
+| Live todo/planning tool | None in v1 | A `TodoWrite`-style stateful tool (near-universal in archetype 1, `coding-agent-approaches.md` §6) | No one is watching a live todo list update turn by turn; step tracking is folded into the `Complete` report's step list instead. Not the same question as the row below — this is about a tool for tracking progress *during* a single run, which Forge still doesn't have |
+| Plan mode | A fourth `mode` value (`plan`) on the *same* coding system prompt — read-only investigation ending in `AskUser` or a structured plan (`formats.md` §3c), consumed by a later `implement` run via a `<plan>` envelope tag | A separate third system prompt/entrypoint; a model-side heuristic deciding when to plan first (Codex CLI's "skip planning for the easiest 25%"); a live in-run planning tool (conflated with the row above, but genuinely different — see `formats.md` §6) | Reuses `investigate`'s existing read-only tool scope instead of standing up new machinery — the closest precedent is Gemini CLI's Plan Mode and OpenCode's `plan.txt`/`build-switch.txt`, both mode-variants of one base agent rather than separate agents. Mode selection (plan-first vs. straight to `implement`) is made by whatever invokes a run, not by Forge itself, consistent with how `mode` already works for `investigate`/`review_only` |
+| Plan → implement gating policy | Deliberately unspecified in Forge's own prompt (`formats.md` §6) | A built-in human-approval gate, reusing `AskUser`'s suspend/resume mechanism for "approve this plan?"; unconditional auto-chaining straight into `implement` | Asked directly rather than assumed. Forge's contract is identical either way — post the plan, call `Complete(status: "planned")` — so the choice of whether an `implement` run fires immediately or waits for a reply is a deployment-time policy the harness owns, not a behavior difference in the agent |
 | Sub-agent tool-scope narrowing | `reviewer` and `validator` sub-agent types are read-only (no `Edit`/`Write`, `Bash` limited to read-only git) | Full tool parity for every sub-agent type (Claude Code's `general-purpose: Tools: *`) | Matches the narrower-scope pattern `agent-subagent-architectures.md` §6 finds in Claude Code's own `statusline-setup`/`output-style-setup` types and in Amp's `oracle` — a reviewing sub-agent has no legitimate reason to touch files |
 
 ## What's deliberately not in v1
