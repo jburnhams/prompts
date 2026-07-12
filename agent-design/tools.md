@@ -39,8 +39,8 @@ target.
 
 The table above is by *role*; run `mode` narrows it further, and the
 harness enforces that narrowing at wiring time, not just in prompt
-text: in `plan`, `investigate`, and `review_only` runs, `Edit` and
-`Write` are **not registered at all** — for the coding orchestrator or
+text: in `plan` runs, `Edit` and `Write` are **not registered at
+all** — for the coding orchestrator or
 for any `general-purpose` sub-agent it spawns ("full tool parity"
 means parity with the orchestrator *as wired for this run*, so a
 read-only run cannot launder writes through a delegate). This follows
@@ -49,10 +49,11 @@ structural boundary can't be forgotten, and the precedent is strong —
 Gemini CLI strips agent-kind tools from sub-agent registries in code,
 and Composio scopes permissions "at the tool level, not just by
 instruction" (`agent-subagent-architectures.md` §6). `Bash` stays wired
-in read-only modes (read-only git inspection and read-only commands are
+in `plan` mode (read-only git inspection and read-only commands are
 legitimate there); its no-write rule remains prompt-enforced in v1,
 since command-level filtering is a real permission engine — see
-`README.md`'s "not in v1" list. The system-prompt mode rules in
+`future.md`'s "Command-level `Bash` permission filtering" entry. The
+system-prompt mode rules in
 `system-prompts.md` remain as the behavioral layer on top of this
 structural one.
 
@@ -316,7 +317,7 @@ structural one.
 >   *candidate* only — that's what the validator step is for; don't
 >   act on a specialist's finding directly.
 > - `general-purpose` cannot itself call Task — no recursive delegation
->   in v1 (see `README.md`'s decision log for the planned upgrade path).
+>   in v1 (see `future.md`'s "Addressable/resumable sub-agents" entry).
 
 ```json
 {
@@ -440,7 +441,11 @@ Output shape is documented in `formats.md`.
 > to a specific file/line on a PR, or a threaded reply to an existing
 > comment — on either a Jira issue or a PR. One tool for both platforms,
 > per the brief; platform differences are handled by which optional
-> fields you set, not by separate tools.
+> fields you set, not by separate tools. `body` is always plain
+> Markdown regardless of target — converting it to whatever the target
+> platform actually needs (e.g. Jira Cloud's ADF, or legacy wiki markup)
+> is a harness-side concern, not something this schema or Forge itself
+> handles; see `README.md`'s decision log ("Comment body format").
 >
 > - `target.platform: "jira"` + `target.id` (an issue key): posts a
 >   Jira comment. `in_reply_to` is honored as a best-effort @-mention
@@ -484,7 +489,7 @@ Output shape is documented in `formats.md`.
         "required": ["platform", "id"],
         "additionalProperties": false
       },
-      "body": { "type": "string", "description": "Comment text, Markdown." },
+      "body": { "type": "string", "description": "Comment text, Markdown. The harness converts to the target platform's native format if needed (e.g. Jira ADF) — this schema always carries Markdown." },
       "in_reply_to": { "type": "string", "description": "Optional: id of an existing comment to reply to." },
       "anchor": {
         "type": "object",
@@ -523,18 +528,24 @@ for its conditional requirements.
 > stopping without calling it (running out of turns, trailing off) is a
 > failure mode to avoid, not an alternate ending. Carries the structured
 > report described in `formats.md`'s completion schema: status, a short
-> human-readable summary (this is what gets rendered into a PR/Jira
-> comment for a person to read), and mode-specific detail (files
-> changed and verification run, for `implement`; the full finding list,
-> for review mode; the plan itself, for `mode: plan`).
+> human-readable summary (Forge does not post this anywhere itself —
+> whether and how it reaches a PR, a Jira comment, a CI summary, or
+> nowhere at all is entirely the invoking harness's call),
+> and mode-specific detail (files changed and verification run, for
+> `implement`; the full finding list, for review mode; the plan itself,
+> for `mode: plan`).
 >
 > Calling this is always the last action in a run. `status: "planned"`
-> is `plan`-mode-only — it means a plan was produced and posted, not
+> is `plan`-mode-only, for the case where the investigation found an
+> actual change to make — it means a plan was produced and posted, not
 > that any code changed; it says nothing about whether an `implement`
-> run will follow, since that's decided outside this run. `status:
-> "blocked"` is for a run resuming after AskUser that still didn't fully
-> resolve things; within a single run, use AskUser directly instead of
-> reaching Complete with status `blocked`.
+> run will follow, since that's decided outside this run. A `plan`-mode
+> run that instead concludes no code change is needed uses
+> `status: "done"` with an empty `steps` list in `report` — the finding
+> was still posted per the same workflow, there's just nothing to hand
+> off. `status: "blocked"` is for a run resuming after AskUser that
+> still didn't fully resolve things; within a single run, use AskUser
+> directly instead of reaching Complete with status `blocked`.
 >
 > In `implement` mode, the **first** `Complete(status: "done")` call
 > does not complete the run. It returns a fixed checklist as the tool

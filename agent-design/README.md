@@ -84,9 +84,7 @@ session itself uses for `subscribe_pr_activity`) when a reply lands.
      │ for open-ended      │                │  Task→validator      │
      │ search/investigation│                │                      │
      └────────────────────┘                 └──────────────────────┘
-        4 modes: plan ·
-        implement · investigate ·
-        review_only
+        2 modes: plan · implement
 ```
 
 Both entrypoints are the *same* model running under a different system
@@ -94,14 +92,16 @@ prompt (`system-prompts.md`), sharing the identical tool schemas
 (`tools.md`). The difference is orchestration philosophy, matching the
 brief's "dynamic for coding, multi-agent for review":
 
-- **Coding mode is one system prompt covering four `mode` values**,
-  not four agents: `plan` (read-only — investigate, then either
-  `AskUser` or produce a plan for a later run), `implement` (the
-  default — edit and verify), `investigate` and `review_only` (both
-  read-only, reporting without a forward-looking plan). `plan` and
-  `implement` are two separate *runs*, not two phases of one run — see
-  `formats.md` §6 for exactly how a plan produced by one run reaches
-  the next.
+- **Coding mode is one system prompt covering two `mode` values**, not
+  two agents: `plan` (read-only — investigate, then `AskUser`, a
+  structured plan for a later run, or a terminal "no code change
+  needed" finding when the investigation itself is the whole task) and
+  `implement` (the default — edit and verify). There is no separate
+  read-only "investigate" mode: a standalone research task is just a
+  `plan` run that concludes with an empty step list instead of a
+  forward-looking plan — see `formats.md` §3c. `plan` and `implement`
+  are two separate *runs*, not two phases of one run — see `formats.md`
+  §6 for exactly how a plan produced by one run reaches the next.
 
 - **Coding mode** delegates the way Claude Code's `Task` tool does:
   ad hoc, model-decided, stateless one-shot calls to a single
@@ -132,16 +132,19 @@ subsequent doc assumes.
 | Edit/diff wire format | `old_string`/`new_string`, must uniquely match | Aider/Cline `SEARCH/REPLACE` fences, `apply_patch`-style patches, whole-file rewrite | `coding-agent-approaches.md` §5: the only format that needs no worked-example teaching block in the prompt itself, and it's the one Claude Code, Gemini CLI, and (per its README) OpenHands converge on independently |
 | Coding-mode delegation | Ad hoc `Task` tool, stateless one-shot, single `general-purpose` type at launch | A typed registry from day one; an addressable/resumable child (Codex CLI/OpenCode-style) | Matches "leaner initial tool set" — a typed registry and resumable children are real, well-precedented upgrades (`agent-subagent-architectures.md` §2) but not needed until coding-mode tasks get complex enough to want them |
 | Review-mode delegation | Fixed parallel specialist team + validator pass, always | Single-pass no sub-agents (PR-Agent, Codex-review's approach); user-chosen sequential/parallel (`pr-review-toolkit`'s approach) | Hands-off delivery raises the cost of a false positive (no human filters before posting) enough to justify the fixed second pass unconditionally, per `code-review-approaches.md`'s takeaways |
-| Task completion signal | Structured schema **and** a human-readable summary field inside it | Freeform chat-style final message only (Claude Code); a bare machine schema with no prose (Codex-review's JSON-schema output) | Consumers are mixed: CI/Jira automation need the schema, but the same payload gets rendered into a PR/Jira comment a person will read |
+| Task completion signal | Structured schema **and** a human-readable summary field inside it | Freeform chat-style final message only (Claude Code); a bare machine schema with no prose (Codex-review's JSON-schema output) | Consumers are mixed: CI/Jira automation need the schema, but the summary field exists for whatever the harness renders into a PR or Jira comment for a person to read — Forge doesn't post that itself |
+| Comment body format | `AddComment.body` is always plain Markdown, regardless of target platform | Platform-native formats from Forge itself (Jira Cloud's ADF, wiki markup) | The schema stays platform-agnostic; converting Markdown to whatever a specific tracker actually requires is harness-side plumbing, not something Forge's prompts or schemas should encode — same reasoning as keeping git writes out of the agent's tool surface |
 | `AskUser` semantics | Suspend the run, post the question via `AddComment`, resume on reply | Synchronous in-process blocking prompt | Hands-off has no human watching the process to answer synchronously; the suspend/resume shape also reuses `AddComment` instead of adding a second communication channel |
 | Diff delivery to the review agent | Pre-formatted plain unified diff, baked into the task envelope | Custom hunk format (PR-Agent's `__new hunk__`/`__old hunk__`); leave it to the model to run `git diff`/`gh` itself (most Claude Code skills) | `code-review-approaches.md` §3's takeaway: pre-formatting trades a little build complexity for guaranteed line-number accuracy, which matters when comments post unsupervised. Plain unified diff (Codex-review's choice) rather than PR-Agent's custom hunks, to keep the format lean |
 | Git write operations | None in v1 — no commit, push, branch, or PR creation from inside the agent | Claude Code's interactive convention (commit/push once explicitly asked in the current turn); the coding agent's originally-designed default of committing/pushing/opening a PR itself under `mode: implement` | The harness checks out the task's target branch *before* the run starts; the agent edits files in that working tree and stops. A finished, uncommitted working tree **is** the deliverable — an external process (whatever invoked the run, which already owns git identity, signing, and PR-creation conventions) picks it up from there. Keeps git write concerns, and everything that comes with them (author identity, signing keys, commit-message conventions, PR templates), entirely outside the agent's tool surface in v1 |
 | Live todo/planning tool | None in v1 | A `TodoWrite`-style stateful tool (near-universal in archetype 1, `coding-agent-approaches.md` §6) | No one is watching a live todo list update turn by turn; step tracking is folded into the `Complete` report's step list instead. Not the same question as the row below — this is about a tool for tracking progress *during* a single run, which Forge still doesn't have |
-| Plan mode | A fourth `mode` value (`plan`) on the *same* coding system prompt — read-only investigation ending in `AskUser` or a structured plan (`formats.md` §3c), consumed by a later `implement` run via a `<plan>` envelope tag | A separate third system prompt/entrypoint; a model-side heuristic deciding when to plan first (Codex CLI's "skip planning for the easiest 25%"); a live in-run planning tool (conflated with the row above, but genuinely different — see `formats.md` §6) | Reuses `investigate`'s existing read-only tool scope instead of standing up new machinery — the closest precedent is Gemini CLI's Plan Mode and OpenCode's `plan.txt`/`build-switch.txt`, both mode-variants of one base agent rather than separate agents. Mode selection (plan-first vs. straight to `implement`) is made by whatever invokes a run, not by Forge itself, consistent with how `mode` already works for `investigate`/`review_only` |
+| Plan mode | A second `mode` value (`plan`) on the *same* coding system prompt — read-only investigation ending in `AskUser`, a structured plan (`formats.md` §3c), or a terminal no-action finding (empty `steps`), consumed by a later `implement` run via a `<plan>` envelope tag when a plan was produced | A separate third system prompt/entrypoint; a model-side heuristic deciding when to plan first (Codex CLI's "skip planning for the easiest 25%"); a live in-run planning tool (conflated with the row above, but genuinely different — see `formats.md` §6); a third, separate read-only `investigate` mode for standalone research tasks | Reuses one read-only tool scope instead of standing up new machinery — the closest precedent is Gemini CLI's Plan Mode and OpenCode's `plan.txt`/`build-switch.txt`, both mode-variants of one base agent rather than separate agents. No source in the collection treats "investigate, don't even plan" as its own peer top-level mode: OpenCode's closest analog, `explore`, is a subordinate sub-agent type its `build`/`plan` orchestrator delegates to, not a mode a dispatcher picks directly (`agent-permissions-approval.md` §1); Factory/Droid's leaked prompt collapses diagnosis and planning into one binary Diagnostic/Implementation split with no separate plan-artifact step at all. Folding standalone investigation into `plan`'s own possible outcomes matches that shape more closely than keeping a third mode did. Mode selection (plan-first vs. straight to `implement`) is made by whatever invokes a run, not by Forge itself |
 | Plan → implement gating policy | Deliberately unspecified in Forge's own prompt (`formats.md` §6) | A built-in human-approval gate, reusing `AskUser`'s suspend/resume mechanism for "approve this plan?"; unconditional auto-chaining straight into `implement` | Asked directly rather than assumed. Forge's contract is identical either way — post the plan, call `Complete(status: "planned")` — so the choice of whether an `implement` run fires immediately or waits for a reply is a deployment-time policy the harness owns, not a behavior difference in the agent |
 | Sub-agent tool-scope narrowing | `reviewer` and `validator` sub-agent types are read-only (no `Edit`/`Write`, `Bash` limited to read-only git) | Full tool parity for every sub-agent type (Claude Code's `general-purpose: Tools: *`) | Matches the narrower-scope pattern `agent-subagent-architectures.md` §6 finds in Claude Code's own `statusline-setup`/`output-style-setup` types and in Amp's `oracle` — a reviewing sub-agent has no legitimate reason to touch files |
 | Review dedup identity | Author-agnostic — compare candidate findings against every existing comment in `<existing_comments>` regardless of who posted it; no skip gate on "have I reviewed this commit before" at all | A hard skip in step 1 keyed to a specific agent identity (would require a new `{{AGENT_USERNAME}}` env field, and only catches Forge's own prior comments, not a human's or another bot's) | An identity-keyed check is both fragile (the platform-visible username and the internal placeholder name can drift apart) and too narrow (it only prevents Forge repeating itself, not repeating anyone). Dropping the skip gate also means re-reviews are always allowed to run — a new push can have new issues even on a PR already reviewed once — with the pipeline's dedup step doing the actual noise-prevention work instead of a run-level gate |
-| Read-only mode enforcement | Structural: the harness doesn't wire `Edit`/`Write` at all in `plan`/`investigate`/`review_only` runs, for the orchestrator or its `general-purpose` delegates; prompt rules remain as a second layer | Prompt-only enforcement (the original draft: tools wired in every mode, "never call them" as instruction) | Same argument as the scratch-directory row: a structural boundary can't be forgotten. Gemini CLI strips agent-kind tools in code; Composio scopes per role at the tool level (`agent-subagent-architectures.md` §6); `agent-permissions-approval.md`'s core finding is that serious sources layer prompts *on top of* structural gates, never instead |
+| Read-only mode enforcement | Structural: the harness doesn't wire `Edit`/`Write` at all in `plan` runs, for the orchestrator or its `general-purpose` delegates; prompt rules remain as a second layer | Prompt-only enforcement (the original draft: tools wired in every mode, "never call them" as instruction) | Same argument as the scratch-directory row: a structural boundary can't be forgotten. Gemini CLI strips agent-kind tools in code; Composio scopes per role at the tool level (`agent-subagent-architectures.md` §6); `agent-permissions-approval.md`'s core finding is that serious sources layer prompts *on top of* structural gates, never instead |
+| `review_only`/`investigate` modes | Both folded into `plan` — no separate mode value for either; a standalone research task is a `plan` run that ends with an empty `steps` list instead of a forward-looking plan | Two distinct modes, `review_only` defined as "treat the same as `investigate`" and `investigate` as its own read-only peer of `plan` | `review_only` and `investigate` had identical authorization and differed only in framing; folding one into the other (an earlier step) still left a mode defined almost entirely by "same as `plan`, minus the plan artifact." No source in the collection gives standalone investigation its own peer top-level mode (see the Plan mode row above) — collapsing to two mode values total (`plan`/`implement`) matches the field's actual binary shape and removes a mode that was pulling less weight than its own upkeep cost across `system-prompts.md`/`tools.md`/`formats.md` |
+| Large-diff policy | Skip-with-reason above a harness-configurable size threshold (fixed changed-line count, or a char-count-estimated fraction of the model's token budget adjusted for specialist fan-out) | Sharding — split specialists per file group, merge findings afterward | Rejected, not deferred: no source in the collection does automated sharding-with-merge, including Anthropic's own `/code-review` skill (its troubleshooting doc's answer to large PRs is "consider splitting large PRs into smaller ones," a PR-author step taken *before* review, not a harness mechanism). BMAD's chunking is human-mediated across separate runs — a person decides the group boundaries and reconciles follow-ups — which doesn't transfer to an unsupervised pipeline with no one present to arbitrate a cross-file finding split across batches |
 | Completion integrity | Two deterministic gates: first `Complete(done)` in `implement` returns a fixed checklist instead of completing (second call goes through), and the harness cross-checks the report against real `git status` after the run | Trusting the self-report (original draft); a separate LLM verification judge (Claude Code's internal adversarial verifier) | False completion claims are the best-measured failure mode in the research (`agent-self-verification.md` §7: a leaked 29-30% false-claim rate drove dedicated internal tooling); mechanical gates "can't be talked out of firing" and cost no extra model call, where an LLM judge is a real subsystem (v2 at earliest) |
 | Run bounding | Harness turn budget + context high-water mark; crossing either injects a final-turn nudge that permits only `AskUser` or `Complete`; no compaction in v1 (`formats.md` §7) | Unbounded runs (original draft — silent death on context exhaustion); a full compaction subsystem from day one | "Always end via Complete" is unenforceable without a guaranteed last turn (Copilot Chat's forced last-turn cutoff is the precedent); compaction is a deep subsystem (`agent-context-compaction.md`) that leanness says to defer, but *saying so* beats leaving the ceiling unhandled |
 | Comment anchoring | Anchors are new-file line ranges (`line`/`line_end`); harness validates an anchor is commentable and degrades to a `file:line`-prefixed general comment, visibly, when it isn't | Single-line anchors with no side convention and no validation (original draft); PR-Agent-style per-hunk line-number injection from day one | The decision log's own rationale for pre-baking the diff was line-number accuracy — anchor validation is the cheap backstop that makes a mis-derived number degrade visibly instead of silently; hunk-injection remains the documented upgrade if mis-anchoring shows up in practice |
@@ -149,45 +152,11 @@ subsequent doc assumes.
 
 ## What's deliberately not in v1
 
-Every one of these is a documented, well-precedented pattern in this
-collection — left out for leanness, not because it's a bad idea:
-
-- **Typed sub-agent registry beyond three types.** Coding mode has one
-  delegate type; review mode has two (`reviewer`, `validator`). Claude
-  Code, Gemini CLI, and Amp all show the next step (named, narrower
-  types for specific jobs) once there's a concrete need.
-- **Addressable/resumable sub-agents.** Codex CLI's `spawn_agent`/
-  `send_input`/`wait_agent`/`close_agent` and OpenCode's queue-onto-a-
-  running-job model (`agent-subagent-architectures.md` §2) are the
-  natural upgrade once a coding task needs to steer a sub-agent
-  mid-flight rather than fire-and-forget it.
-- **Numeric confidence scoring for review findings.** The validator
-  pass here is binary (confirmed / not confirmed), matching Anthropic's
-  own skill. TuringMind's 0-100 rubric or BMAD's 4-bucket triage
-  (`code-review-approaches.md` §6) are richer but add real tuning
-  surface — worth adding once false-positive rate is actually measured.
-- **`MultiEdit`, `NotebookEdit`, `WebFetch`/`WebSearch`, browser/deploy
-  tooling.** None are load-bearing for "implement a Jira ticket" or
-  "review a diff."
-- **Memory-file conventions (`AGENTS.md`/`CLAUDE.md`-equivalent).**
-  Reading a project's own convention file is just a `Read` call in the
-  coding-mode prompt's workflow, not a dedicated tool — no need to
-  invent one.
-- **A tiered permission/approval subsystem.** Codex CLI's five
-  cooperating subsystems and Gemini CLI's policy engine
-  (`agent-permissions-approval.md`) are the eventual ceiling; v1 gets a
-  single hard rule (destructive git operations and anything outside the
-  task's declared `mode` require `AskUser`) rather than a graded system.
-- **Context compaction.** A run that outgrows its budgets ends via the
-  final-turn nudge with an honest partial report (`formats.md` §7)
-  rather than summarizing and continuing — compaction is a genuine
-  subsystem (`agent-context-compaction.md`) and the natural v2 lever if
-  budget-exhausted runs turn out to be common.
-- **An LLM judge over completed work.** Claude Code's internal
-  adversarial verification subagent is the ceiling
-  (`agent-self-verification.md` §3); v1's completion-integrity story is
-  deterministic only (checklist gate + harness `git status`
-  cross-check), which can't be prompt-injected or talked out of firing.
+Leanness cuts, not verdicts — every one is a documented,
+well-precedented pattern in this collection, tracked rather than
+dropped. See `future.md` for the full list and the specific upgrade
+each item points to, kept separate so it doesn't distract from
+implementing v1 itself.
 
 ## Reading order
 
@@ -198,6 +167,11 @@ collection — left out for leanness, not because it's a bad idea:
    Forge's output back out: the context envelope, the completion
    schema, the review-finding schema, the `AskUser` suspend/resume
    protocol, and the run-bounding contract.
-4. `review.md` — the design-review pass over all of the above: what
-   was checked against the research, what changed as a result, and the
-   open questions still owned by the design's owner.
+4. `future.md` — deferred work and named escalation triggers, tracked
+   separately so v1 implementation isn't the place that carries them.
+
+This design went through a full review pass against the rest of this
+repo's research after its first draft; every finding from that pass has
+since been folded directly into the documents above (and into this
+decision log) rather than kept as a separate write-up — there is no
+residual open question left unresolved.

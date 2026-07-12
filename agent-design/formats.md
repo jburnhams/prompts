@@ -118,10 +118,10 @@ to keep the format lean; the orchestrator passes the relevant slice of
 this same diff text into each specialist's `Task` prompt rather than
 re-fetching per specialist. (If mis-anchored comments show up in
 practice, PR-Agent's per-hunk new-file line-number injection is the
-documented upgrade path — `code-review-approaches.md` §3 — since
-deriving new-file line numbers by hunk arithmetic is the error-prone
-step; `AddComment`'s harness-side anchor validation in `tools.md` is
-the v1 backstop.)
+documented upgrade path — see `future.md`'s "PR-Agent-style per-hunk
+line-number injection" entry — since deriving new-file line numbers by
+hunk arithmetic is the error-prone step; `AddComment`'s harness-side
+anchor validation in `tools.md` is the v1 backstop.)
 
 **Harness guarantees for review mode**: the working tree is checked out
 at `Head SHA`, and `<diff>` is exactly `base_sha...head_sha`. This is
@@ -136,10 +136,44 @@ gate on size *before* dispatching a run — past the threshold there is
 no code path in which Forge even gets to call `Complete(skipped)`,
 because the run dies on context before its first turn. V1 behavior
 above the threshold is skip-with-reason, reported the same way a
-`skipped` run reports (BMAD's >3000-changed-lines chunking cascade is
-the collection's precedent for the richer alternative — sharding
-specialists per file group — deliberately not specified here; see
-`review.md`'s open questions).
+`skipped` run reports.
+
+Skip, not shard: no source in this collection does automated
+sharding-with-merge (splitting specialists per file group and
+reconciling cross-file findings across batches), including Anthropic's
+own `/code-review` skill that this review pipeline is modeled on — its
+own troubleshooting guidance for large PRs is "consider splitting large
+PRs into smaller ones," a step taken by the PR author before review,
+not something the review harness does. BMAD's >3000-changed-lines
+chunking cascade, the field's other precedent, is human-mediated across
+separate runs (a person agrees the first file group, then the rest are
+noted for follow-up runs) — nobody has solved "which findings span a
+batch boundary" without a human arbitrating the split, which doesn't
+transfer to an unsupervised pipeline. Skip-with-reason is what every
+real source effectively falls back to once the human-mediation each one
+leans on is netted out.
+
+The threshold itself is a harness config value, not a constant in this
+design, and the harness may express it either way:
+
+- a fixed changed-line count (BMAD's shape — simple, diff-tool-native,
+  no model/tokenizer dependency; BMAD's own ~3000-line figure carries no
+  stated derivation, so it's a sanity-check anchor here, not a default
+  to inherit), or
+- a fraction of the deployed model's context-window token budget,
+  estimated from diff character count via a fixed chars-per-token
+  ratio (no real tokenizer call — this is a cheap guesstimate gate,
+  not an exact accounting) — this shape follows the deployed model's
+  actual window rather than a number picked for one model and left
+  stale after a model swap, and it can additionally divide by
+  `(1 + number of specialist lenses)` to account for the diff being
+  copied into every specialist's `Task` prompt in v1 (see `future.md`'s
+  "Diff-as-file instead of diff-in-prompt-thrice" entry for the fix
+  that would remove that multiplier).
+
+Which shape a deployment uses is a harness config choice, not a Forge
+behavior difference — either way Forge only ever sees a run that either
+dispatches normally or never starts.
 
 ---
 
@@ -244,7 +278,7 @@ it was never judged wrong, just already reported.
 ```json
 {
   "ticket": "PROJ-1234",
-  "approach": "string — a few sentences: what will change and why, in plain terms",
+  "approach": "string — a few sentences: what will change and why (or, if steps is empty, what was investigated and why no change is needed), in plain terms",
   "steps": [
     { "order": 1, "description": "string, concrete and specific", "files": ["string, ..."] }
   ],
@@ -268,6 +302,19 @@ what makes handing this to a *different* run viable at all: without it,
 an implement run has to redo the investigation from scratch, which
 defeats the point of planning first. See §6 for how this schema actually
 reaches that later run.
+
+`steps: []` is a valid, deliberate outcome, not an incomplete plan — it
+represents a `plan`-mode run that investigated and concluded no code
+change is needed (the ticket was a question, the behavior was already
+correct, the report wasn't reproducible). This is how `mode: plan`
+covers what an earlier draft of this design called a separate
+`investigate` mode: both are the same read-only investigation, and only
+the *outcome* differs, not the mode. `status` on the `Complete` call is
+`"done"` rather than `"planned"` in this case (`tools.md`); `approach`,
+`context_gathered`, and `risks_and_assumptions` are still populated to
+explain the finding, and step 5 of the plan-mode workflow
+(`system-prompts.md`) still posts it — a ticket that asked a question
+gets an answer on the ticket either way.
 
 ---
 
@@ -316,10 +363,10 @@ and a *new* run resumes it later.
 1. Forge calls `AskUser` with `question`, `context`, and optionally
    `options`.
 2. The harness formats this into a comment and posts it via `AddComment`
-   automatically, targeting the Jira issue the task originated from
-   (the envelope's `issue_key`; for a `source: manual` task, wherever
-   the harness routes that task's communication) — Forge does not call
-   `AddComment` itself for this. AskUser is coding-mode-only
+   automatically, targeting the Jira issue the task originated
+   from (the envelope's `issue_key`; for a `source: manual` task,
+   wherever the harness routes that task's communication) — Forge does
+   not call `AddComment` itself for this. AskUser is coding-mode-only
    (`tools.md`): review runs end in `Complete`, never a suspension.
 3. The harness records a suspended-task record keyed to that comment's
    id/URL, containing everything needed to resume: the original task
@@ -348,9 +395,9 @@ and a *new* run resumes it later.
 
 A task can suspend and resume more than once. There is no built-in cap
 in v1 — a real deployment would likely want one (e.g. "escalate instead
-of asking a third time"), left as a v2 addition per `README.md`'s
-"what's not in v1" list rather than specified here without a concrete
-reason to pick a specific number.
+of asking a third time"), left as a v2 addition per `future.md` rather
+than specified here without a concrete reason to pick a specific
+number.
 
 ---
 
@@ -360,14 +407,17 @@ How a `mode: plan` run's output becomes a `mode: implement` run's
 input. Deliberately underspecified in one place, on purpose — see the
 callout at the end.
 
-1. A `mode: plan` run ends one of two ways: `AskUser` (per §5, same
+1. A `mode: plan` run ends one of three ways: `AskUser` (per §5, same
    suspend/resume mechanics — the run pauses on a question, and when it
-   resumes, it's still `mode: plan`, producing a plan only once
-   unblocked), or `Complete` with `status: "planned"` and the §3c plan
-   in `report`. Either way, if a plan was produced, its text was also
-   already posted to the originating Jira issue via `AddComment` (plan
-   mode workflow step 5, `system-prompts.md`) — that posting is
-   unconditional and happens regardless of what occurs next.
+   resumes, it's still `mode: plan`, concluding only once unblocked),
+   `Complete` with `status: "planned"` and a §3c plan with a non-empty
+   `steps` list in `report`, or `Complete` with `status: "done"` and an
+   empty `steps` list — a no-action finding, per §3c's note. Either way
+   the text was also already posted to the originating Jira issue via
+   `AddComment` (plan mode workflow step 5, `system-prompts.md`) — that
+   posting is unconditional and happens regardless of what occurs next.
+   Only the `status: "planned"` case has anything left to hand off; the
+   rest of this section doesn't apply to a no-action finding.
 2. Whatever invoked the plan run decides whether, and when, to dispatch
    a follow-up `mode: implement` run. This document does not specify
    that policy — it's a deployment-time choice, not something Forge's
@@ -417,6 +467,9 @@ explicit position on what happens at each:
    The precedent is Copilot Chat's forced last-turn cutoff message
    ("OK, your allotted iterations are finished...") — deterministic
    string injection, no extra model call (`agent-self-verification.md` %7).
+   Grok Build's harder variant — refusing to end a turn at all while
+   work is still open — is not adopted here, since it fights the same
+   budget this mechanism exists to enforce.
 2. **No compaction in v1.** Summarize-and-continue is a genuine
    subsystem (triggers, templates, incremental anchoring — see
    `agent-context-compaction.md`) that this design deliberately does
