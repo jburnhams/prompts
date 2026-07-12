@@ -39,7 +39,7 @@ target.
 
 The table above is by *role*; run `mode` narrows it further, and the
 harness enforces that narrowing at wiring time, not just in prompt
-text: in `plan`, `investigate`, and `review_only` runs, `Edit` and
+text: in `plan` and `investigate` runs, `Edit` and
 `Write` are **not registered at all** — for the coding orchestrator or
 for any `general-purpose` sub-agent it spawns ("full tool parity"
 means parity with the orchestrator *as wired for this run*, so a

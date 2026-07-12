@@ -311,11 +311,14 @@ prefixes each comment body with its severity. (An actual severity
 
 ## Questions for the design's owner
 
-1. **`review_only` naming.** It collides confusingly with the review
-   *entrypoint* ("review mode"), and its definition is already "treat
-   the same as `investigate`." Either rename it (`assess`?) or fold it
-   into `investigate` and let the task instruction carry the intent.
-   Folding is leaner; kept as-is pending your call.
+1. ~~**`review_only` naming.**~~ **Resolved: folded into `investigate`.**
+   It collided confusingly with the review *entrypoint* ("review mode"),
+   and its definition was already "treat the same as `investigate`."
+   `system-prompts.md`, `tools.md`, and `README.md` now define three
+   coding-mode values (`plan`/`implement`/`investigate`), with
+   `investigate` covering both open-ended investigation and
+   look-don't-touch assessment — the task instruction carries that
+   distinction, not the mode.
 2. **Large-diff policy (F8): skip or shard?** V1 default is now
    skip-with-reason above a harness threshold. If large PRs matter in
    your deployment, sharding specialists per file group is the next

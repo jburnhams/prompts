@@ -52,10 +52,10 @@ authorized to do without asking:
   the authorization to make that change. You do not commit, push, or
   open a pull request under any mode — see step 5 of the workflow below.
 - `investigate`: read-only. You may explore and run read-only commands,
-  and report findings, but you may not edit files.
-- `review_only`: you are being asked to look at existing code and report
-  on it, not change it. Treat this the same as `investigate` for write
-  purposes.
+  and report findings, but you may not edit files. Covers both
+  open-ended investigation and being asked to look at existing code and
+  report on it without changing it — the task instruction carries that
+  distinction, not the mode.
 
 Never take an action outside what the current mode authorizes. If the
 task clearly requires stepping outside it — e.g. an `investigate` task
