@@ -1,0 +1,169 @@
+# Agent design: a hands-off coding + review agent
+
+A concrete design — not an implementation — for a new agent, synthesized
+from the patterns catalogued in the rest of this repo rather than
+invented from scratch. This folder is the output of that synthesis: two
+system prompts, a lean tool surface, and the wire formats that connect
+them, written out in full so they could be implemented against directly
+on any model/harness.
+
+Placeholder identity name used throughout: **Forge**. Swap it everywhere
+it appears (`system-prompts.md`) before shipping — nothing else depends
+on the name.
+
+## Starting brief
+
+The design target, as given:
+
+- No code, language-agnostic — a specification, not an implementation.
+- A **leaner initial tool set that can be expanded later**, rather than
+  a maximal kitchen-sink surface from day one.
+- Sub-agent support from the start, but two different shapes:
+  **dynamic** (ad hoc, model-decided) delegation for the coding
+  entrypoint, and a **multi-agent** (fixed team) pipeline for review.
+- Favour Claude Code's methodology where this repo's research shows it
+  converged on something good, but take inspiration from every source
+  in the collection rather than cloning one product.
+- **Hands-off, not conversational** — this agent runs a task to
+  completion unsupervised, closer to this repo's archetype 2
+  (benchmark-driven issue-to-patch solver) than archetype 1
+  (interactive kitchen-sink pair-programmer) — but with an `AskUser`
+  escape hatch for genuine blocking ambiguity.
+- First-class Jira and PR integration: a tool to fetch a Jira issue, and
+  a single tool that can post a new comment or a threaded reply on
+  either a Jira issue or a PR.
+
+## Why archetype 2, not archetype 1, and what that changes
+
+`agent-archetypes.md` draws the sharpest line in this collection between
+agents driven turn-by-turn by a human in a chat/IDE loop (archetype 1:
+Claude Code, Cursor, Cline, OpenCode, ...) and agents that run one task
+to completion with no one watching (archetype 2: SWE-agent, OpenHands,
+Augment SWE-bench Agent, ...). Archetype 1's defining traits — a
+terseness-under-4-lines mandate, mid-task status-update protocols,
+"ask before assuming" as a soft default — exist to serve a human
+reading along in real time. None of that applies here: the consumer of
+this agent's output is a Jira ticket and a PR, not a chat window. So
+Forge inherits archetype 2's shape (little persona chatter, a
+fixed explore → implement → verify → report loop, a single unambiguous
+completion signal) and grafts on exactly one archetype-1-style
+interaction primitive — `AskUser` — as the deliberate exception, not the
+default.
+
+That has a real consequence for tool design (see `formats.md`'s AskUser
+section): a chat-facing `AskUser` blocks in place and waits for the next
+human turn. A hands-off agent has no "next human turn" to wait for in the
+same process — so `AskUser` here **suspends the run and exits**, posting
+its question through the same `AddComment` tool used for everything
+else, and the task resumes later (webhook or poll, same pattern this
+session itself uses for `subscribe_pr_activity`) when a reply lands.
+
+## Two entrypoints, one core
+
+```
+                    ┌─────────────────────────┐
+                    │   Shared core tool set   │
+                    │  Read · Edit · Write     │
+                    │  Bash · Grep · Glob      │
+                    │  Task · AskUser          │
+                    │  FetchJira · AddComment  │
+                    │  Complete                │
+                    └────────────┬─────────────┘
+                                 │
+              ┌──────────────────┴──────────────────┐
+              │                                      │
+     ┌────────▼─────────┐                 ┌──────────▼──────────┐
+     │   Coding agent    │                 │    Review agent      │
+     │  (archetype 2)     │                 │  (archetype 4/5)     │
+     │                    │                 │                      │
+     │ Jira ticket in →   │                 │  PR diff in →        │
+     │ implement, verify, │                 │  fixed team of       │
+     │ open/update PR     │                 │  specialist +        │
+     │                    │                 │  validator sub-agents│
+     │ Task→general-purpose│                │  Task→reviewer,      │
+     │ for open-ended      │                │  Task→validator      │
+     │ search/investigation│                │                      │
+     └────────────────────┘                 └──────────────────────┘
+```
+
+Both entrypoints are the *same* model running under a different system
+prompt (`system-prompts.md`), sharing the identical tool schemas
+(`tools.md`). The difference is orchestration philosophy, matching the
+brief's "dynamic for coding, multi-agent for review":
+
+- **Coding mode** delegates the way Claude Code's `Task` tool does:
+  ad hoc, model-decided, stateless one-shot calls to a single
+  `general-purpose` sub-agent type, used only when the orchestrator
+  judges a sub-task will burn a lot of exploratory context it doesn't
+  need to keep (`agent-subagent-architectures.md` §1's "context-window
+  conservation" framing — Claude Code, OpenCode, and Amp all state this
+  as the reason, near-verbatim, and it's the framing Forge's coding-mode
+  prompt uses too).
+- **Review mode** does not leave delegation to model judgment at all —
+  it always fans out to a fixed team, mirroring Anthropic's own
+  `/code-review` skill (`skills/anthropic/code-review/commands/code-review.md`):
+  parallel specialist finders, then a second, independent validator pass
+  per candidate finding before anything is posted. `code-review-approaches.md`
+  §5-6 catalogues why this matters more here than in an interactive
+  tool: with no human pre-filtering before comments go live, the
+  validation pass is the only thing standing between a specialist's
+  hallucinated finding and a real PR comment.
+
+## Design decisions and why
+
+Resolved through discussion before any prompt text was drafted — see the
+chat transcript for the reasoning; this is the settled position each
+subsequent doc assumes.
+
+| Decision | Chosen | Rejected alternative(s) | Rationale |
+|---|---|---|---|
+| Edit/diff wire format | `old_string`/`new_string`, must uniquely match | Aider/Cline `SEARCH/REPLACE` fences, `apply_patch`-style patches, whole-file rewrite | `coding-agent-approaches.md` §5: the only format that needs no worked-example teaching block in the prompt itself, and it's the one Claude Code, Gemini CLI, and (per its README) OpenHands converge on independently |
+| Coding-mode delegation | Ad hoc `Task` tool, stateless one-shot, single `general-purpose` type at launch | A typed registry from day one; an addressable/resumable child (Codex CLI/OpenCode-style) | Matches "leaner initial tool set" — a typed registry and resumable children are real, well-precedented upgrades (`agent-subagent-architectures.md` §2) but not needed until coding-mode tasks get complex enough to want them |
+| Review-mode delegation | Fixed parallel specialist team + validator pass, always | Single-pass no sub-agents (PR-Agent, Codex-review's approach); user-chosen sequential/parallel (`pr-review-toolkit`'s approach) | Hands-off delivery raises the cost of a false positive (no human filters before posting) enough to justify the fixed second pass unconditionally, per `code-review-approaches.md`'s takeaways |
+| Task completion signal | Structured schema **and** a human-readable summary field inside it | Freeform chat-style final message only (Claude Code); a bare machine schema with no prose (Codex-review's JSON-schema output) | Consumers are mixed: CI/Jira automation need the schema, but the same payload gets rendered into a PR/Jira comment a person will read |
+| `AskUser` semantics | Suspend the run, post the question via `AddComment`, resume on reply | Synchronous in-process blocking prompt | Hands-off has no human watching the process to answer synchronously; the suspend/resume shape also reuses `AddComment` instead of adding a second communication channel |
+| Diff delivery to the review agent | Pre-formatted plain unified diff, baked into the task envelope | Custom hunk format (PR-Agent's `__new hunk__`/`__old hunk__`); leave it to the model to run `git diff`/`gh` itself (most Claude Code skills) | `code-review-approaches.md` §3's takeaway: pre-formatting trades a little build complexity for guaranteed line-number accuracy, which matters when comments post unsupervised. Plain unified diff (Codex-review's choice) rather than PR-Agent's custom hunks, to keep the format lean |
+| Git commit/push posture | Scoped by the task envelope's `mode` field, not a blanket "always ask first" | Claude Code's interactive convention: never commit/push without being explicitly asked in the current turn | There is no "current turn" to ask permission in — hands-off tasks are invoked *with* a mandate (e.g. "implement this ticket and open a PR"), so the mandate itself is the authorization. `formats.md`'s context envelope carries an explicit `mode` (`implement` / `review_only` / `investigate`) so a task can still be scoped read-only when that's what's wanted |
+| Planning/todo tool | None in v1 | A `TodoWrite`-style stateful tool (near-universal in archetype 1, `coding-agent-approaches.md` §6) | No one is watching a live todo list update turn by turn; step tracking is folded into the `Complete` report's step list instead. First candidate to add back if multi-day/multi-ticket runs turn out to need visible incremental progress |
+| Sub-agent tool-scope narrowing | `reviewer` and `validator` sub-agent types are read-only (no `Edit`/`Write`, `Bash` limited to read-only git) | Full tool parity for every sub-agent type (Claude Code's `general-purpose: Tools: *`) | Matches the narrower-scope pattern `agent-subagent-architectures.md` §6 finds in Claude Code's own `statusline-setup`/`output-style-setup` types and in Amp's `oracle` — a reviewing sub-agent has no legitimate reason to touch files |
+
+## What's deliberately not in v1
+
+Every one of these is a documented, well-precedented pattern in this
+collection — left out for leanness, not because it's a bad idea:
+
+- **Typed sub-agent registry beyond three types.** Coding mode has one
+  delegate type; review mode has two (`reviewer`, `validator`). Claude
+  Code, Gemini CLI, and Amp all show the next step (named, narrower
+  types for specific jobs) once there's a concrete need.
+- **Addressable/resumable sub-agents.** Codex CLI's `spawn_agent`/
+  `send_input`/`wait_agent`/`close_agent` and OpenCode's queue-onto-a-
+  running-job model (`agent-subagent-architectures.md` §2) are the
+  natural upgrade once a coding task needs to steer a sub-agent
+  mid-flight rather than fire-and-forget it.
+- **Numeric confidence scoring for review findings.** The validator
+  pass here is binary (confirmed / not confirmed), matching Anthropic's
+  own skill. TuringMind's 0-100 rubric or BMAD's 4-bucket triage
+  (`code-review-approaches.md` §6) are richer but add real tuning
+  surface — worth adding once false-positive rate is actually measured.
+- **`MultiEdit`, `NotebookEdit`, `WebFetch`/`WebSearch`, browser/deploy
+  tooling.** None are load-bearing for "implement a Jira ticket" or
+  "review a diff."
+- **Memory-file conventions (`AGENTS.md`/`CLAUDE.md`-equivalent).**
+  Reading a project's own convention file is just a `Read` call in the
+  coding-mode prompt's workflow, not a dedicated tool — no need to
+  invent one.
+- **A tiered permission/approval subsystem.** Codex CLI's five
+  cooperating subsystems and Gemini CLI's policy engine
+  (`agent-permissions-approval.md`) are the eventual ceiling; v1 gets a
+  single hard rule (destructive git operations and anything outside the
+  task's declared `mode` require `AskUser`) rather than a graded system.
+
+## Reading order
+
+1. `system-prompts.md` — the two full system prompts.
+2. `tools.md` — every tool's description and input schema.
+3. `formats.md` — the wire formats that connect a task to Forge and
+   Forge's output back out: the context envelope, the completion
+   schema, the review-finding schema, and the `AskUser` suspend/resume
+   protocol.
