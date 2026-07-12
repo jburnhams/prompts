@@ -93,7 +93,26 @@ Two shapes of deferred work:
   (`agent-subagent-architectures.md` §3). A cheap-model triage pass and
   an expensive-model validator are the natural first split once cost
   per review run is measured.
-- **A hard write-protect on the project-conventions file.** V1 defends
+- **Re-wiring `AddComment` in implement mode, as a channel for
+  recording implementation decisions on the ticket.** V1 doesn't
+  register `AddComment` in `implement` runs at all (`tools.md`): no
+  workflow step posts anything there, and a wired-but-unused tool on an
+  unsupervised path is the same injection surface that keeps `AskUser`
+  out of review mode. The information itself isn't lost — judgment
+  calls, decisions, and caveats go in the Complete report's
+  `judgment_calls`/`summary` fields, and the harness decides what
+  reaches the ticket. The tracked upgrade is to bring the tool back
+  with a narrow, stated job: posting durable implementation-decision
+  notes to the originating Jira issue ("chose library X over Y because
+  Z", "the acceptance criteria's edge case is handled in <file>"), so
+  the decision record lives on the ticket itself rather than only in
+  whatever the harness does with the report. Worth doing only if real
+  deployments find the report → harness → ticket path insufficient —
+  e.g. wanting notes to land mid-run rather than after Complete, or
+  wanting them threaded against specific existing ticket comments —
+  and it should come with the same
+  scoped-to-one-job prompt guidance plan mode's posting step has, not
+  as a general-purpose comment ability. V1 defends
   the conventions file (instruction to every future run, so a
   self-instruction-poisoning target) with a prompt rule plus a post-run
   harness flag on any diff touching it (`formats.md` §3a). The

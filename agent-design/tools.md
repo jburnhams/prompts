@@ -24,7 +24,7 @@ Availability by role:
 | Task | yes | yes | yes | no |
 | AskUser | yes | no | no | no |
 | FetchJira | yes | no | no | no |
-| AddComment | yes | yes | no | no |
+| AddComment | `plan` runs only | yes | no | no |
 | Complete | yes | yes | no | no |
 
 `general-purpose` gets full tool parity with its orchestrator, minus
@@ -55,7 +55,20 @@ v1, with one narrow structural exception — the git-write blocklist
 described in the Bash tool's own section below, which the harness
 applies in every mode. Filtering arbitrary commands beyond that one
 family is a real permission engine — see `future.md`'s "General
-command-level `Bash` permission filtering" entry. The
+command-level `Bash` permission filtering" entry.
+
+The narrowing runs the other way too: in `implement` runs, `AddComment`
+is **not registered**. Plan mode needs it (workflow step 5 posts the
+plan or finding to the ticket), but implement mode has no workflow step
+that posts anything — the Complete report is its only outward channel,
+and the harness owns what reaches the ticket or PR from it. Leaving the
+tool wired anyway would be exactly the unused-escape-hatch surface this
+design strips `AskUser` from review mode for: a tool with no legitimate
+caller in that mode is only reachable by a prompt-injected instruction.
+(`AskUser`'s suspend protocol is unaffected — the harness posts the
+question itself; Forge never calls `AddComment` for it. See
+`future.md`'s "Re-wiring `AddComment` in implement mode" entry for the
+tracked upgrade if mid-run ticket notes turn out to be wanted.) The
 system-prompt mode rules in
 `system-prompts.md` remain as the behavioral layer on top of this
 structural one.
@@ -465,7 +478,10 @@ Output shape is documented in `formats.md`.
 > to a specific file/line on a PR, or a threaded reply to an existing
 > comment — on either a Jira issue or a PR. One tool for both platforms,
 > per the brief; platform differences are handled by which optional
-> fields you set, not by separate tools. `body` is always plain
+> fields you set, not by separate tools. Wired in review runs and
+> `plan`-mode coding runs only — an `implement` run's sole outward
+> channel is its Complete report (see the availability notes at the top
+> of this document). `body` is always plain
 > Markdown regardless of target — converting it to whatever the target
 > platform actually needs (e.g. Jira Cloud's ADF, or legacy wiki markup)
 > is a harness-side concern, not something this schema or Forge itself
