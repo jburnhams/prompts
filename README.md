@@ -39,7 +39,7 @@ drill-down focused specifically on *what tools each scaffold actually
 gives the model*: shell type/persistence, search tooling, code execution,
 browser/web access, multimodal handling, async/background execution,
 persistent memory & deployment, sandbox/isolation, and extensibility
-(MCP/skills/dynamic tool sets), across all 21 sources with a documented
+(MCP/skills/dynamic tool sets), across all 25 sources with a documented
 tool surface.
 
 **[→ `agent-subagent-architectures.md`](./agent-subagent-architectures.md)**
@@ -49,7 +49,7 @@ calling protocol (stateless tool-call vs. persistent addressable child
 vs. shared-conversation handoff vs. async background process vs.
 multi-party orchestration topologies), whether the sub-agent gets its
 own system prompt, turn/output bounding, concurrency and write-safety,
-and recursion limits, across the 19 sources with a documented sub-agent
+and recursion limits, across the 21 sources with a documented sub-agent
 mechanism — including Microsoft Agent Framework's five named
 orchestration patterns (Sequential/Concurrent/Handoff/GroupChat/
 Magentic), a structurally different N-party design found nowhere else
@@ -57,7 +57,7 @@ in the collection.
 
 **[→ `agent-context-compaction.md`](./agent-context-compaction.md)** —
 a further drill-down on how a scaffold survives running out of context
-mid-task, across 18 sources: trigger model (proactive token-threshold
+mid-task, across 21 sources: trigger model (proactive token-threshold
 checks vs. reactive-on-API-error vs. manual commands vs. Cline's
 model-proposes/user-approves third shape), prompt shape (free text vs.
 structured templates vs. XML), single-mechanism vs. layered-pipeline
@@ -71,7 +71,7 @@ detail — actual numeric token budgets (reserved buffers, summary
 output caps, retention thresholds) across the sources that expose them.
 
 **[→ `agent-turn-output.md`](./agent-turn-output.md)** — a further
-drill-down on what a single LLM turn actually produces, across 18
+drill-down on what a single LLM turn actually produces, across 22
 sources: session/task title generation (a dedicated cheap-model side
 call vs. no generation at all vs. folded into the main model's own tool
 calls — ten sources now confirmed or likely "don't bother," though only
@@ -117,7 +117,7 @@ PR-draft-state gate).
 
 **[→ `agent-permissions-approval.md`](./agent-permissions-approval.md)**
 — a further drill-down on how a scaffold decides whether an action
-needs a human first, across 17 sources. This turned out to be the
+needs a human first, across 21 sources. This turned out to be the
 richest single doc in the whole collection: Codex CLI's permission
 architecture is not one mechanism but five cooperating subsystems
 (a static command-safety classifier, a Starlark rule-engine DSL, an
@@ -150,7 +150,7 @@ model's own system prompt — the harness gates the model, but rarely
 tells it the rules.
 
 **[→ `agent-git-vcs.md`](./agent-git-vcs.md)** — the last of the
-planned drill-downs, across 22 sources: when (and whether) an agent
+planned drill-downs, across 25 sources: when (and whether) an agent
 commits, checkpoint/undo systems, worktree isolation, branch-management
 rules, and PR/push workflow. The headline finding: two unrelated teams
 (OpenCode, Gemini CLI) independently built a **hidden shadow git
@@ -203,17 +203,31 @@ still retrievable, just no longer actively developed at those locations.
 
 A second category, kept separate from the open-source folders above: prompts
 from closed-source products, extracted by third parties rather than
-published by the vendor. 30 sources so far — see
+published by the vendor. 34 sources so far — see
 [`leaked/README.md`](./leaked/README.md) for the full list and caveats on
 provenance and reliability. Most came in bulk from one community aggregator
-repo; a few (Factory/Droid, Lumo, **Jules**) from standalone gists/
-mirror-repo subfolders. Jules (Google's async coding agent) is worth
-flagging specifically: its leaked prompt has the most granular self-review
-discipline found anywhere in this collection — mandatory verification
-after *every* file-modifying action (not just before submission), plus a
-dedicated pre-commit tool, an explicit code-review-request tool, and
-Playwright-generated screenshots as proof of frontend verification. See
-[`leaked/jules/README.md`](./leaked/jules/README.md).
+repo; a few (Factory/Droid, Lumo, **Jules**, **GitHub Copilot CLI**,
+**Grok Build**) from standalone gists/mirror-repo subfolders. Jules
+(Google's async coding agent) is worth flagging specifically: its leaked
+prompt has the most granular self-review discipline found anywhere in this
+collection — mandatory verification after *every* file-modifying action
+(not just before submission), plus a dedicated pre-commit tool, an explicit
+code-review-request tool, and Playwright-generated screenshots as proof of
+frontend verification. See [`leaked/jules/README.md`](./leaked/jules/README.md).
+GitHub Copilot CLI — a distinct product from the already-covered
+`copilot-chat/` VS Code extension — is worth flagging too: its two leaked
+captures turn out to be the same underlying "Copilot CLI runtime" running
+in two embedding contexts (standalone terminal vs. inside VS Code), with a
+first-class SQL tool for todo tracking and cross-session memory not
+matched by any other source in this collection. See
+[`leaked/github-copilot-cli/README.md`](./leaked/github-copilot-cli/README.md).
+Grok Build (xAI's coding CLI, this collection's first xAI coding-agent
+coverage) is worth flagging for a different reason: several of its tool
+descriptions and behavioral rules are near-verbatim matches to Claude
+Code's own leaked tool descriptions (`Read`/`Edit`/`Write`, the Bash
+tool's git-commit-safety guidance, even a shared worked example) — the
+most literal cross-vendor prompt-text match found anywhere in this
+collection. See [`leaked/grok-build/README.md`](./leaked/grok-build/README.md).
 
 **Checked and no leak found (as of 2026-07-10)**: CodeRabbit, Greptile, and
 Qodo's closed-source products (its open-source `pr-agent` is already

@@ -41,6 +41,17 @@ prompt-only extraction: a data point, not ground truth.
   repo), so it should be read as "plausible structural description,"
   not "verified line-by-line audit." Confirmed-by-direct-reading vs.
   inferred-from-file-naming is noted inline where it matters.
+- **A materially stronger authenticity signal arrived later**: a
+  separate, much richer prompt-text capture (`claude-code-2.1.172-
+  opus-4.6.md`, from a different leak aggregator — see the folder's
+  README for full provenance) turned out to be a near-verbatim match
+  to this live session's own actual system prompt: same section
+  headers, same "Committing changes with git" numbered steps, same
+  Git Safety Protocol bullets, the identical `Agent({description:
+  "Branch ship-readiness audit", ...})` worked example. That's
+  stronger corroboration than anything available when this document
+  was first written, and it's cited inline below wherever it upgrades
+  a previously source-inferred claim to a directly-confirmed one.
 
 ## Module map
 
@@ -261,6 +272,101 @@ tools while preserving a stable order — reordering the tool list between
 turns would invalidate Anthropic's prompt cache, so ordering is treated
 as a correctness concern, not cosmetic.
 
+**A deferred/on-demand tool-loading layer, confirmed directly rather
+than inferred from source** — this section previously had nothing to
+say about tool *deferral* specifically; the richer capture's
+`deferred-tools.md` supplies it, and it matches this live session's
+own deferred-tool list almost tool-for-tool. A consistently small core
+set (`Agent`, `Bash`, `Edit`, `Read`, `Skill`, `Write`, plus
+`AskUserQuestion` and `Workflow` in the three versioned captures) is
+always present; a larger catalog — confirmed at 23 tools in the
+captured snapshot: `Cron{Create,Delete,List}`, `Enter/ExitPlanMode`,
+`Enter/ExitWorktree`, `Monitor`, `NotebookEdit`, `PushNotification`,
+`RemoteTrigger`, `ScheduleWakeup`, `SendMessage`,
+`Task{Create,Get,List,Output,Stop,Update}`, `Team{Create,Delete}`,
+`WebFetch`, `WebSearch` — is named-only until a lookup call fetches its
+full schema. This is presumably the same context-budget-preservation
+motivation as the prompt-caching-aware section design described below,
+applied to the tool list instead of the prompt text.
+
+**Several tool families named in `deferred-tools.md` were entirely
+unknown to this document before**, worth cataloguing as their own
+finding rather than folding silently into the tool-dispatch mechanics
+above:
+
+- **`Cron{Create,Delete,List}`** — a persistent/session scheduling
+  system distinct from anything else described in this document.
+  `CronCreate` schedules a prompt for future enqueueing (5-field cron,
+  local timezone, `recurring` default true vs. one-shot) with a
+  `durable` flag choosing between `.claude/scheduled_tasks.json`
+  (survives restarts) and in-memory-only (dies with the session), plus
+  explicit anti-thundering-herd guidance ("Avoid the :00 and :30 minute
+  marks... requests from across the planet land on the API at the same
+  instant"). Jobs only fire while the REPL is idle, and recurring jobs
+  auto-expire after 7 days.
+- **`RemoteTrigger`** — calls claude.ai's own remote-trigger API
+  (`/v1/code/triggers`, OAuth handled in-process) to list/get/create/
+  update/run what the product surfaces as "Routines" — a cloud/
+  server-side scheduling surface distinct from the local `Cron*`
+  family, driven by the `schedule.md` bundled skill (see the folder's
+  README).
+- **`ScheduleWakeup`** — the self-pacing wakeup scheduler behind
+  `/loop` dynamic mode (see Self-verification below for the skill that
+  drives it), with an explicit, quantified prompt-cache heuristic
+  baked into the tool description: "The Anthropic prompt cache has a
+  5-minute TTL. Sleeping past 300 seconds means the next wake-up reads
+  your full conversation context uncached... Don't pick 300s. It's the
+  worst-of-both." A concrete numeric data point for the same
+  cache-preservation instinct this document documents elsewhere for
+  compaction and prompt-section memoization.
+- **`Monitor`** — a background event-stream watcher, distinct from
+  Bash's own `run_in_background`: picks a notification cardinality
+  (one / one-per-occurrence / indefinite), documents pipe-buffering
+  gotchas (`grep --line-buffered`, `head` never flushing), states a
+  "coverage — silence is not success" doctrine (a monitor that only
+  greps for a success marker stays silent on crash/hang too), and
+  auto-shuts-down noisy monitors.
+- **`PushNotification`** — sends a desktop/phone notification,
+  explicitly framed around attention cost: "err toward not sending
+  one... Notify when there's a real chance they've walked away."
+- **`Task{Create,Get,List,Output,Stop,Update}`** — a structured,
+  ID-based task system with `blocks`/`blockedBy` dependency edges and
+  an `owner` field (an agent name), distinct from both `TodoWrite`
+  (this document's earlier tool list) and the source-inferred "Team"
+  task-list architecture below — `TaskList`'s own documentation states
+  the relationship directly: **"Team = TaskList (1:1)."** `TaskOutput`
+  is marked deprecated in favor of `<task-notification>` events plus
+  direct file reads.
+- **`Workflow`** — the largest single new finding: a deterministic,
+  JS-scripted multi-agent orchestration tool, gated behind explicit
+  user opt-in (an "ultracode" keyword or explicit request — "Workflows
+  can spawn dozens of agents and consume a large amount of tokens; the
+  user must request that scale, not have it inferred"). `agent()`/
+  `parallel()`/`pipeline()`/`phase()`/`log()`/`workflow()` primitives;
+  `pipeline()` is documented as the default over `parallel()` because
+  pipeline has no cross-item barrier. Concurrency capped at
+  `min(16, cpu cores - 2)` per workflow, 1000-agent lifetime cap,
+  4096-item batch cap. **Resumable**: `resumeFromRunId` replays cached
+  `agent()` results for an unchanged script prefix ("Same script + same
+  args → 100% cache hit"), which is specifically why `Date.now()`/
+  `Math.random()` are banned inside workflow scripts — either would
+  break the cache-hit guarantee. A `budget` object enforces a hard
+  token ceiling tied to a user's stated budget, not an advisory one.
+  Extensive prose on "quality patterns" (adversarial verify, judge
+  panel, loop-until-dry, completeness critic) reads as the concrete,
+  currently-shipped, user-facing productization of the orchestration
+  architecture the Multi-agent "Team" section below previously had to
+  infer from source-file names alone.
+- **`AskUserQuestion`** and **`EnterPlanMode`** — both real, richly
+  specified tools this document didn't previously name at all (the
+  README's tool list only had `ExitPlanMode`). `EnterPlanMode` is the
+  missing other half of the plan-mode story already documented below —
+  a 7-condition "when to use" rubric with worked good/bad examples,
+  the mirror image of `ExitPlanMode`'s own documented trigger
+  conditions. `AskUserQuestion` has a `preview` field (ASCII mockups
+  or code snippets rendered side-by-side with the options) not
+  documented anywhere else in this collection.
+
 ## System prompt assembly
 
 `src/constants/prompts.ts` assembles the prompt from named sections
@@ -372,6 +478,20 @@ seek permission, not the enforcement architecture behind it).
   from pure research tasks (should not) — the model has a dedicated
   tool to request the mode transition, unlike Cline's Plan/Act split
   (see `cline/README.md`'s Permissions section), where the model can
+  only ask in prose and has no equivalent forcing tool.
+- **`EnterPlanMode`, its counterpart**, confirmed only via the richer
+  later capture (not the original leak): a 7-condition "when to use"
+  rubric with worked good/bad examples — the missing other half of the
+  plan-mode story this section could previously only describe from the
+  exit side.
+- **Provenance discipline worth keeping straight when citing this
+  section**: the six-mode enum, rule model, `yoloClassifier.ts`/
+  `bashClassifier.ts`, and settings-file storage are all leak-confirmed
+  (this repo's own extraction); the `PreToolUse` mechanics,
+  `permissionDecision`/exit-code protocol, and the `PermissionRequest`/
+  `PermissionDenied` event names are confirmed only via Anthropic's
+  public docs, fetched separately — don't conflate the two
+  provenances when citing this section elsewhere.
 
 ## Git and version control
 
@@ -466,21 +586,24 @@ than everything else in this document).
   - **Composes with sub-agent isolation**: works from agents whose
     working directory was pinned at launch, and "the switch only
     affects this agent, not the parent session."
+  - **`path` parameter for entering an *existing* worktree, confirmed
+    only via the richer later capture**: `EnterWorktree` isn't only a
+    creation tool — passing `path` switches into an already-existing
+    worktree rather than creating a new one, with its own concurrency
+    rule ("Must not already be in a worktree session when creating a
+    new worktree (`name`); switching into another existing worktree
+    via `path` is allowed").
+  - **A tmux-session lifecycle tied to the keep/remove decision, also
+    confirmed only via the richer capture**: `ExitWorktree`'s two
+    dispositions affect any tmux session running inside the worktree
+    differently — `"keep"` leaves it running so the user can reattach,
+    `"remove"` kills it.
   - **Fail-closed removal**: exiting with `"remove"` "will REFUSE to
     remove it unless [`discard_changes`] is set to `true`" if the
     worktree has uncommitted files or commits not on the original
     branch — no silent data loss, and "on session exit, if still in
     the worktree, the user will be prompted to keep or remove it,"
     never removed silently.
-  only ask in prose and has no equivalent forcing tool.
-- **Provenance discipline worth keeping straight when citing this
-  section**: the six-mode enum, rule model, `yoloClassifier.ts`/
-  `bashClassifier.ts`, and settings-file storage are all leak-confirmed
-  (this repo's own extraction); the `PreToolUse` mechanics,
-  `permissionDecision`/exit-code protocol, and the `PermissionRequest`/
-  `PermissionDenied` event names are confirmed only via Anthropic's
-  public docs, fetched separately — don't conflate the two
-  provenances when citing this section elsewhere.
 
 ## Multi-agent "Team" coordination
 
@@ -539,6 +662,39 @@ peer-to-peer engine.
   show exactly how peer discovery/listing works, is a confirmed stub —
   so the peer-visibility mechanism is inferred (from `TeamCreateTool`'s
   teammate registry) rather than directly confirmed.
+
+**This whole section was built entirely from source-code inference —
+file names, comments, and constant names, never a captured prompt.
+The richer, later capture (`deferred-tools.md`) confirms the core of
+it directly, promoting several claims above from "inferred" to
+"confirmed via captured tool schema":**
+
+- **`TeamCreate`/`TeamDelete` are real, captured tools**, not just
+  source-inferred classes. `TeamCreate`'s own description states the
+  Task-system relationship even more directly than the source-code
+  inference above managed to: **"Teams have a 1:1 correspondence with
+  task lists (Team = TaskList)"** — confirming `TaskList`'s "Teammate
+  Workflow" documentation and this section's `Task.ts`-based inference
+  are describing the same system from two different captured angles.
+  Creates `~/.claude/teams/{team-name}/config.json` and
+  `~/.claude/tasks/{team-name}/`. `TeamDelete` "will fail if the team
+  still has active members" — a real precondition, not previously
+  documented.
+- **`SendMessage`'s structured message types are confirmed by name**:
+  `shutdown_request`/`shutdown_response`/`plan_approval_request`/
+  `plan_approval_response` as literal JSON message-type values,
+  directly validating this section's previous "shutdown request/
+  response, plan approval/rejection" claim, which had been sourced
+  only from code inference before.
+- **A previously-undocumented idle-state UX rule**: "Teammates go idle
+  after every turn... A teammate going idle immediately after sending
+  you a message does NOT mean they are done" — with its own
+  peer-visibility mechanism ("a brief summary is included in their
+  idle notification"), a more specific and different claim than the
+  `ListPeersTool.ts`-stub-driven uncertainty above; whether this
+  resolves that gap or describes a separate summary channel isn't
+  fully clear from the captured text alone, but it's a real, new,
+  directly-quoted data point either way.
 
 ## Plugins and skills
 
@@ -739,19 +895,184 @@ Code's publicly documented hook system.
   plumbing for both agent hooks and "background verification" broadly;
   it's a building block the verification machinery uses, not itself a
   correctness-checker.
+- **A much more opinionated, genuinely-shipped verification doctrine,
+  confirmed via the richer capture's `verify.md`/`run.md` bundled
+  skills** — not ant-gated, and considerably stronger than the "softer
+  autonomy framing" bullet above: "verification is runtime
+  observation... don't run tests, don't typecheck" — i.e. the shipped
+  `/verify` skill explicitly *deprioritizes* the two checks the
+  ant-gated verification subagent treats as mandatory, in favor of
+  actually launching and exercising the application, with `run.md`
+  supplying the app-launching patterns by project type. Worth reading
+  as a second, real self-verification tier — external users get a
+  runtime-observation-first doctrine via `/verify`; the exhaustive
+  build/test/lint/adversarial-probe gate stays internal-only.
+- **`loop.md` (the `/loop` skill) adds a distinct, genuinely-shipped
+  autonomy-discipline layer**, driving `ScheduleWakeup` (see Tool
+  definition and dispatch above): explicit "steward, not initiator"
+  framing, a trust-erosion warning ("If you find yourself reaching for
+  justifications about why a push is probably fine, that's a signal to
+  wait"), and a rule to scale back after three consecutive
+  nothing-to-do results. This extends, rather than contradicts, the
+  "Autonomous work" section documented above — a second, richer,
+  loop-specific autonomy doctrine layered on top of the general one.
+- **`security-review.md` is a second, functionally distinct security
+  mechanism, not a restatement of anything already in this
+  document** — the built-in `/security-review` skill is manually
+  invoked, git-diff-scoped, and multi-agent (a finder pass, then a
+  parallel false-positive filter), with a detailed confidence-scoring
+  rubric and hard exclusions (DoS, secrets-already-on-disk,
+  rate-limiting-by-design). This is architecturally different from the
+  automatic, hook-triggered `security-guidance` plugin already
+  documented in this collection (`skills/anthropic/security-guidance/`
+  — pattern+LLM two-pass, fires on edit/commit without being asked).
+  Both mechanisms coexist in the shipped product; don't conflate them.
+
+## The Desktop/SDK capture — a genuinely distinct variant, not a near-duplicate
+
+`claude-desktop-code.md` ("Claude Code (Desktop App - Code Mode)," Opus
+4.6, captured 2026-02-21) is the fourth capture in this folder and the
+first whose own text makes a real, self-attested claim about its own
+harness: "You are Claude Code, Anthropic's official CLI for Claude,
+**running within the Claude Agent SDK**." Every other capture here
+either says nothing about SDK-vs-CLI (`Prompt.txt`, the docs-assistant
+file) or is a CLI build (`claude-code-2.1.172-*.md`, versioned as
+`2.1.172`). A full read plus a direct diff of opening sections and tool
+list against `claude-code-2.1.172-opus-4.8.md` (same rough era, closest
+comparable CLI capture) confirms this is a real product-surface split,
+not a relabeled duplicate — several load-bearing differences, not just
+model-identity strings:
+
+- **Verbose-era prompt text, not the condensed rewrite.** Opus 4.8's
+  `# Harness`/`# Session-specific guidance`/`# Environment`/`# Context
+  management` four-section condensed structure (see the folder's
+  README) is entirely absent here. The Desktop capture instead carries
+  the older, fully-spelled-out section style — `# Tone and style`, `#
+  Task Management` with the full two worked TodoWrite examples, `#
+  Asking questions as you work`, `# Doing tasks` — matching the more
+  verbose lineage (closer to `Prompt.txt`/`opus-4.6` than to `opus-4.8`/
+  `fable-5`'s rewrite). Whether this means Desktop/SDK mode hasn't
+  received the condensed rewrite yet, or runs a permanently different,
+  more-explicit prompt style by design, isn't resolvable from a single
+  dated snapshot — but the two are clearly different prompt lineages,
+  not the same text with a different label.
+- **The elaborate git and PR sections survive intact, while the CLI's
+  equivalent has visibly shrunk.** Opus 4.8's Bash tool description
+  condenses git guidance to three bullets under a bare `## Git` heading
+  ("Interactive flags... not supported," "Use `gh` CLI," "Commit or
+  push only when the user asks") — the numbered `git status`/`diff`/
+  `log`-in-parallel workflow, the full Git Safety Protocol bullet list,
+  and the literal `gh pr create` template are simply gone from that
+  file. The Desktop capture keeps the full elaborate version of all
+  three: numbered commit steps, the complete Git Safety Protocol list,
+  and the full `## Summary`/`## Test plan` PR template — the same
+  elaborate shape `Prompt.txt` and `opus-4.6` have, and (worth noting
+  directly, since it's independently checkable) the same shape this
+  very research session's own Bash tool description uses. **The commit
+  trailer itself differs in a way that isn't just model-version
+  substitution**: Desktop's trailer is `Co-Authored-By: Claude Opus 4.6
+  <noreply@anthropic.com>` with no further line — the CLI captures (and
+  this live session) append a second `Claude-Session: https://claude.ai/
+  code/session_...` trailer line the Desktop capture doesn't have at
+  all. A real, structural omission, not a version-string diff.
+- **Planning-tool descriptions are dramatically terser.** `EnterPlanMode`
+  is one sentence here ("Use this tool proactively when you're about to
+  start a non-trivial implementation task") versus `opus-4.8`'s full
+  7-condition rubric with worked good/bad examples (~90 lines); likewise
+  `ExitPlanMode` is a two-sentence description here versus the CLI's
+  worked-example-laden version. This terseness pattern isn't universal
+  across the file — the browser-safety material below runs to hundreds
+  of lines of highly elaborate prose — so it reads as a deliberate
+  compactness choice specific to planning-tool documentation in this
+  variant, not evidence of a truncated capture.
+- **Still `Task`, not `Agent`, and a smaller, differently-populated agent
+  registry.** Where the CLI captures renamed the sub-agent tool `Agent`
+  (see the folder's README), the Desktop capture's sub-agent tool is
+  still named `Task`, with a registry of `Bash`, `general-purpose`,
+  `statusline-setup`, `Explore`, `Plan`, `claude-code-guide` — six
+  types, including a `Bash: Command execution specialist (Tools: Bash)`
+  agent type not documented anywhere else in this collection (not in
+  the CLI's `Agent` registry, not in `deferred-tools.md`). The CLI's
+  `claude` catch-all type is absent here.
+- **`TodoWrite`, not the newer `Task{Create,Get,List,Output,Stop,
+  Update}` system.** The Desktop capture's task-tracking tool is the
+  older single `TodoWrite` tool with the classic pending/in_progress/
+  completed states — the structured, ID-based, `blocks`/`blockedBy`
+  dependency-graph task system `deferred-tools.md` documents for the
+  CLI (with its "Team = TaskList (1:1)" relationship to multi-agent
+  coordination) isn't present here at all.
+- **A visibly smaller autonomy/scheduling tool surface.** Comparing
+  against `deferred-tools.md`'s 23-tool CLI catalog, the Desktop capture
+  has no `CronCreate`/`CronDelete`/`CronList`, no `RemoteTrigger`, no
+  `ScheduleWakeup`, no `Monitor`, and no `PushNotification` — the entire
+  scheduling/background-watching/notification cluster documented
+  elsewhere in this file is missing. It also has no `EnterWorktree`/
+  `ExitWorktree` — the worktree-isolation mechanism this document's Git
+  section treats as "the richest finding on this axis in the whole
+  survey" has no counterpart here. What it *does* still have: `Skill`,
+  `TaskStop` (a bare stop-by-ID, not the fuller CLI `TaskGet`/`TaskList`/
+  `TaskUpdate` family), `TeamCreate`/`TeamDelete`/`SendMessage` (present
+  but documented in one-line stubs rather than the CLI's fuller
+  schemas). Net effect: this variant's tool surface reads as scoped for
+  an interactive desktop session rather than an unattended/background
+  or scheduling-heavy one — consistent with "Code Mode" being a
+  desktop-app feature rather than the CLI's own remote/background
+  execution paths.
+- **An entirely new, ~300-line browser-automation safety persona with no
+  counterpart in any other capture in this folder.** Triggered by the
+  presence of `Claude in Chrome`, `Claude Preview` (a `.claude/
+  launch.json`-driven local dev-server + browser-inspection MCP
+  surface), an MCP-connector-suggestion tool, and Playwright MCP tools
+  (55 MCP tools total across the four servers — 18 Chrome, 13 Preview,
+  2 registry, 22 Playwright — concretely enumerated by name, the first
+  time this collection has a fully-named MCP tool catalog for Claude
+  Code rather than just the `mcp__servername__toolname` naming
+  convention this document's MCP section describes abstractly). The
+  persona layers `<critical_injection_defense>`/
+  `<critical_security_rules>` prompt-injection countermeasures,
+  `<user_privacy>`/`<download_instructions>`/`<harmful_content_safety>`
+  rules, a three-tier Prohibited/Explicit-permission/Regular action
+  taxonomy, and `<mandatory_copyright_requirements>` (20-word quote cap,
+  no song lyrics, no 30+-word "displacive summaries") on top of the
+  ordinary coding-agent prompt above it. See
+  `agent-permissions-approval.md` (new §1 addendum) for why the
+  three-tier action taxonomy is a structurally distinct permission
+  mechanism from the six-mode `permission_mode` system documented
+  elsewhere in this file, not a restatement of it. None of this material
+  appears in `Prompt.txt`, any of the three versioned CLI captures, or
+  `claude-code-docs-assistant.md` — it's specific to sessions where
+  computer-use-style tools are actually available, not a general Claude
+  Code behavior.
+- **What's unchanged, and worth stating plainly rather than padding this
+  section further**: the core coding-agent prompt structure (Tone and
+  style, Task Management/TodoWrite examples, Doing tasks, Tool usage
+  policy, Code References) is close to verbatim identical to
+  `Prompt.txt`'s and `opus-4.6`'s equivalent sections — same
+  "over-engineering" bullet list, same `file_path:line_number` citation
+  convention, same professional-objectivity and no-time-estimates
+  sections, same AskUserQuestion tool. Roughly the back half of the file
+  (the non-browser-safety two-thirds) is a real but unsurprising
+  confirmation of what this folder already had, not a new finding — the
+  genuinely new material is concentrated in the six bullets above.
 
 ## Why this is worth having alongside the prompt-only extraction
 
-The two leaks corroborate each other on the parts that overlap (system
-prompt structure, the Task tool's stateless one-shot sub-agent
-contract) while the full-source leak adds an entire layer this
-collection's other sources can't show at all: not just *what a scaffold
-tells the model to do*, but the actual engineering underneath — prompt
-caching mechanics, a two-tier feature-flag system, a real permission
-rule-resolution algorithm, and a supervisor-worker multi-agent system
-built as a policy layer over the same primitive as ordinary sub-agent
-delegation. That last point in particular sharpens a distinction
-`agent-subagent-architectures.md` could only gesture at from prompt
-text alone: "sub-agent delegation" and "multi-agent team coordination"
-aren't two different mechanisms here, they're the same mechanism under
-two different tool-allowlist policies.
+Three independently-sourced captures now corroborate each other on the
+parts that overlap (system prompt structure, the Agent/Task tool's
+stateless one-shot sub-agent contract, the git-commit trailer
+convention, the worktree tool's gating language) while the full-source
+leak adds an entire layer this collection's other sources can't show
+at all: not just *what a scaffold tells the model to do*, but the
+actual engineering underneath — prompt caching mechanics, a two-tier
+feature-flag system, a real permission rule-resolution algorithm, and
+a supervisor-worker multi-agent system built as a policy layer over the
+same primitive as ordinary sub-agent delegation. That last point in
+particular sharpens a distinction `agent-subagent-architectures.md`
+could only gesture at from prompt text alone: "sub-agent delegation"
+and "multi-agent team coordination" aren't two different mechanisms
+here, they're the same mechanism under two different tool-allowlist
+policies — and the richer, later prompt-text capture (`deferred-tools.md`)
+has since confirmed the `TeamCreate`/`TeamDelete`/`SendMessage` half of
+that claim directly, closing the gap between "inferred from source"
+and "confirmed via captured schema" that this document flagged as an
+open question when it was first written.

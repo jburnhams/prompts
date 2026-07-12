@@ -25,6 +25,20 @@ Not included: the repo's root `AGENTS.md` — that's contributor/build
 instructions for working on the Codex codebase itself, not part of the
 agent's system prompt.
 
+**A note on provenance, since a second Codex folder now exists in this
+collection**: everything in this folder and README is sourced from the
+real, open-source `openai/codex` GitHub repo (live-cloned `codex-rs/`).
+[`../leaked/codex-supplement/`](../leaked/codex-supplement) is a
+separate, differently-provenanced folder — leaked/unofficial captures
+mirrored from a third-party aggregator, covering a later model variant
+(`gpt-5.6`), a personality-template system, a Plan Mode prompt, and a
+Chrome-browser-control skill that is very likely a *different*
+Codex-branded product surface entirely (not the terminal CLI this
+folder documents). See that folder's own README for the full
+provenance distinction and for what's genuinely new there; the sections
+below cross-reference it only where it adds something not already
+covered by this folder's live-source research.
+
 ## Tool surface
 
 **Correction, same root cause as the Sub-agents section below**: this
@@ -96,7 +110,29 @@ files stored in this folder.
   give the model tools to discover and request installation of plugins
   mid-conversation, plus `extension_tools.rs` and `dynamic.rs` for
   runtime-registered tool sets. No plugin system was visible from the
-  prompt text alone.
+  prompt text alone. **Cross-reference, different provenance**: a
+  leaked, differently-sourced capture
+  (`leaked/codex-supplement/gpt-5.6.md` — see that folder's own README)
+  describes a much more procedural skills-discovery protocol layered on
+  top of this — named skill entries with filesystem, environment-owned,
+  or orchestrator (`skills.list`/`skills.read`) resolution paths, a
+  rule that the *main* agent (not a sub-agent) must read a skill's
+  `SKILL.md` in full before acting on it, and explicit trigger rules
+  (user names the skill, or the task clearly matches its description).
+  Not confirmed against this folder's live `codex-rs` source — treat as
+  a plausible elaboration of the plugin/extension-tool machinery above,
+  not a verified addition to it.
+- **Browser/web — the leaked-capture caveat**: this folder's live
+  `codex-rs` registry audit confirms no dedicated web-fetch/browser
+  tool exists (see the Browser/web bullet above). A leaked,
+  differently-provenanced capture
+  (`leaked/codex-supplement/control-chrome.md`) describes a detailed
+  `@chrome` browser-control skill, but strong internal evidence (an
+  MCP-mediated Node-REPL execution tool, a "Codex Chrome Extension,"
+  an orchestrator skills API not found in this repo) points to it
+  belonging to a *different* Codex-branded product surface, not this
+  CLI — see `leaked/codex-supplement/README.md` for the full
+  reasoning. Not added to this folder's tool-surface findings.
 - **Utility tools**: `current_time.rs`, `sleep.rs`,
   `wait_for_environment.rs` (block until a sandbox/environment is
   ready) — small but concrete capabilities absent from every prompt
@@ -305,6 +341,50 @@ cross-source comparison this feeds into.
   visible prose governed by the system prompt, unrelated to the native
   `reasoning_effort`/summary machinery above (the word "thinking" here
   is used loosely, not referring to the API mechanism).
+- **A two-channel `commentary`/`final` narration split — present in the
+  leaked-supplement captures, absent from this folder's own prompt
+  files.** `leaked/codex-supplement/gpt-5.6.md` and `codex-auto-review.md`
+  both specify two "ways of communicating with the users": a
+  `commentary` channel for intermediary progress updates (1-2 sentences,
+  sent "every 30s"/"more than 60 seconds" depending on variant, with
+  explicit anti-filler rules — "Do not begin responses with
+  conversational interjections") and a `final` channel for the
+  concluding response, self-contained since commentary is "collapsed
+  after the final answer is shown." None of this folder's own captured
+  prompts (`gpt_5_1_prompt.md`, `gpt_5_2_prompt.md`,
+  `prompt_with_apply_patch_instructions.md`) use this channel
+  terminology at all — grep-confirmed absent — so either it's newer
+  than every prompt captured in this folder, or specific to the
+  gpt-5.3+/personality-template model family the leaked supplement
+  covers. Worth cross-referencing `agent-turn-output.md` §3's existing
+  finding that Amp's leaked capture uses the identical `commentary`/
+  `final` naming while running on a Claude model, flagged there as
+  "borrowing another vendor's turn-output vocabulary" — this is the
+  first direct confirmation *from a Codex-branded capture itself* of
+  where that vocabulary actually originates.
+- **A personality-selection template system — not confirmed in this
+  folder's live `codex-rs` source, found only in the leaked
+  `leaked/codex-supplement/` capture (see that folder's own README)**:
+  a `{{ personality }}` placeholder near the top of several captured
+  prompts (`codex-auto-review.md`, and per its own metadata,
+  `gpt-5.4`/`gpt-5.4-mini`/`gpt-5.3-codex`/`gpt-5.3-codex-spark`) is
+  filled from a small library of named persona documents —
+  `personality_friendly.md` ("You communicate warmly, check in often,
+  and explain concepts without ego") and `personality_pragmatic.md`
+  ("You avoid cheerleading, motivational language, or artificial
+  reassurance... you stay concise") — each with its own Values/Tone/
+  Escalation structure, including a distinct *how the persona
+  disagrees or escalates risk* section. This folder's own
+  `gpt_5_2_prompt.md` has a single hardcoded "concise, direct, and
+  friendly" personality paragraph, which in hindsight reads as one
+  fixed member of what may be the same family rather than evidence the
+  system is untemplated — and the leaked capture's own newest prompt
+  (`gpt-5.6.md`) also reverts to fully hardcoded, non-templated
+  personality text, so the two mechanisms (templated vs. fixed)
+  coexist across model generations in what's captured rather than one
+  cleanly replacing the other. No equivalent finding exists anywhere
+  else in this collection's turn-output research — see
+  `agent-turn-output.md`.
 
 ## Self-verification and testing
 
@@ -361,6 +441,22 @@ mechanism but **five cooperating subsystems** (a static command-safety
 classifier, a Starlark rule engine, an LLM-based auto-reviewer, a
 real OS-level sandbox, and a network proxy), several of them coupled
 to each other by explicit design.
+
+**A sixth, not-yet-reconciled state, from a different-provenance
+source**: `leaked/codex-supplement/plan_mode.md` (leaked — see that
+folder's own README) documents a **Plan Mode** independent of the
+`AskForApproval` enum below — a model-enforced non-mutating/mutating
+boundary ("You may explore and execute non-mutating actions... You
+must not perform mutating actions") persisting "until a developer
+message explicitly ends it," with its own `request_user_input`-mediated
+clarification flow and a mandated `<proposed_plan>` output format. This
+folder's own live `codex-rs` audit (below) never surfaced a fifth/sixth
+named mode alongside `UnlessTrusted`/`OnRequest`/`Granular`/`Never` —
+Plan Mode is a real, plausible feature (structurally the closest Codex
+analog to Gemini CLI's or Claude Code's own dedicated read-only `plan`
+mode) but not yet corroborated against this repo the way everything
+below it is. See `agent-permissions-approval.md` §1 for where this is
+tracked cross-source.
 
 - **Four modes** (`AskForApproval`, not a continuous scale):
   `UnlessTrusted` (only a hardcoded read-only safelist auto-runs),

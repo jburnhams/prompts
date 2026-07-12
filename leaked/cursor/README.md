@@ -13,6 +13,17 @@ Cursor's prompt evolved over roughly a year.
 - `Agent CLI Prompt 2025-08-07.txt` — prompt for Cursor's CLI mode.
 - `Agent Tools v1.0.json` — tool/function definitions.
 - `Chat Prompt.txt` — non-agentic chat-mode prompt.
+- `Agent Prompt (asgeirtj capture).md` — a sixth, undated capture, mirrored
+  from a different, independently-maintained aggregator
+  (https://github.com/asgeirtj/system_prompts_leaks, retrieved
+  2026-07-12) than the five files above (all from x1xhlol's repo). Uses a
+  genericized `{model_name}` placeholder rather than a dated model name.
+  Its tool surface and several full sections (git commit/PR workflow,
+  tool-calling etiquette) are structurally closest to the *newest*
+  x1xhlol-sourced material (2025-09-03/CLI, GPT-5-era) but with a
+  materially different, apparently later tool roster — treat it as
+  undated-but-late rather than placed confidently on the existing
+  timeline. See the sections below for what's genuinely new in it.
 
 ## Tool surface
 
@@ -44,6 +55,136 @@ Per the extracted `Agent Tools v1.0.json`: `codebase_search`,
 - **Multimodal**: not indicated.
 - **Sandbox/isolation**: not indicated — runs in the user's actual
   editor/workspace.
+
+**New from the asgeirtj capture — a materially different, apparently
+later tool roster, not just a rename of the same six tools above.** This
+file's own "Available Tools" list uses Claude-Code-style capitalized
+names (`Shell`, `Glob`, `Grep`, `Read`, `Write`, `StrReplace`, `Delete`,
+`EditNotebook`, `TodoWrite`) rather than `Agent Tools v1.0.json`'s
+`snake_case` set, and several tool-calling/editing/git sections read as
+near-verbatim matches to Claude Code's own publicly-known conventions
+(see the callout at the end of this subsection) — worth treating
+cautiously as a capture, but documenting at face value since it's
+internally consistent throughout the file.
+
+- **Fetch and search finally split into two tools** — `WebSearch` and
+  `WebFetch` (fetch a specific URL, "readable markdown format") are
+  separate tools here, correcting the standing finding above ("no
+  fetch-a-known-URL tool distinct from `web_search`") — that gap only
+  holds for the five x1xhlol-sourced captures, not for this one.
+- **Image generation** — `GenerateImage` ("Generate an image file from a
+  text description. Only use when the user explicitly asks for an
+  image.") — a capability with no analog in any of the other five
+  Cursor captures, and not common elsewhere in this collection either.
+- **Structured multiple-choice user prompts** — `AskQuestion` ("Collect
+  structured multiple-choice answers from the user... set
+  allow_multiple when multi-select is appropriate") — a dedicated
+  clarifying-question tool distinct from free-text turns, not present
+  in any other Cursor capture.
+- **A file-system-mediated MCP integration, a different shape from a
+  normal function-calling MCP client**: `CallMcpTool` invokes any MCP
+  tool by server/tool name plus arbitrary JSON args, but the model is
+  told to discover the schema first by *reading JSON descriptor files
+  on disk* (`{mcps_folder}/<server>/tools/tool-name.json`) rather than
+  from schemas already present in its own context window, and is told
+  this lookup is "NOT optional." `ListMcpResources`/`FetchMcpResource`
+  mirror the same pattern for MCP resources. No other source in this
+  collection's tool-surface research documents an MCP client that
+  makes the model do its own filesystem-based schema discovery instead
+  of receiving tool schemas inline.
+- **`create_diagram` and `reapply` are both gone** in this capture —
+  no diagram tool and no dedicated reapply-after-failed-edit tool are
+  named anywhere in the file (superseded by a generic `StrReplace` with
+  a `replace_all` flag, structurally closer to Claude Code's `Edit` than
+  to the earlier `edit_file`/`search_replace`/`reapply` trio).
+- **`SetActiveBranch`** — "Set active git branch metadata for the
+  current conversation and client UI" — a UI-metadata tool, not a real
+  git-mutating tool; see Git and version control below.
+- **`AwaitShell`** — polls a backgrounded shell job, paired with the
+  `Shell` tool's own `block_until_ms`/background-after-30s behavior — a
+  bit more explicit about async command handling than the
+  `run_terminal_cmd`/`is_background` shape in the other five captures.
+- **A `SwitchMode` tool** exposing four named interaction modes (Agent/
+  Plan/Debug/Ask) — see Permissions and approval below; this is new
+  relative to every other Cursor capture, none of which name a mode
+  taxonomy at all.
+- **A `Task` tool with seven named sub-agent types** — see Sub-agents
+  below; this directly contradicts this collection's standing
+  cross-source finding (`agent-subagent-architectures.md`) that leaked
+  Cursor has no delegation mechanism at all.
+
+**The Claude-Code-convention overlap is close enough to name
+explicitly, with appropriate caution.** Several passages in this file
+are near-verbatim matches to Claude Code's own leaked/public system
+prompt: the `tool_calling`/`no_thinking_in_code_or_commands` etiquette
+("Do not use a colon before tool calls... 'Let me read the file.'
+followed by a read tool call"), the `making_code_changes` comment
+policy ("Do NOT add comments that just narrate what the code does...
+'// Import the module'"), and — most strikingly — the entire "Git
+Operations" section (see Git and version control below), which
+reproduces Claude Code's "Committing Changes"/"Creating Pull Requests"
+workflow structure almost exactly, down to the HEREDOC commit-message
+instruction. Read this as either genuine evidence of an industry-wide
+pattern of copying Claude Code's published prompt-engineering
+conventions (already documented for OpenCode's near-identical
+"NEVER commit... too proactive" line in `agent-git-vcs.md` §2), or as
+a sign this particular capture blends/normalizes text from multiple
+sources during aggregation — flagged here rather than silently folded
+into the rest of this doc's findings.
+
+## Sub-agents
+
+See [`agent-subagent-architectures.md`](../../agent-subagent-architectures.md)
+for the cross-source comparison this feeds into — **this section is new
+in this README**; none of the five x1xhlol-sourced captures show any
+delegation mechanism, which is why Cursor was previously profiled only
+in that doc's "Absences" section.
+
+- **A `Task` tool, described only at the one-line level** ("Launch a
+  new agent to handle complex, multi-step tasks autonomously"), with
+  seven named `subagent_type` values: `generalPurpose`, `explore`
+  (read-only codebase exploration), `shell` (command-execution
+  specialist), `browser-use` (browser testing/automation — the first
+  hint of browser capability anywhere in Cursor's captured material,
+  though only as a sub-agent role, not a tool available to the main
+  agent), `cursor-guide` (reads Cursor's own product docs to answer
+  "how Cursor works" questions), `best-of-n-runner`, and `codex-rescue`.
+  No schema detail beyond the one-line description for any of them —
+  materially thinner than this collection's other richly-documented
+  sub-agent protocols (contrast Codex CLI's `spawn_agent` family or
+  OpenCode's `Task` tool).
+- **`best-of-n-runner`: "Run a task in an isolated git worktree."** See
+  Git and version control below for the full worktree-isolation
+  writeup this feeds into `agent-git-vcs.md` §4. The name itself is the
+  most informative part of this one-line spec: "best-of-n" is sampling
+  terminology (generate N independent candidate solutions, then select
+  the best one), which implies this sub-agent type exists specifically
+  to run **multiple parallel attempts at the same task**, each isolated
+  in its own worktree so they can't collide with each other or the
+  user's working tree — a different framing from every other captured
+  worktree mechanism in this collection, all of which isolate *distinct
+  tasks* running concurrently, not *N attempts at one task* competing
+  for a single winner. Nothing in this one-line description says how
+  results are compared or a winner selected (no scoring/judge mechanism
+  is named), so that half of the "best-of-n" implication is inferred
+  from the name, not confirmed by captured text.
+- **`codex-rescue`: "Use when Claude Code is stuck, wants a second
+  implementation or diagnosis pass."** Notable independent of the
+  worktree finding: this is Cursor's own orchestration layer naming a
+  *competitor product* ("Claude Code") by name as a trigger condition
+  for delegating to a second opinion — not "when you are stuck," but
+  specifically when *Claude Code* is stuck. Reads as evidence Cursor's
+  agent harness is designed to be invoked as a rescue/second-opinion
+  layer from within or alongside Claude Code sessions, not just
+  standalone. No other source in this collection names a specific rival
+  product as a sub-agent trigger condition.
+- **No schema, protocol, or recursion-policy detail for any of the
+  seven types** — unlike Codex CLI's `spawn_agent`/`send_input`/
+  `wait_agent`/`close_agent` family or OpenCode's `Task` tool, there's
+  no visible way here to confirm whether `Task` is a blocking
+  call-and-report or an addressable child, whether sub-agents can
+  themselves call `Task`, or what context they inherit — a real capture
+  gap, not a confirmed "thin by design" architecture.
 
 ## Self-verification and testing
 
@@ -175,6 +316,41 @@ then disappears entirely from the two newest captures.
 - No allow/deny list, no config file, no sandbox/isolation mentioned as
   a safety layer in any captured file.
 
+**New from the asgeirtj capture**:
+
+- **A named mode taxonomy, absent from every other Cursor capture**:
+  `SwitchMode` exposes four modes — **Agent Mode** ("Default
+  implementation mode with full access to all tools for making
+  changes"), **Plan Mode** ("Read-only collaborative mode for designing
+  implementation approaches before coding"), **Debug Mode**
+  ("Systematic troubleshooting mode — cannot switch to this mode
+  directly"), and **Ask Mode** ("Read-only mode for exploring code and
+  answering questions — cannot switch to this mode directly"). A
+  separate `<mode_selection>` block instructs the model to proactively
+  call `SwitchMode` itself when it judges another mode fits better
+  ("Be proactive about switching to the optimal mode"), gated on task
+  shape ("user asks for a plan, or the task is large/ambiguous or has
+  meaningful trade-offs") rather than on any risk classification. This
+  is a genuinely new data point for `agent-permissions-approval.md` §1
+  ("Approval mode taxonomies") — Cursor wasn't previously listed in
+  that table at all — though it's the "named agent/task modes" shape
+  (closer to OpenCode's `build`/`plan`/`explore`) rather than a
+  risk-tiered approval ladder: two of the four modes (Debug, Ask) are
+  explicitly *not* reachable by the model's own `SwitchMode` call
+  ("cannot switch to this mode directly"), a restriction with no
+  stated mechanism for how they're entered instead.
+- **No risk-classification flag here either** — a full-file grep for
+  "risk"/"dangerous"/"approve"/"approval"/"permission" turns up zero
+  hits, extending the standing "no risk field found in any Cursor
+  version" finding to a sixth capture, and — combined with the
+  2025-09-03/CLI prompts already having dropped all approval-flow
+  language — now zero out of the three most-recent-looking Cursor
+  captures mention command approval at all in the model-facing prompt
+  text. Consistent with this doc's existing read: approval mechanics
+  have moved fully into orchestration/client layers not captured
+  alongside the prompt text, not that approval was removed as a
+  feature.
+
 ## Git and version control
 
 See [`agent-git-vcs.md`](../../agent-git-vcs.md) for the cross-source
@@ -200,3 +376,68 @@ surface checked for this doc.
   Permissions above): any git command would be gated by the same
   generic, undifferentiated command-approval flow as any other shell
   command, with no git-specific carve-out anywhere in this source.
+
+**New from the asgeirtj capture — this single file overturns three of
+the "not found in any Cursor capture" claims above.** All three
+findings below are absent from the five x1xhlol-sourced files and
+present only here; treat the bullets above as still accurate for those
+five, not as superseded.
+
+- **Worktree isolation, via a sub-agent type, not a directly-callable
+  tool.** `best-of-n-runner`'s full one-line spec is: **"Run a task in
+  an isolated git worktree."** This is the first and only confirmed
+  worktree-isolation mechanism found anywhere in Cursor's captured
+  material — `agent-git-vcs.md` previously listed Cursor under
+  "Confirmed near-total or total absence" for worktree isolation
+  alongside Windsurf, Warp, and Replit; that placement no longer holds
+  for Cursor (see `agent-git-vcs.md` §4, now updated). The mechanism is
+  reached through the `Task` tool's `subagent_type` parameter (see
+  Sub-agents above), not a standalone worktree-management tool — there
+  is no visible `CreateWorktree`/`EnterWorktree`-style primitive the
+  main agent calls directly, unlike Claude Code's `EnterWorktreeTool`/
+  `ExitWorktreeTool` or OpenCode's `Worktree.Service`. **What isn't
+  captured**: branch-naming convention, subdirectory location, cleanup/
+  removal policy, and whether the worktree is retained after the
+  sub-agent finishes — all confirmed unspecified by a full-file grep
+  (no other occurrence of "worktree" anywhere in the file). The name
+  "best-of-n-runner" (see Sub-agents above) implies the isolation
+  exists to support running **multiple parallel attempts at one task**
+  side by side for later comparison — a distinct framing from Gemini
+  CLI's/OpenCode's/Claude Code's worktree services, which isolate
+  concurrent *different* tasks or sessions rather than N competing
+  attempts at the same one.
+- **A real commit-message and PR workflow, not "thin and incidental"
+  for this capture.** A dedicated "## Git Operations" section (absent
+  from every x1xhlol-sourced file) gives concrete process: for commits,
+  "Run git status, git diff, and git log in parallel," then "Analyze
+  all staged changes and draft a commit message," then "Add relevant
+  files, commit, and verify success" — plus explicit prohibitions
+  ("NEVER update the git config. NEVER run destructive/irreversible git
+  commands unless explicitly requested. NEVER skip hooks," amend
+  discouraged "unless specific conditions are met") and a formatting
+  rule ("Always pass commit messages via HEREDOC"). For PRs: "Use the
+  `gh` command for ALL GitHub-related tasks," gather `git status`/
+  `diff`/remote-tracking/`log` in parallel, draft a summary, "Push to
+  remote and create PR using `gh pr create`." No character limit, no
+  trailer/attribution format, and no worked example are given — thinner
+  than Claude Code's fully-specified template (`## Summary`/`## Test
+  plan` sections, HEREDOC'd `gh pr create` body) that this section's
+  *process* steps otherwise closely resemble — but this is nonetheless
+  the first captured Cursor content addressing "when/how does the model
+  commit" at all, correcting the standing "no commit-message
+  conventions... found in any of the five dated prompts" finding for
+  this specific capture.
+- **A read-only git-metadata tool with no earlier analog**:
+  `SetActiveBranch` — "Set active git branch metadata for the current
+  conversation and client UI." Distinct from `fetch_pull_request`
+  (v1.2's read-only PR/commit lookup tool, still the only git tool with
+  a full schema captured) — this one only updates client-side UI state
+  about which branch is "active," with no read or write effect on the
+  repository itself, and no stated trigger for when the model should
+  call it.
+
+Net effect on this source's git thinness: still no risk-classification
+carve-out for git commands specifically, and still no checkpoint/undo
+system captured anywhere — but "no commit-message conventions, no
+worktree isolation" no longer holds unqualified across Cursor's full
+captured corpus, only across the five older files.

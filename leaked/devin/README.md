@@ -5,9 +5,20 @@
 - **Mirror source**: https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools/tree/main/Devin%20AI (2026-07-10)
 
 ## Files
-- `Prompt.txt` — main agent system prompt.
+- `Prompt.txt` — main agent system prompt (Devin's autonomous/background
+  web product).
 - `DeepWiki Prompt.txt` — prompt for Devin's DeepWiki (repo documentation
   generation) feature.
+- `CLI Prompt.md` — a third, genuinely different product surface: "Devin,
+  an interactive command line agent from Cognition," mirrored from a
+  different, independently-maintained leak aggregator
+  (`asgeirtj/system_prompts_leaks`, retrieved 2026-07-12) than the
+  `Prompt.txt`/`DeepWiki Prompt.txt` pair above. See "The CLI variant"
+  below — it diverges from `Prompt.txt` on exactly the axes this
+  collection tracks most closely (self-verification, permissions, git),
+  and the divergence is large enough that citing "Devin" as a monolithic
+  product for any of those three topics is no longer accurate; say which
+  variant.
 
 ## Self-verification and testing
 
@@ -195,3 +206,105 @@ comparison this feeds into.
 - **No worktree isolation found** — no mention of `git worktree`,
   parallel sandboxes, or multiple simultaneous checkouts anywhere in
   the prompt.
+
+## The CLI variant (`CLI Prompt.md`) — a different product surface, not a redundant capture
+
+Everything above describes Devin's autonomous/background web product.
+`CLI Prompt.md` opens "You are Devin, an interactive command line agent
+from Cognition" — a real second surface (the same relationship Claude
+Code's CLI has to its Desktop/Agent-SDK capture in this collection, or
+Codex's interactive CLI has to Codex Cloud), and a full read plus
+targeted comparison against `Prompt.txt` turns up genuine divergence on
+every axis this collection tracks most closely, not just cosmetic
+rewording. Read this section alongside — not as a replacement for — the
+sections above.
+
+- **The `<think>` tool is confirmed absent, not just unmentioned.** A
+  full read of the 306-line CLI prompt found no `<think>` tag, no
+  scratchpad tool, and no `<message_user>`-style split between hidden
+  reasoning and visible output anywhere. This is significant because
+  `agent-turn-output.md` §2e and `agent-self-verification.md` §10 both
+  cite Devin's `<think>` tool as a novel finding — a "prompted tool call
+  whose content is categorically invisible by design" that doubles as a
+  mandatory pre-completion verification gate. That finding is **specific
+  to the autonomous/background web variant**; the CLI variant reasons
+  in ordinary, visible prose the same way most other CLI-style agents in
+  this collection do. Both master docs have been updated with this
+  caveat (see below).
+- **A real "Modes" system exists here that `Prompt.txt` has no
+  equivalent of**: "Normal (default)... Full autonomy to use all your
+  tools freely" vs. "Plan: Explore the codebase, ask the user
+  clarifying questions, and then create a plan... Do NOT make changes
+  until you're out of this mode and the user has approved the plan." —
+  the same Plan/Act-style split documented for Cline and (via
+  `ExitPlanMode`) Claude Code elsewhere in this collection, absent from
+  Devin's own background-agent prompt.
+- **Permissions and approval — no longer a clean "zero infrastructure"
+  case.** `agent-permissions-approval.md` §7 and its Absences section
+  currently cite Devin as "the cleanest confirmation... that a
+  background-autonomous agent can have zero command-approval
+  infrastructure at all." The CLI variant has a real, if judgment-based,
+  gate: a dedicated "Destructive Operations" section requires the model
+  to **stop and describe exactly what it is about to run, then wait for
+  the user**, before deleting/truncating database tables, `rm -rf`,
+  force-pushing, rewriting git history, deleting branches, checking out
+  over uncommitted changes, bypassing commit hooks, or sending
+  real-world-effect API calls ("If a destructive step is required, STOP
+  and describe exactly what you are about to run and why, then wait for
+  the user. Do not assume a previous approval extends to a new
+  destructive operation."). That's conditional, judgment-triggered
+  confirmation gating — categorically different from the background
+  variant's design of absolute prohibitions plus a non-blocking
+  `<report_environment_issue>` notify-and-continue tool with no human
+  in the loop for the action itself. Both master docs have been updated
+  with this caveat (see below).
+- **Git rules are a narrower subset, and drop two of the background
+  variant's most distinctive dedicated rules.** The CLI variant keeps
+  the fixed committer identity (`Devin AI` /
+  `158243242+devin-ai-integration[bot]@users.noreply.github.com`),
+  "NEVER update git config," "DO NOT push unless explicitly asked," and
+  a parallel-gather-then-commit workflow nearly identical to
+  `Prompt.txt`'s. But:
+  - **No `devin/{timestamp}-{feature-name}` branch-naming convention
+    anywhere** — `agent-git-vcs.md` §5 cites this as the one dedicated
+    timestamp-based branch template in the whole survey; the CLI prompt
+    never mentions branch naming at all, defaulting instead to whatever
+    branch context the user already has open.
+  - **No standalone "never force push" rule** — `agent-git-vcs.md` §5
+    also cites Devin's force-push prohibition as the one source in the
+    whole survey singling it out. In the CLI variant, force-push is
+    folded into the general Destructive Operations confirm-before-acting
+    list above rather than getting its own absolute, unconditional
+    prohibition.
+  - **No `git add .` prohibition** — `Prompt.txt`'s "Never use `git add
+    .`; instead be careful to only add the files that you actually want
+    to commit" has no counterpart in the CLI prompt's git section.
+  - **No `gh_pr_checklist` or `git_view_pr` tools** are mentioned — the
+    PR-comment-tracking and formatted-PR-view tooling documented for the
+    background variant isn't present in this capture (which may reflect
+    a narrower captured tool list rather than a confirmed product
+    absence, unlike the branch-naming/force-push points above which are
+    confirmed by full-prompt read).
+  - Retained instead: a distinct citation mechanism — `<ref_file ...
+    />` / `<ref_snippet ... />` self-closing XML tags for clickable
+    code references, closer in spirit to DeepWiki's mandatory `<cite>`
+    tags than to `Prompt.txt`'s plain-prose file references.
+- **Compaction — still absent**, consistent with `Prompt.txt`: the only
+  context-management language is the same shell/search-output
+  truncation-to-file pattern (`<truncation_notice>`), now with an
+  explicit instruction that the model is "responsible for reading this
+  file if you need the full output."
+- **A softer, prompted-only verification model replaces the mandatory
+  tool-call gate**: the CLI variant's "Verification" section is ordinary
+  §7-style prose ("Before considering a task complete, verify your
+  work... Run relevant verification steps based on the scope of
+  changes... Self-critique: review changes for edge cases") with no
+  tool call required to reach it — consistent with the `<think>` tool's
+  absence above, and a genuinely different verification architecture
+  from the background variant's mandatory pre-completion checkpoint, not
+  just a rewording of the same one.
+- **A new system-injected guidance channel**: `<system_guidance>`
+  messages ("hints, reminders, or contextual guidance... Pay attention
+  to their content but do not acknowledge or respond to them directly")
+  — functionally the same shape as Claude Code's `<system-reminder>`,
+  under Devin's own naming, not documented for the background variant.

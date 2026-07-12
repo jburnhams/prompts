@@ -41,7 +41,14 @@ Windsurf (leaked, partial — the strategy is confirmed, the prompt/
 trigger text isn't), Cursor (leaked, partial — a prompt-injection-
 defense tag only, dropped after v1.2, no summarization template),
 Google Antigravity (leaked — a dual-context "Knowledge Items" system,
-no trigger/threshold captured; see §4 and §5 below).
+no trigger/threshold captured; see §4 and §5 below), GitHub Copilot CLI
+(leaked — a 5-section structured Continuation Summary template plus a
+distinct SQL-queryable cross-session recovery mechanism; no numeric
+trigger threshold captured; see §1, §2, §5), Grok Build (leaked,
+partial — the existence claim ("unlimited context through automatic
+summarization") and a named post-compaction consumer-side contract are
+confirmed, but no summarization prompt, trigger threshold, or recovery
+philosophy is captured; see the note after §5 below).
 
 **Confirmed absent via targeted search** (every relevant file read in
 full, keyword search came up empty — a stronger finding than "not
@@ -94,7 +101,7 @@ builds a second, independent recovery path for when they are.
 | Shape | Sources |
 |---|---|
 | **Minimal free text, loosely bulleted, no rigid section headers** | Codex CLI — "Create a handoff summary... Include: current progress and key decisions, important context/constraints, what remains to be done, critical data/references. Be concise, structured, and focused." One prompt for every model family, no per-model variants. |
-| **Structured Markdown template, 5-6 named sections** | Crush (Current State / Files & Changes / Technical Context / Strategy & Approach / Exact Next Steps), OpenCode (Objective / Important Details / Work State with Completed-Active-Blocked sub-sections / Next Move / Relevant Files), Pi (Goal / Constraints & Preferences / Progress with Done-In Progress-Blocked / Key Decisions / Next Steps / Critical Context) |
+| **Structured Markdown template, 5-6 named sections** | Crush (Current State / Files & Changes / Technical Context / Strategy & Approach / Exact Next Steps), OpenCode (Objective / Important Details / Work State with Completed-Active-Blocked sub-sections / Next Move / Relevant Files), Pi (Goal / Constraints & Preferences / Progress with Done-In Progress-Blocked / Key Decisions / Next Steps / Critical Context), GitHub Copilot CLI (leaked — Task Overview / Current State / Important Discoveries / Next Steps / Context to Preserve, wrapped in `<summary></summary>` tags, injected only when "the context window is exhausted" with no numeric threshold stated) |
 | **Structured template, 8-9 named sections with sub-bullets** — the most elaborate Markdown-shaped templates surveyed | Claude Code (9 sections: Primary Request and Intent, Key Technical Concepts, Files and Code Sections, Errors and fixes, Problem Solving, All user messages, Pending Tasks, Current Work, Optional Next Step), Copilot Chat (8 numbered sections: Conversation Overview → Technical Foundation → Codebase Status → Problem Resolution → Progress Tracking → Active Work State → Recent Operations → Continuation Plan, each with its own sub-bullets) |
 | **Structured XML tags, not Markdown** | Gemini CLI — `<state_snapshot>` with named child tags (`<overall_goal>`, `<active_constraints>`, `<key_knowledge>`, `<artifact_trail>`, `<file_system_state>`, `<recent_actions>`, `<task_state>` with `[DONE]`/`[IN PROGRESS]`/`[TODO]` markers) |
 | **Structured prose with named sections, but semi-structured rather than a rigid template** — a Jinja2-templated prompt producing guided paragraphs, not a fill-in-the-blank skeleton | OpenHands — `USER_CONTEXT`/`TASK_TRACKING`/`COMPLETED`/`PENDING`/`CURRENT_STATE` plus code-specific sections, with worked examples rather than a strict format contract |
@@ -154,8 +161,10 @@ as a good candidate for a future deeper pass.
 | **Explicitly treated as the sole surviving record — no recovery offered** | Crush ("This summary will be the ONLY context available when the conversation resumes. Assume all previous messages will be lost"), Gemini CLI ("This snapshot is CRITICAL, as it will become the agent's *only* memory of the past") |
 | **No summary offered at all — the plainest form of loss found in this survey** | Cline's deterministic truncation path: "Some previous conversation history with the user has been removed to maintain optimal context window length... intermediate conversation history has been removed." No LLM summary stands in for the deleted middle, and no pointer back to a transcript is offered — more primitive than every other recovery philosophy in this table, which all substitute *something* (a summary, a pointer, an append-only log) for what's dropped. |
 | **Sidestep recovery entirely — externalize important facts to a persistent, queryable store *before* compaction happens, rather than trying to summarize better at compaction time** | Windsurf (leaked) — its `<memory_system>` block states the problem in stronger terms than any other source: "ALL CONVERSATION CONTEXT, **including checkpoint summaries, will be deleted**. Therefore, you should create memories liberally to preserve key context" — even the surviving summary isn't trusted to survive. The mitigation is a separate `create_memory` tool the model is told to write to proactively and without waiting for a natural break point, plus a `trajectory_search` tool that lets the model semantically search its own past session history on demand. A third recovery-philosophy variant distinct from both "pointer back to transcript" and "sole surviving record": *queryable retrieval*, reachable by the agent itself mid-conversation, rather than a static hint frozen into a summary. (The actual checkpoint-summarization prompt/trigger text itself wasn't captured — this finding is about the recovery strategy layered around compaction, not the compaction prompt.) |
+| **A structurally different route to the same queryable-retrieval destination as Windsurf's: raw SQL over a persistent database, not a dedicated search tool** | GitHub Copilot CLI (leaked) — a read-only, cross-*session* `session_store` database (`sessions`/`turns`/`checkpoints`/`session_files`/`session_refs`, with an FTS5 full-text index) is directly queryable by the model via ordinary `SELECT` statements, with an explicit instruction to compensate for the lack of semantic search by hand-crafting keyword expansions: "act as your own 'embedder' by expanding conceptual queries into multiple keyword variants." A `checkpoints` table (`overview`/`work_done`/`technical_details`/`next_steps`) persists a structure closely mirroring the Continuation Summary's own five sections (§2), suggesting the same structured-summary shape gets written to SQL at milestones as well as generated fresh on context exhaustion — though the prompt text doesn't confirm whether one derives from the other. A fifth recovery-philosophy variant for this table: retrieval quality is entirely a function of the model's own query-crafting skill rather than an embedding model's semantic match underneath, the opposite tradeoff from Windsurf's purpose-built `trajectory_search`. |
 | **Not compaction at all, but a structurally distinct answer to the same underlying problem** | Aider — a long-lived, ever-growing chat log is central to its UX, and no summarization/trimming mechanism was found in any captured file. Instead, every mode's prompt handles staleness by **additive correction**: "I have *added these files to the chat* so you can go ahead and edit them. *Trust this message as the true contents of these files!* Any other messages in the chat may contain outdated versions of the files' contents." Nothing is ever deleted or condensed; each turn just injects a fresh authoritative copy and tells the model to treat anything older in the log as potentially stale. No other source in this survey models "leave the old content in place, just outrank it" as an alternative to compaction. |
 | **Durable raw record, directly agent-reachable, with a curated index layered on top rather than a replacement for it — a fifth variant** | Google Antigravity (leaked) — the conversation log persists as `transcript.jsonl` on disk and is reachable via ordinary tools in the IDE, or literal `grep`/`head` shell commands in the CLI capture ("Find all subagents spawned: Grep for the `invoke_subagent` tool call"). Differs from OpenHands's append-only log (retained but not confirmed agent-reachable mid-conversation) and from Windsurf's externalize-to-memory strategy (a *write* path into a separate store, not a query path into the original record): here the raw record is both durable *and* directly queryable by the agent itself, with the Knowledge Item system (§4) as a curated index into it. A dangling "checkpoint" reference in the CLI capture ("history before the last checkpoint") implies some compaction-like event exists, but no trigger/mechanism accompanies it — flagged as a capture gap, not a documented feature. |
+| **Not addressed for conversation content, but a distinct, narrower recovery contract exists for task *state***: no pointer to a transcript, no "sole surviving record" framing, no externalize-to-memory strategy — just a named rule for reconstructing one specific artifact (the todo list) after the event | Grok Build (leaked) — "After a context compaction, if your prior todo list is no longer in conversation history, **reseed it** with a fresh `todo_write` call (`merge: false`) before continuing the task," triggered by a named system-reminder header the agent is told to watch for: "the harness signals this with a `## Pre-Compaction Todo List` system-reminder, your FIRST tool call after the reminder MUST be `todo_write` (`merge: false`) reconstructing the remaining phases from the pre-compaction snapshot." This is a genuinely different kind of "recovery" from every other row in this table — none of it is about the model's own lost conversational detail; it's a harness-enforced contract for rebuilding one specific piece of task-tracking state that would otherwise silently vanish across the compaction boundary. No pointer back to a full transcript and no externalization strategy for anything *other* than the todo list was found. |
 | **Not addressed** | Codex CLI, OpenCode, Goose, Pi |
 
 ## 6. Token budgeting — the numbers
@@ -338,7 +347,15 @@ context independently?
   event's quality matters less. Combined with a `trajectory_search`
   tool letting the model reach back into its own past sessions on
   demand, this is the most pessimistic-about-recoverability design in
-  the survey, and arguably the most defensive as a result.
+  the survey, and arguably the most defensive as a result. GitHub
+  Copilot CLI (leaked) reaches the same "queryable retrieval, not a
+  static pointer" destination by a different road: raw SQL access to a
+  persistent, cross-session database with an FTS5 index, rather than a
+  purpose-built semantic-search tool — two unrelated products
+  converging on the same recovery *philosophy* (externalize and make it
+  queryable) while diverging completely on *mechanism* (a bespoke
+  memory-entry tool vs. a generic database the model must query
+  skillfully itself).
 - **Aider is a useful reminder that compaction isn't the only answer to
   a long-lived conversation** — its chat-log-native architecture solves
   the same underlying staleness problem with "leave old content in
@@ -347,3 +364,16 @@ context independently?
   doc's typology doesn't otherwise cover: not every long-running
   scaffold needs compaction if it can instead re-assert ground truth
   every turn.
+- **Grok Build's todo-reseed contract (§5) is a reminder that "recovery"
+  isn't only about conversational content** — every other source in
+  this doc's §5 answers "is the discarded *text* actually gone"; Grok
+  Build is the only one found addressing a narrower, orthogonal
+  question: does a specific piece of *task-tracking state* survive the
+  compaction boundary, and if not, whose job is it to rebuild it. The
+  answer here is structural rather than prompted-only-in-spirit — a
+  named system-reminder header (`## Pre-Compaction Todo List`) plus a
+  hard "your first tool call after this MUST be `todo_write`" rule —
+  closer to OpenHands's soft/hard trigger distinction (§1) in how
+  concretely it's specified than to any other source's recovery
+  philosophy, but scoped to one artifact rather than the whole
+  conversation.
