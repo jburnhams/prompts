@@ -220,10 +220,34 @@ lines → chunk); PR-Agent token-clips.
 **Applied**: `formats.md` §1b now names the constraint and requires the
 harness to enforce *some* threshold before dispatch, with
 skip-with-reason as the v1 default behavior.
-**Open question**: skip vs. shard (split specialists per file group and
-merge findings) — sharding is a real design with real merge questions
-(cross-file findings), so it shouldn't be picked silently. See
-"Questions" at the end.
+
+**Resolved: skip, not shard — no source in the collection does
+automated sharding-with-merge.** Checked against Anthropic's own
+`/code-review` skill (the pipeline Forge's review mode is explicitly
+modeled on) and `claude-code-action`, not just the sources already
+cited: Anthropic's skill has *no* size gate at all — its troubleshooting
+doc says large PRs are just slow ("4 independent agents ensure
+thoroughness... consider splitting large PRs into smaller ones," i.e.
+the PR *author's* job, before review, not the harness's). PR-Agent's
+`can_be_split` field is the same shape — the model proposes a
+human-facing sub-PR split, it doesn't shard its own review. BMAD's
+chunking is human-mediated across separate runs (agree the first group
+with the user, list the rest for follow-up runs), not an in-run merge.
+Nobody in the collection solves "which findings span a batch boundary"
+without a human deciding the grouping — which doesn't transfer to
+Forge's unsupervised review pipeline. Skip-with-reason stands as more
+than a leanness default; it's what every real source effectively does
+once you net out the human-mediation each one leans on.
+
+The threshold itself is now specified as harness-configurable rather
+than a hardcoded constant — either a fixed changed-line count (BMAD's
+shape) or a fraction of the deployed model's context-window budget,
+estimated from diff character count via a fixed chars-per-token ratio
+(no tokenizer call) and adjustable for the specialist-fan-out
+duplication multiplier. See `formats.md` §1b. BMAD's ~3000-line figure
+is the only concrete number found anywhere in the collection, and it
+carries no stated derivation (no token-budget or cost math behind it)
+— not reused as a default for that reason.
 
 ## F9 — `AskUser` granted to the review orchestrator but never used (low; applied)
 
@@ -319,10 +343,12 @@ prefixes each comment body with its severity. (An actual severity
    `investigate` covering both open-ended investigation and
    look-don't-touch assessment — the task instruction carries that
    distinction, not the mode.
-2. **Large-diff policy (F8): skip or shard?** V1 default is now
-   skip-with-reason above a harness threshold. If large PRs matter in
-   your deployment, sharding specialists per file group is the next
-   step — but it needs a merge story for cross-file findings.
+2. ~~**Large-diff policy (F8): skip or shard?**~~ **Resolved:
+   skip-with-reason, threshold harness-configurable** (fixed line count
+   or a char-count-estimated fraction of the model's token budget,
+   adjustable for specialist fan-out). No source in the collection,
+   including Anthropic's own `/code-review` skill, does automated
+   sharding-with-merge — see F8 above.
 3. **Review delivery shape.** V1 posts N inline comments per run.
    `claude-code-action`'s alternative — one continuously-updated
    tracking comment plus inline comments only for findings — handles

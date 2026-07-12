@@ -138,8 +138,28 @@ because the run dies on context before its first turn. V1 behavior
 above the threshold is skip-with-reason, reported the same way a
 `skipped` run reports (BMAD's >3000-changed-lines chunking cascade is
 the collection's precedent for the richer alternative — sharding
-specialists per file group — deliberately not specified here; see
-`review.md`'s open questions).
+specialists per file group — deliberately rejected; see `review.md`
+F8).
+
+The threshold itself is a harness config value, not a constant in this
+design, and the harness may express it either way:
+
+- a fixed changed-line count (BMAD's shape — simple, diff-tool-native,
+  no model/tokenizer dependency), or
+- a fraction of the deployed model's context-window token budget,
+  estimated from diff character count via a fixed chars-per-token
+  ratio (no real tokenizer call — this is a cheap guesstimate gate,
+  not an exact accounting) — this shape follows the deployed model's
+  actual window rather than a number picked for one model and left
+  stale after a model swap, and it can additionally divide by
+  `(1 + number of specialist lenses)` to account for the diff being
+  copied into every specialist's `Task` prompt in v1 (see `review.md`'s
+  "Diff-as-file" v2 note for the fix that would remove that
+  multiplier).
+
+Which shape a deployment uses is a harness config choice, not a Forge
+behavior difference — either way Forge only ever sees a run that either
+dispatches normally or never starts.
 
 ---
 
