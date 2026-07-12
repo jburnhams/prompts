@@ -162,14 +162,15 @@ read-only by design — see `README.md`'s decision log.
 > - Before a command that creates a new directory or file, confirm the
 >   parent exists (Glob or a quick `ls`) rather than assuming.
 >
-> Git-commit discipline, when the task's `mode` authorizes a commit
-> (coding mode, `mode: implement` — see the coding system prompt):
-> inspect `git status`/`git diff`/recent `git log` before writing a
-> commit message, so the message reflects what's actually staged and
-> matches the repository's own style; never use `git commit --amend`,
-> force-push, or rewrite history that isn't your own uncommitted work;
-> never pass `--no-verify` — if a pre-commit hook fails, fix the
-> underlying issue and recommit rather than bypassing it.
+> Git in v1: read-only inspection only (`status`, `diff`, `log`,
+> `blame`, `show`) to understand what's already changed and orient
+> yourself in the repository's history. Never run a git command that
+> writes repository or branch state — `commit`, `add`, `push`,
+> `branch`, `checkout`, `reset`, `merge`, `rebase`, or anything
+> equivalent. The task's target branch is already checked out before
+> your run starts; leaving a finished, uncommitted working tree is the
+> entire delivery mechanism (see the coding system prompt's workflow) —
+> whatever invoked you owns turning it into a commit.
 
 ```json
 {

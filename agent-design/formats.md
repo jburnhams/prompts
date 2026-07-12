@@ -45,8 +45,12 @@ stated as a rule.
 
 `source` is `jira` or `manual`; when `manual`, `<ticket>` is replaced
 with a `<instruction>` tag carrying the free-text task instead of a
-fetched issue. `target_branch` is omitted when the task should create
-its own branch name from the issue key.
+fetched issue. `target_branch` names the branch the harness has
+**already checked out** before this run starts — Forge works directly
+in that working tree and never creates, names, or switches branches
+itself (see `system-prompts.md`'s coding-mode workflow, step 5). It's
+included here purely so Forge can reference the branch name in its
+`Complete` summary if useful, not as something to act on.
 
 ### 1b. Review mode
 
@@ -131,16 +135,14 @@ a second fetch — it is not itself recursively expanded (no
 ```json
 {
   "ticket": "PROJ-1234",
+  "target_branch": "string, the branch the working tree was left on",
   "files_changed": [
     { "path": "string", "change_type": "added | modified | deleted | renamed", "additions": 0, "deletions": 0 }
   ],
   "verification": [
     { "check": "string, e.g. \"unit tests\", \"lint\", \"reproduction script\"", "command": "string", "result": "pass | fail | not_run", "detail": "string, only when result != pass" }
   ],
-  "commits": [
-    { "sha": "string", "message": "string" }
-  ],
-  "pull_request_url": "string, or null if mode was investigate/review_only",
+  "suggested_commit_message": "string — a proposed commit message (summary + body) for whatever picks up this branch to use or adapt; not applied by Forge itself",
   "judgment_calls": [
     "string — any ambiguity resolved without AskUser, and why; empty array if none"
   ],
@@ -149,6 +151,12 @@ a second fetch — it is not itself recursively expanded (no
   ]
 }
 ```
+
+No `commits`/`pull_request_url` fields — Forge never commits, pushes, or
+opens a pull request in v1 (see `README.md`'s decision log). The
+working tree left behind, plus this report, is the complete handoff;
+`suggested_commit_message` exists so the external process that does
+commit doesn't have to re-derive intent from a diff alone.
 
 ### 3b. Review mode
 
