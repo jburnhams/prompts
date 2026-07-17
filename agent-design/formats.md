@@ -91,7 +91,8 @@ included here purely so Forge can reference the branch name in its
 
 ```
 <pull_request>
-  Repository: owner/repo
+  Platform: {{ bitbucket | github }}
+  Repository: {{ workspace/repo-slug | owner/repo }}
   PR: #123
   Title: {{ title }}
   Author: {{ author }}
@@ -128,11 +129,14 @@ Each entry carries the platform's comment id — that's what makes
 `AddComment`'s `in_reply_to` usable against a comment Forge didn't post
 itself (the brief's threaded-reply requirement), not just against ids
 returned by Forge's own earlier `AddComment` calls. Inline review
-comments that GitHub reports as resolved or outdated are annotated as
-such, in the envelope itself — the review pipeline's dedup step
-(`system-prompts.md` §2, step 4) is told to ignore resolved/outdated
-comments, and it can only do that if the envelope actually distinguishes
-them.
+comments the platform reports as resolved (or, on GitHub, outdated)
+are annotated as such, in the envelope itself — the review pipeline's
+dedup step (`system-prompts.md` §2, step 4) is told to ignore
+resolved/outdated comments, and it can only do that if the envelope
+actually distinguishes them. Formal-review entries (`[Review by ...]`)
+appear only where the platform has that concept — Bitbucket approvals
+and change requests are rendered into the same shape by the harness, so
+Forge's dedup logic doesn't branch per platform.
 
 `<diff>` is pre-fetched and baked in — the orchestrator does not run
 `git diff` itself (see `README.md`'s decision log for why: line-number
@@ -142,8 +146,8 @@ to keep the format lean; the orchestrator passes the relevant slice of
 this same diff text into each specialist's `Task` prompt rather than
 re-fetching per specialist. (If mis-anchored comments show up in
 practice, PR-Agent's per-hunk new-file line-number injection is the
-documented upgrade path — see `future.md`'s "PR-Agent-style per-hunk
-line-number injection" entry — since deriving new-file line numbers by
+documented upgrade path — see `medium.md`'s "PR-Agent-style per-hunk
+line-number injection" escalation entry — since deriving new-file line numbers by
 hunk arithmetic is the error-prone step; `AddComment`'s harness-side
 anchor validation in `tools.md` is the v1 backstop.)
 
@@ -191,7 +195,7 @@ design, and the harness may express it either way:
   actual window rather than a number picked for one model and left
   stale after a model swap, and it can additionally divide by
   `(1 + number of specialist lenses)` to account for the diff being
-  copied into every specialist's `Task` prompt in v1 (see `future.md`'s
+  copied into every specialist's `Task` prompt in v1 (see `medium.md`'s
   "Diff-as-file instead of diff-in-prompt-thrice" entry for the fix
   that would remove that multiplier).
 
@@ -290,7 +294,7 @@ LLM judge (which stays out of v1, per the README's leanness rule).
 
 ```json
 {
-  "pull_request": "owner/repo#123",
+  "pull_request": "string — the PR reference, in AddComment's target.id format (workspace/repo-slug#123 for Bitbucket, owner/repo#123 for GitHub)",
   "findings": [
     { "...": "one review-finding object per confirmed, posted finding — see §4" }
   ],
