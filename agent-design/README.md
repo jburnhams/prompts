@@ -227,3 +227,16 @@ wake conditions). The unifying observation: v1's AskUser protocol was
 already a task-suspension mechanism with one hardcoded wake predicate
 — the higher-level capabilities are new predicates on existing
 machinery, not new machinery.
+
+The same follow-up added the design's first third entrypoint to the
+roadmap (`medium.md` §5): a product-owner mode whose deliverable is
+tracker artifacts — epics broken into stories and tasks, requirements
+and acceptance criteria, code-evidence-grounded estimates, backlog
+grooming — rather than code or review comments. It reuses the
+existing discipline on a new substrate: the tracker is that mode's
+working tree (`WriteJira` wired in PO mode only, gated by default,
+with a post-run report-vs-tracker cross-check mirroring the coding
+mode's `git status` check), AskUser delivery generalizes to
+chat/email/UI channels harness-side with Jira kept as the audit
+record, and Confluence-style documentation reading (`SearchDocs`/
+`FetchDoc`) arrives as shared tooling all three entrypoints use.

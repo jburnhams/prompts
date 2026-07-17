@@ -81,7 +81,11 @@ re-litigated later.
   one harness-side state machine. All the pieces are medium-tier; the
   steward is the orchestration layer over them, plus the lifecycle
   policy questions (when to give up, how to hand off to a human) that
-  deserve their own design pass.
+  deserve their own design pass. The same shape has a backlog analog
+  once the product-owner entrypoint (`medium.md` §5) exists: a
+  standing grooming loop that keeps a board healthy on a schedule
+  rather than per-dispatch — same primitives, same
+  policy-pass-required caveat.
 - **Coordinated multi-repo changes.** `medium.md`'s dependency-change
   path is asynchronous by design: file the ask, suspend, integrate
   when it ships — each repo's change lands on its own timeline. The
@@ -168,6 +172,28 @@ re-litigated later.
   Every added tool is also added injection surface on an unsupervised
   path — which is the real reason this is future-tier, not the
   plumbing.
+- **A conversational product-owner surface.** `medium.md`'s PO
+  entrypoint (§5) stays hands-off on purpose: questions travel over
+  the suspend/resume protocol, whatever channel delivers them. The
+  next step a real PO will ask for is a live session — grooming a
+  board *with* the agent in a chat thread, back-and-forth at
+  conversation speed. That is an archetype change, not a feature:
+  interactive agents carry terseness rules, status-update protocols,
+  and turn-taking conventions that hands-off agents deliberately
+  lack (`agent-archetypes.md` axis 1, `coding-agent-approaches.md`
+  §11), so this is a fourth prompt with its own communication
+  contract sharing PO mode's tool surface — not a flag on the
+  existing one. The suspension-based mode remains the substrate:
+  a live session that ends with unresolved questions parks them the
+  same way.
+- **Estimation calibration from historical outcomes.** The PO
+  entrypoint's estimates are grounded in code evidence but
+  uncalibrated. The extension of `medium.md`'s finding-outcome
+  telemetry (§3e) to this track: record estimate vs. actual
+  (cycle time, PR size, review rounds) per story, and feed the
+  distribution back into the estimation rubric. Same
+  measurement-before-mechanism ordering as confidence scoring —
+  the rubric upgrade is pointless before the data exists.
 - **`NotebookEdit` and other niche editors.** Still not load-bearing
   for "implement a ticket / review a diff"; add per-format tools only
   when the repo mix demands them.

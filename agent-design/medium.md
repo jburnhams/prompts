@@ -10,10 +10,10 @@ escalation path v1 deliberately shipped the simple version of.
 `future.md` holds the long-horizon and measurement-gated ideas.
 
 Nothing in this file changes v1's contracts. Every item is additive:
-new task sources, new tools, new envelope tags, or harness-side
-mechanics — the existing mode rules, completion gates, and structural
-tool scoping all carry forward unchanged unless an item says otherwise
-explicitly.
+new task sources, new tools, new envelope tags, harness-side
+mechanics, or (§5) a whole additional entrypoint — the existing mode
+rules, completion gates, and structural tool scoping all carry
+forward unchanged unless an item says otherwise explicitly.
 
 A shared principle worth stating once rather than per item: every new
 tool that returns external content (`FetchBuild`, `SearchJira`,
@@ -360,10 +360,11 @@ Phased on purpose, matching how the need actually arrives:
   restating here because dependency source is authored even further
   from the deployment's trust boundary.
 - Coding mode only (both `mode` values — a plan run tracing a bug
-  into a dependency is exactly what plan mode is for). Review
-  sub-agents stay Read/Grep/Glob-local; widening their reach needs
-  finding-level evidence first, same bar as their Bash escalation
-  entry (§5).
+  into a dependency is exactly what plan mode is for), plus the
+  product-owner entrypoint (§5), where it's the primary code view.
+  Review sub-agents stay Read/Grep/Glob-local; widening their reach
+  needs finding-level evidence first, same bar as their Bash
+  escalation entry (§6).
 
 ---
 
@@ -644,7 +645,174 @@ its prerequisite, which is part of why they're medium-tier.
 
 ---
 
-## 5. Escalation triggers (v1 ships simple; upgrade only on evidence)
+## 5. A third entrypoint: product-owner mode
+
+The first item in this roadmap that adds an *entrypoint* rather than
+extending one — a parallel track that runs through every planning
+horizon rather than a single feature. Everything above extends what
+the coding and review orchestrators can reach; this adds a third
+orchestrator whose deliverable is **tracker artifacts, not code**:
+requirements, epics broken into stories and tasks, estimates and
+complexity assessments, and a groomed backlog. Same model, same core
+tool discipline, a third system prompt.
+
+The distinction from `mode: plan`, stated crisply because they will
+be confused: plan mode answers *"how would I implement this ticket"*
+— its output is an implementation design for one existing issue. PO
+mode answers *"what tickets should exist"* — its output is the
+issues themselves, written well enough that plan/implement runs (and
+humans) can consume them. They compose rather than overlap: a
+PO-authored story with crisp acceptance criteria is exactly what the
+coding entrypoint wants as input and what the `ticket_compliance`
+lens (§3a) reviews against. This track sits upstream of the entire
+existing pipeline, which is what makes it a flywheel: better tickets
+in, better implementation and review out.
+
+**Precedent honesty**: the collection is nearly empty here. BMAD is
+the only source with real story/sprint machinery — spec/story files
+with acceptance criteria gating a review layer, sprint-status
+tracking, checklist items written into story files
+(`code-review-approaches.md` §§1, 4, 7) — and it's human-mediated
+throughout. Nothing surveyed authors backlog structure autonomously.
+That means this section leans on Forge's own established patterns
+(gated outward writes, suspension, structural tool scoping) more
+than on field precedent, and should be built expecting to learn.
+
+### 5a. The entrypoint
+
+**Input**: a PO task envelope — a goal or raw requirement
+(free text or a rough epic), or a grooming brief (a board/JQL scope
+plus what "groomed" means for this team). **Output**: created/updated
+issues and a Complete report accounting for them.
+
+**Workflows** (one prompt, task-shaped like coding mode's two modes):
+
+- **Break down**: fetch the epic/requirement and everything it
+  references (`FetchJira`/`SearchJira`, `SearchDocs`/`FetchDoc` —
+  §5d, `SearchSource` for code reality); run a question round with
+  the humans who own the ambiguity (§5c); draft the hierarchy —
+  stories with acceptance criteria, tasks with scope, dependency
+  links; post the draft for approval; create on approval (§5b).
+- **Groom**: sweep the scoped backlog for duplicates
+  (`SearchJira` + the dedup discipline the review pipeline already
+  has), stale issues, missing acceptance criteria, stories too big to
+  implement in one run; propose merges/splits/rewrites/closures —
+  every one gated, none silent.
+- **Estimate**: complexity and story points *grounded in code
+  evidence* — which components and repos a story actually touches
+  (`SearchSource` blast-radius reconnaissance), stated as rationale
+  on the issue, not bare numbers. This is the capability nothing in
+  the field has: an estimating agent that reads the code before
+  sizing the story. Calibration against historical outcomes is
+  future-tier (`future.md`).
+
+**Tool surface** (structural, per the availability-table pattern in
+`tools.md`): `FetchJira`, `SearchJira`, `SearchDocs`/`FetchDoc`,
+`SearchSource`/`ReadSource`, `Task` (`general-purpose`, for
+open-ended research), `AskUser`, `WriteJira` (§5b), `Complete`. **No
+`Edit`, `Write`, or `Bash` — not wired at all.** PO mode never
+touches code or a shell; it may not even have a working tree checked
+out (`SearchSource` is its code view, which is why §2e lists it as a
+consumer). Read/Grep/Glob are wired only when the envelope names a
+primary repo worth having locally.
+
+**Archetype stance**: still hands-off, deliberately. "More
+interactive" is real — grooming means many small human decisions —
+but the interaction model stays ask-suspend-resume, just cheaper and
+more channel-appropriate (§5c), with batched questions (one
+suspension carrying several questions beats four suspensions). A
+genuinely synchronous conversational PO surface is a different
+archetype with different communication rules
+(`agent-archetypes.md`'s axis 1) and is tracked in `future.md`, not
+smuggled in here.
+
+### 5b. Tracker writes: `WriteJira`
+
+The PO deliverable requires the one capability v1 deliberately
+withheld everywhere else: writing to the tracker. The design holds
+because the withholding was never absolute — it was "no tool without
+a legitimate caller in that mode." PO mode is the legitimate caller.
+
+- One tool, verb-scoped: create an issue (type, project, summary,
+  description, acceptance criteria, estimate fields, labels), update
+  those same fields on an existing issue, link issues
+  (epic-child, blocks, duplicates). **No transitions and no
+  deletions** — moving issues through workflow states and removing
+  them stay human/harness-owned; a wrongly-created issue is flagged
+  in the report, not deleted by the agent.
+- **Wired in PO mode only.** Coding and review modes keep their
+  v1 surfaces — same structural-gates reasoning as every other
+  mode-scoped tool, and `ProposeDependencyChange` (§4a) remains the
+  only tracker-write path from a coding run, with its own gating.
+- **Gated by default, like §4a**: the draft hierarchy posts for
+  human approval before `WriteJira` fires; a deployment can loosen
+  this per workflow (grooming *proposals* might auto-post as
+  comments while *closures* always gate). All created/updated issues
+  are agent-labeled.
+- **Integrity cross-check — the tracker is this mode's working
+  tree.** The exact symmetry of the coding-mode `git status`
+  cross-check (`formats.md` §3a): after a PO run, the harness
+  fetches the issues the report claims were created/updated and
+  attaches any mismatch — a claimed-but-missing issue, an
+  unreported write — to the report it hands downstream. The
+  false-completion-claim defense carries over to a new substrate
+  unchanged.
+
+### 5c. Multi-channel `AskUser` delivery
+
+V1 routes every AskUser through a Jira comment. The PO track makes
+that visibly wrong — the person who owns a requirements ambiguity
+lives in chat (Symphony/Teams), email, or a review UI, not
+necessarily on the ticket — but the fix is a harness-side
+generalization, not a new tool, and every mode benefits.
+
+- The suspension protocol (`formats.md` §5) is already
+  channel-agnostic in structure: post question → record
+  suspended-task keyed to a conversation reference → resume on
+  reply. Only step 2's delivery is Jira-specific. Generalize the
+  key from "comment id" to "channel + conversation reference"
+  (a chat thread id, an email message id, a UI inbox item), with
+  reply-matching per channel: chat webhooks, email reply-to
+  threading, UI events.
+- The harness owns an **addressee registry** per task — reporter,
+  team channel, PO — from envelope config, the same way
+  `<comment_target>` already routes manual-task communication.
+  `AskUser` optionally gains one field: an `audience` hint (*who is
+  best placed to answer* — "the reporter", "the team owning
+  service X"), which the harness maps to a channel and address;
+  Forge never sees addresses or channel mechanics.
+- Whatever channel carries the question, the *audit trail* stays on
+  the ticket: the harness mirrors question and answer back to the
+  originating issue as a comment, so a decision made in a chat
+  thread isn't invisible to the next run (or the next human) reading
+  the ticket. One channel is the conversation; Jira is the record.
+
+### 5d. Documentation sources: `SearchDocs` / `FetchDoc`
+
+Confluence first, schema platform-agnostic — the `AddComment`
+pattern applied to reading documentation. `SearchDocs(query, space?)`
+returns compact hits (title, ref, excerpt); `FetchDoc(doc_ref)`
+returns a page as Markdown, sanitized like every other fetched
+content (`formats.md` §1 — a Confluence page is a ticket comment
+with better formatting: same injection posture, data-not-instruction
+rule included).
+
+Deliberately listed under the PO section but **wired wherever
+reading matters**: coding mode (the design doc a ticket links is
+context plan mode should read, and today can't), review mode
+*optionally* for the `conventions`/`ticket_compliance` lenses (an
+ADR space is a conventions file that outgrew the repo — but wire it
+to the orchestrator's context-gathering step, not the specialists,
+to keep their scopes narrow), and PO mode as a primary input.
+In-collection precedent is thin — PR-Agent's org-standards injection
+and BMAD's frontmatter-referenced docs are the nearest shapes
+(`code-review-approaches.md` §4); the abstraction cost is low
+because the tools are read-only and the harness owns the source
+mapping, same as everything else in this design.
+
+---
+
+## 6. Escalation triggers (v1 ships simple; upgrade only on evidence)
 
 Moved from the original single-file roadmap, unchanged in substance:
 each of these is a case where v1 deliberately shipped the simple
