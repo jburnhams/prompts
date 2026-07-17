@@ -54,8 +54,8 @@ legitimate there); its general no-write rule remains prompt-enforced in
 v1, with one narrow structural exception — the git-write blocklist
 described in the Bash tool's own section below, which the harness
 applies in every mode. Filtering arbitrary commands beyond that one
-family is a real permission engine — see `future.md`'s "General
-command-level `Bash` permission filtering" entry.
+family is a real permission engine — see `medium.md`'s "General
+command-level `Bash` permission filtering" escalation entry.
 
 The narrowing runs the other way too: in `implement` runs, `AddComment`
 is **not registered**. Plan mode needs it (workflow step 5 posts the
@@ -66,9 +66,11 @@ tool wired anyway would be exactly the unused-escape-hatch surface this
 design strips `AskUser` from review mode for: a tool with no legitimate
 caller in that mode is only reachable by a prompt-injected instruction.
 (`AskUser`'s suspend protocol is unaffected — the harness posts the
-question itself; Forge never calls `AddComment` for it. See
-`future.md`'s "Re-wiring `AddComment` in implement mode" entry for the
-tracked upgrade if mid-run ticket notes turn out to be wanted.) The
+question itself; Forge never calls `AddComment` for it. Tracked
+upgrades: `medium.md`'s PR-comment-responder runs wire `AddComment`
+for threaded replies in that one task source, where replying *is* the
+deliverable; `future.md`'s "Re-wiring `AddComment` in implement mode"
+entry covers a general mid-run decision-notes channel.) The
 system-prompt mode rules in
 `system-prompts.md` remain as the behavioral layer on top of this
 structural one.
@@ -229,7 +231,7 @@ structural one.
 > commands matching git write subcommands before they reach the shell,
 > returning an error naming the rule. This is a narrow substring/
 > pattern blocklist on one command family, not a general permission
-> engine (that stays deferred — `future.md`): the precedent is Augment
+> engine (that stays deferred — `medium.md`'s escalation triggers): the precedent is Augment
 > SWE-bench Agent's hardcoded `banned_command_strs` check, the only
 > code-level git restriction found anywhere in this repo's collection
 > (`agent-git-vcs.md` §2), and it's a few lines of harness code
@@ -344,7 +346,11 @@ structural one.
 > Usage notes:
 > - Launch multiple independent sub-agents in the same turn rather than
 >   one at a time — review mode's specialist and validator steps always
->   do this.
+>   do this. The harness caps how many run concurrently (a small fixed
+>   number; Codex CLI's default of 16 and OpenHands's 5-8 are the
+>   field's code-enforced precedents — `agent-subagent-architectures.md`
+>   §5) and queues the rest, so a validator fan-out larger than the cap
+>   is safe to dispatch in one turn — it just won't all run at once.
 > - Never launch two sub-agents in the same turn if their write targets
 >   could overlap (only relevant for `general-purpose`, since `reviewer`/
 >   `validator` never write). If you're not sure their file sets are
@@ -476,9 +482,10 @@ Output shape is documented in `formats.md`.
 
 > Posts a comment — a new top-level comment, an inline comment anchored
 > to a specific file/line on a PR, or a threaded reply to an existing
-> comment — on either a Jira issue or a PR. One tool for both platforms,
-> per the brief; platform differences are handled by which optional
-> fields you set, not by separate tools. Wired in review runs and
+> comment — on a Jira issue or a pull request (Bitbucket or GitHub).
+> One tool for every platform, per the brief; platform differences are
+> handled by which optional fields you set and by harness-side
+> capability handling, not by separate tools. Wired in review runs and
 > `plan`-mode coding runs only — an `implement` run's sole outward
 > channel is its Complete report (see the availability notes at the top
 > of this document). `body` is always plain
@@ -493,30 +500,39 @@ Output shape is documented in `formats.md`.
 >   nested reply isn't always possible; the tool falls back to a
 >   plain comment prefixed with a reference to the original if the
 >   target platform can't thread it.
+> - `target.platform: "bitbucket_pr"` + `target.id`
+>   (`"workspace/repo-slug#123"`): posts a Bitbucket PR comment.
+>   Bitbucket PR comments are natively threaded, so `in_reply_to`
+>   (a comment id) produces a true nested reply.
 > - `target.platform: "github_pr"` + `target.id` (`"owner/repo#123"`):
->   posts a GitHub PR comment. Set `anchor` (file + line, optionally a
+>   posts a GitHub PR comment. Set `in_reply_to` (a comment id) to
+>   reply within an existing review thread rather than starting a new
+>   one.
+> - On either PR platform, set `anchor` (file + line, optionally a
 >   `line_end` for a range) for an inline review comment; omit it for a
 >   general PR comment. Anchor line numbers are **new-file (post-change)
->   line numbers** — the same side the review-finding schema uses. Set
->   `in_reply_to` (a comment id) to reply within an existing review
->   thread rather than starting a new one.
+>   line numbers** — the same side the review-finding schema uses.
 > - An inline comment can only attach to lines that appear in the PR's
 >   diff. The harness validates the anchor before posting; if it isn't
 >   commentable, the comment is posted as a general PR comment prefixed
 >   with `file:line` instead of being dropped, and the tool result says
 >   which happened — so a mis-derived line number degrades visibly, not
 >   silently.
-> - `suggestion` wraps `body` in a GitHub-native committable suggestion
+> - `suggestion` wraps `body` in the platform's committable suggestion
 >   block, replacing the full anchored line range. Only set this when
 >   applying it verbatim fully resolves the issue — never for a fix that
 >   needs a follow-up step. Requires `anchor` (schema-enforced below).
 >   When set, `body` must contain **only the exact replacement source
->   lines** — no prose, no Markdown fences, no explanation. GitHub
+>   lines** — no prose, no Markdown fences, no explanation. The platform
 >   commits the block's contents verbatim over the anchored range, so
 >   any explanatory text inside it becomes a syntax error in someone's
 >   codebase when they click "apply." Put the explanation in a separate
 >   unanchored or prose comment if one is needed, or skip the
->   suggestion and describe the fix in prose instead.
+>   suggestion and describe the fix in prose instead. Suggestion-block
+>   support varies by platform deployment; where the target can't apply
+>   one, the harness posts the same content as a plain fenced code block
+>   labeled as a suggested replacement, and the tool result says so —
+>   the same degrade-visibly pattern anchor validation uses.
 >
 > Returns the posted comment's id and URL, which a caller can use as a
 > later `in_reply_to` value.
@@ -530,8 +546,8 @@ Output shape is documented in `formats.md`.
       "target": {
         "type": "object",
         "properties": {
-          "platform": { "type": "string", "enum": ["jira", "github_pr"] },
-          "id": { "type": "string", "description": "Jira issue key, or \"owner/repo#pr_number\" for a PR." }
+          "platform": { "type": "string", "enum": ["jira", "bitbucket_pr", "github_pr"] },
+          "id": { "type": "string", "description": "Jira issue key, \"workspace/repo-slug#pr_number\" for a Bitbucket PR, or \"owner/repo#pr_number\" for a GitHub PR." }
         },
         "required": ["platform", "id"],
         "additionalProperties": false
@@ -540,7 +556,7 @@ Output shape is documented in `formats.md`.
       "in_reply_to": { "type": "string", "description": "Optional: id of an existing comment to reply to." },
       "anchor": {
         "type": "object",
-        "description": "Optional, github_pr only: anchors the comment to a specific new-file line or line range.",
+        "description": "Optional, PR targets only: anchors the comment to a specific new-file line or line range.",
         "properties": {
           "file": { "type": "string" },
           "line": { "type": "integer", "description": "New-file (post-change) line number. The start of the range when line_end is set." },
@@ -549,7 +565,7 @@ Output shape is documented in `formats.md`.
         "required": ["file", "line"],
         "additionalProperties": false
       },
-      "suggestion": { "type": "boolean", "description": "Wrap body as a committable suggestion block replacing the anchored line range. github_pr, anchored comments only." }
+      "suggestion": { "type": "boolean", "description": "Wrap body as a committable suggestion block replacing the anchored line range. PR targets, anchored comments only." }
     },
     "required": ["target", "body"],
     "additionalProperties": false,

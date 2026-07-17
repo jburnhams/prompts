@@ -1,184 +1,150 @@
 # Future considerations
 
-Everything here is a documented, well-precedented pattern from this
-repo's research — left out of v1 for leanness, not because it's a bad
-idea. Nothing here should influence a v1 implementation; it exists so
-these ideas are tracked instead of forgotten or silently re-litigated
-later. See `README.md` for the v1 design itself.
-
-Two shapes of deferred work:
-
-- **Deferred entirely** — v1 has no mechanism in this area at all.
-- **Escalation triggers** — v1 ships a simple mechanism on purpose, with
-  a named, more expensive upgrade to reach for only if the simple
-  version proves insufficient in practice.
-
-## Deferred entirely
+The long-horizon tier of the roadmap — see `medium.md` for the
+concrete next upgrades and the escalation triggers, and `README.md`
+for the v1 design itself. Everything here is either gated on
+measurement that `medium.md`'s telemetry item has to produce first,
+or is a genuine subsystem whose cost only pays off at a scale v1
+hasn't reached. Nothing here should influence a v1 implementation; it
+exists so these ideas are tracked instead of forgotten or silently
+re-litigated later.
 
 - **Typed sub-agent registry beyond three types.** Coding mode has one
   delegate type; review mode has two (`reviewer`, `validator`). Claude
   Code, Gemini CLI, and Amp all show the next step (named, narrower
   types for specific jobs) once there's a concrete need.
 - **Addressable/resumable sub-agents.** Codex CLI's `spawn_agent`/
-  `send_input`/`wait_agent`/`close_agent` and OpenCode's queue-onto-a-
-  running-job model (`agent-subagent-architectures.md` §2) are the
-  natural upgrade once a coding task needs to steer a sub-agent
-  mid-flight rather than fire-and-forget it. Recursive delegation
-  (`general-purpose` calling `Task` itself, currently disallowed —
-  `tools.md`) is the same underlying question one level deeper.
+  `send_input`/`wait_agent`/`close_agent`, OpenCode's
+  queue-onto-a-running-job model, and Grok Build's `resume_from`
+  (`agent-subagent-architectures.md` §2 — five independent arrivals at
+  "addressable, not stateless") are the natural upgrade once a coding
+  task needs to steer a sub-agent mid-flight rather than
+  fire-and-forget it. Recursive delegation (`general-purpose` calling
+  `Task` itself, currently disallowed — `tools.md`) is the same
+  underlying question one level deeper.
 - **Numeric confidence scoring for review findings.** The validator
-  pass here is binary (confirmed / not confirmed), matching Anthropic's
-  own skill. TuringMind's 0-100 rubric or BMAD's 4-bucket triage
+  pass is binary (confirmed / not confirmed), matching Anthropic's own
+  skill. TuringMind's 0-100 rubric or BMAD's 4-bucket triage
   (`code-review-approaches.md` §6) are richer but add real tuning
-  surface — worth adding once false-positive rate is actually measured.
-- **`MultiEdit`, `NotebookEdit`, `WebFetch`/`WebSearch`, browser/deploy
-  tooling.** None are load-bearing for "implement a Jira ticket" or
-  "review a diff."
-- **Memory-file conventions (`AGENTS.md`/`CLAUDE.md`-equivalent).**
-  Reading a project's own convention file is just a `Read` call in the
-  coding-mode prompt's workflow, not a dedicated tool — no need to
-  invent one.
+  surface — gated on the false-positive rate `medium.md`'s
+  finding-outcome telemetry actually measures.
+- **Best-of-N ensembling for hard tickets.** Run several full,
+  independent `implement` attempts and have a separate judge pick the
+  winner — SWE-agent's `RetryAgentConfig` (score-and-retry, or
+  chooser-over-a-batch) and Augment SWE-bench Agent's
+  majority-vote ensembler are the same shape arrived at independently
+  (`agent-subagent-architectures.md` §2, `agent-self-verification.md`
+  §3). Expensive by construction (N full runs plus judge calls), so
+  it's a per-task dispatch choice for tickets that failed a first
+  attempt or are flagged hard — not a default. Forge's
+  working-tree-is-the-deliverable design actually suits this well:
+  N worktrees, one judged winner, no branch juggling inside the agent.
+- **An LLM judge over completed work.** Claude Code's internal
+  adversarial verification subagent is the ceiling
+  (`agent-self-verification.md` §3); v1's completion-integrity story
+  is deterministic only (checklist gate + harness `git status`
+  cross-check), which can't be prompt-injected or talked out of
+  firing. The judge is the layer above, not a replacement.
+- **Context compaction.** A run that outgrows its budgets ends via the
+  final-turn nudge with an honest partial report (`formats.md` §7)
+  rather than summarizing and continuing — compaction is a genuine
+  subsystem (`agent-context-compaction.md`) and the natural lever if
+  budget-exhausted runs turn out to be common on legitimately-sized
+  tasks.
 - **A tiered permission/approval subsystem.** Codex CLI's five
   cooperating subsystems and Gemini CLI's policy engine
   (`agent-permissions-approval.md`) are the eventual ceiling; v1 gets
   structural mode wiring, the git-write blocklist, and one hard prompt
-  rule (anything outside the task's declared `mode` requires `AskUser`)
-  rather than a graded system. If this is ever built, the field's most
-  interesting converged pattern is worth knowing about up front: three
-  vendors independently arrived at "a second, cheaper LLM judges the
-  first model's proposed actions" (Gemini CLI's Conseca, Codex's
-  Guardian, Claude Code's internal-only `yoloClassifier`), always
-  layered *on top of* a static rule engine that keeps working without
-  it, and failing closed on error (`agent-permissions-approval.md` §2).
-- **Context compaction.** A run that outgrows its budgets ends via the
-  final-turn nudge with an honest partial report (`formats.md` §7)
-  rather than summarizing and continuing — compaction is a genuine
-  subsystem (`agent-context-compaction.md`) and the natural v2 lever if
-  budget-exhausted runs turn out to be common.
-- **An LLM judge over completed work.** Claude Code's internal
-  adversarial verification subagent is the ceiling
-  (`agent-self-verification.md` §3); v1's completion-integrity story is
-  deterministic only (checklist gate + harness `git status`
-  cross-check), which can't be prompt-injected or talked out of firing.
-- **Diff-as-file instead of diff-in-prompt-thrice.** The review
-  orchestrator currently carries the diff in its envelope *and* copies
-  slices into each specialist's `Task` prompt. Having the harness also
-  write the diff to a scratch-dir file and letting sub-agents `Read` it
-  would cut the duplication for large PRs — at the cost of sub-agents
-  starting cold on what they should read. Worth measuring before
-  adopting. (Also the fix that removes the specialist-fan-out
-  duplication multiplier from `formats.md`'s large-diff threshold math.)
-- **Double-coverage on the bugs lens.** Anthropic's `/code-review` skill
-  runs *two* bug-finder agents in parallel for recall and lets
-  validation handle the overlap; Forge runs one specialist per lens.
-  Cheap to add later if recall measures low — the validator + dedup
-  machinery already handles the duplicate-findings consequence.
+  rule, with `medium.md`'s command-level Bash filtering as the first
+  slice. The field's most interesting converged pattern, if this is
+  ever built: three vendors independently arrived at "a second,
+  cheaper LLM judges the first model's proposed actions" (Gemini CLI's
+  Conseca, Codex's Guardian, Claude Code's internal `yoloClassifier`),
+  always layered *on top of* a static rule engine that keeps working
+  without it, failing closed on error
+  (`agent-permissions-approval.md` §2).
+- **Active CI/CD control.** `medium.md`'s `FetchBuild` is read-only by
+  construction; the next step — triggering pipeline runs, re-running
+  failed steps, managing deployments — is a genuinely different
+  permission surface (an agent that can trigger a deploy pipeline can
+  ship code, which v1's no-git-writes stance exists to prevent).
+  Windsurf's `deploy_web_app`/`check_deploy_status` trio is the only
+  deployment-as-a-tool precedent in the collection
+  (`agent-tool-surfaces.md` §7). If ever built, it belongs behind the
+  tiered permission subsystem above, not before it.
+- **A standing PR-steward loop.** Today every run is one-shot:
+  dispatched, terminates, done. The steward shape — a task that stays
+  subscribed to a PR's events (CI results, new comments, new pushes)
+  and dispatches the right run type per event until the PR merges or
+  closes — is the composition of `medium.md`'s three loop-closing
+  sources under one harness-side state machine. All the pieces are
+  medium-tier; the steward is the orchestration layer over them, plus
+  the lifecycle policy questions (when to give up, how to hand off to
+  a human) that deserve their own design pass.
+- **Cross-run repo memory.** V1 runs start cold except for the
+  conventions file and the plan/findings envelope tags. The field
+  offers three shapes for "remember this repo across sessions":
+  Windsurf's bespoke tagged-database tool, GitHub Copilot CLI's raw
+  SQL over a session store, and Grok Build's tool-mediated read/search
+  over a plain memory file (`agent-tool-surfaces.md` §7). The tension
+  to resolve before adopting any of them: a Forge-writable memory file
+  that future runs read is *exactly* the self-instruction-poisoning
+  surface the conventions file is defended against (`formats.md` §3a)
+  — so memory needs the same structural write-gating and provenance
+  story from day one, not retrofitted.
+- **Semantic / symbol-aware code search.** V1's Grep/Glob sits at the
+  middle of the field's clearest capability ladder — plain text match
+  → semantic/embedding search (Cursor, Windsurf, Roo Code) →
+  LSP-backed symbol resolution (Copilot Chat)
+  (`agent-tool-surfaces.md` §2). The upgrade needs an index built and
+  maintained per repo, which is real infrastructure; worth it only if
+  exploration cost (turns spent finding things) measurably dominates
+  run budgets on large repos.
+- **Browser/UI verification and multimodal input.** For front-end
+  tickets, "verify" currently means tests pass — no way to look at
+  the rendered result. Cline's single-tool and Windsurf's
+  seven-tool browser automation are the only two real precedents, and
+  multimodal input is the least-addressed capability in the whole
+  survey (`agent-tool-surfaces.md` §4-5). A screenshot-and-view
+  capability is the minimal useful slice; full interactive automation
+  is a large dependency for one ticket class.
 - **Turn caps for sub-agents.** Copilot Chat's `isLastTurn` nudge (the
-  same mechanism `formats.md` §7 uses for the whole run) applied one
-  level down, to individual `Task` calls. The run-level budget is
-  enough for v1; a runaway sub-agent still terminates when the parent
-  run's own budget is hit.
-- **A cap on `AskUser` suspend/resume cycles.** A task can suspend and
-  resume more than once with no built-in limit in v1 (`formats.md` §5).
-  A real deployment would likely want one (e.g. "escalate instead of
-  asking a third time") — left unspecified rather than picking a number
-  with no concrete reason behind it.
-- **Per-role model selection.** V1 runs every orchestrator and
-  sub-agent on one model. The precedent for varying it per role is
-  strong and specific: Anthropic's own `/code-review` skill assigns
-  Haiku to triage, Sonnet to conventions checks, and Opus to bug-finding
-  and validation; Amp pins its `oracle` to a different vendor's model
-  entirely; GitHub Copilot CLI pins a model per sub-agent YAML with one
-  (`rubber-duck`) deliberately inheriting the user's live choice
-  (`agent-subagent-architectures.md` §3). A cheap-model triage pass and
-  an expensive-model validator are the natural first split once cost
-  per review run is measured.
-- **Re-wiring `AddComment` in implement mode, as a channel for
-  recording implementation decisions on the ticket.** V1 doesn't
-  register `AddComment` in `implement` runs at all (`tools.md`): no
-  workflow step posts anything there, and a wired-but-unused tool on an
-  unsupervised path is the same injection surface that keeps `AskUser`
-  out of review mode. The information itself isn't lost — judgment
-  calls, decisions, and caveats go in the Complete report's
-  `judgment_calls`/`summary` fields, and the harness decides what
-  reaches the ticket. The tracked upgrade is to bring the tool back
-  with a narrow, stated job: posting durable implementation-decision
-  notes to the originating Jira issue ("chose library X over Y because
-  Z", "the acceptance criteria's edge case is handled in <file>"), so
-  the decision record lives on the ticket itself rather than only in
-  whatever the harness does with the report. Worth doing only if real
-  deployments find the report → harness → ticket path insufficient —
-  e.g. wanting notes to land mid-run rather than after Complete, or
-  wanting them threaded against specific existing ticket comments —
-  and it should come with the same
-  scoped-to-one-job prompt guidance plan mode's posting step has, not
-  as a general-purpose comment ability. V1 defends
-  the conventions file (instruction to every future run, so a
-  self-instruction-poisoning target) with a prompt rule plus a post-run
-  harness flag on any diff touching it (`formats.md` §3a). The
-  structural upgrade is Roo Code's `RooProtectedController`
-  (`agent-permissions-approval.md` §3): `.roorules*`/`AGENTS.md` and
-  kin are write-protected in code "regardless of autoapproval
-  settings" — the only source in the collection that hard-protects the
-  agent's own instruction files from the agent. For Forge that would
-  mean the harness rejecting `Edit`/`Write` calls targeting the
-  conventions path unless the run was dispatched with an explicit
-  this-ticket-may-edit-conventions flag. Deferred because the post-run
-  flag already makes the failure visible rather than silent; upgrade if
-  flagged violations actually occur.
+  mechanism `formats.md` §7 uses run-level) applied to individual
+  `Task` calls. The run-level budget is enough for now; a runaway
+  sub-agent still terminates when the parent run's budget is hit.
+- **A cap on `AskUser` suspend/resume cycles.** No built-in limit in
+  v1 (`formats.md` §5). A real deployment would likely want one
+  ("escalate instead of asking a third time") — left unspecified
+  rather than picking a number with no concrete reason behind it.
+- **Re-wiring `AddComment` in implement mode as a general
+  decision-notes channel.** `medium.md`'s responder source wires it
+  for threaded replies where replying is the deliverable; the broader
+  idea — posting durable implementation-decision notes to the
+  originating ticket mid-run ("chose X over Y because Z") — stays
+  future. The information isn't lost meanwhile: judgment calls and
+  caveats go in the Complete report, and the harness decides what
+  reaches the ticket. Worth doing only if the report → harness →
+  ticket path proves insufficient in practice, and then with the same
+  scoped-to-one-job prompt guidance plan mode's posting step has.
 - **Repo-file content sanitization.** The envelope/FetchJira sanitizer
-  (`formats.md` §1) deliberately does not touch file contents returned
+  (`formats.md` §1) deliberately doesn't touch file contents returned
   by Read/Grep — mangling source bytes would break Edit's exact-match
-  contract. A malicious file in a reviewed PR could therefore still
-  carry invisible-Unicode payloads to a `reviewer` sub-agent that Reads
-  it. A display-layer-only strip (sanitize what the model sees, keep
-  the on-disk bytes canonical for Edit) is the plausible fix if this
-  ever shows up in practice; no source in the collection does it today.
-
-## Escalation triggers (v1 ships simple; upgrade only if needed)
-
-- **PR-Agent-style per-hunk line-number injection**, if mis-anchored
-  review comments show up in practice. V1 bakes a plain unified diff
-  and validates anchors after the fact, degrading a bad anchor to a
-  visible `file:line`-prefixed general comment rather than silently
-  mis-posting (`formats.md` §1b, `README.md`'s "Comment anchoring"
-  decision-log row). PR-Agent's custom `__new hunk__`/`__old hunk__`
-  format with line numbers injected per hunk (`code-review-approaches.md`
-  §3) removes the hunk-arithmetic step that causes mis-anchoring in the
-  first place, at the cost of a less lean diff format.
-- **General command-level `Bash` permission filtering**, beyond the
-  narrow git-write blocklist v1 does ship (`tools.md`). The v1
-  blocklist covers exactly one command family (git write subcommands),
-  because Augment SWE-bench Agent's precedent shows that specific check
-  is a few lines of code; everything else about Bash — read-only-mode
-  no-write rules, destructive non-git commands, network use — remains
-  prompt-enforced in v1, because filtering *arbitrary* commands
-  correctly (compound commands, subshells, `xargs`, script files) is a
-  real permission engine: OpenCode's tree-sitter AST parsing of
-  bash/PowerShell and Gemini CLI's per-sub-command redirection
-  detection (`agent-permissions-approval.md` §2-3) are the field's
-  benchmarks for doing it properly, and both are whole subsystems. The
-  natural first instance of the tiered permission/approval subsystem
-  above, scoped down to just this one tool.
-- **Read-only-git `Bash` for `reviewer`/`validator` sub-agents**, if
-  pre-existing-vs-introduced misjudgments show up in posted findings.
-  V1 gives review sub-agents no `Bash` at all (`tools.md`), so a
-  validator's only view of the pre-change code is the diff's own `-`
-  lines and context — it can't `git show base_sha:file`. The validator
-  prompt tells it to reject when that view is insufficient, which
-  trades recall for safety. Granting a git-inspection allowlist
-  (agent37/TuringMind's shape, `code-review-approaches.md` §10) is the
-  upgrade, but it depends on the command-level filtering entry above
-  existing first — without it, "read-only git only" would be
-  prompt-enforced, exactly what the structural-gates principle rejects.
-- **Batched review delivery via GitHub's pending-review flow**, if
-  per-finding notification noise draws complaints. V1's pipeline posts
-  one `AddComment` per finding, which means N findings = N separate
-  notification events for the PR author. `gemini-code-review` is the
-  collection's precedent for the alternative (create pending review →
-  add comments → submit once, event type locked to `COMMENT` —
-  `code-review-approaches.md` §9): one notification, atomic delivery,
-  and a natural place to hard-lock "never APPROVE/REQUEST_CHANGES" at
-  the API layer. Harness-side change to how `AddComment` calls are
-  flushed, not a schema change — the tool surface Forge sees can stay
-  identical.
+  contract. A malicious file in a reviewed PR could carry
+  invisible-Unicode payloads to a `reviewer` that Reads it; Bash
+  output has the same residual exposure (a `git log` on a hostile
+  branch returns attacker-authored commit messages). A
+  display-layer-only strip (sanitize what the model sees, keep on-disk
+  bytes canonical) is the plausible fix; no source in the collection
+  does it today.
+- **MCP-style third-party extensibility.** V1's tool surface is
+  closed by design. If it ever opens, the field's lessons: render the
+  prompt's tool list from what's actually wired (Pi, Gemini CLI —
+  `agent-tool-surfaces.md` §10) so the prompt can't describe a tool
+  that doesn't exist, and treat schema discovery as mandatory before
+  first use (Grok Build's `search_tool`-before-`use_tool` rule).
+  Every added tool is also added injection surface on an unsupervised
+  path — which is the real reason this is future-tier, not the
+  plumbing.
+- **`NotebookEdit` and other niche editors.** Still not load-bearing
+  for "implement a ticket / review a diff"; add per-format tools only
+  when the repo mix demands them.
