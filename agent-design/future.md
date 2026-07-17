@@ -77,10 +77,23 @@ re-litigated later.
   subscribed to a PR's events (CI results, new comments, new pushes)
   and dispatches the right run type per event until the PR merges or
   closes — is the composition of `medium.md`'s three loop-closing
-  sources under one harness-side state machine. All the pieces are
-  medium-tier; the steward is the orchestration layer over them, plus
-  the lifecycle policy questions (when to give up, how to hand off to
-  a human) that deserve their own design pass.
+  sources and its generalized task-suspension primitives (§4c) under
+  one harness-side state machine. All the pieces are medium-tier; the
+  steward is the orchestration layer over them, plus the lifecycle
+  policy questions (when to give up, how to hand off to a human) that
+  deserve their own design pass.
+- **Coordinated multi-repo changes.** `medium.md`'s dependency-change
+  path is asynchronous by design: file the ask, suspend, integrate
+  when it ships — each repo's change lands on its own timeline. The
+  harder version is lockstep: an API change and its consumers, a
+  cross-cutting rename, a coordinated version bump — several repos
+  that must change *together*, with ordering, atomicity-of-intent,
+  and release sequencing owned by something. No source in the
+  collection touches this, and it's a real orchestration subsystem
+  (change-set modeling, cross-repo rollback story, who merges what
+  when) — the multi-repo analog of what `agent-context-compaction.md`
+  is to context. Tracked so the asynchronous path doesn't get bent
+  out of shape trying to fake it.
 - **Cross-run repo memory.** V1 runs start cold except for the
   conventions file and the plan/findings envelope tags. The field
   offers three shapes for "remember this repo across sessions":
@@ -99,7 +112,12 @@ re-litigated later.
   (`agent-tool-surfaces.md` §2). The upgrade needs an index built and
   maintained per repo, which is real infrastructure; worth it only if
   exploration cost (turns spent finding things) measurably dominates
-  run budgets on large repos.
+  run budgets on large repos. Orthogonal to `medium.md`'s
+  `SearchSource` (§2e): that widens search *scope* (other repos,
+  dependencies) while keeping ripgrep semantics; this deepens search
+  *resolution* on whatever scope exists. They compose — a symbol
+  index over the cross-repo corpus is the ladder's top rung — but
+  neither depends on the other.
 - **Browser/UI verification and multimodal input.** For front-end
   tickets, "verify" currently means tests pass — no way to look at
   the rendered result. Cline's single-tool and Windsurf's
@@ -112,10 +130,15 @@ re-litigated later.
   mechanism `formats.md` §7 uses run-level) applied to individual
   `Task` calls. The run-level budget is enough for now; a runaway
   sub-agent still terminates when the parent run's budget is hit.
-- **A cap on `AskUser` suspend/resume cycles.** No built-in limit in
-  v1 (`formats.md` §5). A real deployment would likely want one
+- **A cap on suspend/resume cycles.** No built-in limit in v1
+  (`formats.md` §5). A real deployment would likely want one
   ("escalate instead of asking a third time") — left unspecified
   rather than picking a number with no concrete reason behind it.
+  Once `medium.md`'s generalized suspension (§4c) exists, this entry
+  widens from AskUser cycles to suspensions of any kind, and gains a
+  second dimension: a maximum total park duration, so a task waiting
+  on a dependency that never ships eventually fails honestly back to
+  a human instead of sleeping forever.
 - **Re-wiring `AddComment` in implement mode as a general
   decision-notes channel.** `medium.md`'s responder source wires it
   for threaded replies where replying is the deliverable; the broader

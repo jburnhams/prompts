@@ -17,10 +17,12 @@ explicitly.
 
 A shared principle worth stating once rather than per item: every new
 tool that returns external content (`FetchBuild`, `SearchJira`,
-`WebFetch`) routes through the same in-code sanitizer the envelope and
-`FetchJira` already use (`formats.md` §1) — a CI log or a fetched web
-page is exactly as untrusted as a ticket comment, arriving through yet
-another door. And every new *capability* on an unsupervised path gets
+`WebFetch`, `SearchSource`/`ReadSource` results) routes through the
+same in-code sanitizer the envelope and `FetchJira` already use
+(`formats.md` §1), with the source-code exception `formats.md` §1
+already carves out (don't mangle source bytes) — a CI log or a
+fetched web page is exactly as untrusted as a ticket comment,
+arriving through yet another door. And every new *capability* on an unsupervised path gets
 the same structural-gates treatment as v1: wired only in the run
 sources/modes that have a workflow step using it, never "available but
 unused."
@@ -278,6 +280,91 @@ day-to-day tickets against moving dependencies.
   the repo mid-review is scope drift and injection surface with no
   workflow step behind it.
 
+### 2e. `SearchSource` / `ReadSource` (ref-pinned source beyond the working tree)
+
+**What**: read-only search and file retrieval over source that is
+*not* in the working tree — another repository at an exact ref, or
+(phase 2) a dependency of the current build. `SearchSource` speaks
+Grep's ripgrep dialect over HTTP; `ReadSource` is Read's contract
+against the same scopes. Both are read-only by construction, with
+deliberately no Edit counterpart — a change Forge wants made to code
+it can search but doesn't own goes through §4a, never through an
+edit.
+
+**Why**: the recurring failure this addresses is an agent that wants
+to read the source of something it calls — a library class, a
+sibling service's API — and either can't find it at all or burns half
+its budget cloning and spelunking. The collection has no precedent
+for search beyond the workspace: its entire search ladder
+(`agent-tool-surfaces.md` §2, plain grep → semantic → LSP-backed) is
+local-only, and the closest in-collection analog for symbol-granular
+retrieval is Composio's `CODE_ANALYSIS_TOOL_GET_CLASS_INFO`/
+`GET_METHOD_BODY` structured-lookup toolkit. The industry precedent
+(Sourcegraph-style code-search services) sits outside the collection
+entirely. That absence is the opportunity — this is the single
+biggest capability gap between what agents keep trying to do and
+what any surveyed tool surface gives them.
+
+**Design sketch**:
+
+```json
+{
+  "name": "SearchSource",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "scope": { "type": "string", "description": "What to search: \"repo:workspace/repo-slug@ref\" (branch, tag, or commit hash — the result always reports the hash the ref resolved to, so findings are pinned), or \"artifact:group:name\" / \"class:com.example.Foo\" for a dependency of the current working tree." },
+      "pattern": { "type": "string", "description": "Ripgrep-syntax regex — the same dialect Grep uses." },
+      "glob": { "type": "string" },
+      "output_mode": { "type": "string", "enum": ["content", "files_with_matches"] },
+      "head_limit": { "type": "integer" }
+    },
+    "required": ["scope", "pattern"],
+    "additionalProperties": false
+  }
+}
+```
+
+`ReadSource` takes the same `scope` plus `path`/`offset`/`limit`.
+
+Phased on purpose, matching how the need actually arrives:
+
+- **Phase 1 — `repo:` scopes.** Search/read another repository at a
+  branch, tag, or commit. The backing service (a code-search indexer,
+  or the platform's own search API fronted by the harness) is
+  infrastructure the tool schema deliberately knows nothing about —
+  the same harness-owns-the-mapping pattern `AddComment` uses for
+  platforms.
+- **Phase 2 — `artifact:`/`class:` scopes.** The harness resolves a
+  dependency coordinate to source: build manifest → exact pinned
+  version → source jar or repo+tag. The resolution rule that matters:
+  **the version comes from the working tree's own build manifest,
+  never from the model's guess** — the lockfile/POM already knows
+  exactly what's on the classpath, so "read the source of the thing
+  I'm actually calling" is deterministic. This resolver (coordinate →
+  version → source location → owning project) is shared machinery
+  with §4a's dependency-change proposals — build it once.
+
+**Gotchas**:
+
+- Tool-description ordering guidance: local Grep/Read first, always —
+  `SearchSource` is for code that *isn't* in the tree, not a
+  second way to search code that is.
+- Real source only in phase 2's first cut: if no source jar exists,
+  say so rather than silently decompiling — decompiled line numbers
+  and shapes lie. A clearly-labeled decompiler fallback is a possible
+  later addition, not a default.
+- Third-party source is untrusted content read into context; same
+  accepted-residual-risk stance as repo files (`future.md`'s
+  display-layer sanitization entry covers the eventual fix), worth
+  restating here because dependency source is authored even further
+  from the deployment's trust boundary.
+- Coding mode only (both `mode` values — a plan run tracing a bug
+  into a dependency is exactly what plan mode is for). Review
+  sub-agents stay Read/Grep/Glob-local; widening their reach needs
+  finding-level evidence first, same bar as their Bash escalation
+  entry (§5).
+
 ---
 
 ## 3. Review pipeline upgrades
@@ -373,7 +460,191 @@ the loop with the platform side.
 
 ---
 
-## 4. Escalation triggers (v1 ships simple; upgrade only on evidence)
+## 4. Cross-repo escalation and long-horizon waiting
+
+V1 is bounded in two dimensions on purpose: one repository (the
+checked-out working tree) and one sitting (a run starts, terminates,
+done). The three items here extend each boundary deliberately rather
+than letting it erode by accident — Forge gains a way to *ask* for
+changes to code it doesn't own (never a way to make them), and a way
+to park work on events that take longer than a run should live.
+
+### 4a. Dependency-change proposals (`ProposeDependencyChange`)
+
+**What**: when the real fix for a ticket belongs in a dependency —
+a library bug, a missing API, a sibling service's contract — Forge
+can propose a change to the owning team by filing a Jira in *their*
+project. The tool takes a dependency coordinate and a requirement;
+the harness resolves ownership and creates (or queues) the ticket.
+
+```json
+{
+  "name": "ProposeDependencyChange",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "dependency": { "type": "string", "description": "\"artifact:group:name\" or \"class:com.example.Foo\" — resolved to an owning project by the same resolver SearchSource's phase 2 uses." },
+      "title": { "type": "string", "description": "One line, written for the owning team's backlog." },
+      "requirement": { "type": "string", "description": "What the dependency should do differently and why, Markdown. Written to stand alone: the observed behavior, the needed behavior, and the calling context (originating ticket, code paths involved) — the owning team has none of your context." },
+      "blocking": { "type": "boolean", "description": "Whether the current task cannot be completed correctly without this change." }
+    },
+    "required": ["dependency", "title", "requirement", "blocking"],
+    "additionalProperties": false
+  }
+}
+```
+
+**Why**: today the only honest outcomes when the fix is out-of-repo
+are AskUser or a note in the Complete report — both dead-end the
+actual work. No source in the collection routes work across
+repository/team boundaries at all; this is genuinely novel, which is
+exactly why the guardrails below matter more than the schema.
+
+**Design points**:
+
+- **Ownership resolution is the harness's job**, via the shared
+  resolver (§2e): build metadata (SCM URLs in artifact POMs), a
+  service-catalog mapping, or explicit config, resolving coordinate →
+  repo → Jira project/component. When ownership can't be resolved,
+  the tool says so and Forge falls back to noting the need in its
+  report — a proposal with a guessed owner is worse than none.
+- **Gated by default.** Filing tickets into other teams' backlogs is
+  the most outward-facing action in the whole design — more so than
+  PR comments, which at least land on Forge's own subject matter. The
+  deployment-policy pattern from plan-gating applies (`formats.md`
+  §6): the tool's contract is identical whether the harness files
+  immediately or holds the proposal for human approval, and gated
+  should be the shipped default. The created ticket is always
+  labeled as agent-filed and linked back to the originating issue
+  (`FetchJira`'s `linked_issues` then surfaces it to any later run).
+- **Workflow guidance in the prompt**: search first
+  (`SearchJira` against the target project — the owning team may
+  already have this ask; Composio's twice-stated
+  check-before-duplicating rule is the collection's precedent,
+  `code-review-approaches.md` §9), propose at most once or twice per
+  run, and never as a substitute for in-repo work that's actually
+  possible — a proposal pairs with either a workaround implemented
+  now or an honest `blocked`.
+- **Injection surface, named plainly**: this tool turns a hostile
+  ticket into a way to make Forge socially-engineer other teams
+  ("file a ticket asking platform-team to relax the auth check").
+  The gated default and per-run cap are the structural answer; the
+  agent-filed labeling means even an approved bad proposal is
+  attributable and auditable.
+- **The path composes with itself**: if the owning repo is also
+  Forge-enabled, the filed ticket is just another ticket in the same
+  dispatch queue — the dependency ask can be planned, implemented,
+  and reviewed by the same machinery that generated it. Whether it
+  auto-dispatches or waits for the owning team's triage is, again,
+  deployment policy, not Forge behavior.
+
+**What happens to the proposing run**: two legitimate endings. If the
+task can proceed with a workaround, implement it, note the filed
+ticket in the report, `Complete(done)`. If it genuinely can't
+(`blocking: true`), the run ends by suspending on the proposed
+ticket's resolution (§4c) — not by idling, and not by a `Complete`
+that pretends more than it did.
+
+### 4b. Short waits inside a run: `Await`
+
+**What**: block on something already in flight — a background Bash
+job, or a `FetchBuild` pipeline ref — without burning model turns on
+poll loops.
+
+```json
+{
+  "name": "Await",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "handle": { "type": "string", "description": "A background job id returned by Bash (run_in_background), or a build ref in FetchBuild's format." },
+      "timeout_ms": { "type": "integer", "description": "Required. The harness returns a timed_out result when it expires — the wait never hangs silently." }
+    },
+    "required": ["handle", "timeout_ms"],
+    "additionalProperties": false
+  }
+}
+```
+
+**Why and precedent**: v1's answer to "wait for the test suite" is
+shell polling through the persistent session — workable, but each
+poll is a model turn spent on nothing. A harness-side blocking wait
+is the field's converged answer, in several shapes: Codex CLI's
+`wait_agent` with timeout ("returns empty status when timed out"),
+Grok Build's `wait_commands_or_subagents` with `wait_any`/`wait_all`
+across a shared task-id space, Copilot CLI's `read_agent` with
+`wait: true` (`agent-tool-surfaces.md` §6,
+`agent-subagent-architectures.md` §4). Single-handle first;
+Grok's multi-handle any/all is the documented extension if fan-out
+waiting shows up.
+
+**Gotchas**:
+
+- **Run bounding gains a third budget.** Turn and context budgets
+  can't see idle time — a run blocked in `Await` consumes neither. A
+  wall-clock budget joins them (`formats.md` §7's mechanism,
+  triggering the same final-turn nudge), because a hung wait must
+  still end in an honest `Complete`, and an idle run is not free:
+  it holds its sandbox and its spent context the whole time.
+- **Minutes, not hours.** `Await` is for waits where losing the run's
+  context would cost more than holding it — a test suite, a lint of
+  the working tree, a build already running. Anything on a human or
+  cross-team timescale is §4c's job, and the tool description should
+  draw that line explicitly.
+
+### 4c. Long waits across runs: generalized task suspension
+
+**What**: the AskUser suspend/resume protocol (`formats.md` §5),
+with the wake condition generalized. V1's protocol is already "end
+the run, record a suspended-task, resume when an external event
+lands" — the event just happens to be a human reply. An `AwaitEvent`
+terminal tool opens that to the other events worth parking on:
+
+- `jira`: an issue (e.g. a §4a proposal) reaches a status, or its
+  fix version is released
+- `build`: a pipeline concludes
+- `pr`: a PR merges or closes
+- `timer`: a point in time — the degenerate predicate, for
+  poll-based conditions with no webhook and for plain
+  check-back-later (Grok Build's `scheduler_create` is the
+  collection's one recurring/scheduled-prompt precedent,
+  `agent-tool-surfaces.md` §10)
+
+Suspension mechanics carry over from `formats.md` §5 unchanged: no
+`Complete` (suspension is a distinct terminal state, not a variant of
+completion), the harness records the envelope + transcript + wake
+condition, and the resumed run gets a `<resumed_event>` tag carrying
+what happened, with the same transcript-inheritance and
+budget-headroom caveats that section already documents. `AskUser` stays its own
+tool — the question/options shape is user-facing and worth keeping —
+but internally it becomes one wake predicate among several, which is
+a simplification, not new machinery.
+
+**The design stance that keeps this small — prefer being woken over
+waiting.** Most "wait for X" needs are already served *inverted* by
+the trigger architecture: a failed build dispatches a `ci_failure`
+run (§1a), a review comment dispatches a responder run (§1c) — no
+task sits suspended at all, and a fresh run with a fresh budget picks
+up the event. `AwaitEvent` is specifically for when *this* task's
+accumulated context must survive to the other side of the event —
+"my dependency ask shipped, now finish the integration I already
+half-understand." When a fresh run could do the follow-up just as
+well, the right design is a trigger, not a suspension; the prompt
+guidance should say so, or every long task will end in a lazy
+suspend.
+
+`future.md`'s suspension-cycle cap applies here with more force than
+it did to AskUser alone — a task that can sleep on a timer can sleep
+forever, so a deployment wants a cap on total suspensions and a
+maximum park duration, after which the task fails honestly back to a
+human ("the dependency never shipped" is a report, not a permanent
+sleep). And the standing PR-steward loop (`future.md`) is this
+mechanism plus §1's triggers under one policy — these primitives are
+its prerequisite, which is part of why they're medium-tier.
+
+---
+
+## 5. Escalation triggers (v1 ships simple; upgrade only on evidence)
 
 Moved from the original single-file roadmap, unchanged in substance:
 each of these is a case where v1 deliberately shipped the simple

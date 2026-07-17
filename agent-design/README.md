@@ -214,3 +214,16 @@ and pulled the highest-leverage deferred items — CI integration, the
 review → fix handoff, PR-comment-responder runs, Jira search and
 ticket-compliance review context — forward into concrete,
 implementable sketches.
+
+A follow-up to the third pass added a cross-repo and long-horizon
+tier to `medium.md`: ref-pinned source search/read beyond the working
+tree (`SearchSource`/`ReadSource`, with a dependency-coordinate
+resolver in phase 2), dependency-change escalation
+(`ProposeDependencyChange` — filing a requirement into the owning
+team's Jira project, gated by default), and waiting primitives at two
+scales (an in-run `Await` for things already in flight, and the
+AskUser suspend/resume protocol generalized to build/Jira/PR/timer
+wake conditions). The unifying observation: v1's AskUser protocol was
+already a task-suspension mechanism with one hardcoded wake predicate
+— the higher-level capabilities are new predicates on existing
+machinery, not new machinery.
