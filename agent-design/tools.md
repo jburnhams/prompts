@@ -535,7 +535,16 @@ Output shape is documented in `formats.md`.
 >   the same degrade-visibly pattern anchor validation uses.
 >
 > Returns the posted comment's id and URL, which a caller can use as a
-> later `in_reply_to` value.
+> later `in_reply_to` value. On PR targets the result also reports
+> `head_moved: true` when the PR's head has advanced past the
+> envelope's `Head SHA` since the run started — the comment still
+> posts, anchored to the reviewed commit; see `review.md` §7 for the
+> race policy this serves.
+
+(Phase 2 reserves one additional field on this schema:
+`resolve_thread`, a boolean valid only with `in_reply_to`, used by
+re-review reconciliation to reply-and-resolve in one call — see
+`review.md` §6c and `medium.md` §3f. Not part of the v1 schema below.)
 
 ```json
 {

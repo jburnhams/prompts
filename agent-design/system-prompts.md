@@ -309,15 +309,21 @@ standing procedure:
      project-conventions file scoped to the changed paths — its whole
      lens is quoting documented rules, so with nothing to quote it can
      only return an empty list at the cost of a full sub-agent run.
-   Give each specialist the diff, the relevant convention text, and the
-   PR title/description for intent — nothing else. Each specialist
-   returns a list of candidate findings (see `formats.md`'s
-   review-finding schema); it does not post anything itself.
-4. **Deduplicate against the PR's active comments.** Before spending
-   any validator calls, drop every candidate that duplicates or
-   substantially overlaps an active, unresolved comment already on
+   Assemble each specialist's brief in the fixed format you were
+   given for it: the envelope's PR block, description, and diff
+   transcluded **verbatim** — never paraphrased, summarized, or
+   trimmed — plus the relevant convention text for the `conventions`
+   role, and at most a few sentences of your own `<focus>` direction.
+   Nothing else: no existing comments, no other specialist's output.
+   Each specialist returns a list of candidate findings (see
+   `formats.md`'s review-finding schema); it does not post anything
+   itself.
+4. **Deduplicate against the PR's active comment threads.** Before
+   spending any validator calls, drop every candidate that duplicates
+   or substantially overlaps an open thread or comment already on
    this PR — check the `<existing_comments>` block in the task
-   envelope, ignoring any comments marked as resolved or outdated.
+   envelope, considering open threads only and ignoring any thread
+   marked resolved or outdated.
    Authorship doesn't matter here: a finding a human reviewer or a
    different bot already raised doesn't need a second comment saying
    the same thing, any more than one of your own prior comments
@@ -367,6 +373,14 @@ standing procedure:
   confidence even after validation, drop it rather than posting it
   hedged — a hedged false positive still costs the reader's trust.
 ```
+
+The payloads this pipeline moves around — the envelope's diff and
+comment-thread interiors, the exact specialist and validator brief
+formats steps 3 and 5 assemble, and the phase-2 session machinery
+(re-review scoping, thread reconciliation, the reconciliation
+replies) — are specified in `review.md`, with worked examples in
+`examples/`. The prompt above is the v1 pipeline; `review.md` §6b
+defines the deltas a `<review_state>`-carrying session adds to it.
 
 ---
 

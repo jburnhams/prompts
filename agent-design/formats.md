@@ -100,6 +100,7 @@ included here purely so Forge can reference the branch name in its
   Head SHA: {{ head_sha }}
   Base SHA: {{ base_sha }}
   State: {{ state }}
+  Snapshot: {{ ISO 8601 — when this envelope's state was captured }}
   Additions: {{ n }}  Deletions: {{ n }}  Changed files: {{ n }}
 </pull_request>
 
@@ -118,33 +119,52 @@ included here purely so Forge can reference the branch name in its
 </diff>
 
 <existing_comments>
-  [{{ comment_id }} | {{ author }} at {{ timestamp }}]: {{ body }}
-  [Review by {{ author }} at {{ timestamp }}]: {{ state }}
-    [{{ comment_id }} | Comment on {{ path }}:{{ line }}{{ , resolved | , outdated }}]: {{ body }}
-  ...
+  <general>
+    [{{ comment_id }} | {{ author }} at {{ timestamp }}]: {{ body }}
+    [{{ comment_id }} | Review by {{ author }} at {{ timestamp }} | {{ state }}]: {{ body }}
+  </general>
+  <thread id="{{ thread_id }}" anchor="{{ path }}:{{ line }}" status="open|resolved|outdated">
+    [{{ comment_id }} | {{ author }} at {{ timestamp }}]: {{ body }}
+    [{{ comment_id }} | reply | {{ author }} at {{ timestamp }}]: {{ body }}
+  </thread>
 </existing_comments>
 ```
 
-Each entry carries the platform's comment id — that's what makes
-`AddComment`'s `in_reply_to` usable against a comment Forge didn't post
-itself (the brief's threaded-reply requirement), not just against ids
-returned by Forge's own earlier `AddComment` calls. Inline review
-comments the platform reports as resolved (or, on GitHub, outdated)
-are annotated as such, in the envelope itself — the review pipeline's
-dedup step (`system-prompts.md` §2, step 4) is told to ignore
-resolved/outdated comments, and it can only do that if the envelope
-actually distinguishes them. Formal-review entries (`[Review by ...]`)
-appear only where the platform has that concept — Bitbucket approvals
-and change requests are rendered into the same shape by the harness, so
-Forge's dedup logic doesn't branch per platform.
+The interior of `<existing_comments>` — the thread model, its trimming
+rules for resolved/outdated threads, and who consumes it — is
+specified in `review.md` §3; the skeleton above is the shape at a
+glance. Each entry carries the platform's comment id — that's what
+makes `AddComment`'s `in_reply_to` usable against a comment Forge
+didn't post itself (the brief's threaded-reply requirement), not just
+against ids returned by Forge's own earlier `AddComment` calls.
+Threads the platform reports as resolved (or, on GitHub, outdated)
+carry that status on the `<thread>` tag itself — the review pipeline's
+dedup step (`system-prompts.md` §2, step 4) considers open threads
+only, and it can only do that if the envelope actually distinguishes
+them. Formal-review entries (`[... | Review by ...]`) appear only
+where the platform has that concept — Bitbucket approvals and change
+requests are rendered into the same shape by the harness, so Forge's
+dedup logic doesn't branch per platform.
+
+Two further tags are reserved for re-review sessions —
+`<review_state>` (the findings prior sessions posted, with live
+thread status) and `<incremental_diff>` (the delta since the last
+reviewed head, same construction rules as `<diff>`). Both are additive
+and phase 2: a first review simply omits them, and their full shape
+and consuming pipeline live in `review.md` §6 (roadmap entry:
+`medium.md` §3f).
 
 `<diff>` is pre-fetched and baked in — the orchestrator does not run
 `git diff` itself (see `README.md`'s decision log for why: line-number
 accuracy matters more when comments post with no human catching a
-mis-anchored one). Plain unified diff rather than a custom hunk format,
-to keep the format lean; the orchestrator passes the relevant slice of
-this same diff text into each specialist's `Task` prompt rather than
-re-fetching per specialist. (If mis-anchored comments show up in
+mis-anchored one). The exact construction algorithm — merge-base
+three-dot semantics, `-U5 -M`, file ordering, and the visible-elision
+rules for generated/binary/oversized files — is specified in
+`review.md` §2. Plain unified diff rather than a custom hunk format,
+to keep the format lean; the orchestrator transcludes this same diff
+text verbatim into each specialist's `Task` prompt (the brief format
+in `review.md` §4) rather than re-fetching or paraphrasing per
+specialist. (If mis-anchored comments show up in
 practice, PR-Agent's per-hunk new-file line-number injection is the
 documented upgrade path — see `medium.md`'s "PR-Agent-style per-hunk
 line-number injection" escalation entry — since deriving new-file line numbers by
@@ -308,7 +328,12 @@ LLM judge (which stays out of v1, per the README's leanness rule).
 `findings` and `filtered` together account for every candidate a
 specialist raised — nothing silently disappears between step 3 and step
 7 of the review pipeline (`system-prompts.md` §2) without a recorded
-reason. A candidate dropped by the pre-validation dedup (pipeline step
+reason. In phase 2's re-review sessions the report additionally
+carries a `thread_updates` array — every open Forge thread from the
+envelope's `<review_state>`, with what this session did to it
+(`replied_fixed` / `replied_conceded` / `replied_standing_firm` /
+`left_open`, plus the reply's comment id where one was posted) — the
+same accounting discipline extended to threads; see `review.md` §6b. A candidate dropped by the pre-validation dedup (pipeline step
 4) appears in `filtered` with `validated: null` and the dedup reason —
 it was never judged wrong, just already reported.
 

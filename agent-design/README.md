@@ -150,6 +150,9 @@ subsequent doc assumes.
 | Completion integrity | Two deterministic gates: first `Complete(done)` in `implement` returns a fixed checklist instead of completing (second call goes through), and the harness cross-checks the report against real `git status` after the run | Trusting the self-report (original draft); a separate LLM verification judge (Claude Code's internal adversarial verifier) | False completion claims are the best-measured failure mode in the research (`agent-self-verification.md` §7: a leaked 29-30% false-claim rate drove dedicated internal tooling); mechanical gates "can't be talked out of firing" and cost no extra model call, where an LLM judge is a real subsystem (v2 at earliest) |
 | Run bounding | Harness turn budget + context high-water mark; crossing either injects a final-turn nudge that permits only `AskUser` or `Complete`; no compaction in v1 (`formats.md` §7) | Unbounded runs (original draft — silent death on context exhaustion); a full compaction subsystem from day one | "Always end via Complete" is unenforceable without a guaranteed last turn (Copilot Chat's forced last-turn cutoff is the precedent); compaction is a deep subsystem (`agent-context-compaction.md`) that leanness says to defer, but *saying so* beats leaving the ceiling unhandled |
 | Comment anchoring | Anchors are new-file line ranges (`line`/`line_end`); harness validates an anchor is commentable and degrades to a `file:line`-prefixed general comment, visibly, when it isn't | Single-line anchors with no side convention and no validation (original draft); PR-Agent-style per-hunk line-number injection from day one | The decision log's own rationale for pre-baking the diff was line-number accuracy — anchor validation is the cheap backstop that makes a mis-derived number degrade visibly instead of silently; hunk-injection remains the documented upgrade if mis-anchoring shows up in practice |
+| Review diff base & construction | Merge-base three-dot diff (`base_sha` = merge-base), `-U5 -M`, harness-built, with visible elision markers for generated/binary/oversized files (`review.md` §2) | Two-dot diff against the base branch tip; letting the model run `git diff` itself; silent omission of oversized files | A two-dot diff charges the PR with unrelated base-branch drift — every source that states its base is on the merge-base side (Gemini's `--merge-base`, Devin, the leaked Claude Code review skill's explicit three-dot). Rename detection stops a moved file reading as hundreds of new lines. Elisions are visible in both `<diff>` and `<changed_files>` so absence is never misread as "unchanged" — same degrade-visibly contract as anchor validation |
+| Specialist/validator context isolation | Briefs assembled by verbatim transclusion of envelope blocks; specialists never see existing comments, author identity, or each other; the validator never sees the specialist's transcript (`review.md` §4–5) | Paraphrased/summarized diffs per specialist; giving finders the comment set so they self-dedup | A paraphrased diff re-introduces the line-number laundering the pre-baked diff exists to prevent; comment-aware finders pre-filter silently (breaking the nothing-disappears accounting) and expose the finding stage to the PR's most attacker-writable text; validator independence is what makes the confirmation worth anything |
+| Repeat reviews | V1 stateless (full review + dedup against open threads); phase 2 adds stateful sessions — `<review_state>`, an interdiff with `<scope>`-restricted specialists, thread reconciliation with reply+resolve, and a hard one-round cap on standing-firm replies (`review.md` §6, `medium.md` §3f) — all as additive tags/fields on unchanged v1 shapes | Stateful from day one; always-stateless forever; unbounded back-and-forth on disputed threads | The v1 floor is already correct (never spams), so state is an upgrade not a fix; additive-only evolution keeps the wire format stable from launch, which is the property hardest to retrofit; the one-round cap exists because a bot that argues in rounds burns the trust the validator pass protects |
 | Reproduction/throwaway files | A dedicated scratch directory outside the git working tree (`{{SCRATCH_DIR}}`, named in `<env>`), never cleaned up because it's never inside git state to begin with | Instructing the agent to delete temp files before calling `Complete`; a `.gitignore` convention for a fixed reproduction-file naming pattern | A cleanup instruction depends on the model remembering a step at the very end of a long run — one missed case and a `reproduce.py` rides along into whatever the external process commits. `.gitignore` is better but still depends on it being correctly configured and not overridden by something like `git add -A -f`. A structural directory boundary can't be forgotten or misconfigured; step 5 of the coding workflow also adds a final `git status` sanity check as a second line of defense regardless |
 
 ## What's deliberately not in v1
@@ -173,9 +176,17 @@ implementing v1 itself.
    Forge's output back out: the context envelope, the completion
    schema, the review-finding schema, the `AskUser` suspend/resume
    protocol, and the run-bounding contract.
-4. `medium.md` — the medium-term roadmap: concrete post-v1 upgrades
+4. `review.md` — the review entrypoint's payloads in full depth: the
+   diff-construction algorithm, the comment-thread model, the exact
+   specialist/validator brief formats, re-review sessions
+   (state, interdiff, thread reconciliation), mid-run race policy,
+   and the seam with comment-driven fix runs.
+5. `examples/` — worked, end-to-end instances of every review
+   payload, all on one fictional PR followed from first review
+   through re-review to a responder run.
+6. `medium.md` — the medium-term roadmap: concrete post-v1 upgrades
    with design sketches, plus the named escalation triggers.
-5. `future.md` — long-horizon and measurement-gated work, tracked
+7. `future.md` — long-horizon and measurement-gated work, tracked
    separately so it isn't silently re-litigated later.
 
 This design has been through three full review passes against the rest
@@ -227,6 +238,19 @@ wake conditions). The unifying observation: v1's AskUser protocol was
 already a task-suspension mechanism with one hardcoded wake predicate
 — the higher-level capabilities are new predicates on existing
 machinery, not new machinery.
+
+A fourth pass went deep on the review entrypoint specifically —
+tightly defining what actually reaches the model at every stage. It
+produced `review.md` (the diff-construction algorithm, a threaded
+comment model replacing the flat comment list, exact
+verbatim-transclusion brief formats for specialists and validators,
+stateful re-review sessions with thread reconciliation, and a mid-run
+race policy) plus the `examples/` folder of worked payloads, and
+threaded the results back through `formats.md`, `system-prompts.md`,
+and `medium.md` (§3f). Its design stance is recorded in the three
+review-specific decision rows above; the phasing rule it enforces —
+every post-v1 addition is an additive tag or field, so the v1 wire
+shapes never change meaning — is stated in `review.md` §9.
 
 The same follow-up added the design's first third entrypoint to the
 roadmap (`medium.md` §5): a product-owner mode whose deliverable is
