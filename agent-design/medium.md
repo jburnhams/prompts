@@ -473,9 +473,13 @@ open threads — confirming fixes (reply + resolve, via a new
 (once, ever, per thread) when an author replies, and reporting every
 thread's outcome in a `thread_updates` array. Fully specified —
 envelope tags, pipeline deltas, rebase fallback, race policy — in
-`review.md` §6, with a worked example in
+`review.md` §7, with a worked example in
 `examples/review-envelope-rereview.md`; all additions are additive
-tags/fields on the v1 shapes.
+tags/fields on the v1 shapes. The same git plumbing ships the
+stale-thread context blocks (`<code_then>`/`<changed_since>` and the
+conditional `<format_notes>` explainer, `review.md` §3a–3b) — the
+then/now rendering that makes a thread anchored to an earlier head
+readable as intent context rather than a comment about nothing.
 
 **Why**: v1 re-reviews are correct but stateless — dedup stops the
 noise, but nothing focuses the run on what changed, closes the loop on

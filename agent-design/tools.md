@@ -27,6 +27,13 @@ Availability by role:
 | AddComment | `plan` runs only | yes | no | no |
 | Complete | yes | yes | no | no |
 
+The "Review orchestrator" column covers both review run shapes
+(`review.md` §6): the single-stage reviewer (`system-prompts.md` §2b)
+uses this wiring unchanged — same tools, same absences — and its
+`Task` calls are validator-only by prompt (the `reviewer`
+subagent_type simply has no caller in that shape; the schema's enums
+don't change).
+
 `general-purpose` gets full tool parity with its orchestrator, minus
 `AskUser`/`FetchJira`/`AddComment`/`Complete` (those end or redirect the
 *task*, which only the orchestrator owns) and minus `Task` recursion
@@ -538,13 +545,13 @@ Output shape is documented in `formats.md`.
 > later `in_reply_to` value. On PR targets the result also reports
 > `head_moved: true` when the PR's head has advanced past the
 > envelope's `Head SHA` since the run started — the comment still
-> posts, anchored to the reviewed commit; see `review.md` §7 for the
+> posts, anchored to the reviewed commit; see `review.md` §8 for the
 > race policy this serves.
 
 (Phase 2 reserves one additional field on this schema:
 `resolve_thread`, a boolean valid only with `in_reply_to`, used by
 re-review reconciliation to reply-and-resolve in one call — see
-`review.md` §6c and `medium.md` §3f. Not part of the v1 schema below.)
+`review.md` §7c and `medium.md` §3f. Not part of the v1 schema below.)
 
 ```json
 {

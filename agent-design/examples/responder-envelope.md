@@ -3,7 +3,7 @@
 A **coding-entrypoint** envelope, not a review one — the
 `source: pr_comments` responder run from `medium.md` §1c, shown here
 because it consumes the review side's thread model verbatim
-(`review.md` §8: one thread format everywhere, nothing translates).
+(`review.md` §9: one thread format everywhere, nothing translates).
 
 Scenario: PR #91 on the same repo was authored by Forge itself (a
 `mode: implement` run on ticket PROJ-990, committed/pushed and opened
@@ -58,9 +58,11 @@ Notes:
 
 - The thread block is `review.md` §3's format, filtered to **open
   threads only** — a responder run acts on live requests; settled
-  history would just be noise. Resolved/outdated threads aren't
-  carried at all here (unlike review envelopes, which need them for
-  dedup context).
+  history would just be noise. Resolved threads aren't carried at all
+  here (unlike review envelopes, which need them for dedup context) —
+  though a stale *open* thread would arrive with its §3a then/now
+  blocks, which a responder needs even more than a reviewer does: the
+  requested change may already be half-made.
 - No `<diff>` tag: this is an implement-mode run with `Bash` — it
   inspects its own branch with read-only git as needed, per the normal
   coding workflow. The pre-baked-diff guarantee exists for review
@@ -71,7 +73,7 @@ Notes:
   by prompt to threaded replies on the envelope's thread ids. The run
   makes both changes in the working tree, runs the tests, and replies
   on `t-512` and `t-513` with what it changed (one reply each, no
-  progress narration — `review.md` §8's etiquette rule). If it judged
+  progress narration — `review.md` §9's etiquette rule). If it judged
   a request wrong or out of scope, it would reply once saying why and
   leave the thread open; contradictory reviewer asks route to
   `AskUser` as usual.
@@ -80,4 +82,4 @@ Notes:
 - The loop then closes without ceremony: the external process commits
   and pushes the tree, the head moves, and the *next review session*
   of PR #91 sees Carol's threads answered and the changes in its
-  interdiff (`review.md` §8).
+  interdiff (`review.md` §9).

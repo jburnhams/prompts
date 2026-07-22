@@ -171,4 +171,10 @@ Things to notice, each specified in `review.md`:
   candidate against it by structure rather than by scraping a flat
   comment list.
 - `Snapshot:` records when this state was captured; the mid-run race
-  rules in §7 are defined against it.
+  rules in §8 are defined against it.
+- Both threads here are **current** — anchored at the same head this
+  envelope snapshots — so they carry no `at_sha`, no `@ sha` comment
+  markers, and no then/now blocks, and no `<format_notes>` tag
+  appears: the staleness machinery (§3a–3b) costs nothing until a
+  thread actually goes stale. Contrast the re-review example, where
+  both threads have.

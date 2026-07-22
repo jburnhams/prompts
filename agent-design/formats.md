@@ -123,25 +123,28 @@ included here purely so Forge can reference the branch name in its
     [{{ comment_id }} | {{ author }} at {{ timestamp }}]: {{ body }}
     [{{ comment_id }} | Review by {{ author }} at {{ timestamp }} | {{ state }}]: {{ body }}
   </general>
-  <thread id="{{ thread_id }}" anchor="{{ path }}:{{ line }}" status="open|resolved|outdated">
+  <thread id="{{ thread_id }}" anchor="{{ path }}:{{ line }}" status="open|resolved">
     [{{ comment_id }} | {{ author }} at {{ timestamp }}]: {{ body }}
     [{{ comment_id }} | reply | {{ author }} at {{ timestamp }}]: {{ body }}
   </thread>
 </existing_comments>
 ```
 
-The interior of `<existing_comments>` — the thread model, its trimming
-rules for resolved/outdated threads, and who consumes it — is
-specified in `review.md` §3; the skeleton above is the shape at a
-glance. Each entry carries the platform's comment id — that's what
-makes `AddComment`'s `in_reply_to` usable against a comment Forge
-didn't post itself (the brief's threaded-reply requirement), not just
-against ids returned by Forge's own earlier `AddComment` calls.
-Threads the platform reports as resolved (or, on GitHub, outdated)
-carry that status on the `<thread>` tag itself — the review pipeline's
-dedup step (`system-prompts.md` §2, step 4) considers open threads
-only, and it can only do that if the envelope actually distinguishes
-them. Formal-review entries (`[... | Review by ...]`) appear only
+The interior of `<existing_comments>` — the thread model, its
+trimming rules, and who consumes it — is specified in `review.md` §3;
+the skeleton above is the shape at a glance. Each entry carries the
+platform's comment id — that's what makes `AddComment`'s
+`in_reply_to` usable against a comment Forge didn't post itself (the
+brief's threaded-reply requirement), not just against ids returned by
+Forge's own earlier `AddComment` calls. `status` is the
+conversation's state only (`open`/`resolved`, mapped from the
+platform's native resolution); whether a thread's *anchored code* has
+changed since it was written is the orthogonal staleness fact,
+carried by an `at_sha` attribute plus, in phase 2, then/now context
+blocks and a conditional `<format_notes>` explainer — all specified
+in `review.md` §3a–3b. The review pipeline's dedup step
+(`system-prompts.md` §2, step 4) considers open threads only, stale
+or not. Formal-review entries (`[... | Review by ...]`) appear only
 where the platform has that concept — Bitbucket approvals and change
 requests are rendered into the same shape by the harness, so Forge's
 dedup logic doesn't branch per platform.
@@ -151,7 +154,7 @@ Two further tags are reserved for re-review sessions —
 thread status) and `<incremental_diff>` (the delta since the last
 reviewed head, same construction rules as `<diff>`). Both are additive
 and phase 2: a first review simply omits them, and their full shape
-and consuming pipeline live in `review.md` §6 (roadmap entry:
+and consuming pipeline live in `review.md` §7 (roadmap entry:
 `medium.md` §3f).
 
 `<diff>` is pre-fetched and baked in — the orchestrator does not run
@@ -333,7 +336,7 @@ carries a `thread_updates` array — every open Forge thread from the
 envelope's `<review_state>`, with what this session did to it
 (`replied_fixed` / `replied_conceded` / `replied_standing_firm` /
 `left_open`, plus the reply's comment id where one was posted) — the
-same accounting discipline extended to threads; see `review.md` §6b. A candidate dropped by the pre-validation dedup (pipeline step
+same accounting discipline extended to threads; see `review.md` §7b. A candidate dropped by the pre-validation dedup (pipeline step
 4) appears in `filtered` with `validated: null` and the dedup reason —
 it was never judged wrong, just already reported.
 

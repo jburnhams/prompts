@@ -4,7 +4,7 @@ The envelope for the **second** review session of PR #87, after Dana's
 follow-up push. Everything from the initial envelope is still present
 (refreshed to the new snapshot); the session machinery appears as the
 two additive tags `<review_state>` and `<incremental_diff>`
-(`review.md` §6a). Between sessions:
+(`review.md` §7a). Between sessions:
 
 - Dana pushed `6b1d94efc2a3`: applied Forge's committable suggestion
   on `billing/retry.py:20`, trimmed the payload out of the dispatch
@@ -80,31 +80,80 @@ index 0000000..77b2a10
 +    raise last_exc
 </diff>
 
+<format_notes>
+Some threads below carry an at_sha attribute: they were anchored
+against an earlier version of this PR, and the code they discuss has
+changed since. For each such thread, <code_then> shows the diff hunk
+the root comment was actually written against, and <changed_since>
+shows how that region has changed between then and this envelope's
+Head SHA — often in response to the thread itself. A stale thread's
+anchor and line numbers belong to its at_sha, not to the current
+diff; each comment's trailing @ sha says which version of the PR it
+was written against. Read the conversation against <code_then>; judge
+the current code against <changed_since> and the working tree.
+</format_notes>
+
 <existing_comments>
   <general>
     [c-5109 | dana at 2026-07-19T16:41:00Z]: Follow-up to last week's
     dispatch timeout incident — context in PROJ-982.
   </general>
-  <thread id="t-301" anchor="billing/dispatch.py:25" status="open">
-    [c-5117 | bob at 2026-07-19T17:03:00Z]: We got burned logging whole
-    invoice payloads at INFO before — this includes cardholder name and
-    address. Can we log just the invoice id here?
-    [c-5218 | reply | dana at 2026-07-21T07:48:00Z]: Trimmed to the
-    invoice id only in 6b1d94e.
+  <thread id="t-301" anchor="billing/dispatch.py:25" at_sha="9f3c2abe41d7" status="open">
+    [c-5117 | bob at 2026-07-19T17:03:00Z @ 9f3c2abe41d7]: We got
+    burned logging whole invoice payloads at INFO before — this
+    includes cardholder name and address. Can we log just the invoice
+    id here?
+    [c-5218 | reply | dana at 2026-07-21T07:48:00Z @ 6b1d94efc2a3]:
+    Trimmed to the invoice id only in 6b1d94e.
+    <code_then sha="9f3c2abe41d7">
+    {{ … example truncation: the billing/dispatch.py hunk
+       @@ -18,12 +20,21 @@ from the initial envelope's <diff> — the
+       version whose line 25 reads
+       logger.info("dispatching invoice %s payload=%r", ...) … }}
+    </code_then>
+    <changed_since from="9f3c2abe41d7" to="6b1d94efc2a3">
+    {{ … example truncation: the billing/dispatch.py hunk of the
+       <incremental_diff> below, verbatim — the thread-local copy is
+       review.md §3a's accepted redundancy … }}
+    </changed_since>
   </thread>
-  <thread id="t-388" anchor="billing/retry.py:20" status="open">
-    [c-5201 | forge-bot at 2026-07-20T09:31:00Z]: **High**:
-    `send_with_retry` makes one fewer attempt than `max_attempts`
-    (`range(1, max_attempts)` iterates `max_attempts - 1` times), and
-    with `max_attempts=1` the loop never runs, so `raise last_exc`
-    raises `None` (TypeError). The exhaustion test doesn't assert call
-    counts, so CI passes both cases.
+  <thread id="t-388" anchor="billing/retry.py:20" at_sha="9f3c2abe41d7" status="open">
+    [c-5201 | forge-bot at 2026-07-20T09:31:00Z @ 9f3c2abe41d7]:
+    **High**: `send_with_retry` makes one fewer attempt than
+    `max_attempts` (`range(1, max_attempts)` iterates
+    `max_attempts - 1` times), and with `max_attempts=1` the loop
+    never runs, so `raise last_exc` raises `None` (TypeError). The
+    exhaustion test doesn't assert call counts, so CI passes both
+    cases.
     ```suggestion
     for attempt in range(1, max_attempts + 1):
     ```
-    [c-5214 | reply | dana at 2026-07-21T07:51:00Z]: Applied the
-    suggestion — good catch, the exhaustion test didn't assert call
-    counts so it slipped through.
+    [c-5214 | reply | dana at 2026-07-21T07:51:00Z @ 6b1d94efc2a3]:
+    Applied the suggestion — good catch, the exhaustion test didn't
+    assert call counts so it slipped through.
+    <code_then sha="9f3c2abe41d7">
+    {{ … example truncation: the billing/retry.py new-file hunk
+       @@ -0,0 +1,29 @@ from the initial envelope's <diff>, whose
+       line 20 reads `for attempt in range(1, max_attempts):` … }}
+    </code_then>
+    <changed_since from="9f3c2abe41d7" to="6b1d94efc2a3">
+    @@ -15,14 +15,14 @@ def send_with_retry(send, *args, max_attempts=3, base_delay=0.5, **kwargs):
+ 
+     Retries only on TransportError; any other exception propagates
+     immediately. The delay doubles after each failed attempt.
+     """
+     last_exc = None
+-    for attempt in range(1, max_attempts):
++    for attempt in range(1, max_attempts + 1):
+         try:
+             return send(*args, **kwargs)
+-        except TransportError as exc:
++        except (TransportError, ValueError) as exc:
+             last_exc = exc
+             logger.warning(
+                 "dispatch attempt %d/%d failed: %s", attempt, max_attempts, exc
+             )
+    </changed_since>
   </thread>
 </existing_comments>
 
@@ -173,6 +222,18 @@ index 3e1c9d2..77b2a10 100644
 
 ## How the session consumes this
 
+**Stale rendering (`review.md` §3a)** — both threads were anchored at
+`9f3c2abe41d7` and both anchored regions changed in Dana's push, so
+both render stale: `at_sha` on the tag, `@ sha` on every comment, and
+then/now blocks. The `<format_notes>` tag appears for exactly this
+reason (it was absent from the initial envelope). Two details worth
+noticing: the thread anchors (`dispatch.py:25`, `retry.py:20`) are
+`9f3c2abe41d7` line numbers, valid against `<code_then>` and not
+against the current diff; and Dana's replies carry
+`@ 6b1d94efc2a3` — the same SHA as `<changed_since>`'s `to` — so
+"trimmed in 6b1d94e" is self-verifying: the reply was written against
+the code that contains the claimed fix.
+
 **Reconciliation (pipeline step 3½)** — one open Forge thread,
 `t-388`, and its anchored code appears in the interdiff, so a
 resolution check dispatches (`review.md` §5's variant: the f-1
@@ -190,7 +251,7 @@ reconciliation never touches it.
 
 **Specialists (step 3)** run with the full diff for context plus the
 `<scope>` tag naming `9f3c2abe41d7` as the incremental base
-(`review.md` §6b) — new findings must lie inside the interdiff's
+(`review.md` §7b) — new findings must lie inside the interdiff's
 ranges. Their briefs also carry the updated `<existing_comments>`
 block above, which is what keeps them from second-guessing the round
 of changes they're looking at: the `range(1, max_attempts + 1)` line

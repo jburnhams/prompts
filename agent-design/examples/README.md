@@ -27,8 +27,8 @@ exhaustion test doesn't assert the attempt count, so CI passes.
 | `review-envelope-initial.md` | The complete task envelope for the first review session | §2, §3 |
 | `specialist-brief-bugs.md` | The exact `Task` prompt the orchestrator sends the `bugs` specialist | §4 |
 | `validator-brief.md` | The exact `Task` prompt validating one candidate finding | §5 |
-| `review-envelope-rereview.md` | The envelope for the second session, after a new push and a reply (phase 2) | §6 |
-| `responder-envelope.md` | A comment-responder coding run's envelope on a different, Forge-authored PR | review.md §8, `medium.md` §1c |
+| `review-envelope-rereview.md` | The envelope for the second session, after a new push and a reply — including stale-thread then/now rendering and the conditional format note (phase 2) | §3a–3b, §7 |
+| `responder-envelope.md` | A comment-responder coding run's envelope on a different, Forge-authored PR | review.md §9, `medium.md` §1c |
 
 ## How the first session plays out (for orientation)
 
@@ -65,6 +65,19 @@ reconciliation confirms f-1 fixed (reply + resolve), leaves Bob's
 thread to Bob, and its scoped specialists raise the new **f-3**:
 retrying on `ValueError` after a successful POST re-sends a
 non-idempotent invoice dispatch.
+
+## The same scenario, single-stage
+
+The walkthrough above is the multi-stage shape. Run single-stage
+(`review.md` §6, `system-prompts.md` §2b), nothing about the payloads
+changes — that's the point: the envelope in
+`review-envelope-initial.md` *is* the finder's brief (no transclusion
+step), one context raises f-1, f-2, and the payload-logging candidate
+itself under the `all` lens, dedups the logging candidate against
+Bob's thread, and dispatches the exact `validator-brief.md` payloads
+for f-1 and f-2. Same findings posted, same `filtered` accounting,
+same report — one finder context instead of three plus an
+orchestrator.
 
 ## Reading notes
 
