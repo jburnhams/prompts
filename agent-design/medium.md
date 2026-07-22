@@ -137,7 +137,9 @@ already makes violations visible.
 **What**: unresolved review comments (human or bot) on a PR branch
 Forge owns dispatch a `mode: implement` run whose envelope carries the
 PR context block and the unresolved comment threads (with comment ids,
-same shape as review mode's `<existing_comments>`). The run makes the
+same shape as review mode's `<existing_comments>` — the thread model
+in `review.md` §3, filtered to open threads; worked example in
+`examples/responder-envelope.md`). The run makes the
 requested changes in the working tree and replies on each thread —
 what it did, or why it disagrees. `AddComment` is wired in this
 source's implement runs, scoped by prompt to threaded replies on the
@@ -458,6 +460,41 @@ transparency section is the only in-collection precedent for even
 surfacing the filtered set (`code-review-approaches.md` §6); v1's
 `filtered` report field already captures the agent side — this closes
 the loop with the platform side.
+
+### 3f. Stateful re-review sessions
+
+**What**: repeat reviews of the same PR become *sessions* with memory:
+the envelope gains `<review_state>` (what prior sessions posted, with
+live thread status) and `<incremental_diff>` (the delta since the last
+reviewed head), specialists get a `<scope>` restriction to
+newly-changed ranges, and a reconciliation step handles Forge's own
+open threads — confirming fixes (reply + resolve, via a new
+`resolve_thread` field on `AddComment`), conceding or standing firm
+(once, ever, per thread) when an author replies, and reporting every
+thread's outcome in a `thread_updates` array. Fully specified —
+envelope tags, pipeline deltas, rebase fallback, race policy — in
+`review.md` §7, with a worked example in
+`examples/review-envelope-rereview.md`; all additions are additive
+tags/fields on the v1 shapes. The same git plumbing ships the
+stale-thread context blocks (`<code_then>`/`<changed_since>` and the
+conditional `<format_notes>` explainer, `review.md` §3a–3b) — the
+then/now rendering that makes a thread anchored to an earlier head
+readable as intent context rather than a comment about nothing.
+
+**Why**: v1 re-reviews are correct but stateless — dedup stops the
+noise, but nothing focuses the run on what changed, closes the loop on
+a fixed finding, or answers a reply. Those three are what a returning
+human reviewer does, and their absence is visible on every
+multi-round PR. Precedents: PR-Agent's incremental `/review -i`
+(reviews only commits since its last review) and security-guidance's
+prior-review state tracking ("only flag in the delta") for scoping;
+`claude-code-cookbook`'s `pr-fix` for reply handling.
+
+**Gotcha**: the harness must serialize sessions per PR and detect
+force-pushes (interdiff across a rewrite is garbage — fall back to
+full scope, `rebased="true"`), and the one-round cap on standing-firm
+replies is load-bearing: a bot that argues in rounds destroys the
+trust the validator pass exists to protect.
 
 ---
 
