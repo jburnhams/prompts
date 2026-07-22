@@ -191,7 +191,13 @@ reconciliation never touches it.
 **Specialists (step 3)** run with the full diff for context plus the
 `<scope>` tag naming `9f3c2abe41d7` as the incremental base
 (`review.md` §6b) — new findings must lie inside the interdiff's
-ranges. The `bugs` specialist raises **f-3** there: the retry clause
+ranges. Their briefs also carry the updated `<existing_comments>`
+block above, which is what keeps them from second-guessing the round
+of changes they're looking at: the `range(1, max_attempts + 1)` line
+in the interdiff is visibly the fix requested on thread `t-388`, and
+the trimmed log line is visibly what Bob asked for on `t-301` —
+without the threads, either could read as an unexplained change worth
+questioning (`review.md` §3's reversal note). The `bugs` specialist raises **f-3** there: the retry clause
 now catches `ValueError`, and JSON parsing moved *inside* the retried
 `_post_once` — so a malformed success response (gateway accepted the
 invoice, body didn't parse) triggers a re-POST of a non-idempotent

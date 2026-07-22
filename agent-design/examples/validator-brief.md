@@ -31,7 +31,7 @@ The `Task` call:
   "subagent_type": "validator",
   "description": "Validate finding f-2",
   "finding": { "…": "the JSON above, verbatim" },
-  "prompt": "<candidate_finding>\n…\n</candidate_finding>\n\n<pr>\n…\n</pr>\n\n<description>\n…\n</description>\n\n<diff>\n…\n</diff>"
+  "prompt": "<candidate_finding>\n…\n</candidate_finding>\n\n<pr>\n…\n</pr>\n\n<description>\n…\n</description>\n\n<diff>\n…\n</diff>\n\n<existing_comments>\n…\n</existing_comments>"
 }
 ```
 
@@ -56,6 +56,14 @@ With the `prompt` unpacked:
    whole diff, not just billing/dispatch.py: pre-existing-ness is
    judged from the diff's own old-side lines (review.md §5) … }}
 </diff>
+
+<existing_comments>
+{{ … example truncation: the envelope's block, verbatim — Bob's
+   thread and Dana's general comment. Neither bears on f-2, but had a
+   thread explicitly requested the RuntimeError→TransportError change,
+   it would feed the validator's "would a senior engineer flag this"
+   judgment (review.md §5) … }}
+</existing_comments>
 ```
 
 How this validation actually runs (per the validator system prompt,

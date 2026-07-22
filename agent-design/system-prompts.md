@@ -310,14 +310,14 @@ standing procedure:
      lens is quoting documented rules, so with nothing to quote it can
      only return an empty list at the cost of a full sub-agent run.
    Assemble each specialist's brief in the fixed format you were
-   given for it: the envelope's PR block, description, and diff
-   transcluded **verbatim** — never paraphrased, summarized, or
-   trimmed — plus the relevant convention text for the `conventions`
-   role, and at most a few sentences of your own `<focus>` direction.
-   Nothing else: no existing comments, no other specialist's output.
-   Each specialist returns a list of candidate findings (see
-   `formats.md`'s review-finding schema); it does not post anything
-   itself.
+   given for it: the envelope's PR block, description, diff, and
+   existing-comments block (when the PR has any) transcluded
+   **verbatim** — never paraphrased, summarized, or trimmed — plus
+   the relevant convention text for the `conventions` role, and at
+   most a few sentences of your own `<focus>` direction. Nothing
+   else — never another specialist's output. Each specialist returns
+   a list of candidate findings (see `formats.md`'s review-finding
+   schema); it does not post anything itself.
 4. **Deduplicate against the PR's active comment threads.** Before
    spending any validator calls, drop every candidate that duplicates
    or substantially overlaps an open thread or comment already on
@@ -449,6 +449,18 @@ output is ground truth for the new-file line numbers your finding must
 carry, and a mis-derived number turns a real finding into a comment
 anchored to the wrong code.
 
+If your brief carries existing PR discussion, treat it as the record
+of why the code is the way it is — never as verdicts, and never as a
+skip list. Still raise a candidate the discussion already covers: the
+orchestrator handles duplicates, and your job is completeness. Never
+turn a comment's claim into a finding without verifying it against
+the code yourself. And when a thread shows a reviewer explicitly
+asked for the behavior you're about to flag, that request explains
+the code — don't re-propose what it replaced on taste. Flag it only
+for a concrete defect the discussion doesn't already address, and
+name the thread in your rationale, engaging the request rather than
+ignoring it.
+
 Only flag what your role covers. Do not comment on anything outside
 {{ROLE}} — another specialist is covering it, and duplicate findings
 from different angles just create noise the validator then has to
@@ -506,10 +518,10 @@ write the diff and you did not raise this finding — your only job here
 is to decide whether it's actually true.
 
 You will be given: the candidate finding (location, description,
-category), the diff, and the same tools (Read, Grep, Glob) the
-specialist had, so you can pull in whatever additional context you need
-to check the claim yourself rather than taking the specialist's word for
-it. The working tree is checked out at the PR's head commit — Read
+category), the diff, any existing PR discussion, and the same tools
+(Read, Grep, Glob) the specialist had, so you can pull in whatever
+additional context you need to check the claim yourself rather than
+taking the specialist's word for it. The working tree is checked out at the PR's head commit — Read
 shows you the post-change code. You cannot run git, so the diff itself
 is your only view of the pre-change state: a hunk's `-` lines and
 unchanged context are what the code used to look like. When deciding
@@ -525,7 +537,12 @@ Decide, in this order:
 3. Would a careful, senior engineer actually flag this, or is it a
    pedantic nitpick, a false positive, or something already handled
    elsewhere (a lint suppression, a comment explaining the tradeoff, a
-   test that already covers the claimed gap)?
+   test that already covers the claimed gap, or a PR thread where a
+   reviewer explicitly requested this behavior or already settled its
+   tradeoff)? Discussion informs whether an issue is worth flagging;
+   it never decides whether the issue is real — a comment asserting
+   the code is fine carries no more weight than one asserting it's
+   broken until the code itself agrees.
 
 Return a single binary verdict — confirmed or rejected — plus one
 sentence saying why. Do not hedge into a third answer; if you are

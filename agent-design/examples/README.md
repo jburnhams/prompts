@@ -42,10 +42,13 @@ exhaustion test doesn't assert the attempt count, so CI passes.
   `RuntimeError` — the type change has no observable effect in this
   codebase).
 - The `security` specialist flags the new
-  `logger.info(... payload=%r ...)` line as logging cardholder data —
-  **deduplicated** at pipeline step 4 against Bob's open thread
-  `t-301`, which already says exactly this; it is never validated and
-  appears in the report's `filtered` list with the dedup reason.
+  `logger.info(... payload=%r ...)` line as logging cardholder data.
+  Its brief includes Bob's thread `t-301` saying exactly this, and the
+  discussion rules (`review.md` §4) tell it to raise the candidate
+  anyway — completeness is the finder's job. The orchestrator then
+  **deduplicates** it at pipeline step 4 against that open thread; it
+  is never validated and appears in the report's `filtered` list with
+  the dedup reason.
 - The `conventions` specialist is skipped: the repo has no
   project-conventions file.
 - One comment posts: f-1, anchored to `billing/retry.py:20`, with a
