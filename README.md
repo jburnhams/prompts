@@ -195,8 +195,13 @@ monthly auto-best-practices mining, CodeRabbit's approvable learnings,
 Greptile's suppression-by-reaction); governance (Gemini CLI holds every
 machine-written change as a patch in a `/memory inbox` nothing applies
 automatically; Codex parses citation blocks into usage counts that
-decide which memories survive the next consolidation); and two vendor
-**retreats** — Cursor's Memories feature appears removed in favour of
+decide which memories survive the next consolidation); the finding that
+**no first-party implementation does RAG over its own memory** — Codex's
+memory search is a grep with a proximity window, Copilot CLI had a
+database and explicitly chose FTS5 keyword search over vectors ("You
+must act as your own 'embedder'"), and the vendors shipping genuinely
+semantic *codebase* search pointed that infrastructure at the code, not
+at the memory; and two vendor **retreats** — Cursor's Memories feature appears removed in favour of
 Rules, and Gemini CLI deleted `save_memory` outright ("There is no
 `save_memory` tool").
 

@@ -286,13 +286,17 @@ persist it*, rather than writing it itself.
 ## 4. Storage substrate, and the index-plus-detail convergence
 
 Substrates in use: plain markdown in the repo; markdown in a private
-per-project directory; a SQLite database (Copilot CLI's `session_store`
-with FTS5, plus a `context_board`; Codex's state DB for stage-1 records
-and job leasing); an embedding store (Greptile, and Windsurf's
-`trajectory_search` by implication); a vendor-side database
-(CodeRabbit's "internal database" keyed to the git-platform org, Devin's
-Knowledge library); and — uniquely — **a git repository used as a diff
-engine**.
+per-project directory; append-only JSONL transcripts kept as the raw
+layer underneath everything else (Codex's rollouts, Antigravity's
+`transcript.jsonl`, Gemini CLI's `chats/`); a SQLite database (Copilot
+CLI's `session_store` with FTS5, plus a `context_board`; Codex's state
+DB for stage-1 records, job leasing, watermarks, and usage counts); a
+vendor-side database (CodeRabbit's "internal database" keyed to the
+git-platform org, Devin's Knowledge library); and — uniquely — **a git
+repository used as a diff engine**.
+
+Conspicuously *not* on that list: a vector database. See "Nobody is
+doing RAG over agent memory" below.
 
 That last one is Codex's, and it's the most unusual storage decision in
 this doc. `~/.codex/memories` is itself a git repo (initialized by
@@ -330,6 +334,101 @@ dropped on the next load." Codex enforces its equivalent by truncating
 `memory_summary.md` to a token limit at injection time — silently, from
 the model's point of view.
 
+### Nobody is doing RAG over agent memory
+
+The most counter-intuitive finding in this doc, given how much of the
+surrounding industry equates "agent memory" with "vector store": **not
+one first-party memory implementation examined here retrieves memory by
+embedding similarity.** The stores are files and keyword-searchable
+databases, and the search is grep.
+
+- **Codex** — the most elaborate system in this doc — has a memory
+  search tool whose backend enum is `SearchMatchMode::{Any,
+  AllOnSameLine, AllWithinLines { line_count }}` over substrings; the
+  tool description says "Search Codex memory files for **substring
+  matches**, optionally normalizing separators or requiring all query
+  substrings on the same line or within a line window." It is a grep
+  with a proximity window. A grep across both memory crates for
+  `embed|vector|cosine|similarity` returns only
+  `parse_embedded_template` (Rust `include_str!` template loading). The
+  read-path prompt's "quick memory pass" is correspondingly literal:
+  "Skim the MEMORY_SUMMARY below and **extract task-relevant
+  keywords**. Search `MEMORY.md` using those keywords."
+- **GitHub Copilot CLI** is the clearest case, because it had a
+  database and deliberately declined to make it semantic: "The session
+  store uses keyword-based search (FTS5 + LIKE), **not vector/semantic
+  search**. You must act as your own 'embedder' by expanding conceptual
+  queries into multiple keyword variants" — with worked expansions
+  ("what bugs did I fix?" → `bug OR fix OR error OR crash OR
+  regression`). The embedding job was pushed onto the model rather than
+  into infrastructure.
+- **Gemini CLI's** memory service and extraction agent contain no
+  embedding or similarity code either; the one `similarity` hit is
+  prompt text warning the extractor off it — "Remember: summary
+  similarity alone is NOT enough" as evidence of recurrence.
+- **Claude Code, Goose, Kiro, OpenHands, Antigravity, Devin, Manus**
+  all retrieve by file read, keyword/glob trigger, or trigger
+  description — no similarity search anywhere in the documented paths.
+
+Where embeddings genuinely do appear, they are doing a different job:
+
+- **Greptile** stores embedding vectors of its own past comments in a
+  vector database partitioned by team — but per a third-party LLMOps
+  write-up rather than its own docs, which say nothing about storage.
+  And the vectors are used to decide whether a *new* comment resembles
+  ones the team has ignored or downvoted, i.e. **nearest-neighbour as a
+  suppression filter**. Nothing retrieved is injected into a prompt.
+  That is classification, not retrieval-augmentation.
+- **Windsurf** ("check to see if a semantically related memory already
+  exists", "Relevant memories will be automatically retrieved from the
+  database") and **Qoder** (`search_memory` — "using advanced semantic
+  search") both state semantic retrieval in prompt text but describe no
+  storage mechanism anywhere. Probable embeddings; unverified.
+- **Codebase search is the opposite story entirely.** Cursor
+  (`codebase_search`: "semantic search that finds code by meaning, not
+  exact text"), Windsurf, and Augment all ship genuinely semantic code
+  retrieval — so these vendors demonstrably have embedding
+  infrastructure and pointed it at the *codebase*, not at memory. (Even
+  there it isn't universal: Aider's repo map is tree-sitter parsing plus
+  graph ranking, deliberately not embeddings.)
+
+Three reasons for the divergence are legible in the artifacts
+themselves, and all three are worth weighing before reaching for a
+vector store:
+
+1. **The corpora are tiny.** Codex's Phase 2 loads a bounded top-N
+   selection; Gemini's extractor targets "0-5 memory patches and 0-2
+   skills per run"; Claude Code's index is capped at 200 lines. At that
+   scale grep is exact, instant, and has no index to rebuild or keep in
+   sync with a file the user just hand-edited.
+2. **The store has to stay human-auditable.** Claude Code's memories are
+   "plain markdown you can edit or delete at any time"; Gemini holds
+   every machine-written change as a reviewable patch; Codex's store is
+   a git repo whose consolidator is explicitly told to respect hand
+   edits ("it is probably a user change and you shouldn't just drop
+   it"). None of that survives translation into opaque vectors.
+3. **The index *is* the retrieval system, and it is model-written.** A
+   `MEMORY.md` entry carrying `applies_to: cwd=<...>; reuse_rule=<when
+   this memory is safe to reuse vs when to treat it as
+   checkout-specific>` encodes *conditions for reuse* that no embedding
+   can represent — and scoping by cwd, tag, or path glob wants an exact
+   filter, not a nearest neighbour. The distillation pass buys the
+   precision that similarity search would otherwise have to guess at.
+
+What replaced RAG in the mature systems is the layering already
+described above: a raw transcript layer that is kept and stays
+searchable, a distilled curated layer on top, and a small always-loaded
+index above that — implemented most explicitly as three separate stores
+in Copilot CLI (`session_store` raw, `context_board` curated, `inbox`
+push). Retrieval is agentic — the model greps and reads — rather than
+statistical.
+
+One caveat on scope: this finding is about **first-party
+implementations**. The third-party MCP ecosystem around these same
+agents (mem0 and the various memory-bank servers) is full of vector
+databases, so a user can bolt one on; none of the vendors here ship one
+by default.
+
 ## 5. Retrieval: pasted in, pointed at, searched, or triggered
 
 Five retrieval modes, and most mature systems use two or three at once:
@@ -363,9 +462,14 @@ Five retrieval modes, and most mature systems use two or three at once:
   (`#steering-file-name`), or `auto` (description-matched). Claude
   Code's `.claude/rules/*.md` take a `paths:` frontmatter glob and load
   when Claude reads a matching file.
-- **Semantic/embedding retrieval**, entirely vendor-side: Windsurf
-  ("Relevant memories will be automatically retrieved from the database
-  and presented to you when needed"), CodeRabbit, Greptile, Qoder.
+- **Semantic retrieval** — claimed by Windsurf ("Relevant memories will
+  be automatically retrieved from the database and presented to you when
+  needed") and Qoder ("advanced semantic search"), both entirely
+  vendor-side with no storage mechanism described; CodeRabbit filters by
+  configured scope rather than by similarity. It is a much smaller
+  category than it first appears — see "Nobody is doing RAG over agent
+  memory" in §4 for why the systems with the most developed memory use
+  grep instead.
 
 What's rarer, and more interesting, is an explicit **retrieval policy in
 the prompt** — telling the model when *not* to bother:
@@ -754,7 +858,15 @@ Capture gaps worth flagging rather than reading as absences:
     background-memory implementation here converged on some subset, and
     the ones that skipped a layer are the ones that only store facts the
     user explicitly dictated.
-12. **For review agents, learn from the human's reaction, not your own
+12. **Don't reach for a vector store by default.** Every first-party
+    implementation here retrieves memory with grep over
+    model-written markdown, and the one vendor that had a database
+    chose FTS5 and told the model to be its own embedder. Distillation
+    plus a written index buys precision that similarity search has to
+    guess at, keeps the store editable by a human, and has no index to
+    invalidate when someone hand-edits a file. Reconsider only when the
+    corpus stops being small.
+13. **For review agents, learn from the human's reaction, not your own
     verdict.** Accepted-vs-ignored suggestions and 👍/👎 are cleaner
     signal than self-assessment — with a hardcoded floor (Greptile never
     suppresses security findings) so the loop can't be trained into

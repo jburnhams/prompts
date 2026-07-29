@@ -744,6 +744,21 @@ model-facing prompt files stored in this folder — it lives in
   ad-hoc memory note after the user explicitly asks Codex to remember,
   forget, or update something." The other three tools in the `memories`
   namespace are read-only: `search`, `read`, `list`.
+- **Retrieval is grep, not embeddings** — worth stating explicitly given
+  how much of the surrounding industry equates agent memory with vector
+  search. `memories.search` is described as "Search Codex memory files
+  for **substring matches**, optionally normalizing separators or
+  requiring all query substrings on the same line or within a line
+  window," and its backend enum is
+  `SearchMatchMode::{Any, AllOnSameLine, AllWithinLines { line_count }}`
+  — a grep with a proximity window. A search across both memory crates
+  for `embed|vector|cosine|similarity` returns only
+  `parse_embedded_template` (template loading). The read-path prompt
+  matches: "Skim the MEMORY_SUMMARY below and extract task-relevant
+  keywords. Search `MEMORY.md` using those keywords." The precision that
+  a vector store would have to approximate is instead bought by the
+  consolidation pass, which writes `applies_to:`/`reuse_rule:` lines and
+  per-task `keywords` into the index.
 - **Citations are machine-parsed and feed retention.** The model must
   append exactly one `<oai-mem-citation>` block as the very last content
   of its reply, containing `<citation_entries>` lines
