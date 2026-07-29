@@ -187,7 +187,12 @@ convergence on an **always-loaded index file plus on-demand topic
 files**, named `MEMORY.md` by three unrelated products; retrieval
 policy (Codex's "skip memory when the request is self-contained" plus a
 4–6-step search budget vs. Antigravity's "🚨 MANDATORY FIRST STEP");
-signal gates that make **no-op the encouraged default**; retrospectives
+signal gates that make **no-op the encouraged default**; the memory tool
+surfaces and what each scaffold actually injects — including an exact
+read/write inversion between agents that can write memory but never
+fetch it (Cursor, Augment) and Codex, which reads freely but may not
+edit its own store, plus the two newest designs (Claude Code, Gemini
+CLI) shipping no memory tool at all; retrospectives
 proper (Codex's success/partial/uncertain/fail outcome triage and
 "symptom → cause → fix" failure shields); the review-tool feedback loops
 that learn from human reactions instead of self-assessment (Qodo Merge's

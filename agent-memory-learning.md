@@ -492,6 +492,114 @@ the prompt** — telling the model when *not* to bother:
   work... Question everything: Treat KIs as clues that must be verified
   and supplemented."
 
+### The tool surface: what the agent can actually do to its memory
+
+| Source | Tools exposed to the working agent | Shape |
+|---|---|---|
+| **Windsurf** | `create_memory(Action: create/update/delete, Content, Title, Tags[], CorpusNames[], Id, UserTriggered)`; `trajectory_search` | Full CRUD + search over past sessions |
+| **Goose** (memory extension, MCP) | `remember_memory(category, data, tags, is_global)`, `retrieve_memories(category, is_global)`, `remove_memory_category(...)`, `remove_specific_memory(...)` | Full CRUD; category and scope mandatory on every call |
+| **Qoder** | `update_memory` (store/update/delete), `search_memory` | Write + semantic read |
+| **Anthropic memory tool** (Messages API) | one `memory` tool with commands `view`/`create`/`str_replace`/`insert`/`delete`/`rename`, scoped to `/memories` | Full CRUD, executed client-side by the app |
+| **Codex CLI** | `memories.search`, `memories.read`, `memories.list`, `memories.add_ad_hoc_note` | **Three read, one restricted write** |
+| **Cursor** (historical) | `update_memory(title, knowledge_to_store, action, existing_knowledge_id)` | **Write only** |
+| **Augment** | `remember(memory)` — "The concise (1 sentence) memory to remember" | **Write only** |
+| **Jules** | `initiate_memory_recording()` | Write, entirely unspecified |
+| **GitHub Copilot CLI** | `context_board` (add/prune) — **scoped to `rem-agent`, not the main agent**; the main agent gets raw SQL over `session_store`, and `send_inbox` belongs to the sidekick | Split across three agents |
+| **Gemini CLI** | none — "There is no `save_memory` tool" | Ordinary `replace`/`write_file` on interpolated paths |
+| **Claude Code** | none — no memory-named tool in the captured `Tools.json`; Read/Edit/Write against the memory directory, and `/memory` is a human-facing slash command | Ordinary file tools |
+| **Antigravity, Devin, Manus, CodeRabbit, Kiro, OpenHands** | none | Retrieval happens upstream; the writer is a separate agent or a human |
+
+Three findings fall out of the table:
+
+- **The read/write asymmetry is an exact inversion between two camps.**
+  Cursor and Augment can *write* a memory but have no read or search
+  tool at all — because memories arrive pre-selected in the prompt, so
+  there is nothing left to fetch. Codex is the mirror image: three read
+  tools, and the only write is `add_ad_hoc_note` ("Create one
+  append-only ad-hoc memory note after the user explicitly asks Codex to
+  remember, forget, or update something"), with the read-path prompt
+  stating the prohibition outright — "Do not try to edit the memory
+  files yourself, only add one update note." The agent with the most
+  elaborate memory in this collection is the one allowed to touch the
+  least of it; the actual writing is the background pipeline's job.
+- **Deletion is a model-invocable capability in exactly three
+  products** — Windsurf, Cursor, and Goose all let the agent forget on
+  its own initiative (and Cursor *prefers* it: "If the user EVER
+  contradicts your memory, then it's better to delete that memory rather
+  than updating"). Everywhere else forgetting belongs to the harness:
+  Codex's usage-count eviction and diff-driven deletion, Claude Code's
+  index budget forcing a merge-or-drop, Gemini CLI's inbox patches.
+- **The two most recently redesigned systems ship no memory tool at
+  all.** Gemini CLI deleted `save_memory`; Claude Code never had one.
+  Both reached the same conclusion — if the agent already has file tools
+  and is told the absolute paths, a dedicated tool is redundant surface
+  area — and it is the same instinct behind Codex's read tools being
+  thin wrappers over grep rather than a query language.
+
+### What is actually injected, and where
+
+Four distinct injection sites, and the choice has consequences:
+
+- **Into the developer instructions** — Codex.
+  `build_memory_tool_developer_instructions` renders the `read_path.md`
+  template with `{{ base_path }}` and `{{ memory_summary }}`
+  interpolated, truncating the summary to
+  `MEMORY_TOOL_DEVELOPER_INSTRUCTIONS_SUMMARY_TOKEN_LIMIT`. It returns
+  `None` when `memory_summary.md` is missing or empty — so **an empty
+  store costs zero tokens**, and no orphaned "you have a memory system"
+  instructions survive without content to justify them. The retrieval
+  policy, the folder layout, the citation format, and the summary itself
+  all ship as one block.
+- **Appended to the system prompt, structurally tagged** — Gemini CLI's
+  `renderFinalShell` emits `<global_context>`, `<user_project_memory>`
+  (wrapped in `--- Private Project Memory Index (private, not committed
+  to repo) ---`), `<extension_context>`, and `<project_context>`, with
+  an explicit precedence block. Separately, the operational-guidelines
+  snippet interpolates the *real absolute paths* of the memory files, so
+  an agent with only generic file tools still knows where to write.
+  Augment is the plainer version: a literal `# Memories` section beside
+  `# Preferences`, `# Additional user rules`, and `# Current Task List`.
+- **As a user message after the system prompt** — Claude Code, per its
+  own docs: "CLAUDE.md content is delivered as a user message after the
+  system prompt, not as part of the system prompt itself," offered
+  explicitly as the reason adherence is not guaranteed. Auto memory
+  rides along as the first 200 lines / 25KB of `MEMORY.md`.
+- **As events or pushes, outside the prompt assembly entirely** —
+  Manus ("Task-relevant knowledge will be provided as events in the
+  event stream"), and Copilot CLI's sidekick, which pushes at most one
+  ≤500-character `inbox` entry per turn, gated on a `hasMemories`
+  launch condition.
+
+**What is injected is almost always the index, never the corpus**:
+Codex sends `memory_summary.md` only, Claude Code the capped
+`MEMORY.md`, Gemini CLI the private index plus global `GEMINI.md`,
+Antigravity "KI summaries with artifact paths", Qoder a
+`<project_knowledge_list>` tree. Everything below the index — topic
+files, rollout summaries, skills, KI artifacts, raw transcripts — is a
+path the agent opens on demand. **Goose is the outlier**: per its docs it
+"loads all saved memories at the start of a session and includes them in
+every prompt," with no index, no budget, and no truncation rule — the
+model that degrades worst as the store grows.
+
+Two smaller patterns worth copying:
+
+- **Context whose only job is to make a tool callable.** Windsurf places
+  the valid `CorpusNames` in the system prompt precisely so the model can
+  pass exact-match scope values to `create_memory` ("Each element must be
+  a FULL AND EXACT string match... with one of the CorpusNames provided
+  in your system prompt"). Scope enforcement by enumeration rather than
+  by validation error.
+- **Ship the handling policy with the content, not with the harness.**
+  Cursor injects its memories *and* the policy for doubting them in the
+  same `<memories>` block — "They may or may not be correct... the
+  moment you notice the user correct something you've done based on a
+  memory... you MUST update/delete the memory immediately" — plus the
+  `[[memory:MEMORY_ID]]` citation format. Codex does the same by
+  bundling the drift/staleness rules into the same template as
+  `memory_summary.md`. In both cases the instructions appear only when
+  there is memory to apply them to, rather than sitting permanently in
+  the system prompt.
+
 ## 6. What is worth remembering: gates, taxonomies, and anti-rules
 
 Every mature writer prompt is mostly a *filter*, not a format spec.
@@ -866,7 +974,13 @@ Capture gaps worth flagging rather than reading as absences:
     guess at, keeps the store editable by a human, and has no index to
     invalidate when someone hand-edits a file. Reconsider only when the
     corpus stops being small.
-13. **For review agents, learn from the human's reaction, not your own
+13. **Decide separately whether the agent may read its memory and
+    whether it may write it.** The two are independent, and the
+    strongest systems restrict one of them: Codex reads freely but may
+    only append a note for the background writer; Cursor and Augment
+    write freely but never fetch, because selection happens upstream.
+    "The agent has a memory tool" is not one decision.
+14. **For review agents, learn from the human's reaction, not your own
     verdict.** Accepted-vs-ignored suggestions and 👍/👎 are cleaner
     signal than self-assessment — with a hardcoded floor (Greptile never
     suppresses security findings) so the loop can't be trained into
