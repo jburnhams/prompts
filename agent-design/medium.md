@@ -376,6 +376,97 @@ Phased on purpose, matching how the need actually arrives:
 
 ---
 
+### 2f. `Narrate` (the run narrative)
+
+**What**: a tool the orchestrator calls a handful of times per run to
+publish a short *why*-shaped account of what it is doing and why the
+approach just changed. The harness persists the sequence as the run's
+**narrative** — a durable artifact, separate from both the transcript
+and the `Complete` report, serving two consumers: a human wanting to
+see progress or reconstruct a decision afterwards, and §6's learnings
+runs.
+
+```json
+{
+  "name": "Narrate",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "phase": { "type": "string", "description": "Short label for the phase of work this entry opens, e.g. \"Reproducing the failure\", \"Implementing the retry fix\", \"Verifying\". Reuse the previous phase's label when this entry revises an ongoing phase rather than starting a new one." },
+      "summary": { "type": "string", "description": "A few sentences of narrative: what has been established so far, what this phase will do, and — when the approach has changed — why. Write for a colleague reading the run afterwards, not as a status line. Do not restate the step list." },
+      "kind": { "type": "string", "enum": ["phase", "detour", "recap"], "description": "phase: entering a new phase of planned work. detour: an unexpected event (failing test, environment problem, wrong assumption) has changed the approach — say what was expected, what happened, and what you are doing instead. recap: the closing entry, what the run concluded." }
+    },
+    "required": ["phase", "summary", "kind"],
+    "additionalProperties": false
+  }
+}
+```
+
+**Why**: three separate needs converge on one artifact.
+
+1. **Progress visibility.** A hands-off run is opaque while it is
+   running — the `Complete` report only arrives at the end, and
+   `AddComment` isn't wired in `implement` runs at all. A narrative
+   the harness can render gives a human something to watch without
+   giving Forge a second outward channel to reason about.
+2. **A clean input for retrospectives.** §6's learnings runs otherwise
+   depend on a raw transcript: the dirtiest input in the design, big,
+   and structurally an injection surface (§6f). A narrative is
+   authored by the only participant that actually knows *why* the
+   approach changed, at the moment it changed, and is a fraction of
+   the size.
+3. **It captures what a post-hoc reader cannot reconstruct.**
+   `agent-memory-learning.md` §7 shows Codex spending most of a
+   569-line prompt inferring outcomes and pivots from raw rollouts
+   after the fact. The `detour` entries here are exactly the
+   failure-shield material that inference is trying to recover —
+   symptom, cause, what was done instead — recorded first-hand.
+
+**Precedent** (`agent-turn-output.md` §3a): Gemini CLI's `update_topic`
+is the closest match and the design template — a `title`/`summary`/
+`strategic_intent` schema, published for a user who "follows along by
+reading topic updates," fired "every 3 to 10 turns" and explicitly
+"**not** on every turn," with a mandated first-turn call, a last-turn
+recap, and a rule to fire on "an unexpected event... that requires a
+strategic detour." Codex reaches the same conclusion from its
+`update_plan` tool, requiring "an `explanation` of the rationale"
+whenever the plan changes mid-task. Google Antigravity goes furthest,
+making the narrative a durable file (`walkthrough.md`, updated rather
+than recreated) and stating the rule this tool's `summary` description
+borrows: **synthesize a narrative, don't copy checklist items
+verbatim**. The `kind` enum is this design's own addition — the field
+that makes a detour mechanically findable later rather than something a
+consumer has to detect by reading prose.
+
+**Applies to both entrypoints.** Coding runs narrate their
+investigation, approach, and pivots. Review runs narrate the shape of
+the diff, which lenses were run, and why candidates were dropped —
+which also gives the `filtered[]` report field a prose counterpart
+explaining the *reasoning*, not just the verdict.
+
+**Gotchas**:
+
+- **Rate, not volume, is the failure mode.** A narrate-every-turn rule
+  produces something nobody reads and that costs tokens on every turn;
+  both precedents throttle explicitly, and this tool's guidance should
+  too (a handful of entries per run, and never for trivial single-step
+  work). The counter-example is Windsurf's `toolSummary`, required on
+  every one of its 30 tools — useful as a UI label, useless as a
+  narrative.
+- **It is not a substitute for the `Complete` report or the step
+  list.** The report is the machine-readable outcome; the narrative is
+  the reasoning. Restating one in the other is the most likely way this
+  degrades into filler.
+- **It is model-authored prose, so it is evidence of intent, not of
+  fact.** §6's learnings runs must treat a narrative entry as the
+  agent's account, verified against pinned code before anything derived
+  from it is recorded — the same discipline `agent-memory-learning.md`
+  finds in both mature extractors, which rank user messages and tool
+  output above the agent's own narration as evidence.
+- **Not wired in sub-agents.** Specialists, validators, and
+  `general-purpose` delegates don't narrate; the orchestrator owns the
+  account of the run, the same way it owns delivery.
+
 ## 3. Review pipeline upgrades
 
 ### 3a. Ticket context in review mode, and a `ticket_compliance` lens
@@ -936,6 +1027,12 @@ nothing. The final-turn nudge permits only `CreateMemory` or
 a bounded set of rollouts per startup; Gemini CLI throttles to one
 extraction per 30 minutes over at most 10 new candidate sessions).
 
+**Pairs with §2f**: `Narrate` is not a prerequisite — this run works
+from reports, diffs, and threads alone — but it is the single cheapest
+upgrade to the quality of what it can learn, because it supplies
+first-hand rationale for pivots instead of leaving them to be inferred
+from a transcript. Build it first if both are on the table.
+
 **Depends on**: §3e (finding-outcome telemetry) for the review half —
 that item already records "resolved, replied-to, fixed by a follow-up
 commit touching the anchored lines, or left to rot," which is exactly
@@ -978,8 +1075,21 @@ thread format everywhere, nothing translates" rule applies here too:
   to infer, we already have as a schema — Codex spends most of a
   569-line prompt on outcome triage that our completion contract hands
   over for free (`agent-memory-learning.md` §7).
+- `<narrative>` — optional, present whenever the originating run had
+  `Narrate` wired (§2f): that run's narrative entries in order. This is
+  the input this run should reach for first — authored by the
+  participant that knew why the approach changed, at the moment it
+  changed, and small enough to inject whole. `kind: "detour"` entries
+  are where failure shields come from. Treat it as the agent's account
+  of its own intent, not as established fact: verify against pinned
+  code before recording anything derived from it, per the evidence rule
+  in §6c.
 - `<transcript_summary>` — optional, same condition. A short digest,
-  with the full transcript reachable on demand (§6c).
+  with the full transcript reachable on demand (§6c). Once `Narrate`
+  ships, the transcript becomes the fallback rather than the primary
+  source: reach for it when the narrative is missing (a run that
+  predates the tool, or a human-authored PR) or when it references
+  something it doesn't explain.
 - `<learnings>` — the current memory index for this repo, so the run
   extends and supersedes rather than duplicating. Both in-field
   consolidators do this (Codex reads existing artifacts "so updates

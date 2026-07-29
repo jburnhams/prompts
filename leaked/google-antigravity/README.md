@@ -440,3 +440,45 @@ mandate.
   summaries" as an understood concept but never defines a KI or the
   Knowledge Subagent anywhere in its 451 lines — either injected at
   runtime or not captured.
+
+## Narrative artifacts
+
+See [`agent-turn-output.md`](../../agent-turn-output.md) §3a for the
+cross-source comparison this feeds into. Antigravity is the **only
+source in this collection that makes the run's narrative a first-class
+durable artifact** rather than chat prose — four files under
+`<appDataDir>/brain/<conversation-id>/`, authored and maintained by the
+model as it works:
+
+| Artifact | Role |
+|---|---|
+| `task.md` | "A TODO list to organize your work during execution... track progress as a living document," with a custom three-state notation (`[ ]`, `[/]` in progress, `[x]`) |
+| `implementation_plan.md` | A design document "to present your technical implementation plan to the user for feedback and approval," with mandated `## User Review Required` and `## Open Questions` sections using GitHub alert syntax (IMPORTANT/WARNING/CAUTION), and changes grouped by component with `[NEW]`/`[DELETE]` file markers |
+| `walkthrough.md` | Post-work proof: "Changes made / What was tested / Validation results," with embedded screenshots and recordings — already documented above as this collection's only "artifact-as-verification-record" |
+| `research_notes.md` | Named in `CLI Prompt.md`'s artifact list; format not captured |
+
+Three properties worth pulling out, all of which distinguish this from
+"the agent writes some files":
+
+- **Updated, not recreated**: "Update an existing walkthrough for
+  related follow-up work rather than creating a new one," and
+  `implementation_plan.md` is revised in place across review rounds
+  ("If user requests changes to your plan, stay in PLANNING mode,
+  update the same `implementation_plan.md`, and request review again").
+  The same anchor-and-update discipline this collection documents for
+  compaction summaries and for memory indexes
+  (`agent-memory-learning.md` §4), applied to a progress record.
+- **The narrative is explicitly not the checklist.** `task_boundary`'s
+  `TaskSummary` is maintained cumulatively and must "**synthesize
+  progress from `task.md` into a concise narrative — don't copy
+  checklist items verbatim**." The structured state machine
+  (`PLANNING`/`EXECUTION`/`VERIFICATION`) carries the *what*; the prose
+  field is reserved for the *why*, including on backtracking: "keep the
+  same TaskName and switch Mode. Update TaskSummary to explain the
+  change in direction."
+- **Scoped to work that warrants it**: "For simple work (answering
+  questions, quick refactors, single-file edits that don't affect many
+  lines etc.), skip task boundaries and artifacts," and `CLI Prompt.md`
+  excludes "investigatory," "trivially simple and one-off," and "minor
+  follow-up" work. The same don't-narrate-trivia exclusion Gemini CLI's
+  `update_topic` states as a rate limit.

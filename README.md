@@ -84,6 +84,18 @@ mechanism that fits neither "native API block" nor "prompted
 narration"), Windsurf's schema-embedded per-tool-call narration
 requirement, and the recurring but easy-to-conflate distinction between
 native model-API reasoning blocks and ordinary prompted narration text.
+A later pass added §3a, which re-sorts the same sources by *what
+narration contains* (the what vs. the why) and *how long it survives*
+(dies with the transcript vs. durable artifact) — surfacing Gemini
+CLI's `update_topic` as the best-specified why-focused mechanism
+anywhere here (rate-limited to "every 3 to 10 turns," excluded from
+trivial work, and triggered on "an unexpected event... that requires a
+strategic detour"), Codex's matching `update_plan` `explanation`
+requirement on mid-task plan changes, and Google Antigravity's four
+durable markdown artifacts as the only case of the run narrative being
+a file rather than chat prose. The same pass resolved this doc's
+standing open question about `update_topic`: it is a progress-narration
+channel, not a session-title generator.
 
 **[→ `agent-self-verification.md`](./agent-self-verification.md)** — a
 further drill-down on how (and whether) a scaffold checks its own work

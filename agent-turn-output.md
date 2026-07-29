@@ -77,7 +77,7 @@ get a short label," not just wording variations.
 |---|---|
 | **A dedicated, separate cheap/fast-model LLM call**, decoupled from the main agent loop | OpenCode (`title` hidden native agent, small-model preference with fallback chain, forked into the background non-blockingly at the start of the first turn), Claude Code (three separate generators, **all** explicitly calling Haiku rather than the main Sonnet/Opus model — see §1a), Crush (`title.md`, model/trigger not confirmed), Goose (`session_name.md`, model/trigger not confirmed) |
 | **No generation at all — the raw first message, formatted/truncated** | Cline (confirmed: `HistoryItem` has no title field at all; UI falls back to `metadata.title || prompt || "Untitled"`, and `metadata.title` is only ever set by an explicit user command, never an LLM), Roo Code (confirmed via direct schema read: `historyItemSchema` has no title field either — same lineage, same design answer, independently re-verified rather than assumed from the Cline connection) |
-| **Folded into the main model's own turn as a tool call**, not a separate call at all | Gemini CLI — `update_topic` is a tool the primary model chooses to invoke mid-conversation with a `title`/`summary`/`strategic_intent` schema, framed as managing "narrative flow" across logical phases. The opposite architectural choice from OpenCode's/Claude Code's side-call pattern — no extra API round-trip, but the title-setting decision competes for the main model's attention and tool budget. Not confirmed to actually drive a persistent UI/sidebar title (no wiring to the CLI package's session list was found), so this may be a narrative-chaptering aid rather than a full title feature — flagged as unresolved, not asserted either way. |
+| **Folded into the main model's own turn as a tool call**, not a separate call at all | Gemini CLI — `update_topic` is a tool the primary model chooses to invoke mid-conversation with a `title`/`summary`/`strategic_intent` schema, framed as managing "narrative flow" across logical phases. The opposite architectural choice from OpenCode's/Claude Code's side-call pattern — no extra API round-trip, but the title-setting decision competes for the main model's attention and tool budget. Not confirmed to actually drive a persistent UI/sidebar title (no wiring to the CLI package's session list was found), so this may be a narrative-chaptering aid rather than a full title feature — flagged as unresolved, not asserted either way. **Resolved by a later pass: it is a narrative-chaptering aid, not a title feature** — the governing prompt text frames it purely as a progress channel the user reads along with, and its `title` labels a phase of work rather than the session. Counted in §3a, not here. |
 | **Confirmed absence at the client; server-side behavior unknown** | Codex CLI — `task.title` (for the separate Codex Cloud product) is deserialized from the backend API response with no client-side generation code; the local TUI's session-resume list falls back to a raw server-provided preview string. Whether an LLM generates the title server-side is invisible to this repo. |
 | **Not found in captured files — likely a genuine capture gap, not a design choice** | Aider, OpenHands, Pi, Cursor (leaked, all five dated prompt versions plus the tools JSON checked), Devin (leaked), Windsurf (leaked, despite the richest tool surface surveyed anywhere in this collection), Warp (leaked), Replit (leaked), Factory/Droid (leaked), GitHub Copilot CLI (leaked — despite a session-state architecture rich enough to include a per-session SQL database and a cross-session FTS5-indexed history store, §7 of `leaked/github-copilot-cli/README.md`; the product visibly shows session identifiers in its `~/.copilot/session-state/<session-id>/` path convention, so a titling/labeling layer plausibly exists outside what either capture shows), Grok Build (leaked — no title-generation tool or instruction anywhere in the 1329-line capture, despite `~/.grok/docs/user-guide/` confirming a real surrounding TUI product with its own configuration/theming docs). None of these products' prompts carry a title-generation instruction, but in every case the product itself visibly shows named sessions/conversations in its UI — the generating logic almost certainly lives in orchestration or server-side code that simply isn't part of what got captured. Distinct from the Cline/Roo Code row above, which is confirmed via a direct data-schema read, not just an absent instruction. |
 | **Not investigated in this pass** | Copilot Chat, and every source outside the sources-covered list above |
@@ -405,12 +405,123 @@ at the *orchestrator-identity* level, not a `{{ personality }}` fill-in
 layered on one shared prompt skeleton) — worth reading as a related but
 structurally distinct axis, not the same finding restated.
 
+### 3a. What vs. why, and narration that outlives the turn
+
+The five mechanisms above are sorted by *how* narration is delivered.
+Sorting the same sources by **what narration contains** and **how long
+it survives** produces a different and more useful split — and turns up
+a family of mechanisms that are not really "narration" in the
+chat-message sense at all, but durable artifacts the model authors as
+it works.
+
+| | **Ephemeral** (lives in the turn, dies with the transcript) | **Durable** (a record something downstream can read) |
+|---|---|---|
+| **What is happening** | Windsurf's `toolSummary` ("Brief 2-5 word summary"); Cursor's `<summary_spec>` end-of-turn recap; most "explain before acting" rules | Jules's `plan_step_complete(message)` — "a message explaining what actions you took" |
+| **Why it is happening** | Codex's preamble messages; Gemini CLI's "Explain Before Acting" | Gemini CLI's `update_topic`; Codex's `update_plan` `explanation`; Antigravity's `task_boundary` + its three markdown artifacts |
+
+**The best-specified instance of why-focused narration in the whole
+collection is Gemini CLI's `update_topic`** — and the prompt text
+governing it (live source, `snippets.ts`'s `mandateTopicUpdateModel`)
+is worth reading in full, because it answers the questions every other
+narration rule leaves open:
+
+- **Who it's for**: "As you work, the user follows along by reading
+  topic updates that you publish with `update_topic`."
+- **Granularity, stated as a rate**: "A topic is typically a discrete
+  subgoal and will be every 3 to 10 turns. **Do not use `update_topic`
+  on every turn**... The typical complex user message should call
+  `update_topic` 3 or more times." Compare Windsurf's per-tool-call
+  requirement — the same idea deliberately throttled by an order of
+  magnitude.
+- **A hard exclusion**: "NEVER use `update_topic` for answering
+  questions, providing explanations, or performing isolated lookup
+  tasks... It is STRICTLY for orchestrating multi-step codebase
+  modifications or complex investigations involving 3 or more tool
+  calls."
+- **Bookends**: "Always call `update_topic` in your first turn," and
+  "For tasks taking multiple turns, also call `update_topic` in your
+  last turn to recap what was done."
+- **A trigger that captures exactly what a post-hoc reader can't
+  reconstruct**: "Remember to call `update_topic` when you experience
+  an unexpected event (e.g., a test failure, compilation error,
+  environment issue, or unexpected learning) that requires a
+  **strategic detour**."
+- **Worked examples that are genuinely why-shaped**, not status lines:
+  "I have completed the research phase and identified a race condition
+  in the tokenizer's buffer management. I am now transitioning to
+  implementation. This new chapter will focus on refactoring the buffer
+  logic to handle async chunks safely, followed by unit testing the
+  fix."
+
+Its schema carries `title` / `summary` / `strategic_intent` — a
+dedicated field for rationale, which no other narration mechanism here
+has.
+
+**Codex reaches the same conclusion for the same moment, through a
+different tool.** `update_plan` is a plan tracker, but the prompt
+singles out one case for narration: "Sometimes, you may need to change
+plans in the middle of a task: call `update_plan` with the updated
+plan and **make sure to provide an `explanation` of the rationale when
+doing so**." Two unrelated products, both concluding that the moment
+worth capturing rationale is the moment the plan changes. Codex's
+preamble guidance adds the continuity half — "if this is not your
+first tool call, use the preamble message to connect the dots with
+what's been done so far" — but preambles are chat messages, so that
+half evaporates; the `explanation` field survives in the tool call.
+
+**Google Antigravity is the only source that makes the narrative a
+first-class durable artifact**, and it ships four of them:
+
+| Artifact | Path | Role |
+|---|---|---|
+| `task.md` | `<appDataDir>/brain/<conversation-id>/` | "A TODO list to organize your work during execution... track progress as a living document," with a custom `[/]` in-progress notation |
+| `implementation_plan.md` | same | A design doc "to present your technical implementation plan to the user for feedback and approval," with mandated `## User Review Required` and `## Open Questions` sections using GitHub alert syntax |
+| `walkthrough.md` | same | "After completing work, summarize what you accomplished" — Changes made / What was tested / Validation results, with embedded screenshots and recordings, "**Update an existing walkthrough for related follow-up work rather than creating a new one**" |
+| `research_notes.md` | same | Named in `CLI Prompt.md`'s artifact list, format not captured |
+
+Two details make this more than "the agent writes some files." First,
+the artifacts are **updated, not recreated** — the same anchor-and-
+update discipline this collection documents for compaction summaries
+and (in `agent-memory-learning.md` §4) for memory indexes, applied to
+a progress record. Second, the live narrative is explicitly *not* the
+checklist: `task_boundary`'s `TaskSummary` field is to be maintained
+cumulatively and "**Synthesize progress from task.md into a concise
+narrative — don't copy checklist items verbatim**," with the
+backtracking rule "keep the same TaskName and switch Mode. Update
+TaskSummary to explain the change in direction." A structured state
+machine (`PLANNING`/`EXECUTION`/`VERIFICATION`) carries the *what*, and
+the prose field is reserved for the *why*.
+
+**Why this axis matters beyond UI.** A durable why-narrative is the
+cheapest possible input to anything that reads a finished run — a
+resumption, a handoff, or a retrospective. `agent-memory-learning.md`
+§7 documents Codex spending most of a 569-line prompt inferring
+outcomes and pivots from raw rollouts after the fact ("user keeps
+iterating on the same task" ≈ partial; "repeated loops, unresolved
+errors" ≈ fail). Gemini CLI's detour rule captures the same
+information at the moment it happens, from the only participant that
+actually knows why. The two approaches are complementary rather than
+competing, but only one of them is nearly free — and the sources that
+built a narrative channel mostly built it for the UI, apparently
+without noticing it also solves the harder problem downstream.
+
+**Claude Code is the notable abstainer.** Its prompts push the other
+way (terseness mandates, no preamble-per-tool-call rule), and the one
+"journal" reference in the collection is unrelated plumbing — the
+`Workflow` tool's replay cache, whose fallback is "Read
+`agent-<id>.jsonl` files in the transcript directory and hand-author a
+continuation script." Raw transcript, not authored narrative.
+
 ## 4. Absences and unresolved findings
 
-- **Gemini CLI's `update_topic` tool** is confirmed to exist and be
-  callable by the model, but not confirmed to actually populate any
-  persistent, user-visible session title — flagged as unresolved (§1)
-  rather than counted as a confirmed title mechanism.
+- ~~**Gemini CLI's `update_topic` tool**~~ — **resolved** by a later
+  live-source pass, and the answer is that it is not a title mechanism
+  at all: the prompt text governing it opens "As you work, the user
+  follows along by reading topic updates that you publish with
+  `update_topic`," i.e. it is a progress-narration channel whose
+  `title` field labels a *phase of work*, not a session. See §3a,
+  where it is now documented as the leading example of why-focused
+  narration. §1's table row is annotated accordingly.
 - **Codex Cloud's server-side title generation** is opaque from this
   repo's vantage point — the client-side absence is confirmed, but
   what (if anything) generates `task.title` on the backend is unknown.

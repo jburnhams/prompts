@@ -220,6 +220,23 @@ cross-source comparison this feeds into.
   couldn't be confirmed (no references to the underlying `TopicState`
   were found anywhere in the CLI package) — it reads more like an
   internal narrative-chaptering aid than a confirmed UI-title feature.
+  **A later pass settled it: it is a narrative-chaptering aid, and it
+  is the best-specified progress-narration mechanism in this whole
+  collection** — see [`agent-turn-output.md`](../agent-turn-output.md)
+  §3a. The governing prompt text (`snippets.ts`'s
+  `mandateTopicUpdateModel`) opens "As you work, the user follows along
+  by reading topic updates that you publish with `update_topic`," so
+  the `title` labels a *phase of work*, not the session. It is
+  rate-limited rather than per-turn ("every 3 to 10 turns. Do not use
+  `update_topic` on every turn"), excluded from trivial work
+  ("STRICTLY for orchestrating multi-step codebase modifications or
+  complex investigations involving 3 or more tool calls"), bookended
+  (mandatory first-turn call, last-turn recap), and — the part with no
+  analog anywhere else — triggered on rationale changes: "call
+  `update_topic` when you experience an unexpected event (e.g., a test
+  failure, compilation error, environment issue, or unexpected
+  learning) that requires a **strategic detour**." Its worked examples
+  are why-shaped prose, not status lines.
 - **Reasoning is off by default, unlike Claude Code's default-shown
   design**: `thinkingConfig` (`includeThoughts`, `thinkingBudget` — `-1`
   is adaptive, `thinkingLevel` for Gemini-3-era models) is a real,
