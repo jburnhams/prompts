@@ -261,3 +261,39 @@ captured).
   GitHub extension, its instructions live outside these files, the
   same caveat this folder's own README already applies to permissions
   (`permission_judge.md`).
+
+## Memory, learnings, and retrospectives
+
+See [`agent-memory-learning.md`](../agent-memory-learning.md) for the
+cross-source comparison this feeds into. Nothing in the prompt files
+stored here mentions memory — Goose's mechanism lives in a built-in MCP
+extension and in a hints file, both outside the captured prompts, so
+everything below is from vendor documentation.
+
+- **Two separate channels, static and dynamic**: `.goosehints` (global
+  at `~/.config/goose/`, or project-local) is the static
+  human-written context file — Goose's `AGENTS.md` equivalent — while
+  the **Memory extension** is a dynamic, model-callable store.
+- **The tool surface is the most explicitly *scoped-at-call-time* one in
+  the collection**: `remember_memory(category, data, tags, is_global)`,
+  `retrieve_memories(category, is_global)`,
+  `remove_memory_category(category, is_global)`,
+  `remove_specific_memory(category, memory_content, is_global)`. Both
+  category and scope are mandatory arguments on every call, rather than
+  being inferred from which file the agent chose to edit.
+- **Storage is a two-tier filesystem split**: `.goose/memory` in the
+  working directory for project-scoped entries, `~/.config/goose/memory`
+  for user-wide ones — the same private-project/global pair Gemini CLI
+  and Claude Code arrived at, minus the shared-with-the-team tier
+  (`.goosehints` fills that role).
+- **Retrieval is load-everything, not index-plus-detail**: per the docs,
+  Goose "loads all saved memories at the start of a session and includes
+  them in every prompt sent to the LLM," with global memories injected
+  into the system instructions at startup. No budget, no truncation
+  rule, and no on-demand tier — the simplest retrieval model of any
+  source here, and the one that scales worst as the store grows.
+- **Writes are trigger-word driven** rather than gated by a judgment
+  prompt: "remember"/"save" to store, "forget"/"clear memory" to remove,
+  "memory"/"search memory" to retrieve. There is no signal gate, no
+  no-op default, and no distillation pass — so what accumulates is
+  whatever the user asked for in the moment.

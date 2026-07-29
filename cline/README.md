@@ -281,3 +281,38 @@ files. The sixth axis yields a real but narrower-than-expected finding.
   Cline having no sub-agent/parallel-task delegation mechanism at all
   in this snapshot (`new_task` is a session-handoff tool, not a
   parallel worker, per the Sub-agents section above).
+
+## Memory, learnings, and retrospectives
+
+See [`agent-memory-learning.md`](../agent-memory-learning.md) for the
+cross-source comparison this feeds into. No memory-write tool appears in
+the captured prompt-assembly layer; what Cline contributes is the
+collection's most **promiscuous rules-file reader**.
+
+- **Four rule sources, each with its own injected header** in
+  `responses.ts`: a global `.clinerules/` directory ("where the user has
+  specified instructions for all working directories"), a root-level
+  `.clinerules/` directory, a root-level `.clinerules` file — and then
+  two other vendors' files loaded as first-class inputs:
+  `windsurfRulesLocalFileInstructions` (`.windsurfrules`) and
+  `cursorRulesLocalFileInstructions` (`.cursorrules`). Roo Code, Crush,
+  and Claude Code all read foreign rules files at *bootstrap* time;
+  Cline reads them on **every** session, as ordinary context. Alongside
+  these sits `.clineignore`, injected with the same header pattern —
+  instruction files and access-control files sharing one delivery
+  mechanism.
+- **Everything is human-authored**: the captured files contain no
+  create/update/delete memory vocabulary, no memory storage description,
+  and no instruction to write anything back to `.clinerules`. Cline's
+  widely-used "Memory Bank" is a *community convention* — a set of
+  markdown files the user tells Cline to maintain via custom
+  instructions ("update memory bank") — not a shipped mechanism visible
+  in this capture, and the shipped `new_rule` tool is likewise outside
+  what these files cover.
+- **The stated motivation for the convention** is worth recording even
+  though it is documentation rather than prompt text: Cline's memory
+  resets completely between sessions, so all project knowledge must be
+  externalized into files the next session re-reads. That is the same
+  premise Windsurf's `<memory_system>` states — and the two products
+  answered it in opposite ways (a database tool vs. a user-maintained
+  file convention).

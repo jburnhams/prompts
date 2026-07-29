@@ -248,3 +248,56 @@ carve-out anywhere.
   and may contain very long output (e.g. git log, use git log -n
   &lt;N&gt;)." No PR-creation tool, no description template, no `gh` CLI
   guidance beyond this note.
+
+## Memory, learnings, and retrospectives
+
+See [`agent-memory-learning.md`](../../agent-memory-learning.md) for the
+cross-source comparison this feeds into. Windsurf's `<memory_system>`
+block and `create_memory` tool are the collection's canonical example of
+**maximally-eager, permissionless, in-flight memory writing** — the
+opposite end of the axis from Codex ("only when explicitly asked") and
+Cursor ("unless the user explicitly asks... DO NOT create").
+
+- **The eagerness rules, verbatim**: "As soon as you encounter important
+  information or context, proactively use the create_memory tool... You
+  DO NOT need USER permission to create a memory. You DO NOT need to
+  wait until the end of a task or a break in the conversation to create
+  a memory. You DO NOT need to be conservative about creating memories."
+  The stated justification is context loss rather than personalization —
+  "ALL CONVERSATION CONTEXT, INCLUDING checkpoint summaries, will be
+  deleted. Therefore, you should create memories liberally" — which is
+  why this collection's [`agent-context-compaction.md`](../../agent-context-compaction.md)
+  treats it as a compaction strategy as well.
+- **The tool schema is the richest memory-write schema captured
+  anywhere**: `create_memory(Action: create|update|delete, Content,
+  Title, Tags[] (snake_case), CorpusNames[] (workspace scoping,
+  "FULL AND EXACT string match"), Id, UserTriggered)`. Tag-based
+  filtering and explicit workspace corpora are unique to this source;
+  `UserTriggered` is a provenance flag distinguishing "the user asked
+  me to remember this" from the model's own initiative.
+- **Deduplication is the model's job**: "Before creating a new memory,
+  first check to see if a semantically related memory already exists in
+  the database. If found, update it instead of creating a duplicate.
+  Use this tool to delete incorrect memories when necessary."
+- **Retrieval is automatic and semantic** ("Relevant memories will be
+  automatically retrieved from the database and presented to you when
+  needed. IMPORTANT: ALWAYS pay attention to memories"), with
+  `trajectory_search` as a second, model-invoked path into the agent's
+  *own past session history* — a read path over raw trajectories that
+  only Copilot CLI's SQL session store otherwise matches.
+- **Review is after the fact, not before**: "Any memories you create
+  will be presented to the USER, who can reject them if they are not
+  aligned with their preferences."
+- **Vendor docs (post-acquisition, now served under `docs.devin.ai`) add
+  what the prompt doesn't**: auto-generated memories are stored locally
+  in `~/.codeium/windsurf/memories/`, are workspace-scoped ("Memories
+  generated in one workspace are not available in another"), are never
+  committed to the repo, and do not consume credits. The docs also now
+  steer users away from memories for anything durable: memories "are for
+  one-off facts," while "for knowledge you want Cascade to reliably
+  reuse, write it as a Rule or add it to `AGENTS.md`" — version-
+  controlled and shareable. A quiet demotion of the mechanism the prompt
+  is so enthusiastic about.
+- **No retrospective stage**: nothing triages outcomes, distils failure
+  shields, or runs over a finished transcript. Memory here is a
+  context-preservation device, not a learning loop.

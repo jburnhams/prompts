@@ -221,3 +221,87 @@ which two were excluded). One-line summary of each:
 | `review.md` | Two-axis (Standards/Spec) PR review via parallel sub-agents — possibly third-party, see the authenticity caveat above |
 | `claude-api.md` (truncated here) | Reference skill for building Claude-API apps |
 | `update-config.md` (truncated here) | Settings.json configuration skill |
+
+## Memory, learnings, and retrospectives
+
+See [`agent-memory-learning.md`](../../agent-memory-learning.md) for the
+cross-source comparison this feeds into. Claude Code is the clearest
+example of the two-track model: **human-written instruction files and a
+machine-written store, side by side, with different rules**. The
+instruction-file half is visible in the leaked prompts and in
+`architecture-notes.md`; the auto-memory half is documented by the
+vendor and corroborated by leaked internals (`memdir/` — "persisted
+cross-session memory" — and a `services/` area that includes "memory
+extraction").
+
+- **Two mechanisms, both loaded every session.** `CLAUDE.md` files are
+  written by the user; auto memory is written by Claude. The vendor's
+  own framing of the split: CLAUDE.md holds "instructions and rules"
+  scoped to project/user/org, auto memory holds "learnings and patterns"
+  scoped per repository and shared across worktrees. Both are context,
+  not enforcement — "To block an action regardless of what Claude
+  decides, use a PreToolUse hook instead."
+- **Four human-written scopes plus a rules directory.** Managed policy
+  (`/Library/Application Support/ClaudeCode/CLAUDE.md`,
+  `/etc/claude-code/CLAUDE.md`, or the `claudeMd` key in
+  managed-settings.json — un-excludable), user (`~/.claude/CLAUDE.md`),
+  project (`./CLAUDE.md` or `./.claude/CLAUDE.md`), local
+  (`./CLAUDE.local.md`), all concatenated root-downward rather than
+  overriding; plus `.claude/rules/*.md` with optional `paths:`
+  frontmatter globs so a rule loads only when Claude touches a matching
+  file. `@path` imports expand at launch (max depth 4, code spans
+  skipped, external imports gated behind a one-time approval dialog),
+  and `claudeMdExcludes` skips other teams' files in a monorepo.
+  `architecture-notes.md` confirms the loader is independently gated
+  from git-status injection (`getUserContext()` vs `getSystemContext()`,
+  with `CLAUDE_CODE_DISABLE_CLAUDE_MDS`).
+- **Auto memory is an index-plus-topic-files store with an enforced
+  budget** — the same shape Codex and Gemini CLI arrived at
+  independently. `~/.claude/projects/<project>/memory/` holds
+  `MEMORY.md` plus arbitrary topic files; only the first **200 lines or
+  25KB** of the index is loaded at session start, topic files are read
+  on demand. The enforcement is the distinctive part: after a write,
+  the harness measures the file, nudges the model to shorten it if it's
+  near the limit ("keep one line per entry, move detail into topic
+  files, and merge or drop stale entries"), and returns an outright
+  error if it's over, "because everything past the limit is dropped on
+  the next load." Frontmatter and block-level HTML comments are stripped
+  before measuring and before loading.
+- **Provenance stamping**: when Claude writes a memory file that already
+  has YAML frontmatter, the harness records a `modified` ISO-8601
+  timestamp, so staleness is visible both to the user and to Claude on
+  the next read. It never adds frontmatter to a file that has none.
+- **Governance is audit-after, not approve-before**: writes happen
+  during the session (surfaced as "Saved 2 memories" / "Recalled 2
+  memories"), and the controls are `/memory` (browse/edit/toggle),
+  `autoMemoryEnabled` per scope, `autoMemoryDirectory` to relocate the
+  store, and `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`. Contrast Gemini CLI's
+  approval inbox for the same class of writes.
+- **Sub-agents get their own store**: the parent conversation's auto
+  memory is *not* inherited by sub-agents (except a `fork`, which
+  inherits the whole conversation); a sub-agent's `memory` field opts it
+  into a separate directory of its own — the only per-sub-agent memory
+  scoping found in this collection.
+- **Memory shows up in unrelated subsystems**, confirming it's a
+  first-class part of the harness rather than a bolt-on: `EnterWorktree`
+  is gated on "the user directly, or... project instructions (CLAUDE.md
+  / memory)"; `ExitWorktree` "clears CWD-dependent caches (system prompt
+  sections, **memory files**, plans directory)"; the leaked
+  `yoloClassifier.ts` permission gate is built "from recent conversation
+  context plus the user's own configured allow/deny rules and
+  CLAUDE.md"; and the compaction pipeline has "a sixth, experimental
+  path: session-memory compaction reuses pre-extracted 'session memory'
+  content instead of an LLM call when available."
+- **Bootstrapping and interop**: `/init` generates a starting CLAUDE.md
+  and, per the vendor docs, reads `.cursor/rules/`, `.cursorrules`, and
+  `.github/copilot-instructions.md` when doing so (and, under
+  `CLAUDE_CODE_NEW_INIT=1`, also `AGENTS.md`, `.devin/rules/`,
+  `.windsurf/rules/`, `.clinerules`) — a cross-vendor rules-file
+  importer, and the only one in this collection. Claude Code does not
+  read `AGENTS.md` natively; the documented workaround is a `@AGENTS.md`
+  import or a symlink.
+- **No retrospective stage.** Nothing in the captured prompts or the
+  documented behavior triages a finished session's outcome the way
+  Codex's Phase 1 does; auto memory accumulates observations during the
+  session rather than distilling them from a completed transcript
+  afterwards.

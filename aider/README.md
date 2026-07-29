@@ -156,3 +156,28 @@ not a separate feature layered alongside commits.**
   unconditional, retrospective one (every edit, risky or not, becomes
   a commit after the fact) — no separate "checkpoint" concept is
   needed because the commit history *is* the checkpoint history.
+
+## Memory, learnings, and retrospectives
+
+See [`agent-memory-learning.md`](../agent-memory-learning.md) for the
+cross-source comparison this feeds into. **Confirmed absence**, and a
+useful one: Aider is the clearest case of a capable agent that carries
+nothing between sessions by design.
+
+- No memory tool, no rules-file loader, no knowledge store, and no
+  instruction anywhere in the captured prompts about persisting or
+  recalling anything across runs (targeted grep for
+  memory/knowledge/learn/remember).
+- **The `CONVENTIONS.md` convention** that Aider's documentation
+  recommends is not a mechanism at all — it is an ordinary file the user
+  adds to the chat (ideally read-only) so it lands in context like any
+  other file. The persistence is the user's habit, not the harness's.
+- **The repo map is derived state, not memory**: it is regenerated from
+  the current code, so it carries structure forward but never
+  *experience* — no preferences, no failure shields, no record of what
+  was tried last time.
+- **The auto-commit design is the closest thing to a durable record**:
+  every AI edit becomes its own git commit (see
+  [`agent-git-vcs.md`](../agent-git-vcs.md) §2), which leaves the
+  history as the only artifact a future session could learn from — and
+  nothing in the prompts tells it to read that history for lessons.

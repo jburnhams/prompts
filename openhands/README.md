@@ -412,3 +412,37 @@ concentrated in `system_prompt.j2`'s `<VERSION_CONTROL>` and
   parallel sub-agents; the Sub-agents section's `DelegateExecutor`/
   `WorkflowToolSet` concurrency is at the conversation/thread level,
   not the filesystem-checkout level, based on what's documented.
+
+## Memory, learnings, and retrospectives
+
+See [`agent-memory-learning.md`](../agent-memory-learning.md) for the
+cross-source comparison this feeds into. The prompt fragments captured
+here reference the mechanism without describing it —
+`microagent_info.j2` is named in this folder's file list as one of the
+templates not stored — so the detail below comes from the project's own
+documentation.
+
+- **Microagents are markdown files with optional frontmatter**, in two
+  tiers: public/built-in ones shipped with OpenHands, and repository
+  ones committed to the project at `.openhands/microagents/`. The
+  repository tier is OpenHands's answer to `AGENTS.md`, with one
+  important difference — it is a *directory of separately-triggerable
+  files*, not one always-loaded document.
+- **Trigger-keyword retrieval is the distinctive part**: "Microagents
+  without frontmatter are always loaded into LLM context, while those
+  with `triggers:` in frontmatter are only loaded when the user's
+  message matches the specified trigger keywords." Same family as
+  Devin's trigger descriptions, Kiro's `fileMatch`/`auto` steering
+  modes, and Claude Code's `paths:`-scoped rules — conditional
+  injection rather than a searchable store.
+- **Human-authored only**: nothing in OpenHands writes a microagent
+  back from a finished session. The runtime keeps an append-only event
+  log (see this collection's
+  [`agent-context-compaction.md`](../agent-context-compaction.md) for
+  its role in condensation), but no distillation pass turns it into
+  durable knowledge, and no memory-write tool appears in the captured
+  templates.
+- **Naming note**: the project has since folded much of this surface
+  into a `skills/` convention, converging with the `SKILL.md` pattern
+  now visible in Codex's memory store, Gemini CLI's extractor output,
+  and PR-Agent's reviewer prompts.

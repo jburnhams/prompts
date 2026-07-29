@@ -178,3 +178,45 @@ kinds* of delegation rather than one general-purpose delegate:
   'Amp'], a powerful AI coding agent..."), confirming the delegate runs
   a real, minimal prompt rather than a bare task description. See
   "Prompt assembly" above.
+
+## Memory, learnings, and retrospectives
+
+See [`agent-memory-learning.md`](../../agent-memory-learning.md) for the
+cross-source comparison this feeds into. Amp has no memory tool and no
+distillation agent; what it has is the **ask-a-human-to-persist-it**
+pattern, stated more often and in more prompt variants than anywhere
+else in the collection.
+
+- **`AGENTS.md` as ground truth, injected dynamically rather than at
+  launch**: "AGENTS.md guidance files are delivered dynamically in the
+  conversation context after file operations (Read, create_file) and
+  user file mentions. They appear with a descriptive header. These
+  guidance files provide directory-specific instructions that take
+  precedence for files in that directory." A just-in-time, path-scoped
+  injection model — closer to Claude Code's `paths:`-scoped rules than
+  to the load-everything-at-startup convention most sources use.
+  Elsewhere: "If an AGENTS.md is provided, treat it as ground truth for
+  commands and structure," and "(Note: AGENT.md files should be treated
+  the same as AGENTS.md.)"
+- **The learning loop runs through the user**, in two wordings across
+  prompt variants: "If you are unable to find the correct command, ask
+  the user for the command to run and if they supply it, **proactively
+  suggest writing it to AGENTS.md so that you will know to run it next
+  time**" (near-verbatim shared with OpenCode's `default.txt`/
+  `trinity.txt`), and the sub-agent prompt's tighter "If you discover a
+  recurring command that's missing, **ask to append it there**." The
+  agent identifies the durable fact; the human decides whether it
+  becomes durable.
+- **What `AGENTS.md` is expected to contain** is itself specified —
+  "Frequently used commands (typecheck, lint, build, test, etc.) so you
+  can use them without searching next time / The user's preferences for
+  code style, naming conventions, etc. / Codebase structure and
+  organization" — which is the same content taxonomy Crush's
+  `<memory_instructions>` uses.
+- **A secrets-handling detail relevant to any memory design**: Amp's
+  context can arrive pre-redacted with markers like
+  `[REDACTED:amp-token]` / `[REDACTED:github-pat]` inserted "by a
+  low-level security system," with an explicit warning not to write the
+  marker back over the real secret — redaction handled below the model
+  rather than requested of it, unlike Codex's and Gemini CLI's
+  prompt-level `[REDACTED_SECRET]` rules.

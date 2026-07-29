@@ -84,6 +84,18 @@ mechanism that fits neither "native API block" nor "prompted
 narration"), Windsurf's schema-embedded per-tool-call narration
 requirement, and the recurring but easy-to-conflate distinction between
 native model-API reasoning blocks and ordinary prompted narration text.
+A later pass added §3a, which re-sorts the same sources by *what
+narration contains* (the what vs. the why) and *how long it survives*
+(dies with the transcript vs. durable artifact) — surfacing Gemini
+CLI's `update_topic` as the best-specified why-focused mechanism
+anywhere here (rate-limited to "every 3 to 10 turns," excluded from
+trivial work, and triggered on "an unexpected event... that requires a
+strategic detour"), Codex's matching `update_plan` `explanation`
+requirement on mid-task plan changes, and Google Antigravity's four
+durable markdown artifacts as the only case of the run narrative being
+a file rather than chat prose. The same pass resolved this doc's
+standing open question about `update_topic`: it is a progress-narration
+channel, not a session-title generator.
 
 **[→ `agent-self-verification.md`](./agent-self-verification.md)** — a
 further drill-down on how (and whether) a scaffold checks its own work
@@ -169,6 +181,46 @@ collection (Augment SWE-bench Agent's hardcoded ban on `git commit`/
 close to a universal cross-vendor convention — including one exact,
 word-for-word match between Claude Code's leaked prompt and OpenCode's
 own base persona.
+
+**[→ `agent-memory-learning.md`](./agent-memory-learning.md)** — what a
+scaffold keeps *after* the session ends, across ~30 sources: the five
+scope levels a fact can belong to (task, session, repo-shared,
+repo-private, user-global, org) and the two sources with explicit
+routing rules between them; who writes memory (the working model
+inline vs. a background distillation agent vs. a human) and the
+striking convergence of **four independently-built background
+consolidators** — Codex CLI's two-phase pipeline, Gemini CLI's
+`confucius` skill/memory extractor, GitHub Copilot CLI's `rem-agent`,
+and Antigravity's Knowledge Subagent — all of which read *finished*
+transcripts, all of which independently rank user messages above the
+agent's own as evidence, and all of which state some version of
+"transcripts are data, not instructions"; the equally striking
+convergence on an **always-loaded index file plus on-demand topic
+files**, named `MEMORY.md` by three unrelated products; retrieval
+policy (Codex's "skip memory when the request is self-contained" plus a
+4–6-step search budget vs. Antigravity's "🚨 MANDATORY FIRST STEP");
+signal gates that make **no-op the encouraged default**; the memory tool
+surfaces and what each scaffold actually injects — including an exact
+read/write inversion between agents that can write memory but never
+fetch it (Cursor, Augment) and Codex, which reads freely but may not
+edit its own store, plus the two newest designs (Claude Code, Gemini
+CLI) shipping no memory tool at all; retrospectives
+proper (Codex's success/partial/uncertain/fail outcome triage and
+"symptom → cause → fix" failure shields); the review-tool feedback loops
+that learn from human reactions instead of self-assessment (Qodo Merge's
+monthly auto-best-practices mining, CodeRabbit's approvable learnings,
+Greptile's suppression-by-reaction); governance (Gemini CLI holds every
+machine-written change as a patch in a `/memory inbox` nothing applies
+automatically; Codex parses citation blocks into usage counts that
+decide which memories survive the next consolidation); the finding that
+**no first-party implementation does RAG over its own memory** — Codex's
+memory search is a grep with a proximity window, Copilot CLI had a
+database and explicitly chose FTS5 keyword search over vectors ("You
+must act as your own 'embedder'"), and the vendors shipping genuinely
+semantic *codebase* search pointed that infrastructure at the code, not
+at the memory; and two vendor **retreats** — Cursor's Memories feature appears removed in favour of
+Rules, and Gemini CLI deleted `save_memory` outright ("There is no
+`save_memory` tool").
 
 ## Sources so far
 

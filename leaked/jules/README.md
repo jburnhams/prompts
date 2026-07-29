@@ -222,3 +222,34 @@ three separate concerns.
 - **No worktree isolation found** — no mention of parallel worktrees,
   multiple sandboxes, or concurrent branches for sub-agents anywhere
   in either captured version.
+
+## Memory, learnings, and retrospectives
+
+See [`agent-memory-learning.md`](../../agent-memory-learning.md) for the
+cross-source comparison this feeds into. Jules is this collection's
+sharpest example of a **capture gap around a real subsystem**: an entire
+cross-task memory mechanism represented by one line of tool schema.
+
+- **`initiate_memory_recording()`** — "Use this tool to start recording
+  information that will be useful for future tasks." No parameters, no
+  description of what gets recorded, no storage location, no retrieval
+  path, and no mention anywhere else in either captured file of memories
+  being read back. The verb ("initiate... recording") implies a
+  session-spanning capture mode rather than a single write, which would
+  make it structurally unlike every other memory-write tool here — but
+  nothing in the capture confirms that.
+- **What *is* fully specified is the human-written tier**: the `AGENTS.md`
+  spec, essentially identical to Codex's, with directory-tree scoping
+  ("The scope of an `AGENTS.md` file is the entire directory tree rooted
+  at the folder that contains it"), depth precedence ("More
+  deeply-nested `AGENTS.md` files take precedence"), a
+  prompt-beats-file rule, and an obligation the Codex version lacks: "If
+  the `AGENTS.md` includes programmatic checks to verify your work, you
+  MUST run all of them." Reading `AGENTS.md` is also part of the
+  mandated first move ("explore the codebase... and examine README.md or
+  AGENTS.md if they exist").
+- **No retrospective stage**, despite the most granular self-verification
+  discipline in the collection (see the Self-verification section above)
+  — Jules checks its work exhaustively *within* a task and carries
+  nothing forward from it except whatever `initiate_memory_recording`
+  does.

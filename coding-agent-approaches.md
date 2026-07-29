@@ -197,6 +197,20 @@ file is different), while `CLAUDE.md` remains Anthropic-specific but is
 widely *referenced* by other tools' review skills as the convention to
 check for regardless.
 
+**Superseded in depth by
+[`agent-memory-learning.md`](./agent-memory-learning.md)**, which treats
+these files as only one of several tiers. Two corrections that section
+makes to the table above: Gemini CLI's "hierarchical memory" is now four
+distinct tiers with an explicit "each fact lives in exactly one of them"
+routing policy — and its `save_memory` tool has been deleted in favour
+of direct file editing; and OpenHands does have a project-memory
+mechanism after all (keyword-triggered microagents under
+`.openhands/microagents/`), just not an always-loaded single file. That
+doc also covers the half of the topic this table doesn't touch at all:
+the stores agents write *themselves*, and the background pipelines
+(Codex, Gemini CLI, Copilot CLI, Antigravity) that distil finished
+sessions into them.
+
 ## 9. Safety, refusals & sandboxing
 
 | Constraint | Sources |

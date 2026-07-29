@@ -118,3 +118,24 @@ option.
   ordinary `gh pr create` shell command subject to the same general
   "bias strongly against unsafe commands" judgment and the confirm-
   before-commit/push rule above.
+
+## Memory, learnings, and retrospectives
+
+See [`agent-memory-learning.md`](../../agent-memory-learning.md) for the
+cross-source comparison this feeds into. Warp is this doc's cleanest
+example of a **half-captured** memory feature: the injection point is
+visible, the write path is not.
+
+- **One incidental reference is the whole of it**: "Most users are using
+  the terminal in the context of a project under version control. You
+  can usually assume that the user's is using `git`, unless stated in
+  **memories or rules above**." The phrasing establishes that (a) both
+  memories and rules exist as prompt sections, (b) they are injected
+  *above* the point where this line appears, and (c) they are expected
+  to be able to override otherwise-sensible defaults — but the capture
+  does not include either section's contents or header.
+- **Nothing else**: no memory-write tool in the captured tool surface,
+  no storage description, no retrieval instruction, no create/update/
+  delete vocabulary. Treat "Warp has no memory system" as unsupported
+  by this capture; treat "Warp's memory system works like X" as equally
+  unsupported.
