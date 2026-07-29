@@ -98,17 +98,21 @@ re-litigated later.
   when) — the multi-repo analog of what `agent-context-compaction.md`
   is to context. Tracked so the asynchronous path doesn't get bent
   out of shape trying to fake it.
-- **Cross-run repo memory.** V1 runs start cold except for the
-  conventions file and the plan/findings envelope tags. The field
-  offers three shapes for "remember this repo across sessions":
-  Windsurf's bespoke tagged-database tool, GitHub Copilot CLI's raw
-  SQL over a session store, and Grok Build's tool-mediated read/search
-  over a plain memory file (`agent-tool-surfaces.md` §7). The tension
-  to resolve before adopting any of them: a Forge-writable memory file
-  that future runs read is *exactly* the self-instruction-poisoning
-  surface the conventions file is defended against (`formats.md` §3a)
-  — so memory needs the same structural write-gating and provenance
-  story from day one, not retrofitted.
+- **Cross-run repo memory — resolved and moved to `medium.md` §6.**
+  This entry previously tracked the open question and its blocker: a
+  Forge-writable memory file that future runs read is *exactly* the
+  self-instruction-poisoning surface the conventions file is defended
+  against (`formats.md` §3a). Dedicated research
+  (`agent-memory-learning.md`) resolved it rather than mitigating it —
+  the writer is a separate outcome-triggered run with no filesystem
+  and one schema-validated write tool, so there is no writable file to
+  poison, provenance is stamped harness-side rather than authored, and
+  the human-owned conventions file is never a write target. What
+  remains genuinely open, and stays here: whether learnings should
+  ever influence *suppression* of review findings (`medium.md` §6f
+  ships informs-never-vetoes deliberately), which needs the finding
+  outcome data of §3e before it can be argued from evidence rather
+  than from taste.
 - **Semantic / symbol-aware code search.** V1's Grep/Glob sits at the
   middle of the field's clearest capability ladder — plain text match
   → semantic/embedding search (Cursor, Windsurf, Roo Code) →
