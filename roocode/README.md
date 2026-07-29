@@ -327,3 +327,36 @@ shell-detection mention).
   the user's VS Code workspace with no sandbox layer (per the
   Permissions section above), consistent with no worktree-isolation
   concept being present.
+
+## Memory, learnings, and retrospectives
+
+See [`agent-memory-learning.md`](../agent-memory-learning.md) for the
+cross-source comparison this feeds into. Like its Cline ancestor, Roo
+Code has no machine-written memory store — but `sections/custom-instructions.ts`
+is the most fully-specified *instruction-file resolution order* in this
+collection, and it is real code rather than prompt prose.
+
+- **Assembly order** (`addCustomInstructions`): mode-specific rules
+  first (`.roo/rules-<mode>/`, falling back to legacy `.roorules-<mode>`),
+  then `rooIgnoreInstructions`, then `AGENTS.md`, then generic rules
+  (`.roo/rules/`, falling back to `.roorules`/`.clinerules`) — with
+  language and global-instruction preambles wrapped around the result.
+  Each block is labelled with the file it came from (`# Rules from
+  <path>:`).
+- **`AGENTS.md` support is a toggle with a personal-override sibling**:
+  `useAgentRules` (default true) controls loading; both `AGENTS.md` and
+  `AGENT.md` are accepted "for compatibility"; and `AGENTS.local.md` is
+  "always" attempted "for personal overrides (even if `AGENTS.md`
+  doesn't exist)" — the committed/private split that Claude Code spells
+  as `CLAUDE.md`/`CLAUDE.local.md`, implemented here for the
+  cross-vendor filename.
+- **Subdirectory rules are opt-in**: `enableSubfolderRules` (default
+  false) controls whether `AGENTS.md` files from subdirectories with
+  `.roo` folders are pulled in alongside the root — a deliberate
+  narrowing versus Codex's and Jules's "every `AGENTS.md` whose scope
+  includes a file you touch" rule.
+- **Errors are swallowed by design**: "Silently ignore errors - agent
+  rules files are optional." Nothing tells the model which files were
+  *not* found, so a typo in a filename is invisible from inside the
+  session — the same debugging gap Claude Code answers with `/context`
+  and an `InstructionsLoaded` hook.

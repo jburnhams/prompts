@@ -451,3 +451,48 @@ GitHub Action automation bot.
 - **No self-review gate before PR creation** — already established in
   this doc's own Self-verification section (`/review` is user-invoked,
   never auto-chained); this pass found nothing to override that.
+
+## Memory, learnings, and retrospectives
+
+See [`agent-memory-learning.md`](../agent-memory-learning.md) for the
+cross-source comparison this feeds into. OpenCode has no memory tool and
+no distillation agent, but its per-model prompt family contains three
+*different* answers to the same question, which is itself the finding.
+
+- **`instruction.ts` is the loader**: it walks the filesystem for
+  `AGENTS.md`/`CLAUDE.md` files, checks the global config directory
+  (`<global.config>/AGENTS.md`) as well as the project, and — a detail
+  worth noting against the "concatenate everything" convention — "The
+  first project-level match wins so we don't stack AGENTS.md/CLAUDE.md
+  from every ancestor," the opposite of Claude Code's root-downward
+  concatenation and Codex's nested-file precedence.
+- **`beast.txt` invents a memory file out of a different vendor's
+  convention**: "You have a memory that stores information about the
+  user and their preferences... The memory is stored in a file called
+  `.github/instructions/memory.instruction.md`. If the file is empty,
+  you'll need to create it," complete with a mandatory
+  `---\napplyTo: '**'\n---` frontmatter block — i.e. GitHub Copilot's
+  instructions-file format, used as a memory store, in a non-Copilot
+  agent. Writes are explicit-request-only ("If the user asks you to
+  remember something or add something to your memory, you can do so by
+  updating the memory file").
+- **`kimi.txt` makes keeping the file current a duty**, not a
+  suggestion: "If you modified any files/styles/structures/
+  configurations/workflows/... mentioned in `AGENTS.md` files, you MUST
+  update the corresponding `AGENTS.md` files to keep them up-to-date."
+  It also carries the collection's clearest in-prompt rationale for why
+  the file exists at all: "`README.md` files are for humans... `AGENTS.md`
+  complements this by containing the extra, sometimes detailed context
+  coding agents need: build steps, tests, and conventions that might
+  clutter a README."
+- **`default.txt`/`trinity.txt` use the ask-a-human variant**, word-for-
+  word shared with Amp: "if you are unable to find the correct command,
+  ask the user for the command to run and if they supply it,
+  proactively suggest writing it to AGENTS.md so that you will know to
+  run it next time" — another data point for this collection's existing
+  finding of shared prompt lineage across these two products (see
+  [`agent-git-vcs.md`](../agent-git-vcs.md) §2 for the exact-match
+  "NEVER commit changes unless the user explicitly asks" case).
+- **No retrospective mechanism anywhere**: nothing reviews a finished
+  session, and the three memory variants above all capture facts, never
+  failures.

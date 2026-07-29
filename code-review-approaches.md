@@ -167,6 +167,23 @@ this on" onto the model actually running the right `git diff` invocation.
 | Prior review state (what changed *since the last review*) | [`security-guidance`](./skills/anthropic/security-guidance) |
 | None beyond the diff + PR title/body | [`codex-review`](./github-pr-bots/codex-review), [`gemini-code-review`](./github-pr-bots/gemini-code-review) `/pr-code-review` |
 
+**Accumulated context — what the reviewer learned from previous
+reviews** — is a category none of the open-source prompts above have,
+and all three major closed-source reviewers do. See
+[`agent-memory-learning.md`](./agent-memory-learning.md) §8 for the
+detail: Qodo Merge mines *accepted* suggestions monthly into a
+`.pr_agent_auto_best_practices` file injected through the same slot as
+hand-written best practices (the open-source `pr-agent` ships the config
+keys and an empty `relevant_best_practices` prompt variable, but not the
+generator); CodeRabbit turns natural-language replies on a PR into
+scoped, admin-approvable "learnings" loaded on every comment it writes;
+and Greptile learns implicitly from 👍/👎 reactions and from whether a
+comment was addressed between first and last commit, suppressing comment
+classes the team keeps ignoring — with security findings exempted from
+suppression. The signal these three learn from is human reaction to
+their own output, which is why their loops run automatically while
+coding agents' self-mined memory tends to sit behind an approval queue.
+
 ## 5. Review strategy — persona and single- vs. multi-agent
 
 | Strategy | Sources |

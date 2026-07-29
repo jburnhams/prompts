@@ -441,3 +441,51 @@ carve-out for git commands specifically, and still no checkpoint/undo
 system captured anywhere — but "no commit-message conventions, no
 worktree isolation" no longer holds unqualified across Cursor's full
 captured corpus, only across the five older files.
+
+## Memory, learnings, and retrospectives
+
+See [`agent-memory-learning.md`](../../agent-memory-learning.md) for the
+cross-source comparison this feeds into. Cursor's captures contain both
+halves of a complete memory feature — and, as of this pass, the feature
+appears to have been **removed from the product**, which makes these
+files the best surviving description of how it worked.
+
+- **The read side** (`Agent Prompt v1.2.txt`, `<memories>` block): "You
+  may be provided a list of memories. These memories are generated from
+  past conversations with the agent. They may or may not be correct, so
+  follow them if deemed relevant, but the moment you notice the user
+  correct something you've done based on a memory, or you come across
+  some information that contradicts or augments an existing memory, IT
+  IS CRITICAL that you MUST update/delete the memory immediately."
+  Generation is attributed to a background pass over past conversations,
+  not to the working agent.
+- **A mandatory, user-visible citation protocol** — the only one of its
+  kind here aimed at the *reader* rather than at telemetry: "You must
+  ALWAYS cite a memory when you use it... use the following format:
+  `[[memory:MEMORY_ID]]`. You should cite the memory naturally as part
+  of your response, and not just as a footnote," with the worked example
+  "I'll run the command using the -la flag [[memory:MEMORY_ID]]", plus a
+  correction-invitation rule: "When you reject an explicit user request
+  due to a memory, you MUST mention in the conversation that if the
+  memory is incorrect, the user can correct you and you will update your
+  memory." (Compare Codex's machine-parsed `<oai-mem-citation>` block,
+  which serves retention ranking instead.)
+- **The write side** (`update_memory`, present in both `Agent Prompt
+  2.0.txt` and `v1.2`): create/update/delete against "a persistent
+  knowledge base," title plus a paragraph of `knowledge_to_store`, with
+  a distinctive contradiction rule — "If the user contradicts an
+  existing memory, it is critical that you use this tool with the action
+  'delete', not 'update', or 'create'" — and a restrictive creation
+  gate: "Unless the user explicitly asks to remember or save something,
+  DO NOT call this tool with the action 'create'."
+- **The sharpest anti-rule in the collection**: "You must NEVER use the
+  update_memory tool to create memories related to implementation plans,
+  migrations that the agent completed, or other task-specific
+  information." Task state is explicitly not memory.
+- **Status as of this pass**: Cursor's public documentation for
+  persistent context covers **Rules only** — no memories page, no
+  `update_memory` — and community reports place the removal at 2.1.x
+  with guidance to export existing memories into Rules. Recorded in
+  [`agent-memory-learning.md`](../../agent-memory-learning.md) §11 as
+  one of two vendor retreats from a dedicated memory mechanism; the
+  captures here predate it.

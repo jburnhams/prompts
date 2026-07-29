@@ -311,3 +311,39 @@ for git.
   call.
 - No branch-naming convention, no force-push policy, no
   protected-branch language found anywhere.
+
+## Memory, learnings, and retrospectives
+
+See [`agent-memory-learning.md`](../agent-memory-learning.md) for the
+cross-source comparison this feeds into. Crush has no memory tool, but
+it is one of the few sources whose prompt gives the model a **content
+taxonomy for what belongs in the instruction file**, and it threads
+"check memory" through the rest of the workflow rather than mentioning
+it once.
+
+- **`<memory_instructions>`, in full**: "Memory files store commands,
+  preferences, and codebase info. Update them when you discover:
+  Build/test/lint commands / Code style preferences / Important codebase
+  patterns / Useful project information." Four categories, phrased as
+  discovery triggers — the same shape as Amp's `AGENTS.md` content list
+  and a compressed version of Qoder's four-category taxonomy.
+- **Memory is wired into the operating rules, not siloed**: "FOLLOW
+  MEMORY FILE INSTRUCTIONS: If memory files contain specific
+  instructions, preferences, or commands, you MUST follow them" sits in
+  the numbered core rules; the testing section says "Check memory for
+  test commands" and "**Suggest adding commands to memory if not
+  found**" (the ask-a-human write path again); the workflow says "Check
+  memory for stored commands" and "Run lint/typecheck if in memory";
+  and the ambiguity rule says to "make the most reasonable assumptions
+  based on project patterns **and memory files**" rather than stopping
+  to ask.
+- **The files themselves** are `AGENTS.md`/`CRUSH.md`/`CLAUDE.md`/
+  `GEMINI.md` loaded from the working directory (see the Tool surface
+  section above), with `initialize.md.tpl` bootstrapping a `CRUSH.md`
+  by first looking for existing rule files from *other* vendors
+  (`.cursor/rules/*.md`, `.cursorrules`,
+  `.github/copilot-instructions.md`, `claude.md`, `agents.md`) — the
+  same cross-vendor import idea Claude Code's `/init` implements.
+- **No machine-written store and no retrospective**: "memory" here always
+  means the human-owned instruction file, and nothing distils a finished
+  session.

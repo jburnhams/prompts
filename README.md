@@ -170,6 +170,36 @@ close to a universal cross-vendor convention — including one exact,
 word-for-word match between Claude Code's leaked prompt and OpenCode's
 own base persona.
 
+**[→ `agent-memory-learning.md`](./agent-memory-learning.md)** — what a
+scaffold keeps *after* the session ends, across ~30 sources: the five
+scope levels a fact can belong to (task, session, repo-shared,
+repo-private, user-global, org) and the two sources with explicit
+routing rules between them; who writes memory (the working model
+inline vs. a background distillation agent vs. a human) and the
+striking convergence of **four independently-built background
+consolidators** — Codex CLI's two-phase pipeline, Gemini CLI's
+`confucius` skill/memory extractor, GitHub Copilot CLI's `rem-agent`,
+and Antigravity's Knowledge Subagent — all of which read *finished*
+transcripts, all of which independently rank user messages above the
+agent's own as evidence, and all of which state some version of
+"transcripts are data, not instructions"; the equally striking
+convergence on an **always-loaded index file plus on-demand topic
+files**, named `MEMORY.md` by three unrelated products; retrieval
+policy (Codex's "skip memory when the request is self-contained" plus a
+4–6-step search budget vs. Antigravity's "🚨 MANDATORY FIRST STEP");
+signal gates that make **no-op the encouraged default**; retrospectives
+proper (Codex's success/partial/uncertain/fail outcome triage and
+"symptom → cause → fix" failure shields); the review-tool feedback loops
+that learn from human reactions instead of self-assessment (Qodo Merge's
+monthly auto-best-practices mining, CodeRabbit's approvable learnings,
+Greptile's suppression-by-reaction); governance (Gemini CLI holds every
+machine-written change as a patch in a `/memory inbox` nothing applies
+automatically; Codex parses citation blocks into usage counts that
+decide which memories survive the next consolidation); and two vendor
+**retreats** — Cursor's Memories feature appears removed in favour of
+Rules, and Gemini CLI deleted `save_memory` outright ("There is no
+`save_memory` tool").
+
 ## Sources so far
 
 | Folder | Project | Type | License |

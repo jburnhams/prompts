@@ -308,3 +308,39 @@ sections above.
   to their content but do not acknowledge or respond to them directly")
   — functionally the same shape as Claude Code's `<system-reminder>`,
   under Devin's own naming, not documented for the background variant.
+
+## Memory, learnings, and retrospectives
+
+See [`agent-memory-learning.md`](../../agent-memory-learning.md) for the
+cross-source comparison this feeds into. This source is the clearest
+example in the collection of a **fully server-side** memory feature: the
+402-line leaked prompt contains nothing about memory, knowledge, or
+learnings (confirmed by targeted grep — the only `memory` hits are
+unrelated), while the shipped product has one of the more developed
+knowledge systems on the market. Everything below is from vendor
+documentation, not from any capture here.
+
+- **Knowledge items are trigger-gated, not always-loaded**: each item
+  carries a mandatory **trigger description** ("a simple phrase or
+  sentence") alongside its content, and Devin "retrieves knowledge when
+  relevant, not all at once or all at the beginning" — the same
+  keyword/description-matched retrieval shape as OpenHands's microagents
+  and Kiro's `auto` steering mode, rather than the index-plus-detail
+  shape Codex/Gemini/Claude Code converged on.
+- **Three creation paths**: manual authoring; **AI-suggested knowledge
+  generated from session feedback**, which the user can edit, ask Devin
+  to regenerate, or dismiss; and bulk auto-organization of existing
+  items into folders. The suggestion path is a genuine end-of-session
+  retrospective, with the human as the approval gate.
+- **Scoping is organizational rather than filesystem-based**:
+  organization-level by default, enterprise-level for enterprise
+  customers, optionally pinned to no repo / one repo / all repos, with
+  **per-user enable/disable** on each item and on whole folders — a
+  granularity no file-based system here matches. Optional `!macro`
+  identifiers let a user pull a specific item into a prompt by hand.
+- **Worth contrasting with the prompt's own silence**: the leaked prompt
+  does have a `<system_guidance>` injected-hint channel and a
+  `<think>` tool, so Devin is not short of runtime context mechanisms —
+  knowledge retrieval simply isn't described to the model as a thing it
+  does, which is consistent with the retrieval being performed for it,
+  upstream of the prompt.
