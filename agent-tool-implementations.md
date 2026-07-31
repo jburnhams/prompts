@@ -227,6 +227,52 @@ It also predicts the one case everyone gets "wrong" on purpose: the shell.
 `Bash` is un-classifiable by construction, which is exactly why it's the
 tool with a six-figure line count of classifiers behind it.
 
+### 2e. Batching is a third axis, orthogonal to the first two
+
+"How many tools" and "how broad is each tool" leave out **how many
+targets one call may name**, and the field splits on it:
+
+- **Batch by parallel tool calls.** Claude Code and OpenCode both keep
+  single-target tools and push batching into the model's ability to emit
+  several tool calls in one assistant turn — OpenCode's `read.txt` says it
+  outright: "Call this tool in parallel when you know there are multiple
+  files you want to read." Claude Code's `Glob` description does the same
+  for searches ("It is always better to speculatively perform multiple
+  searches as a batch").
+- **Batch in the schema.** Cline's SDK pluralises *everything*:
+  `read_files: {files: [{path, start_line, end_line}]}`,
+  `run_commands: {commands: [...]}`, `search_codebase: {queries: [...]}`,
+  `fetch_web_content: {requests: [...]}`. Gemini CLI has a separate
+  `read_many_files` (glob-driven, no per-file ranges) alongside its
+  single-file `read_file`. Claude Code's `MultiEdit` is the same idea for
+  one file's worth of edits.
+
+The two are not equivalent. Parallel calls save round trips but not
+per-call overhead, and they depend on the model reliably choosing to
+parallelise — which is exactly what weaker models don't do. Schema-level
+batching forces the win but complicates the result: it needs per-target
+blocks, per-target errors that don't fail the whole call, and a size
+budget spanning the batch rather than per target. Cline's schema text also
+records the failure mode it introduces, in the description itself:
+`start_line`/`end_line` "must be on the same object as the path they
+apply to, **never in a separate array element**" — i.e. models flatten the
+structure when a batch entry has more than one field.
+
+Worth noting what the range parameters look like, since this is where
+"just use `sed -n '10,50p'`" comes up. Line ranges are the one place the
+shell-only harnesses genuinely do lean on `sed` — Goose's extension
+instructions say "use cat or **sed** to gather the context you need" —
+but no tool-based harness borrows `sed`'s `10,50p` notation. They split
+instead between `offset`+`limit` (Claude Code, OpenCode, Crush) and
+`start_line`+`end_line` (Gemini CLI, Cline, Zed; OpenHands uses
+`view_range: [start, end]`). The pairs are not equally good in context:
+every line number a model has usually came from `cat -n` output, a grep
+hit, or a diff hunk, all of which give *positions*, so a start/end pair
+is copied while an offset/limit pair is computed — and computed is where
+`"3"`-as-a-string and off-by-one errors enter. Offset/limit's one real
+advantage is that it matches the continuation footer ("pass `offset: 2001`
+to continue"), which start/end can state just as easily.
+
 ---
 
 ## 3. Parameter design
@@ -782,15 +828,29 @@ independent implementations (sources in brackets).
 ## 13. What this changes for the design in `agent-design/`
 
 Applied in [`agent-design/tools.md`](./agent-design/tools.md) — see that
-file's "Implementation contract" section and the per-tool notes. In summary,
-the design gains: an explicit three-channel tool contract; the
-self-describing truncation/pagination footer rule; the spill-to-scratch rule
-for oversized results; error-as-instruction wording including did-you-mean;
-tolerant input parsing with a strict advertised schema; the `cat -n` +
-`Edit` shared-contract statement; a stated output-format policy (text for
-prose, fields for facts); read-before-edit and unchanged-file dedup as
-harness state; and a note that the tool *set* is model-configurable rather
-than fixed.
+file's "Implementation contract" section and the per-tool notes. The design
+gains: an explicit three-channel tool contract; the self-describing
+truncation/pagination footer rule; caps-by-default with errors on
+explicitly-impossible requests; the spill-to-scratch rule; error-as-
+instruction wording including did-you-mean; a strict advertised schema over
+a three-layer tolerant parser; the `cat -n` + `Edit` shared contract; an
+output-format policy (text for prose, fields for facts); read-before-edit
+as harness state; per-tool read-only/concurrency/destructive metadata; and
+a note that the tool *set* is model-configurable rather than fixed.
 
-Deliberately **not** adopted, and why, is recorded in the decision log in
-[`agent-design/README.md`](./agent-design/README.md).
+Two changes to the surface itself came out of discussing the above rather
+than from the sources directly, though both lean on them. `Glob` became
+**`List`** — one read-only path tool covering glob matching, directory
+listing and a line-counted tree behind an `output` mode, on the argument
+that all three are read-only, concurrency-safe and return a set of paths,
+so they differ only in rendering (§2, and Goose's five-tool surface keeping
+`tree` is the precedent for the tree specifically). And **`Read` became a
+batch tool** taking `files: [{path, start_line?, end_line?}]` (§2e), with
+Cline's documented "range on the same object as the path" warning carried
+into the description verbatim.
+
+Deliberately **not** adopted — including unchanged-file dedup, which is
+blocked on cache invalidation a v1 without command-level `Bash` visibility
+can't do safely — is recorded in
+[`agent-design/README.md`](./agent-design/README.md)'s decision log and
+tracked in `agent-design/medium.md`.

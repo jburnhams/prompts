@@ -113,7 +113,7 @@ re-litigated later.
   ships informs-never-vetoes deliberately), which needs the finding
   outcome data of §3e before it can be argued from evidence rather
   than from taste.
-- **Semantic / symbol-aware code search.** V1's Grep/Glob sits at the
+- **Semantic / symbol-aware code search.** V1's Grep/List sits at the
   middle of the field's clearest capability ladder — plain text match
   → semantic/embedding search (Cursor, Windsurf, Roo Code) →
   LSP-backed symbol resolution (Copilot Chat)

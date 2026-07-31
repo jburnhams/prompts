@@ -177,7 +177,7 @@ anchor validation in `tools.md` is the v1 backstop.)
 **Harness guarantees for review mode**: the working tree is checked out
 at `Head SHA`, and `<diff>` is exactly `base_sha...head_sha`. This is
 load-bearing, not incidental — `reviewer` and `validator` sub-agents
-are told to pull in surrounding context with Read/Grep/Glob, which is
+are told to pull in surrounding context with Read/Grep/List, which is
 only sound if the tree they're reading is the code the diff describes.
 All line numbers in findings and comment anchors are new-file
 (post-change) line numbers at `Head SHA`.

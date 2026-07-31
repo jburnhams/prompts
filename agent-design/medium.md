@@ -370,7 +370,7 @@ Phased on purpose, matching how the need actually arrives:
 - Coding mode only (both `mode` values — a plan run tracing a bug
   into a dependency is exactly what plan mode is for), plus the
   product-owner entrypoint (§5), where it's the primary code view.
-  Review sub-agents stay Read/Grep/Glob-local; widening their reach
+  Review sub-agents stay Read/Grep/List-local; widening their reach
   needs finding-level evidence first, same bar as their Bash
   escalation entry (§7).
 
@@ -466,6 +466,40 @@ explaining the *reasoning*, not just the verdict.
 - **Not wired in sub-agents.** Specialists, validators, and
   `general-purpose` delegates don't narrate; the orchestrator owns the
   account of the run, the same way it owns delivery.
+
+### 2g. Unchanged-file read dedup
+
+**What**: `Read` returns a one-line stub instead of the file's content
+when that exact file was already read earlier in this run and hasn't
+changed since — "File unchanged since your earlier read in this run;
+that result is still current, refer to it rather than re-reading."
+
+**Why it's worth doing**: a long `implement` run re-reads the same
+handful of files repeatedly — before an edit, after an edit, when
+re-orienting after a detour — and each re-read pays full price for
+content already sitting in the context window. The stub costs roughly
+thirty tokens against thousands. It is the largest token saving
+available anywhere in this design for its build cost, and it compounds
+with the batch `Read` (`tools.md`), which makes redundant re-reads
+*more* likely rather than less: a five-file batch where four are
+unchanged pays for one.
+
+**Why it's not in v1**: it needs per-run read state that is actually
+trustworthy — content hash or (mtime, size) per path, invalidated by
+this run's own `Edit`/`Write` calls *and* by anything `Bash` did to the
+tree, which v1 cannot see. Getting invalidation wrong is not a
+performance bug but a correctness one: the model would be told stale
+content is current, and would then write an `Edit` against it. The
+read-before-edit cache `tools.md` already requires is the substrate, so
+this is an increment on existing state rather than new machinery — but
+it should land only with a conservative invalidation rule (any `Bash`
+call at all invalidates the whole cache, tightened later if that proves
+too blunt).
+
+**Precedent**: Claude Code's `Read` has exactly this as a `file_unchanged`
+variant of its output schema, returning a fixed stub string
+(`agent-tool-implementations.md` §8). No other source surveyed does it,
+which is why it is tracked here rather than treated as table stakes.
 
 ## 3. Review pipeline upgrades
 
@@ -852,7 +886,7 @@ open-ended research), `AskUser`, `WriteJira` (§5b), `Complete`. **No
 `Edit`, `Write`, or `Bash` — not wired at all.** PO mode never
 touches code or a shell; it may not even have a working tree checked
 out (`SearchSource` is its code view, which is why §2e lists it as a
-consumer). Read/Grep/Glob are wired only when the envelope names a
+consumer). Read/Grep/List are wired only when the envelope names a
 primary repo worth having locally.
 
 **Archetype stance**: still hands-off, deliberately. "More
