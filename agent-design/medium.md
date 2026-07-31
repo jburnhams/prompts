@@ -1355,8 +1355,7 @@ the simple version measurably falls short.
   One constraint if this is built on the intended MCP substrate: MCP
   tools carry JSON Schema only, so the patch would travel as a JSON
   string parameter and lose the un-escaped-body advantage that is half
-  the argument for the fork (`tools.md`, "Delivering this surface over
-  MCP").
+  the argument for the fork (`adk.md` §2).
 - **Deferred tool loading behind a search tool**, if the surface grows
   past roughly twenty tools or starts carrying MCP servers. V1's eleven
   tools are cheap enough to send in full every turn, and a search
