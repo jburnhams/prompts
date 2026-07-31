@@ -370,7 +370,7 @@ Phased on purpose, matching how the need actually arrives:
 - Coding mode only (both `mode` values — a plan run tracing a bug
   into a dependency is exactly what plan mode is for), plus the
   product-owner entrypoint (§5), where it's the primary code view.
-  Review sub-agents stay Read/Grep/Glob-local; widening their reach
+  Review sub-agents stay Read/Grep/List-local; widening their reach
   needs finding-level evidence first, same bar as their Bash
   escalation entry (§7).
 
@@ -466,6 +466,40 @@ explaining the *reasoning*, not just the verdict.
 - **Not wired in sub-agents.** Specialists, validators, and
   `general-purpose` delegates don't narrate; the orchestrator owns the
   account of the run, the same way it owns delivery.
+
+### 2g. Unchanged-file read dedup
+
+**What**: `Read` returns a one-line stub instead of the file's content
+when that exact file was already read earlier in this run and hasn't
+changed since — "File unchanged since your earlier read in this run;
+that result is still current, refer to it rather than re-reading."
+
+**Why it's worth doing**: a long `implement` run re-reads the same
+handful of files repeatedly — before an edit, after an edit, when
+re-orienting after a detour — and each re-read pays full price for
+content already sitting in the context window. The stub costs roughly
+thirty tokens against thousands. It is the largest token saving
+available anywhere in this design for its build cost, and it compounds
+with the batch `Read` (`tools.md`), which makes redundant re-reads
+*more* likely rather than less: a five-file batch where four are
+unchanged pays for one.
+
+**Why it's not in v1**: it needs per-run read state that is actually
+trustworthy — content hash or (mtime, size) per path, invalidated by
+this run's own `Edit`/`Write` calls *and* by anything `Bash` did to the
+tree, which v1 cannot see. Getting invalidation wrong is not a
+performance bug but a correctness one: the model would be told stale
+content is current, and would then write an `Edit` against it. The
+read-before-edit cache `tools.md` already requires is the substrate, so
+this is an increment on existing state rather than new machinery — but
+it should land only with a conservative invalidation rule (any `Bash`
+call at all invalidates the whole cache, tightened later if that proves
+too blunt).
+
+**Precedent**: Claude Code's `Read` has exactly this as a `file_unchanged`
+variant of its output schema, returning a fixed stub string
+(`agent-tool-implementations.md` §8). No other source surveyed does it,
+which is why it is tracked here rather than treated as table stakes.
 
 ## 3. Review pipeline upgrades
 
@@ -852,7 +886,7 @@ open-ended research), `AskUser`, `WriteJira` (§5b), `Complete`. **No
 `Edit`, `Write`, or `Bash` — not wired at all.** PO mode never
 touches code or a shell; it may not even have a working tree checked
 out (`SearchSource` is its code view, which is why §2e lists it as a
-consumer). Read/Grep/Glob are wired only when the envelope names a
+consumer). Read/Grep/List are wired only when the envelope names a
 primary repo worth having locally.
 
 **Archetype stance**: still hands-off, deliberately. "More
@@ -1304,6 +1338,47 @@ the simple version measurably falls short.
   change to how the harness flushes `AddComment` calls, not to the
   tool surface Forge sees — but the two platforms genuinely diverge
   here, the one place the peer-platform abstraction leaks.
+- **A model-family fork of the edit format**, if Forge is ever
+  deployed on a GPT/Codex-family model. V1 ships one `Edit`
+  (`old_string`/`new_string`) because it targets one model family and
+  that format needs no worked example to teach
+  (`coding-agent-approaches.md` §5). The field's position is now
+  sharper than "pick the best format": Cline's SDK routes by model —
+  `apply_patch` enabled and the string-replace editor *disabled* for
+  `openai-native` providers and any model id containing `codex`/`gpt`,
+  the reverse otherwise — and Codex ships `apply_patch` as a
+  grammar-constrained freeform tool whose description says "do not wrap
+  the patch in JSON" (`agent-tool-implementations.md` §3b). So the
+  upgrade is not a replacement but a second declaration of the same
+  capability, selected at wiring time; `tools.md`'s implementation
+  contract already states that the tool set is per-model configuration.
+  One constraint if this is built on the intended MCP substrate: MCP
+  tools carry JSON Schema only, so the patch would travel as a JSON
+  string parameter and lose the un-escaped-body advantage that is half
+  the argument for the fork (`adk.md` §2).
+- **Deferred tool loading behind a search tool**, if the surface grows
+  past roughly twenty tools or starts carrying MCP servers. V1's eleven
+  tools are cheap enough to send in full every turn, and a search
+  round-trip would cost more than it saves. Both leading CLIs have
+  built the upgrade (Claude Code's `ToolSearch` with per-tool
+  `searchHint`/`shouldDefer`/`alwaysLoad`, defaulting MCP tools to
+  deferred; Codex's BM25 `tool_search`), and Anthropic's published
+  figure for the extreme case — 150,000 → 2,000 tokens of tool
+  definitions — is what makes it worth having *if* the surface earns
+  it. The design consequence to preserve until then: keep each tool's
+  description independently intelligible, since deferral means the
+  model may see it without its neighbours.
+- **An `Lsp` tool**, if `Grep`-driven navigation turns out to be the
+  bottleneck on unfamiliar codebases. The shape question is already
+  answered by three implementations of the same capability at three
+  granularities (`agent-tool-implementations.md` §2b): Crush ships
+  eight `lsp_*` tools, Zed five, OpenCode **one** with a nine-value
+  `operation` enum over a shared `filePath`/`line`/`character` triple.
+  OpenCode's is the shape to copy here — every operation is read-only
+  with the same result shape, so by this design's own splitting rule
+  (`tools.md`, implementation contract) they belong in one tool. The
+  cost is a language-server lifecycle the harness doesn't currently
+  own, which is why it isn't in v1.
 - **Structural write protection for the project-conventions file**, if
   the post-run flag on conventions-file diffs (`formats.md` §3a) ever
   actually fires on a non-conventions ticket. The upgrade is Roo

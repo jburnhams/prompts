@@ -9,6 +9,12 @@ Prompts are organized in folders by source (the tool/project they come from).
 Each folder has its own `README.md` noting the license, where the files were
 retrieved from (branch/tag + date), and what each file is.
 
+**[→ `sources.md`](./sources.md)** — where the *code* behind those prompts
+was read from: repo URLs, the specific paths that matter (they move — every
+repo here has been restructured at least once), the commits read, and the
+sparse-clone recipe for re-fetching any of them in a couple of minutes.
+Start there before re-deriving where a harness keeps its tool definitions.
+
 This is a first pass focused on **open-source coding and code-review
 agents**, where the system prompt ships directly in the project's public
 source code (as opposed to being reverse-engineered/leaked from a closed
@@ -41,6 +47,30 @@ browser/web access, multimodal handling, async/background execution,
 persistent memory & deployment, sandbox/isolation, and extensibility
 (MCP/skills/dynamic tool sets), across all 25 sources with a documented
 tool surface.
+
+**[→ `agent-tool-implementations.md`](./agent-tool-implementations.md)** —
+the layer below that one, and the first doc here grounded in **source code
+rather than prompt text** (fetch paths and commits in
+[`sources.md`](./sources.md)): for the universal primitives — read, list,
+search, edit, write, run — how they are actually built across nine
+harnesses. Covers the three-consumer structure of a tool (model text /
+harness metadata / human rendering) that every mature implementation
+converges on; tool-count granularity from Goose's five tools to Manus's 29,
+with the same capability shown at three granularities (LSP: 1 vs 5 vs 8
+tools) and the rule that predicts most of the field; parameter styles
+including Claude Code's `Grep` taking JSON fields literally named `-A`/`-B`/
+`-C` and Codex shipping `apply_patch` as a Lark-grammar freeform tool with
+"do not wrap the patch in JSON" in its description; the advertise-strict/
+accept-tolerant pattern (Cline parses `read_files` against a 13-branch
+union behind one advertised shape); output formats (raw text for prose,
+fields for facts, XML tags for framing) and why nobody JSON-encodes a file
+body; a numeric comparison of every source's read/search/output caps, plus
+the measured Claude Code experiment showing a hard error beats a truncated
+success; errors written as instructions; the side channels attached to tool
+results (JIT conventions injection, unchanged-file dedup, read-before-edit
+gates); and the tool set as a runtime artifact — per-model-family schemas
+(Gemini CLI), model-based tool routing (Cline), and deferred loading behind
+a search tool (Claude Code, Codex).
 
 **[→ `agent-subagent-architectures.md`](./agent-subagent-architectures.md)**
 — a companion drill-down on one specific tool-surface capability: when

@@ -11,6 +11,12 @@ steering behavior, not just documenting parameters.
 Schemas are plain JSON Schema, `additionalProperties: false`, matching
 the strictness this repo's own leaked Claude Code tool capture uses.
 
+Every number appearing in a description below is a **template slot filled
+from the effective configuration at wiring time**, not a literal — the
+values printed here are the defaults from the "Configuration and defaults"
+section, and a deployment that changes one changes the description text
+with it.
+
 Availability by role:
 
 | Tool | Coding orchestrator | Review orchestrator | `general-purpose` sub-agent | `reviewer` / `validator` sub-agent |
@@ -20,7 +26,7 @@ Availability by role:
 | Write | yes | no | yes | no |
 | Bash | yes | no | yes | no |
 | Grep | yes | yes | yes | yes |
-| Glob | yes | yes | yes | yes |
+| List | yes | yes | yes | yes |
 | Task | yes | yes | yes | no |
 | AskUser | yes | no | no | no |
 | FetchJira | yes | no | no | no |
@@ -84,22 +90,327 @@ structural one.
 
 ---
 
+## Implementation contract
+
+The schemas below say what a call looks like. This section says what every
+tool must do *around* the call — the rules
+[`agent-tool-implementations.md`](../agent-tool-implementations.md) found
+running through every mature harness's source, adopted here as a single
+contract rather than restated per tool. Its §12 checklist is the source for
+each rule; only the deviations are argued again below.
+
+The rules here are policy. The exact byte-level shape of every result —
+block delimiters, the line-number prefix, status vocabulary, how a
+partially-failed batch renders, how truncation notes are marked — is
+specified in [`formats.md`](./formats.md) §8, which this section assumes
+throughout. Both documents describe the agent we want, independent of what
+it is built on; where a specific substrate can't deliver something stated
+here, the gap and its workaround belong in [`adk.md`](./adk.md), not in a
+weakened rule. The one rule worth stating in both places, because everything
+else depends on it: **inside a block carrying file content, every content
+line is prefixed with its line number and a tab, and no structural line
+ever starts with a digit.** That invariant is why no content ever needs
+escaping, and why a file containing something that looks like a delimiter
+cannot break the frame.
+
+**Three channels per tool.** Every tool produces three things, and they are
+built separately: the **model result** (text, per the format policy below),
+the **harness record** (a typed object: what changed, what was truncated,
+what path was touched — this is what the post-run `git status` cross-check
+and the `Complete` report reconcile against), and, where a human is
+watching, a **rendering**. Forge's prompts only ever see the first. This is
+the split Claude Code makes with `outputSchema` +
+`mapToolResultToToolResultBlockParam`, Gemini CLI with
+`llmContent`/`returnDisplay`, and MCP with `content`/`structuredContent`.
+
+**Output format policy.** Prose-shaped payloads — file contents, diffs,
+search matches, command output — are returned as **raw text**, never
+JSON-encoded. Fact-shaped payloads — exit codes, counts, truncation state,
+ids, comment URLs — are returned as **named fields** (either a small JSON
+object, or `key: value` lines when they accompany prose). No tool returns a
+file body inside a JSON string: escaping inflates tokens and breaks the
+byte-exact match `Edit` depends on. Untrusted or heterogeneous content
+inside a result is delimited with XML-style tags, the same device
+`formats.md` §1 uses for the task envelope, for the same reason.
+
+**Every cap is self-describing.** Any truncation, page, or elision appends
+a footer stating three things: what was shown, how much exists, and the
+exact next call. Not "output truncated" but "showed lines 1-2000 of 8123 —
+pass `start_line: 2001` to continue." Three independent implementations
+(Gemini CLI's `Action:` block, OpenCode's `Use offset=N to continue`,
+Claude Code's pagination note) converge on this, and a cap without a
+continuation instruction is the one failure mode that reliably turns into a
+retry loop. Notices go at the head or tail of a result, never in an elided
+middle, so they survive any later re-truncation.
+
+**Caps by default, errors on impossible explicit requests.** A call that
+omits limits and gets a large result is capped and told so. A call that
+*explicitly* asks for more than a cap allows fails with a short error
+instead of returning a capped success. The reasoning is measured, not
+aesthetic: Claude Code tested truncating instead of throwing on exactly
+this case (`FileReadTool/limits.ts`, experiment #21841) and reverted —
+tool-error rate fell but mean tokens rose, because an error result costs
+~100 bytes and a capped success costs a full page of content the model
+didn't want.
+
+**Spill, don't dump.** A result past the harness's size ceiling is written
+to a file in the scratch directory (`{{SCRATCH_DIR}}`, `formats.md` §1a) and
+the model receives a preview plus that path. `Read` is the deliberate
+exception — spilling a read to a file the model then reads back is circular
+— so `Read` self-bounds via its own limits instead.
+
+**Errors are instructions.** Every tool error states what happened, what to
+do about it, and — where the harness can compute one — a concrete
+suggestion. "File does not exist. Did you mean `src/parser/index.ts`?" beats
+"ENOENT". "Found 3 matches for `old_string`; add surrounding lines or set
+`replace_all`" beats "ambiguous match". Nothing ever returns silent
+emptiness: an empty file, a start line past EOF, and a search with no hits
+each say so in words.
+
+**Advertise strict, accept tolerant.** The schemas below are the advertised
+contract and stay strict (`additionalProperties: false`) — a strict schema
+is what makes provider-side strict tool-calling and the model's own
+pattern-matching work. Tolerance lives entirely in the harness, in three
+declared layers, never as ad-hoc rescue code inside a tool:
+
+1. **Generic normalisations**, applied to every tool's input before
+   validation, implemented once: parse an input that arrived as a JSON
+   *string* (or fenced in Markdown) rather than an object; coerce
+   stringified scalars (`"3"` → `3`, `"true"` → `true`); treat explicit
+   `null` on an optional field as absent; unwrap a one-element array where
+   a scalar is expected and wrap a scalar where an array is expected; trim
+   whitespace and stray quotes/backticks from path-shaped strings; and
+   match keys case- and separator-insensitively against the canonical
+   names (`filePath`, `file-path`, `FilePath` → `file_path`).
+2. **Per-tool accepted forms** — a short, *declared* list of alternative
+   input shapes per tool, each with a pure transform to the canonical
+   shape, so they are enumerable and testable rather than scattered. For
+   v1 that list is small:
+
+   | Tool | Also accepted | Normalised to |
+   |---|---|---|
+   | Read | a bare path string; an array of path strings; `{path: …}`; `file_path`/`filePath` per entry; `paths`/`file_paths` instead of `files` | `{files: [{path, start_line?, end_line?}]}` |
+   | Read | `offset`/`limit` on an entry | `start_line = offset`, `end_line = offset + limit - 1` |
+   | List | a bare glob string | `{pattern: …}` |
+   | List | a call named `Glob` with `{pattern, path}` | `{pattern, path, output: "paths"}` |
+   | Grep | a bare pattern string; `include`/`file_pattern` | `{pattern}` / `glob` |
+   | Bash | a bare command string; `cmd`; `{command, args: []}` | `{command}` |
+   | Edit | `old_str`/`new_str`; `path` | `old_string`/`new_string`/`path` |
+   | Complete, AddComment, AskUser | nothing — these carry structured reports and post externally; guessing intent here is not recoverable | — |
+3. **Clamp, don't reject, on ranges**: `start_line: 0` becomes 1,
+   `end_line < start_line` reads one line, a `start_line` past EOF returns
+   the explicit past-EOF marker rather than an error. (Zed does exactly
+   this in code, with a comment noting the model "occasionally passes 0
+   despite instructions to be 1-indexed.")
+
+Two limits keep this from becoming a pile of hidden formats.
+**Normalise only when the transform is information-preserving and
+unambiguous** — a bare string for `Read` has one plausible meaning, but an
+unrecognised key that might carry real intent (a `recursive: true` on a
+tool with no such behaviour) is an *error naming the unknown key*, because
+proceeding would silently do something other than what was asked. And
+**every normalisation is counted**: a fired alternate means either the
+description or the schema is wrong for this model, so the telemetry is the
+input to fixing it upstream — promote a frequent alternate into the
+advertised schema, and delete one that never fires. Both directions are
+observed in the field: Cline's SDK parses `read_files` against a
+thirteen-branch union while advertising one shape, and OpenCode *removed*
+its numeric coercion once the tool became LLM-only, with a code comment
+explaining it no longer earned its keep.
+
+One implementation detail worth copying: normalisation must not silently
+rewrite what the permission layer and the transcript see. Claude Code
+applies its input backfill to *copies* — "before observers see it (SDK
+stream, transcript, canUseTool, PreToolUse/PostToolUse hooks)... The
+original API-bound input is never mutated (preserves prompt cache)." Forge
+follows the same rule: the normalised input is what gets logged, gated and
+reported; the original is what stays in the conversation the model sees.
+
+**Line numbering is one contract shared by Read and Edit.** `Read` returns
+`cat -n`-style output: the 1-indexed line number, a tab, then the line's
+exact bytes. `Edit`'s `old_string` matches against the bytes *after* the
+tab. These two facts are a single decision — changing the prefix format
+means changing both tools' descriptions in the same edit — and both
+descriptions below state it explicitly, because echoing the prefix back
+into `old_string` is the most common way an exact-match edit fails.
+
+**Tool results are an injection point.** Two things ride along with results
+rather than living in the system prompt: when `Read` returns a file that has
+a project-conventions file governing its directory, that file's content is
+appended inside a `<system-reminder>` block (OpenCode, Gemini CLI and Claude
+Code each do a version of this); and any content originating outside the
+repository is sanitized before it lands, per `formats.md` §1.
+
+**Read-before-edit is harness-side state.** `Edit` and `Write` fail on a
+path this run has not `Read` (for `Write`, only when the file already
+exists), enforced by a per-run read-state cache rather than by prompt text
+— the same structural-gate principle as the git-write blocklist. That
+cache is also what a later unchanged-file read dedup would be built on
+(`medium.md` §2g); v1 keeps the cache and not the dedup.
+
+**Per-tool harness metadata.** Every tool declares, in code, whether it is
+read-only, whether it is safe to run concurrently with another call, and
+whether it is destructive. These are what `plan`-mode wiring, parallel
+dispatch, and the completion gate key off — not prompt text. For v1:
+
+| Tool | Read-only | Concurrency-safe | Destructive |
+|---|---|---|---|
+| Read, Grep, List, FetchJira | yes | yes | no |
+| Edit, Write | no | only for disjoint paths | no |
+| Bash | unknown (assume no) | no | assume yes |
+| Task | inherits the child's wiring | yes | no |
+| AddComment | no (external) | no | yes (a post is not retractable) |
+| AskUser, Complete | terminal | n/a | n/a |
+
+"Assume no / assume yes" is the fail-closed default every source surveyed
+uses for an unclassifiable shell.
+
+**The tool set is configuration, not a constant.** Nothing in this document
+should be read as "these eleven tools, this text, for every model." Gemini
+CLI ships per-model-family schemas and descriptions for identical tools;
+Cline routes `apply_patch` to GPT/Codex-family models and a string-replace
+editor to everything else. Forge's v1 ships one set because it targets one
+model family; the descriptions below are the artifact a per-model variant
+would fork, and `medium.md` tracks the edit-format fork as the first likely
+one.
+
+---
+
+## Configuration and defaults
+
+Every number in this document is a **default, not a constant** — and every
+number that appears in a tool *description* is rendered from the same
+config value the code enforces, so the prose cannot drift from the
+behaviour. Crush is the precedent worth copying literally: its tool
+descriptions are Go templates (`view.md.tpl`: "…default
+`{{ .DefaultReadLimit }}`, max `{{ .MaxViewSizeKB }}`KB…") evaluated
+against the real constants. Claude Code composes its `Read` description
+the same way, from limits resolved at startup.
+
+The defaults below are opinionated. Where the field converged, the
+convergent value wins; where it didn't, the value is chosen and the
+reasoning stated, because "make it configurable" is not a decision and a
+deployment that has to pick eleven numbers before it can start has been
+handed a problem rather than a design.
+
+### Tunables
+
+| Key | Default | Why this value |
+|---|---|---|
+| `read.default_lines` | 2000 | Claude Code, OpenCode and Cline independently converged on 2000; Crush's 200 is the outlier and reflects an interactive UI where a human scrolls, not an unsupervised run that pays a turn per re-read |
+| `read.max_line_chars` | 2000 | Universal across every source read. Minified and generated files are the target; a legitimate source line never approaches it |
+| `read.max_entries` | 20 | New here — no source has a batch read to cap. Past ~20 files the model is fanning out rather than reading, which is what `List`/`Grep` are for, and a 200-entry call would blow the call budget before the first file finished |
+| `read.call_budget_chars` | 80,000 (≈20k tokens) | A batch should not cost more than one large single read. Claude Code caps a single read at 25,000 tokens; Cline caps at 48,000 chars per read. This sits between them and is measured in characters deliberately — a real tokenizer call per read is a round trip the gate does not justify |
+| `read.file_size_gate_bytes` | 262,144 (256 KB) | Claude Code's value. This is the *explicit-request* gate: past it a read errors instead of truncating, per the implementation contract |
+| `list.default_depth` | 3 | Deep enough that one call shows a typical `src/<area>/<file>` layout, shallow enough that a monorepo root doesn't blow the entry cap. Below 3, the first call is almost always followed by a second |
+| `list.max_entries` | 200 | Roughly the point at which a tree stops being an orientation aid and becomes something to search instead. Crush caps its `ls` similarly (its own value is templated into its description, so the model always knows) |
+| `list.line_counts` | on | The counts are what make the tree an input to the whole-file-vs-range decision `Read` asks for. Goose keeps exactly this in a five-tool surface |
+| `list.line_count_max_bytes` | 1,048,576 (1 MB) | Counting lines means reading the file. Above this, show `-` rather than pay the IO |
+| `list.line_count_max_entries` | 500 | If a listing has more entries than this, counts are dropped wholesale with a `!` note. A 5,000-file listing should not trigger 5,000 file reads for a number nobody will read |
+| `grep.head_limit` | 250 | Claude Code's default. Gemini CLI's 100 is stated in its description too; 250 is the more generous of two converged-on values and pages cleanly with `offset` |
+| `grep.max_line_chars` | 2000 | Same reasoning as `read.max_line_chars`, and the same value so the model only learns one number |
+| `grep.context_before` / `grep.context_after` | 0 | Context is cheap to ask for and expensive to receive by default; ripgrep's own default is 0 |
+| `bash.timeout_ms` | 120,000 (max 600,000) | Already in the Bash schema; matches the field's common shape |
+| `bash.output_cap_chars` | 30,000 | OpenHands's `MAX_CMD_OUTPUT_SIZE` exactly; Cline's 48,000 is the nearest neighbour. Head and tail are kept, the middle is elided, and the full output always spills to scratch |
+| `spill_threshold_chars` | 30,000 | Any tool result past this is written to scratch and previewed, per the implementation contract — except `Read`, which is exempt because spilling a read to a file the model then reads back is circular |
+| `tolerance.enabled` | on | The alternate-forms table above is data, so a deployment can prune it; turning tolerance off entirely is available and is the wrong default, per the decision log |
+
+Two derived rules the harness validates at startup, rather than trusting
+the config: `read.call_budget_chars` must exceed what a single
+`read.default_lines` read can produce, or a one-file batch would truncate
+for no reason; and no cap may be set to zero, which would make a tool
+silently return nothing. Claude Code validates each of its limit fields
+individually and falls back to the hardcoded default on anything invalid,
+with a comment noting there is deliberately "no route to cap=0" — the same
+posture applies here.
+
+### Precedence
+
+Built-in default → model-family profile → deployment config → per-run
+override, each layer setting only what it means to change. The per-run
+layer exists because run shapes genuinely differ (a review run reading
+around a large diff wants more read budget than a small `plan` run), but
+**it does not appear in the task envelope**: Forge learns the effective
+limits the way it learns everything else about a tool — from the
+description text rendered for this run, and from the footers on results
+that hit a cap. There is no configuration the model reads and reasons
+about, which keeps `formats.md` §1 unchanged and keeps the model from
+negotiating with its own limits.
+
+### What is deliberately *not* configurable
+
+Being opinionated cuts both ways. These are contracts other things depend
+on, and a deployment that could flip them would produce combinations no
+one has tested:
+
+- **The `cat -n` prefix format** (`<decimal><TAB>`) — `Edit`'s matching
+  rule is written against it, so a deployment that "just" padded line
+  numbers would break editing.
+- **The block framing and escaping invariants** (`formats.md` §8a),
+  including line-ending normalisation on read and restoration on write.
+- **The per-entry status vocabulary**, request-order blocks, and
+  partial-failure-never-fails-the-call.
+- **Caps must self-describe** — a deployment may change *what* the limit
+  is, never whether the result says it was hit and how to continue.
+- **Read-before-edit**, and the git-write blocklist.
+
+The line between the two lists is exactly the model channel versus the
+harness channel: numbers are facts the model is told at the moment they
+matter, so they can vary; formats are contracts it was trained on across a
+whole run, so they cannot.
+
+---
+
 ## Read
 
-> Reads a file from the working tree and returns its contents with
-> 1-indexed line numbers prefixed. Use an absolute path, or one relative
-> to the working directory named in `<env>`.
+> Reads one or more files from the working tree. Paths are absolute, or
+> relative to the working directory named in `<env>`.
+>
+> **Read several files in one call** whenever you already know what you
+> need — a caller and its callee, a module and its test, every file a
+> review finding touches. One call with five entries costs a fraction of
+> five calls, and this agent's run budget is counted in turns.
+>
+> Each entry may carry `start_line`/`end_line` to read only part of that
+> file. The range belongs on the **same object as the path it applies to** —
+> `{"path": "src/a.ts", "start_line": 40, "end_line": 120}` — never as a
+> separate element of the array. Line numbers are 1-indexed and inclusive,
+> and they are the same numbers the results, Grep hits, and diff hunks
+> show you, so a range around a known line needs no arithmetic. Omit both
+> to read the whole file.
+>
+> Contents come back in `cat -n` format: the 1-indexed line number, a tab,
+> then the line exactly as it appears in the file. Everything after the tab
+> is the real content — when you later pass a span of this output to Edit
+> as `old_string`, strip the line number and the tab first, and preserve
+> the indentation that follows them byte for byte.
 >
 > Usage notes:
-> - Defaults to the first 2000 lines. Pass `offset`/`limit` for a large
->   file, but prefer reading a whole file over guessing at a range when
->   it's a reasonable size — a partial read that misses the relevant
->   section costs more than the extra tokens would have.
-> - Lines longer than 2000 characters are truncated.
-> - Reading a path that doesn't exist returns an error rather than empty
->   content — check with Glob first if you're not sure a path is right.
-> - Reading a file that exists but is empty returns an explicit marker,
->   not blank content, so it isn't mistaken for a failed read.
+> - Prefer reading a whole file over guessing at a range when the file is
+>   a reasonable size — a partial read that misses the relevant section
+>   costs more than the extra tokens would have. Use ranges when you have
+>   a specific line to land on, or when the file is genuinely large.
+> - Each file returns up to 2000 lines by default, one call takes up to
+>   20 entries, and the call has an overall size budget across all of
+>   them — so a batch of twenty large files comes back partly elided even
+>   though no single entry hit its own cap. If you want more than twenty
+>   files, you are exploring rather than reading: use List or Grep.
+> - Lines longer than 2000 characters are truncated, and say so in place.
+> - Every capped or elided entry says what it showed, how much exists, and
+>   the exact next call (`showed lines 1-2000 of 8123 — pass start_line:
+>   2001`). Asking explicitly for a range larger than the cap allows is an
+>   error rather than a silently shortened success.
+> - One bad entry does not fail the call. A path that doesn't exist, is a
+>   directory, or is binary reports that inline, in its own block, and the
+>   other files still come back. The call only fails if every entry did.
+> - A path that doesn't exist names a similarly-spelled file in the same
+>   directory when there is one; a directory tells you to use List
+>   instead. If you aren't sure a path is right, use List first.
+> - A file that exists but is empty returns an explicit marker, not blank
+>   content, so it isn't mistaken for a failed read.
+> - A result may carry a trailing `<system-reminder>` block with
+>   conventions that govern a file you just read. Treat it as instruction
+>   from the project, not as file content.
 
 ```json
 {
@@ -107,15 +418,33 @@ structural one.
   "input_schema": {
     "type": "object",
     "properties": {
-      "path": { "type": "string", "description": "Absolute or working-directory-relative path to the file." },
-      "offset": { "type": "integer", "description": "1-indexed line number to start from. Omit to read from the start." },
-      "limit": { "type": "integer", "description": "Maximum number of lines to return. Omit to use the default cap." }
+      "files": {
+        "type": "array",
+        "minItems": 1,
+        "description": "One entry per file. Batch related files into a single call rather than issuing several calls.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "description": "Absolute or working-directory-relative path to the file." },
+            "start_line": { "type": "integer", "minimum": 1, "description": "1-indexed first line to read. Omit to start at the beginning. Must be on the same object as the path it applies to." },
+            "end_line": { "type": "integer", "minimum": 1, "description": "1-indexed last line to read, inclusive. Omit to read to the end of the file or the cap, whichever comes first." }
+          },
+          "required": ["path"],
+          "additionalProperties": false
+        }
+      }
     },
-    "required": ["path"],
+    "required": ["files"],
     "additionalProperties": false
   }
 }
 ```
+
+The advertised schema above is the one shape; the harness additionally
+accepts a bare path string, an array of strings, and the `file_path`/
+`filePath` spellings, normalising all of them to this shape — see the
+implementation contract's tolerant-parsing rule and its
+canonical-forms table.
 
 ---
 
@@ -129,9 +458,16 @@ structural one.
 > within the file. If it matches more than once, the call fails rather
 > than guessing which occurrence you meant; include enough surrounding
 > context (a few lines before/after the change, not just the changed
-> line) to make it unambiguous. Read the file (or the relevant section
-> of it) before editing it, so `old_string` is guaranteed to match what's
-> actually there rather than what you assume is there.
+> line) to make it unambiguous — usually two to four adjacent lines is
+> enough, and ten is a sign you should be editing somewhere more specific.
+>
+> Read the file (or the relevant section of it) before editing it: this
+> tool fails on a path you have not Read in this run, because an
+> `old_string` written from memory is the single most common way an edit
+> fails. Read returns `cat -n` output — line number, tab, content — so
+> when you build `old_string` from what you just read, drop the number and
+> the tab and keep everything after them unchanged. Never include any part
+> of that prefix in `old_string` or `new_string`.
 >
 > Set `replace_all: true` to replace every occurrence instead of
 > requiring uniqueness — use this for a deliberate rename across a file,
@@ -170,7 +506,8 @@ structural one.
 > existing file discards everything not repeated in `content`. Use Write
 > for genuinely new files, or when a rewrite is so extensive that
 > reconstructing it via Edit calls would be less reliable than writing
-> it fresh.
+> it fresh. Overwriting a file you have not Read in this run fails;
+> creating a new one does not.
 >
 > Only write into the repository working tree for files meant to be
 > part of the actual change. Anything throwaway — a reproduction
@@ -204,7 +541,7 @@ structural one.
 > Usage notes:
 > - Use this for git, running tests/linters, package-manager commands,
 >   and anything else with no dedicated tool. Do not use it for search
->   or plain file reads — use Grep/Glob/Read instead; they're faster and
+>   or plain file reads — use Grep/List/Read instead; they're faster and
 >   don't spend context on output you don't need.
 > - Quote paths containing spaces.
 > - Default timeout is 120000ms; pass `timeout_ms` up to 600000 for a
@@ -217,12 +554,21 @@ structural one.
 >   persistent, so `kill -0 <pid>` answers "still running?" and Read on
 >   the log file (or `tail` of it) shows progress. There is no separate
 >   polling tool in v1.
-> - Output over 30000 characters is truncated. If you need to inspect
->   something larger, redirect it to a file in the scratch directory
->   (named in `<env>`) and Read the relevant slice — never redirect into
->   the repository working tree.
+> - Output over 30000 characters comes back with its head and tail intact
+>   and the middle elided; the full output is written to a file in the
+>   scratch directory and the result names that path, so you can Read the
+>   part you actually need. If you already know the output will be large
+>   and you only want a slice of it, filter in the command itself
+>   (`| tail -50`, `| grep …`) rather than spending a Read on it.
+>   Never redirect command output into the repository working tree.
+> - The result echoes the command, reports the exit code as a named
+>   field, and interleaves stdout and stderr in the order the process
+>   wrote them, the way a terminal would. A command that prints to
+>   stderr and exits 0 succeeded; check the exit code, not the presence
+>   of output. Redirect explicitly (`2>/dev/null`, `2>&1 | tee`) if you
+>   need the streams separated.
 > - Before a command that creates a new directory or file, confirm the
->   parent exists (Glob or a quick `ls`) rather than assuming.
+>   parent exists (List or a quick `ls`) rather than assuming.
 >
 > Git in v1: read-only inspection only (`status`, `diff`, `log`,
 > `blame`, `show`) to understand what's already changed and orient
@@ -284,6 +630,13 @@ structural one.
 >   (`interface\{\}`) etc.
 > - `multiline: true` lets `.` match newlines, for a pattern that spans
 >   lines.
+> - Results are capped at 250 entries unless you set `head_limit`
+>   (equivalent to `| head -N`); `offset` skips that many entries first
+>   (equivalent to `| tail -n +N | head -N`), so a search with more hits
+>   than fit can be paged rather than re-run with a narrower pattern you
+>   had to guess at. When the cap applies, the result says so and gives
+>   the `offset` to continue from.
+> - A search with no matches says so; it never returns an empty result.
 
 ```json
 {
@@ -300,7 +653,8 @@ structural one.
       "context_after": { "type": "integer", "description": "Lines of context after each match. Content mode only." },
       "case_insensitive": { "type": "boolean" },
       "multiline": { "type": "boolean", "description": "Allow . to match newlines for cross-line patterns." },
-      "head_limit": { "type": "integer", "description": "Cap the number of results returned." }
+      "head_limit": { "type": "integer", "description": "Cap the number of results returned, equivalent to \"| head -N\". Defaults to 250." },
+      "offset": { "type": "integer", "description": "Skip this many results before applying head_limit, equivalent to \"| tail -n +N | head -N\". Defaults to 0." }
     },
     "required": ["pattern"],
     "additionalProperties": false
@@ -310,27 +664,80 @@ structural one.
 
 ---
 
-## Glob
+## List
 
-> Finds files by name pattern (e.g. `"src/**/*.tsx"`), returned sorted
-> by modification time (most recent first). Use this when you know
-> roughly what a file is called or where it lives; use Grep when you
-> know what's *inside* it instead.
+> Lists paths in the working tree. One tool covers the three things you
+> actually want from a filesystem: *what is in this directory*, *what does
+> this part of the repository look like*, and *where is the file called
+> roughly this*. Use Grep instead when you know what's **inside** a file
+> rather than what it's called.
+>
+> - `output: "tree"` (the default) renders a directory tree with a line
+>   count beside each file. This is the orientation view — read it before
+>   reading files, and use the line counts to decide whether a file is
+>   small enough to Read whole or wants a range.
+> - `output: "paths"` returns a flat list of matching paths, most recently
+>   modified first. This is the view to use when you're feeding paths into
+>   a batch Read, or when "what changed lately" is the question.
+> - `pattern` filters by glob against repository-relative paths
+>   (`"src/**/*.tsx"`, `"**/*parser*"`). Omit it to list everything under
+>   `path`.
+> - `depth` bounds how far the tree descends; it defaults to 3, which is
+>   deep enough to show a typical `src/<area>/<file>` layout and shallow
+>   enough that a large repository still fits. Going deeper should be a
+>   decision you make after seeing the top of it.
+> - Hidden files, common build/vendor directories, and anything the
+>   repository's ignore rules exclude are skipped unless you set
+>   `include_ignored: true`. Node modules and build output are almost never
+>   what you meant.
+> - Results are capped at 200 entries; `head_limit`/`offset` page through
+>   them on the same terms as Grep. When entries are elided, the result
+>   says how many, at what depth, and what to pass to see them —
+>   narrowing with `path` or `pattern` is usually better than raising the
+>   limit.
 
 ```json
 {
-  "name": "Glob",
+  "name": "List",
   "input_schema": {
     "type": "object",
     "properties": {
-      "pattern": { "type": "string", "description": "Glob pattern to match file paths against." },
-      "path": { "type": "string", "description": "Directory to search under. Defaults to the working directory." }
+      "path": { "type": "string", "description": "Directory to list under. Defaults to the working directory." },
+      "pattern": { "type": "string", "description": "Optional glob filtering which paths are listed, e.g. \"src/**/*.tsx\"." },
+      "output": { "type": "string", "enum": ["tree", "paths"], "description": "\"tree\" (default) renders a directory tree with per-file line counts; \"paths\" returns a flat list, most recently modified first." },
+      "depth": { "type": "integer", "minimum": 1, "description": "Maximum directory depth to descend in tree mode. Defaults to a shallow value." },
+      "include_ignored": { "type": "boolean", "description": "Include hidden files and paths excluded by the repository's ignore rules. Default false." },
+      "head_limit": { "type": "integer", "description": "Cap the number of entries returned, equivalent to \"| head -N\"." },
+      "offset": { "type": "integer", "description": "Skip this many entries before applying head_limit. Defaults to 0." }
     },
-    "required": ["pattern"],
     "additionalProperties": false
   }
 }
 ```
+
+No field is required: `List` with no arguments is "show me this
+repository," which is the call a run's first investigation step wants.
+
+This tool replaces the `Glob` in earlier drafts, and folds in the
+directory listing that would otherwise have needed either an `LS` tool or
+a `Bash ls` (the latter unavailable to review sub-agents, which have no
+`Bash` at all). The merge follows the implementation contract's splitting
+rule: globbing, listing and tree-walking are all read-only,
+concurrency-safe, non-destructive, and produce the same thing — a set of
+paths — so they differ only in rendering, which is a parameter, not a
+tool. The precedent for keeping the tree specifically: Goose cuts its
+whole developer surface to five tools with no read, grep or glob among
+them, and `tree` ("list a directory tree with line counts") is one of the
+five, with its extension instructions telling the model to start there to
+understand "the codebase structure and file sizes"; Crush's `ls` is a tree
+too. Per-file line counts are worth their cost here because they feed the
+whole-file-vs-range decision `Read` asks the model to make.
+
+Because models trained around other harnesses reach for `Glob` by name,
+the harness accepts `Glob` as an alias for this tool and maps its
+`pattern`/`path` arguments onto the equivalent `List` call with
+`output: "paths"` — the same backwards-compatibility affordance Claude
+Code's own tool contract carries an `aliases` field for.
 
 ---
 
@@ -345,7 +752,7 @@ structural one.
 > Available `subagent_type` values depend on which orchestrator is
 > calling: `general-purpose` (coding mode only — full tool parity,
 > for open-ended search/investigation you're not confident a direct
-> Read/Grep/Glob will resolve quickly); `reviewer` (review mode only —
+> Read/Grep/List will resolve quickly); `reviewer` (review mode only —
 > read-only, takes a `role` field selecting which lens to review
 > through); `validator` (review mode only — read-only, checks exactly
 > one candidate finding).
@@ -598,6 +1005,8 @@ re-review reconciliation to reply-and-resolve in one call — see
 The `allOf` block makes `suggestion` without an `anchor` a schema
 error rather than a runtime surprise — same device the Task tool uses
 for its conditional requirements.
+
+---
 
 ---
 

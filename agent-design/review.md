@@ -48,7 +48,7 @@ ladder — for each kind of context, *why* it sits where it sits:
 | The diff | Inline, envelope, pre-built by the harness (§2) | Line-number fidelity is the whole game: a posted comment's anchor derives from these hunks, and no human filters a mis-anchored comment before it lands. Also removes a whole class of failure where the model runs the *wrong* diff command (wrong base, no rename detection) and reviews the wrong delta |
 | Existing comments and threads (§3) | Inline, envelope; transcluded into specialist/validator briefs (§4–5), including, for stale threads, the then/now code blocks (§3a) | The dedup step (pipeline step 4) and re-review reconciliation (§7) need the complete set, and finders/validators need it as intent context — the record of what humans asked for, without which a specialist can end up proposing the revert of a requested change (§3); "fetch if you think you need it" is exactly how a run silently duplicates a comment |
 | Project-conventions files | Path known to orchestrator; contents read in step 2 and transcluded into the `conventions` specialist's brief (or held in hand by a single-stage finder) | Only the conventions lens needs the text; repo-controlled, so lower injection risk than PR content |
-| Surrounding code beyond hunks | **Not inline** — Read/Grep/Glob against the working tree at Head SHA | See below |
+| Surrounding code beyond hunks | **Not inline** — Read/Grep/List against the working tree at Head SHA | See below |
 | Linked ticket | Phase 2+, inline when present (`medium.md` §3a) | Compliance lens only |
 
 The "surrounding lines vs. lookup tools" question is answered **both,
@@ -62,7 +62,7 @@ with different jobs**:
   every file for context most hunks never need.
 - The working tree at Head SHA is for **verifying** — the harness
   guarantees the checkout matches the diff (`formats.md` §1b), so
-  Read/Grep/Glob are ground truth for anything beyond the hunk:
+  Read/Grep/List are ground truth for anything beyond the hunk:
   enclosing function, callers, the definition of a symbol the hunk
   uses, whether a claimed-missing guard exists three lines past the
   context window.
@@ -527,7 +527,7 @@ reasoning beyond what the finding schema itself carries
 (`rationale` is part of the finding; any additional chain-of-thought
 is not) and the other candidates. Independence is the
 mechanism — the validator re-derives the claim against the code
-(Read/Grep/Glob at Head SHA) rather than auditing the finder's
+(Read/Grep/List at Head SHA) rather than auditing the finder's
 argument for persuasiveness. The discussion doesn't weaken that:
 threads inform the *worth-flagging* judgment, while the *is-it-true*
 judgment stays code-only — a comment asserting the code is fine is

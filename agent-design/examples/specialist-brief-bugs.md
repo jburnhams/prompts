@@ -85,7 +85,7 @@ Things to notice:
 - **Absent on purpose** (§4 rule 3): any `<conventions>` tag (this
   repo has none; the conventions specialist wasn't even launched), and
   the other specialists' output.
-- The specialist works from this brief plus Read/Grep/Glob against the
+- The specialist works from this brief plus Read/Grep/List against the
   working tree at `9f3c2abe41d7`. For candidate f-1 it Reads
   `billing/retry.py` to confirm line 20 carries
   `for attempt in range(1, max_attempts):` — the numbered Read output
