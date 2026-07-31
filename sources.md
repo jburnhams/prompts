@@ -49,6 +49,7 @@ so a future pass can diff rather than re-read.
 | **Zed** | `github.com/zed-industries/zed` | `crates/agent/src/tools/*_tool.rs` (**moved** from `crates/assistant_tools/`); the `AgentTool` trait is in `crates/agent/src/thread.rs` (~line 5067) | `98f39bf` |
 | **Goose** | `github.com/block/goose` | `crates/goose/src/agents/platform_extensions/developer/` (**moved** from `crates/goose-mcp/src/developer/`) — `mod.rs` has the whole tool list | `eea5609` |
 | **Cline** | `github.com/cline/cline` | `sdk/packages/core/src/extensions/tools/` — `schemas.ts` (Zod, incl. the tolerant union parsers), `definitions.ts`, `model-tool-routing.ts`, `presets.ts`, `executors/`. The VS Code extension is now `apps/vscode/` | `be8c16b` |
+| **Google ADK** (the intended build substrate — read for how it consumes MCP, not as a prompt source) | `github.com/google/adk-python` | `src/google/adk/tools/mcp_tool/` — `mcp_tool.py` (result conversion: `response.model_dump()` of the whole `CallToolResult`), `mcp_toolset.py` (`tool_filter`, optional `tool_name_prefix`), `mcp_session_manager.py`. Docs live at `adk.dev` now, not `google.github.io/adk-docs` (301) | `c12a025` |
 | **OpenHands** | `github.com/OpenHands/software-agent-sdk` | `openhands-tools/openhands/tools/<tool>/definition.py` (schema + description) and `impl.py` (runtime). **The agent moved out of `All-Hands-AI/OpenHands`**, which is now the web/desktop app | `main` @ 2026-07-31 |
 
 Already-stored captures used alongside the code (no fetch needed):

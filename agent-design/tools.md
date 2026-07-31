@@ -1005,6 +1005,112 @@ for its conditional requirements.
 
 ---
 
+## Delivering this surface over MCP, on Google ADK
+
+The intended build is Google ADK with every tool exposed over MCP. The
+first-order intuition is right — **the model sees tools, not a transport**:
+names, descriptions, JSON Schemas and the result text in `formats.md` §8
+all survive unchanged, and ADK's `MCPToolset` leaves tool names alone
+unless a `tool_name_prefix` is configured, so `Read`/`List`/`Grep` stay
+callable by the names their descriptions cross-reference.
+
+Four things do change, and three of them touch decisions made above.
+
+**1. The result envelope stops being ours.** ADK's `McpTool` returns
+`response.model_dump(...)` — the *entire* MCP `CallToolResult` — as the
+function response. The model therefore receives something shaped like
+`{"content": [{"type": "text", "text": "…"}], "isError": false}`, not the
+bare text this design specifies. Two consequences:
+
+- The text is JSON-escaped on the way to the model: every newline becomes
+  `\n`, every tab `\t`, every quote in the source `\"`. That erodes the
+  §8a premise that content reaches the model byte-for-byte, which
+  `Edit`'s exact-match contract leans on. Note this is only *partly* an
+  MCP effect — Gemini's function-response part is a struct, so some JSON
+  envelope exists whether or not MCP is in the path (Anthropic's API, by
+  contrast, takes a raw string tool result). MCP adds the nesting and the
+  type tags on top.
+- Mitigation, in order of preference: return exactly **one** text content
+  block per call; use an ADK `after_tool_callback` to flatten the
+  `CallToolResult` to a single-key payload before it reaches the model;
+  and keep the `Edit` description's "strip the line number and the tab"
+  rule (already written) doing the work it now also has to do for
+  escaping.
+
+**2. `structuredContent` is not the harness channel.** MCP's
+`structuredContent` looks like the obvious home for the typed harness
+record of the implementation contract's three-channel rule — but ADK
+serialises the whole result, so anything put there is *also* sent to the
+model, duplicating the payload. So: **populate `content` only**, and let
+the harness record travel out of band (server-side logging and state),
+which is where the post-run `git status` cross-check reads it from
+anyway. The three-channel split survives; only its plumbing changes.
+
+**3. Static annotations can't express per-input predicates.** MCP's
+`readOnlyHint`/`destructiveHint`/`idempotentHint`/`openWorldHint` are
+per-*tool*, and the implementation contract's metadata table has two
+entries that are per-*call*: `Edit`/`Write` are concurrency-safe only for
+disjoint paths, and `Bash`'s read-only-ness is a property of the command
+string. Those predicates have to live somewhere the arguments are
+visible — an ADK `before_tool_callback`, or the server itself. The same
+applies to the git-write blocklist, which must be enforced **inside the
+Bash tool's server**, not by the client that calls it.
+
+**4. Tool filtering is advertising, not enforcement.** `MCPToolset`'s
+`tool_filter` controls what the model is shown; the server still exposes
+and will still execute a filtered-out tool if something calls it. The
+design's structural narrowing — `Edit`/`Write` unregistered in `plan`
+runs, `AddComment` unregistered in `implement` runs, review sub-agents
+with no `Bash` — therefore has to be enforced where the tool actually
+runs: **start the server for the run's mode**, and use `tool_filter` as
+the second layer rather than the only one. A read-only run should be
+served by a server process that has no write tools compiled in, in the
+same spirit as the harness-side git blocklist.
+
+Two things ADK gives us that the design was going to have to build:
+
+- `before_tool_callback` / `after_tool_callback` are exactly the
+  normalisation and post-processing seams the contract calls for —
+  argument normalisation (tolerant parsing, if it isn't done server-side),
+  cap enforcement and spill-to-scratch, and the sanitiser choke point for
+  results arriving from third-party MCP servers (a Jira or Bitbucket
+  server's output is untrusted content in the sense of `formats.md` §1,
+  arriving through a different door than the envelope).
+- `call_tool`'s progress callback carries MCP progress notifications, a
+  better fit for long-running `Bash` than the poll-a-log-file mechanism
+  the Bash description describes; worth revisiting if background commands
+  become common.
+
+Three constraints worth recording now rather than rediscovering:
+
+- **MCP tools are JSON Schema only.** Codex-style freeform/grammar-
+  constrained tools cannot be expressed, so `medium.md` §7's
+  edit-format fork would have to pass a patch as a JSON string
+  parameter — losing the "do not wrap the patch in JSON" advantage that
+  motivated it. That weakens, but does not kill, the case for the fork.
+- **Errors must be `isError: true` with instructional text**, not
+  JSON-RPC protocol errors: ADK converts transport/protocol failures into
+  a terse `{"error": "…"}` string, which is exactly the opaque shape the
+  errors-are-instructions rule exists to prevent.
+- **MCP elicitation is not `AskUser`.** Elicitation assumes a user present
+  in the session; `AskUser` here suspends the run and resumes it from a
+  comment reply (`formats.md` §5). Keep `AskUser` an ordinary tool whose
+  result ends the run.
+
+Finally, a fit worth exploiting: the configuration section above puts
+per-run overrides outside the envelope, and MCP's natural unit is a
+server process. **One stdio server per run, started with that run's mode
+and config**, makes the process boundary the state boundary — the
+read-before-edit cache lives and dies with the run, descriptions are
+rendered from the config that server was started with, and a review
+sub-agent's read-only surface is a different process rather than a
+filtered view of the same one. The corollary is that the file tools and
+`Bash` should be served by the **same** server, since `Bash` can
+invalidate the read cache that `Edit` depends on; splitting them across
+processes would fragment exactly the state the contract relies on.
+
+---
+
 ## Complete
 
 > Ends the task. This is the only way a run finishes successfully —
