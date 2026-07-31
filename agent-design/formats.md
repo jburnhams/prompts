@@ -595,6 +595,11 @@ field beyond the summaries already in `tools.md`; the model learns them by
 seeing them, which is only safe because they are unambiguous by
 construction.
 
+Structure here is fixed; the numbers in the examples are not. Every limit
+shown (2000 lines, depth 3, 250 matches) is the default from `tools.md`'s
+configuration section, rendered from the effective config at runtime — a
+deployment tunes the values, never the shapes.
+
 ### 8a. Rules common to every tool result
 
 **Payload lines must be distinguishable from structural lines, and the

@@ -11,6 +11,12 @@ steering behavior, not just documenting parameters.
 Schemas are plain JSON Schema, `additionalProperties: false`, matching
 the strictness this repo's own leaked Claude Code tool capture uses.
 
+Every number appearing in a description below is a **template slot filled
+from the effective configuration at wiring time**, not a literal — the
+values printed here are the defaults from the "Configuration and defaults"
+section, and a deployment that changes one changes the description text
+with it.
+
 Availability by role:
 
 | Tool | Coding orchestrator | Review orchestrator | `general-purpose` sub-agent | `reviewer` / `validator` sub-agent |
@@ -267,6 +273,91 @@ one.
 
 ---
 
+## Configuration and defaults
+
+Every number in this document is a **default, not a constant** — and every
+number that appears in a tool *description* is rendered from the same
+config value the code enforces, so the prose cannot drift from the
+behaviour. Crush is the precedent worth copying literally: its tool
+descriptions are Go templates (`view.md.tpl`: "…default
+`{{ .DefaultReadLimit }}`, max `{{ .MaxViewSizeKB }}`KB…") evaluated
+against the real constants. Claude Code composes its `Read` description
+the same way, from limits resolved at startup.
+
+The defaults below are opinionated. Where the field converged, the
+convergent value wins; where it didn't, the value is chosen and the
+reasoning stated, because "make it configurable" is not a decision and a
+deployment that has to pick eleven numbers before it can start has been
+handed a problem rather than a design.
+
+### Tunables
+
+| Key | Default | Why this value |
+|---|---|---|
+| `read.default_lines` | 2000 | Claude Code, OpenCode and Cline independently converged on 2000; Crush's 200 is the outlier and reflects an interactive UI where a human scrolls, not an unsupervised run that pays a turn per re-read |
+| `read.max_line_chars` | 2000 | Universal across every source read. Minified and generated files are the target; a legitimate source line never approaches it |
+| `read.max_entries` | 20 | New here — no source has a batch read to cap. Past ~20 files the model is fanning out rather than reading, which is what `List`/`Grep` are for, and a 200-entry call would blow the call budget before the first file finished |
+| `read.call_budget_chars` | 80,000 (≈20k tokens) | A batch should not cost more than one large single read. Claude Code caps a single read at 25,000 tokens; Cline caps at 48,000 chars per read. This sits between them and is measured in characters deliberately — a real tokenizer call per read is a round trip the gate does not justify |
+| `read.file_size_gate_bytes` | 262,144 (256 KB) | Claude Code's value. This is the *explicit-request* gate: past it a read errors instead of truncating, per the implementation contract |
+| `list.default_depth` | 3 | Deep enough that one call shows a typical `src/<area>/<file>` layout, shallow enough that a monorepo root doesn't blow the entry cap. Below 3, the first call is almost always followed by a second |
+| `list.max_entries` | 200 | Roughly the point at which a tree stops being an orientation aid and becomes something to search instead. Crush caps its `ls` similarly (its own value is templated into its description, so the model always knows) |
+| `list.line_counts` | on | The counts are what make the tree an input to the whole-file-vs-range decision `Read` asks for. Goose keeps exactly this in a five-tool surface |
+| `list.line_count_max_bytes` | 1,048,576 (1 MB) | Counting lines means reading the file. Above this, show `-` rather than pay the IO |
+| `list.line_count_max_entries` | 500 | If a listing has more entries than this, counts are dropped wholesale with a `!` note. A 5,000-file listing should not trigger 5,000 file reads for a number nobody will read |
+| `grep.head_limit` | 250 | Claude Code's default. Gemini CLI's 100 is stated in its description too; 250 is the more generous of two converged-on values and pages cleanly with `offset` |
+| `grep.max_line_chars` | 2000 | Same reasoning as `read.max_line_chars`, and the same value so the model only learns one number |
+| `grep.context_before` / `grep.context_after` | 0 | Context is cheap to ask for and expensive to receive by default; ripgrep's own default is 0 |
+| `bash.timeout_ms` | 120,000 (max 600,000) | Already in the Bash schema; matches the field's common shape |
+| `bash.output_cap_chars` | 30,000 | OpenHands's `MAX_CMD_OUTPUT_SIZE` exactly; Cline's 48,000 is the nearest neighbour. Head and tail are kept, the middle is elided, and the full output always spills to scratch |
+| `spill_threshold_chars` | 30,000 | Any tool result past this is written to scratch and previewed, per the implementation contract — except `Read`, which is exempt because spilling a read to a file the model then reads back is circular |
+| `tolerance.enabled` | on | The alternate-forms table above is data, so a deployment can prune it; turning tolerance off entirely is available and is the wrong default, per the decision log |
+
+Two derived rules the harness validates at startup, rather than trusting
+the config: `read.call_budget_chars` must exceed what a single
+`read.default_lines` read can produce, or a one-file batch would truncate
+for no reason; and no cap may be set to zero, which would make a tool
+silently return nothing. Claude Code validates each of its limit fields
+individually and falls back to the hardcoded default on anything invalid,
+with a comment noting there is deliberately "no route to cap=0" — the same
+posture applies here.
+
+### Precedence
+
+Built-in default → model-family profile → deployment config → per-run
+override, each layer setting only what it means to change. The per-run
+layer exists because run shapes genuinely differ (a review run reading
+around a large diff wants more read budget than a small `plan` run), but
+**it does not appear in the task envelope**: Forge learns the effective
+limits the way it learns everything else about a tool — from the
+description text rendered for this run, and from the footers on results
+that hit a cap. There is no configuration the model reads and reasons
+about, which keeps `formats.md` §1 unchanged and keeps the model from
+negotiating with its own limits.
+
+### What is deliberately *not* configurable
+
+Being opinionated cuts both ways. These are contracts other things depend
+on, and a deployment that could flip them would produce combinations no
+one has tested:
+
+- **The `cat -n` prefix format** (`<decimal><TAB>`) — `Edit`'s matching
+  rule is written against it, so a deployment that "just" padded line
+  numbers would break editing.
+- **The block framing and escaping invariants** (`formats.md` §8a),
+  including line-ending normalisation on read and restoration on write.
+- **The per-entry status vocabulary**, request-order blocks, and
+  partial-failure-never-fails-the-call.
+- **Caps must self-describe** — a deployment may change *what* the limit
+  is, never whether the result says it was hit and how to continue.
+- **Read-before-edit**, and the git-write blocklist.
+
+The line between the two lists is exactly the model channel versus the
+harness channel: numbers are facts the model is told at the moment they
+matter, so they can vary; formats are contracts it was trained on across a
+whole run, so they cannot.
+
+---
+
 ## Read
 
 > Reads one or more files from the working tree. Paths are absolute, or
@@ -296,10 +387,11 @@ one.
 >   a reasonable size — a partial read that misses the relevant section
 >   costs more than the extra tokens would have. Use ranges when you have
 >   a specific line to land on, or when the file is genuinely large.
-> - Each file returns up to 2000 lines by default, and one call has an
->   overall size budget across all of its entries — so a batch of twenty
->   large files will come back partly elided even though no single entry
->   hit its own cap.
+> - Each file returns up to 2000 lines by default, one call takes up to
+>   20 entries, and the call has an overall size budget across all of
+>   them — so a batch of twenty large files comes back partly elided even
+>   though no single entry hit its own cap. If you want more than twenty
+>   files, you are exploring rather than reading: use List or Grep.
 > - Lines longer than 2000 characters are truncated, and say so in place.
 > - Every capped or elided entry says what it showed, how much exists, and
 >   the exact next call (`showed lines 1-2000 of 8123 — pass start_line:
@@ -587,17 +679,19 @@ canonical-forms table.
 > - `pattern` filters by glob against repository-relative paths
 >   (`"src/**/*.tsx"`, `"**/*parser*"`). Omit it to list everything under
 >   `path`.
-> - `depth` bounds how far the tree descends. The default is shallow on
->   purpose: a whole-repository tree is a large result, and going deeper
->   should be a decision you make after seeing the top of it.
+> - `depth` bounds how far the tree descends; it defaults to 3, which is
+>   deep enough to show a typical `src/<area>/<file>` layout and shallow
+>   enough that a large repository still fits. Going deeper should be a
+>   decision you make after seeing the top of it.
 > - Hidden files, common build/vendor directories, and anything the
 >   repository's ignore rules exclude are skipped unless you set
 >   `include_ignored: true`. Node modules and build output are almost never
 >   what you meant.
-> - Results are capped; `head_limit`/`offset` page through them on the same
->   terms as Grep. When entries are elided, the result says how many, at
->   what depth, and what to pass to see them — narrowing with `path` or
->   `pattern` is usually better than raising the limit.
+> - Results are capped at 200 entries; `head_limit`/`offset` page through
+>   them on the same terms as Grep. When entries are elided, the result
+>   says how many, at what depth, and what to pass to see them —
+>   narrowing with `path` or `pattern` is usually better than raising the
+>   limit.
 
 ```json
 {
