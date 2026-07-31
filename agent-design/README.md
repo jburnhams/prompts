@@ -190,7 +190,9 @@ implementing v1 itself.
 3. `formats.md` — the wire formats that connect a task to Forge and
    Forge's output back out: the context envelope, the completion
    schema, the review-finding schema, the `AskUser` suspend/resume
-   protocol, and the run-bounding contract.
+   protocol, the run-bounding contract, and (§8) the byte-level shape
+   of every tool result — including how a multi-file, multi-range
+   `Read` delimits its blocks without escaping anything.
 4. `review.md` — the review entrypoint's payloads in full depth: the
    diff-construction algorithm, the comment-thread model (including
    stale threads' then/now rendering), the exact finder/validator

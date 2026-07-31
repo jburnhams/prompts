@@ -576,3 +576,289 @@ A run killed by infrastructure failure (crash, timeout at a layer below
 the harness) is the one case with no `Complete` — the harness itself
 posts the failure note to the originating ticket/PR, so silence still
 never reaches the person waiting.
+
+---
+
+## 8. Tool result formats
+
+`tools.md` specifies what a tool call looks like going in, and states the
+policies every result obeys (text for prose, named fields for facts;
+self-describing caps; errors as instructions). This section is the exact
+byte-level shape coming back, because "one block per file" is not a
+specification — a multi-file, multi-range result has to answer where each
+block starts and ends, what happens when file content looks like a block
+delimiter, and how a partial failure is reported without discarding the
+successes.
+
+These are harness-side formats. They are not in any tool's `description`
+field beyond the summaries already in `tools.md`; the model learns them by
+seeing them, which is only safe because they are unambiguous by
+construction.
+
+### 8a. Rules common to every tool result
+
+**Payload lines must be distinguishable from structural lines, and the
+mechanism differs by payload — deliberately.** Content is never escaped
+where escaping would break something; each block type instead carries an
+invariant that makes its payload lines unmistakable:
+
+| Block payload | Invariant | Why this one |
+|---|---|---|
+| File content (`<file>`) | every payload line starts with `<decimal><TAB>` | `Edit` matches file bytes exactly, so the bytes cannot be altered; the prefix is already there for citation and paging, and doubles as the frame |
+| Path listings (`<tree>`, `<paths>`) | every payload line starts with at least one space | paths are re-used as tool inputs, so they must survive verbatim; indentation is free and a leading space is not part of any path the harness emits |
+| Match lines (`<matches>`) | payload is ripgrep's own `path:line:text`; notes appear only at the end of the block, immediately before the close | inherited format the model already knows, and match text is never byte-matched by another tool, so position is a sufficient separator |
+| Command output (`<bash>`) | payload is verbatim **except** that a line equal to the closing delimiter is prefixed with a space | nothing byte-matches command output, so minimally escaping one exact token costs nothing — this is the only place any escaping happens at all |
+
+So, for file content specifically: **every content line is prefixed with
+its 1-indexed line number followed by a single tab**, including blank
+lines, which appear as a number, a tab, and nothing else. A file
+containing `</file>` renders as `73\t</file>` and cannot be confused with
+the block close. **No file content is ever escaped, re-encoded, or
+quoted** — that is what preserves `Edit`'s byte-exact match contract, and
+it is why the delimiter question is settled by the prefix rather than by
+inventing a delimiter no file would contain (there is no such delimiter).
+
+Formally, inside a `<file>` block each line matches exactly one of:
+
+```
+<digits> TAB <the file's line, verbatim>     a content line
+"!" SP <text>                                a harness note
+"</file>"                                    the block close
+```
+
+**The prefix format is `<decimal><TAB>`, unpadded.** Not right-aligned,
+not `N | ` (Cline), not `N: ` (OpenCode). Only the *first* tab on a line
+is structural; the file's own tabs follow it untouched. This is the format
+`Read`'s and `Edit`'s descriptions both describe, and the two must change
+together.
+
+A harness note (`!` at column 0) can only be confused with payload in the
+`<bash>` case, where output may legitimately contain such a line. That is
+tolerable there and nowhere else: `<bash>` notes appear only after the
+final output line and immediately before `</bash>`, and no tool consumes
+command output as an exact-match input.
+
+**Attributes carry facts.** Block headers are XML-style tags whose
+attributes hold the fact-shaped payload (paths, ranges, totals, statuses,
+exit codes). Attribute values are XML-escaped (`&` → `&amp;`, `"` →
+`&quot;`, `<` → `&lt;`), which matters only for the rare path containing a
+quote. Attribute escaping never touches block *content*.
+
+**Paths are repository-relative** wherever the file is inside the working
+tree, and absolute otherwise. The path echoed back is the *resolved* one,
+not the string the model passed, so a call that was normalised (a
+`file_path` alias, a relative path, a trailing space) shows the model what
+was actually read.
+
+**Text is UTF-8, with line endings normalised to `\n`.** A file stored
+with CRLF is displayed without the `\r`, and `Edit`/`Write` restore the
+file's original ending on the way back out — so the model never has to
+emit or match a `\r`. (Gemini CLI does exactly this: it detects the
+original file's line ending on write and converts the model's `\n`
+content back before saving.) A file that is not valid UTF-8 is reported
+with status `not_utf8` and no content, because a lossy rendering would
+break `Edit`'s match contract silently.
+
+**Every truncation states what was cut and the exact next call**, per
+`tools.md`. Those notes are `!` lines, so they are visible to the model
+and unambiguous to a parser.
+
+### 8b. `Read`
+
+```
+<files count="4" ok="2" truncated="1" failed="1">
+<file path="src/parser/index.ts" lines="1-42" total="42" status="ok">
+1	import { Token } from "./lexer"
+2	
+3	export function parse(tokens: Token[]) {
+...
+42	}
+</file>
+<file path="src/parser/lexer.ts" lines="120-180" total="1841" status="ok">
+120	  while (pos < src.length) {
+...
+180	  }
+</file>
+<file path="src/big-generated.ts" lines="1-2000" total="18422" status="truncated">
+1	// AUTO-GENERATED
+...
+2000	  "z": 1,
+! Showed lines 1-2000 of 18422. Pass start_line: 2001 to continue, or narrow with Grep.
+</file>
+<file path="src/parsr/index.ts" status="not_found">
+! No such file. Did you mean src/parser/index.ts?
+</file>
+</files>
+```
+
+Rules:
+
+- **The `<files>` wrapper is always present**, including for a
+  single-entry read, so the shape never varies with the call. Its
+  attributes are counts only: `count` (entries requested), and however
+  many of `ok`/`truncated`/`failed` are non-zero.
+- **One `<file>` block per requested entry, in request order**, whatever
+  each entry's outcome. The model can always match its Nth request to the
+  Nth block. Two entries naming the same path (e.g. two different ranges)
+  produce two blocks; an exact duplicate `(path, start_line, end_line)`
+  produces one block plus a `!` note saying it was requested twice.
+- `lines` is the inclusive range actually returned; `total` is the file's
+  full line count. `lines` is omitted when no content is returned.
+  Line numbers are the file's own, so a ranged read starts at
+  `start_line`, not at 1 — which is what makes a range citable and
+  `Edit`-safe without re-reading from the top.
+- **`status` vocabulary**: `ok`, `truncated` (a cap applied — the note
+  gives the continuation), `empty` (zero-byte or whitespace-only file),
+  `past_eof` (`start_line` beyond the file's length; the note gives
+  `total`), `not_found` (with a did-you-mean when one is computable),
+  `is_directory` (the note says to use `List`), `binary` (with the byte
+  size; no content), `not_utf8`, `too_large` (the file exceeds the
+  hard byte ceiling even for a ranged read), and `unreadable`
+  (permissions or I/O error, with the reason).
+- **A failed entry never fails the call.** The tool returns an error only
+  when *every* entry failed, and then the error text is the same set of
+  `!` notes so nothing is lost.
+- Blocks with a non-`ok` status carry `!` notes and no content lines.
+- **Batch budget.** Per-entry caps apply first (2000 lines by default,
+  or the requested range). If the assembled result would still exceed the
+  call's overall size budget, the harness truncates whole entries from the
+  end — never the middle of a file — sets their status to `truncated`,
+  and adds a `!` note *inside each affected block* plus a summary note
+  before `</files>`: `! 2 of 6 files were shortened to fit this call's
+  size budget — re-read them individually or with ranges.` Entries are
+  never silently dropped: a block exists for every request.
+- **Nearby project conventions** discovered for any file in the batch are
+  appended once, after `</files>`, inside a single `<system-reminder>`
+  block naming which paths they came from — not repeated per file.
+
+### 8c. `List`
+
+Tree mode (the default). The number after each file is its line count;
+`-` means binary or unreadable:
+
+```
+<tree path="src" depth="2" entries="41" shown="38">
+  src/
+    parser/
+      index.ts        42
+      lexer.ts      1841
+    util/
+      fs.ts          210
+      logo.png         -
+    legacy/
+! 3 entries below depth 2 not shown under src/legacy — pass depth: 3, or path: "src/legacy".
+</tree>
+```
+
+Paths mode:
+
+```
+<paths count="3" sort="mtime" pattern="src/**/*.ts">
+  src/parser/lexer.ts
+  src/parser/index.ts
+  src/util/fs.ts
+</paths>
+```
+
+Rules:
+
+- **Every entry line begins with at least one space** — two per tree
+  level, and two flat in paths mode. That is the invariant from §8a: a
+  line starting at column 0 inside these blocks is structure (`!` note or
+  closing tag), never a path. It matters because filenames beginning with
+  `!` or `<` are legal, and paths from these blocks get fed straight back
+  into `Read` and `Grep`.
+- Directories carry a trailing `/`. Tree mode sorts directories first,
+  then alphabetically; paths mode sorts most-recently-modified first
+  (`sort` says which).
+- The number after a file in tree mode is its line count; `-` means
+  binary, unreadable, or over the size at which counting isn't worth the
+  IO. Nothing is counted that wouldn't be readable.
+- `entries` is how many exist under the constraints given, `shown` how
+  many are printed; when they differ a `!` note says why and what to pass
+  (a deeper `depth`, a narrower `path`, an `offset`).
+- An empty result is a block with `entries="0"` and a `!` note saying
+  nothing matched and what to widen — never an empty block, and never a
+  bare "no results".
+
+### 8d. `Grep`
+
+Ripgrep's own output conventions, so the format is already familiar:
+
+```
+<matches mode="content" files="2" matches="3" shown="3">
+src/parser/index.ts:17:  const tokens = lex(src)
+src/parser/index.ts:41:  return parse(tokens)
+src/parser/lexer.ts:220:export function lex(src: string) {
+</matches>
+```
+
+`mode="files_with_matches"` prints one path per line; `mode="count"`
+prints `path:count`. In content mode, context lines requested with
+`context_before`/`context_after` use `path-line-text` — a hyphen instead
+of the second colon, ripgrep's own convention for distinguishing context
+from matches — and `--` on its own line separates non-adjacent context
+groups, also as ripgrep does. Matched content is printed verbatim on one
+line: a match inside a very long line is cut at 2000 characters with a
+trailing `[line truncated]` marker rather than wrapped, so the
+`path:line:` prefix always starts a line. `shown` versus `matches` drives
+the `head_limit`/`offset` continuation note.
+
+The `path:line:text` form is ripgrep's, inherited rather than invented,
+and it inherits ripgrep's one ambiguity too: a path containing a colon
+makes the split positional rather than exact. This is accepted — the same
+tradeoff every `grep`-shaped tool in the field makes — because match lines
+are read, not parsed, and because the alternative (quoting paths) would
+diverge from the format the model already knows. For the same reason,
+harness notes in this block are placed only at the end, immediately
+before `</matches>`, rather than relying on `!` being distinguishable
+from a path that starts with `!`.
+
+### 8e. `Bash`
+
+```
+<bash exit="1" duration_ms="4210" truncated="false">
+$ npm test -- parser
+
+FAIL src/parser/index.test.ts
+  ● parse() handles empty input
+    Expected: []
+    Received: undefined
+</bash>
+```
+
+Rules:
+
+- **stdout and stderr are interleaved in the order the process wrote
+  them**, as a terminal would show, because causality between the two is
+  what makes test and build output readable. A command that needs them
+  separated redirects explicitly. `exit` is always present and is the
+  only thing that decides success — output on stderr with `exit="0"` is a
+  success.
+- The command is echoed as the first line, prefixed `$ `, so the block is
+  self-describing when re-read later out of context.
+- Output is verbatim, with exactly one exception, and it is the only
+  escaping anywhere in these formats: **a line whose entire content is
+  `</bash>` is emitted with a leading space.** Command output can contain
+  anything, including this design's own delimiters, and unlike file
+  content it is never byte-matched by another tool — so a one-token,
+  one-space escape is free here where it would be unacceptable in a
+  `<file>` block. Harness notes (`! …`) appear only after the last output
+  line, immediately before the close; a line of output that happens to
+  start with `!` is therefore ambiguous only in position, not in
+  consequence.
+- When output exceeds the cap, the head and tail are kept and the middle
+  is elided with a `! … N lines elided …` note (never the head or tail,
+  per `tools.md`'s edge rule), `truncated="true"` is set, and a `log`
+  attribute carries the scratch-directory path holding the full output.
+- Background commands return immediately with `exit` absent, a
+  `pid` attribute, and the `log` path — the mechanism `tools.md`'s Bash
+  description already describes.
+
+### 8f. Errors
+
+A tool that fails entirely returns an error result whose text is a `!`
+note in the same voice: what happened, what to do, and a suggestion when
+one is computable. It carries no partial content. The exception is
+`Read`, whose per-entry failures are reported in-band (§8b) precisely so
+that one bad path doesn't discard three good files.

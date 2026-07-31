@@ -93,6 +93,17 @@ running through every mature harness's source, adopted here as a single
 contract rather than restated per tool. Its §12 checklist is the source for
 each rule; only the deviations are argued again below.
 
+The rules here are policy. The exact byte-level shape of every result —
+block delimiters, the line-number prefix, status vocabulary, how a
+partially-failed batch renders, how truncation notes are marked — is
+specified in [`formats.md`](./formats.md) §8, which this section assumes
+throughout. The one rule worth stating in both places, because everything
+else depends on it: **inside a block carrying file content, every content
+line is prefixed with its line number and a tab, and no structural line
+ever starts with a digit.** That invariant is why no content ever needs
+escaping, and why a file containing something that looks like a delimiter
+cannot break the frame.
+
 **Three channels per tool.** Every tool produces three things, and they are
 built separately: the **model result** (text, per the format policy below),
 the **harness record** (a typed object: what changed, what was truncated,
@@ -455,9 +466,12 @@ canonical-forms table.
 >   and you only want a slice of it, filter in the command itself
 >   (`| tail -50`, `| grep …`) rather than spending a Read on it.
 >   Never redirect command output into the repository working tree.
-> - The result reports the exit code as a named field, and keeps stdout
->   and stderr distinguishable — a command that prints to stderr and
->   exits 0 succeeded.
+> - The result echoes the command, reports the exit code as a named
+>   field, and interleaves stdout and stderr in the order the process
+>   wrote them, the way a terminal would. A command that prints to
+>   stderr and exits 0 succeeded; check the exit code, not the presence
+>   of output. Redirect explicitly (`2>/dev/null`, `2>&1 | tee`) if you
+>   need the streams separated.
 > - Before a command that creates a new directory or file, confirm the
 >   parent exists (List or a quick `ls`) rather than assuming.
 >

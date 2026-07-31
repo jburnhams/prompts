@@ -516,7 +516,52 @@ UUIDs/MIME types in favour of names, and offer a verbosity control. Their
 worked example is a `response_format` enum (`concise` | `detailed`) where
 concise cost **72 tokens vs 206** for the same Slack result.
 
-### 5b. The dual-channel result is the actual best practice
+### 5b. Delimiters and escaping in multi-part results
+
+Once a result carries more than one file, three questions appear that a
+single-file tool never has to answer: where does each part start and end,
+what happens when file content *looks* like the delimiter, and how is a
+partial failure reported. The field's answers are thinner than you'd hope:
+
+- **Gemini CLI's `read_many_files`** concatenates with
+  `--- {filePath} ---` before each file and a `--- End of content ---`
+  terminator (the matching opener, `--- Content from referenced files ---`,
+  is a shared constant used when files are injected as context). Content
+  is **not** line-numbered and **not** escaped, so a file that itself
+  contains a `--- something ---` line is genuinely ambiguous. Images and
+  PDFs are pushed as separate parts with no separator at all. Most
+  significant: files that were skipped or failed are itemised in
+  `returnDisplay` — the *UI* channel — while the model's `llmContent`
+  carries only the successes, with a catch-all message reaching it only
+  when *every* file was skipped. The model can therefore ask for six files,
+  receive four, and not be told.
+- **Cline** labels each read `path:start-end` (`formatReadFileQuery`),
+  prefixes content lines with a right-padded number and a pipe
+  (`  17 | const x = 1`), marks over-long lines with a trailing
+  `[line truncated]`, and closes with `[Showing lines X-Y of N…]`. Each
+  file in a batch is its own operation result with its own success/failure,
+  so a partial failure survives.
+- **OpenCode** wraps a single read in `<path>`/`<type>`/`<content>` tags
+  with `N: `-prefixed content — the only tag-framed file result in the
+  sources read, and unambiguous for the same reason described below.
+
+**Nobody escapes file content, and nobody should.** Escaping is what would
+break the byte-exact match that every `str_replace`-family edit tool
+depends on (§4a). The way out is already present in most of these formats
+without being stated as its purpose: **line-number prefixes are the
+escaping mechanism.** If every content line begins with `<number><TAB>` —
+blank lines included — then no line of file content can be mistaken for a
+delimiter, because delimiters don't start with digits. The formats that
+number lines are safe by construction; the one that doesn't
+(`read_many_files`) is the one with a real collision.
+
+The other detail worth copying is **line endings**: Gemini CLI detects the
+original file's ending on write and converts the model's `\n` content back
+to `\r\n` when the file was CRLF. Normalise on read, restore on write —
+otherwise "byte-exact" is a lie on any Windows checkout, and the model
+spends turns trying to match invisible `\r`s.
+
+### 5c. The dual-channel result is the actual best practice
 
 Combining §1 and §5a, the pattern to copy is:
 
@@ -754,7 +799,7 @@ MCP is where "someone else's tools" arrive, and it inverts several defaults:
   — the command-enum pattern of §2b, applied to an API surface with dozens
   of endpoints.
 - **`structuredContent` + `outputSchema`** give MCP tools the dual-channel
-  result of §5b natively, with the compatibility rule that structured
+  result of §5c natively, with the compatibility rule that structured
   results should *also* be serialised into a text block.
 
 ---
