@@ -1304,6 +1304,43 @@ the simple version measurably falls short.
   change to how the harness flushes `AddComment` calls, not to the
   tool surface Forge sees — but the two platforms genuinely diverge
   here, the one place the peer-platform abstraction leaks.
+- **A model-family fork of the edit format**, if Forge is ever
+  deployed on a GPT/Codex-family model. V1 ships one `Edit`
+  (`old_string`/`new_string`) because it targets one model family and
+  that format needs no worked example to teach
+  (`coding-agent-approaches.md` §5). The field's position is now
+  sharper than "pick the best format": Cline's SDK routes by model —
+  `apply_patch` enabled and the string-replace editor *disabled* for
+  `openai-native` providers and any model id containing `codex`/`gpt`,
+  the reverse otherwise — and Codex ships `apply_patch` as a
+  grammar-constrained freeform tool whose description says "do not wrap
+  the patch in JSON" (`agent-tool-implementations.md` §3b). So the
+  upgrade is not a replacement but a second declaration of the same
+  capability, selected at wiring time; `tools.md`'s implementation
+  contract already states that the tool set is per-model configuration.
+- **Deferred tool loading behind a search tool**, if the surface grows
+  past roughly twenty tools or starts carrying MCP servers. V1's eleven
+  tools are cheap enough to send in full every turn, and a search
+  round-trip would cost more than it saves. Both leading CLIs have
+  built the upgrade (Claude Code's `ToolSearch` with per-tool
+  `searchHint`/`shouldDefer`/`alwaysLoad`, defaulting MCP tools to
+  deferred; Codex's BM25 `tool_search`), and Anthropic's published
+  figure for the extreme case — 150,000 → 2,000 tokens of tool
+  definitions — is what makes it worth having *if* the surface earns
+  it. The design consequence to preserve until then: keep each tool's
+  description independently intelligible, since deferral means the
+  model may see it without its neighbours.
+- **An `Lsp` tool**, if `Grep`-driven navigation turns out to be the
+  bottleneck on unfamiliar codebases. The shape question is already
+  answered by three implementations of the same capability at three
+  granularities (`agent-tool-implementations.md` §2b): Crush ships
+  eight `lsp_*` tools, Zed five, OpenCode **one** with a nine-value
+  `operation` enum over a shared `filePath`/`line`/`character` triple.
+  OpenCode's is the shape to copy here — every operation is read-only
+  with the same result shape, so by this design's own splitting rule
+  (`tools.md`, implementation contract) they belong in one tool. The
+  cost is a language-server lifecycle the harness doesn't currently
+  own, which is why it isn't in v1.
 - **Structural write protection for the project-conventions file**, if
   the post-run flag on conventions-file diffs (`formats.md` §3a) ever
   actually fires on a non-conventions ticket. The upgrade is Roo
