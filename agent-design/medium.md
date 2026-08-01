@@ -461,6 +461,7 @@ picking one, per the errors-are-instructions rule.
     "properties": {
       "type": { "type": "string", "description": "Fully-qualified type name, or a simple name to resolve (e.g. \"com.fasterxml.jackson.databind.ObjectMapper\" or \"ObjectMapper\")." },
       "member": { "type": "string", "description": "Optional: restrict to one method or field name. All overloads are returned." },
+      "likely_artifacts": { "type": "array", "items": { "type": "string" }, "description": "Optional hint: artifacts you believe provide this type, e.g. [\"com.fasterxml.jackson.core:jackson-databind\"]. Searched first, but never exclusively — if the type actually comes from somewhere else, the result says so." },
       "include": { "type": "array", "items": { "type": "string", "enum": ["members", "docs", "hierarchy", "annotations", "origin"] }, "description": "Defaults to members, docs and origin." },
       "head_limit": { "type": "integer", "description": "Cap the number of members returned. Defaults to the configured cap." }
     },
@@ -513,97 +514,120 @@ search, where the top result is for whatever version ranks highest.
   dependency is not available to main code. The result must name the
   module and scope it resolved against rather than implying one global
   answer.
-- **Try the language server first.** If the `Lsp` escalation entry (§7)
-  is built, hover plus workspace-symbol search over an indexed classpath
-  answers questions 1 and 2 with no artifact plumbing at all — a JVM
-  language server has already done this resolution. What it does *not*
-  give is questions 3 and 4, the dependency path and the not-yet-a-
-  dependency case, which are the two this tool exists for. Sequence the
-  evaluation that way: measure how much of the need the language server
-  covers before building the resolver. But see the next block: "language
-  server" is the wrong shape for most of this design's runs.
+- **Weigh it against a language server.** If the `Lsp` escalation entry
+  (§7) is built, hover plus workspace-symbol search over an indexed
+  classpath answers questions 1 and 2 — a JVM language server has already
+  done this resolution. What it does *not* give is questions 3 and 4, the
+  dependency path and the not-yet-a-dependency case, which are the two
+  this tool exists for. It also costs a language-server lifecycle per
+  container, where the next block's approach costs a script and a cache.
+  Measure before choosing; they are not mutually exclusive.
 
-#### Where the intelligence comes from, without standing up a JVM per run
+#### Where the analysis runs
 
-"Use a language server" is easy to say and awkward to deploy here,
-because a JVM language server needs a checkout, a resolved build
-(dependency downloads included), a long-lived process with a few hundred
-MB of heap, and tens of seconds to minutes of indexing before its first
-useful answer. Several run shapes in this design have none of that
-available: review runs work from a diff and a working tree, the
-learnings run (§6) deliberately has no filesystem at all, and any run
-that only holds a *ref* to some other project has nothing to index.
+Coding runs have a container, a checked-out workspace, and full `Bash`.
+That collapses most of this: the resolution is **local**, the jars are
+already in the build's own cache after a build, and the tool is a thin
+wrapper over commands the agent could in principle run itself.
 
-Two constraints get conflated under "don't load it in a JVM," and they
-have different answers:
+That "in principle" is the whole argument for making it a tool rather
+than leaving it to `Bash`. Doing this by hand is a six-step recipe —
+resolve the classpath, find the jar, list its entries, extract, read
+signatures, format — and the agent pays a turn per step, re-derives the
+recipe slightly differently every time, and gets no caching. The tool
+collapses it to one call with a stable output shape. It is the same
+dedicated-tool-versus-shell trade `agent-tool-implementations.md` §2c
+lays out, and here the deciding factor is caching: the same lookups
+recur constantly within a run and across runs on the same repo.
 
-- **Don't execute the target's code.** Already settled: static class-file
-  reading only, never classloading. This says nothing about whether a
-  JVM process exists — ours can be one; the target's classes just never
-  get initialised in it.
-- **Don't stand up a build and a language server per project, per ref,
-  per run.** This is the real constraint, and the answer is to **split
-  index production from index querying**.
+The implementation follows from that: **a script in the container image,
+plus a cache, plus a stable output format** — not a service.
 
-Producing code intelligence needs the JVM, the build, and the network.
-Querying it needs none of them. LSP is a *live protocol* — a running
-server answering questions about an open workspace — which is exactly the
-shape this design can't afford. The serialized-index shape is the fit:
-SCIP (Sourcegraph's Code Intelligence Protocol, the successor to LSIF) is
-a language-agnostic index emitted by a per-language indexer, with
-`scip-java` covering Java, Scala and Kotlin across Maven, Gradle and
-Bazel. An index is a file; answering from it is a lookup.
+**Lookup order**, and the four answers must stay distinguishable because
+they lead to different actions:
 
-So: **produce the index where the build already happens — CI — and let
-the agent query it.** The two index kinds have very different lifetimes,
-and that difference is where the cost goes away:
+1. **The workspace's own source** — the type is in this repo. Name the
+   module.
+2. **On this module's resolved classpath** — name the artifact, version,
+   and whether it is direct or transitive.
+3. **Present in the local artifact cache but *not* on this module's
+   classpath** — a different module's dependency, or a different scope.
+   The honest answer is "exists, but you cannot call it from here," which
+   is a different fact from either of the above.
+4. **Not present locally at all** — not a dependency. Optionally
+   resolvable to a coordinate through a registry class-name search
+   (`fc:`), and if so the answer is a *proposal* feeding §4a, not a
+   capability.
 
-| Index | Key | Lifetime | Who builds it |
-|---|---|---|---|
-| Project | `repo@ref` | one per indexed commit | CI, as a build by-product |
-| Dependency | `group:artifact:version` | **immutable — built once, ever** | on demand, cached org-wide |
+**Caching, in three layers keyed by what actually changes:**
 
-The second row is the leverage: a released artifact never changes, so
-`jackson-databind:2.17.1` is indexed once and reused by every project and
-every run in the organisation, forever. The expensive part amortises to
-approximately zero.
+| Layer | Key | Invalidated by |
+|---|---|---|
+| Resolved classpath / dependency tree per module | hash of the build files (`pom.xml`, `build.gradle`, lockfiles) | the agent editing a build file — which it does, so this must be checked, not assumed |
+| class → jar index | hash of the resolved classpath | the layer above changing |
+| Per-jar class list, and per-class signatures | the **jar's own checksum** | never — a released artifact is immutable |
 
-**Two files CI should emit alongside the index**, because they are pure
-by-products of a build that already ran and they answer questions 2 and 3
-outright: the resolved classpath (`dependency:build-classpath` output or
-the Gradle equivalent) and the dependency tree. The build already knows
-everything the resolver above is trying to rediscover; capturing it is
-cheaper than recomputing it.
+The bottom row is the same immutability leverage as a shared index
+service, obtained locally and for free: a per-checksum cache can live in
+the container image or on a mounted volume and be reused by every run
+and every project that touches the same artifact.
 
-**Degradation order when there is no index** — which is the honest state
-of the world on day one:
+**Resolve at container start, not on first call.** The harness already
+checks out the target branch before the run begins; resolving the
+classpath there too means the first `DescribeType` call is a cache hit
+rather than a multi-minute cold Maven resolution. Better still, bake the
+dependency cache into the image (a `go-offline`-style pre-fetch), so the
+common case needs no network at all. A tool whose first invocation costs
+minutes will be avoided by the model — or worse, called speculatively in
+parallel — so this is a real design constraint, not an optimisation.
 
-1. Index for this exact ref — best, and the only path that answers
-   references and implementations.
-2. Index for a nearby ancestor ref, **labelled stale**, with the ref it
-   actually came from named. Never answer from a different ref silently;
-   same provenance rule as the docs tiers.
-3. No index: static parse for declarations (a source parser for the
-   repo's own files, class-file reading for artifacts). Gets signatures
-   and structure with no build and no server; loses cross-file resolution.
-4. Nothing available: say so, naming the ref or coordinate that was
-   tried.
+**The model's dependency guesses are a hint, never an authority.** It is
+tempting to let the call carry the dependencies to look in, since the
+model often has a good idea ("this is probably Jackson"). Accept it — as
+an *ordering* input that puts likely jars first in the search, never as a
+restriction on where to look. Two reasons: the model cannot know the
+transitive set (that is the premise of this whole entry), and its version
+guess will drift from what the build resolved. Taking the hint as
+authority would also destroy the entry's most useful output — the
+correction. "You assumed `jackson-databind`; this type comes from
+`jackson-core:2.17.1`, pulled in transitively via
+`spring-boot-starter-json`" is exactly the kind of finding that stops a
+wrong implementation in its first minute rather than at review.
 
-**The correctness trap to design against**: an index describes *committed*
-state at a ref, and a coding run's working tree diverges from it the
-moment the agent edits a file. Index-derived answers about a file this
-run has modified are wrong in the most confusing possible way. The rule:
-the working tree wins for any path the run has touched, and the tool says
-which source it answered from. This is the same reason `formats.md` §8
-labels provenance rather than presenting one undifferentiated answer.
+**Brute force is the backstop, and it is cheap.** If the class is not in
+the resolved classpath index, scan every jar in the local artifact cache.
+Reading a jar's central directory does not decompress it, so a few
+thousand jars is seconds, parallelised — and the per-checksum cache makes
+the second scan free. That is what makes step 3 above answerable at all.
 
-None of this reaches the tool schema. `DescribeType` takes a type and
-optionally a scope; whether that resolved through a warm index, a
-bytecode read, or a live language server in a container that happened to
-have one is the harness's business — visible to the model only as the
-provenance label, which it needs in order to judge how much to trust the
-answer. Same harness-owns-the-mapping principle `SearchSource` and
-`AddComment` already follow.
+**Runs without a workspace** — the review pipeline reading around a diff,
+the learnings run (§6), or any question about a *ref* to a project that
+was never checked out — cannot do any of the above, because there is no
+container with that project built in it. For those, the only options are
+a precomputed index (SCIP, the successor to LSIF, with `scip-java`
+covering Java/Scala/Kotlin over Maven/Gradle/Bazel) produced where the
+build already happens, or degraded static parsing of fetched files. Two
+build by-products are worth having CI publish for this reason alone: the
+resolved classpath and the dependency tree, which answer questions 2 and
+3 with no build at query time. Treat that as a later tier, not a
+prerequisite — the in-container path above covers coding runs, which is
+where the need actually is.
+
+**The correctness trap, wherever the answer came from**: an index or a
+cached classpath describes a *committed* state, and a coding run's
+working tree diverges from it the moment the agent edits a file.
+Index-derived answers about a file this run has modified are wrong in the
+most confusing possible way. The working tree wins for any path the run
+has touched, and every answer names the source it came from — the same
+provenance discipline `formats.md` §8 applies to everything else.
+
+None of this reaches the tool schema. `DescribeType` takes a type, an
+optional member, and an optional hint; whether the answer came from
+workspace source, a warm classpath index, a raw jar scan, or a
+precomputed index is the harness's business, surfaced to the model only
+as the provenance label it needs in order to judge the answer. Same
+harness-owns-the-mapping principle `SearchSource` and `AddComment`
+already follow.
 
 ---
 
@@ -1608,13 +1632,13 @@ the simple version measurably falls short.
   OpenCode's is the shape to copy here — every operation is read-only
   with the same result shape, so by this design's own splitting rule
   (`tools.md`, implementation contract) they belong in one tool. The
-  cost is a language-server lifecycle the harness doesn't currently
-  own, which is why it isn't in v1 — and the name is slightly wrong for
-  what this design would actually build: §2e-bis argues the backing
-  should be a **precomputed index** produced by CI, not a live server
-  per run, since several run shapes have no workspace to index. The
-  tool surface is the same either way; only the harness's mapping
-  changes.
+  cost is a language-server lifecycle per container, which the harness
+  doesn't currently own — and §2e-bis argues that for the JVM most of
+  the same need is met by a cached in-container script over the build's
+  own resolved classpath, at a fraction of that cost, plus a
+  precomputed index for the run shapes that have no workspace at all.
+  The tool surface is the same whichever backs it; only the harness's
+  mapping changes.
 - **Structural write protection for the project-conventions file**, if
   the post-run flag on conventions-file diffs (`formats.md` §3a) ever
   actually fires on a non-conventions ticket. The upgrade is Roo
