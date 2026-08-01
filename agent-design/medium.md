@@ -376,55 +376,82 @@ Phased on purpose, matching how the need actually arrives:
 
 ---
 
-### 2e-bis. `DescribeType` (dependency API and docs, without the source)
+### 2e-bis. `DescribeType` (what is this class, where does it come from)
 
-**What**: given a fully-qualified type — `com.fasterxml.jackson.databind.ObjectMapper`
-— return its declaration, public member signatures, type hierarchy, and
-the documentation prose attached to them, resolved from the artifact
-that is *actually on this project's classpath*. Optionally scoped to one
-member. A companion to §2e rather than a duplicate of it: `SearchSource`/
-`ReadSource` are file-and-line oriented and answer "show me the code";
-this is symbol oriented and answers "what can I call, and what does it
-promise".
+**What**: the agent has a package and a class name, maybe a method —
+`com.fasterxml.jackson.databind.ObjectMapper`, or just `ObjectMapper`
+lifted from a stack trace. It does **not** know which jar that lives in,
+and on a real project it can't: the class may arrive through a
+dependency three levels down someone else's `spring-boot-starter`. This
+tool answers, in one call: *what is this type, what can I call on it,
+where does it come from, and how did it get onto my classpath*.
 
-**Why it's a real gap, not a nicety**: this collection has **no source
-that retrieves dependency documentation or artifacts at all**. The
-field's entire answer to "what's the signature of this library method"
-is one of three things, and each falls short in a different way:
+The docs are the easy half. The resolution is the tool.
 
-- **LSP tools** — OpenCode's single `lsp` tool (`hover`,
-  `workspaceSymbol`, `documentSymbol`), Crush's eight `lsp_*` tools, Zed's
-  `go_to_definition`/`find_references`, Copilot Chat's
-  `SearchWorkspaceSymbols`. This is the closest analog and, where a
-  language server is running, genuinely covers most of the need: a JVM
-  language server indexes the whole classpath and hovers with Javadoc
-  when sources are attached. The catch is that it needs a *working
-  project* — a resolved build, an indexed workspace, a server process —
-  which a review run or a cold container may not have.
-- **Structured symbol lookups without a language server** — Composio
-  SWE-Kit's `CODE_ANALYSIS_TOOL_GET_CLASS_INFO` / `GET_METHOD_BODY` /
-  `GET_METHOD_SIGNATURE`. The right *shape* (ask about a symbol, get its
-  API back), but scoped to the repository, not its dependencies.
-- **Search the web, or search other people's code** — Crush's
-  `sourcegraph` tool (public-repo search with symbol filters), everyone's
-  `WebFetch`/`WebSearch`. These answer "how do people use this" well and
-  "what is on my classpath" not at all: the docs page found by a search is
-  for whatever version the search engine surfaced, not the version the
-  build resolved.
+**The four questions the harness answers**, in order, stopping at the
+first that resolves:
 
-The only first-party docs tool found anywhere in the collection is Gemini
-CLI's `get_internal_docs`, which lists and reads *its own bundled*
-documentation directory — a precedent for docs-as-a-tool, not for
-third-party API retrieval.
+1. **Is it the project's own code?** Cheap and exact — the working tree
+   is already there, ref-pinned. Answer from source.
+2. **Which artifact on the resolved classpath provides it?** This is the
+   reverse index: fully-qualified class name → the jar(s) that contain
+   it, at the exact versions this build resolved.
+3. **How did that artifact get here?** Direct dependency, or transitive
+   via which path, in which scope. The agent asking "can I call this?"
+   needs the difference: code that compiles today against a
+   transitively-inherited jar breaks the day an intermediate dependency
+   drops it.
+4. **If it isn't on the classpath at all** — does it exist anywhere? Maven
+   Central's search API indexes class names for exactly this
+   (`fc:` for a fully-qualified name, `c:` for a simple one), so
+   "which artifact would I need" is answerable rather than guesswork. A
+   type that resolves only at this step is not a fact about the codebase,
+   it's a *proposal*, and it feeds §4a's dependency-change flow rather
+   than being silently treated as available.
 
-The JVM is unusually well suited to closing this gap, which is why it's
-worth doing here specifically: the build manifest pins exact coordinates,
-`-sources.jar` and `-javadoc.jar` are publishing conventions, and
-bytecode carries signatures even when neither jar exists. Very little of
-that transfers to other ecosystems, so this is a Java-shaped opportunity
-rather than a general one.
+**Resolution mechanics, opinionated:**
 
-**Design sketch**:
+- **Ask the build tool; never re-implement transitive resolution.**
+  Maven's conflict mediation (nearest-wins, `dependencyManagement`, BOM
+  imports, exclusions) is subtle enough that a hand-rolled approximation
+  will be wrong in exactly the cases that matter. `mvn
+  dependency:build-classpath` yields the resolved jar list with paths
+  into the local repository; `mvn dependency:tree` yields the graph that
+  answers question 3. Where running the build is undesirable, use **Maven
+  Resolver (Aether) as a library** — the same resolver Maven itself uses
+  — against the local repository and the internal proxy. Gradle is
+  harder, because build scripts are code rather than data: ask Gradle
+  itself (a resolvable configuration such as `runtimeClasspath`, or the
+  Tooling API), and treat "no build tool reachable" as a stated failure
+  rather than a reason to guess.
+- **Build the class→artifact index from the jar list**, by listing
+  `.class` entries per jar. Cache it keyed by a hash of the resolved
+  dependency set, so it is computed once per dependency change rather
+  than once per call. Resolution is the expensive step — seconds to
+  minutes on a cold cache — and it is why this tool must be
+  resolve-once-per-run, not resolve-per-question.
+- **Return every provider, not the first.** Duplicate classes across jars
+  are normal in the JVM ecosystem (`javax.*` vs `jakarta.*` splits,
+  `commons-logging` vs `jcl-over-slf4j`, anything shaded). When a type
+  resolves to more than one artifact, say so and say **which one wins by
+  classpath order** — the agent otherwise cannot know it is reading the
+  documentation of a class that loses at runtime. This is information no
+  other tool in the surface can give it.
+- **Handle relocation and multi-release jars explicitly**: a shaded class
+  lives under a rewritten package and is a different type from the
+  original; a multi-release jar can carry different signatures per JDK,
+  so the answer must name the JDK level it read.
+- **Flag transitive-only usage.** If a type resolves through a transitive
+  dependency, the result says so and suggests declaring it directly —
+  the same finding `mvn dependency:analyze` reports as "used undeclared
+  dependency", which is a real, well-established Java-specific defect
+  class this tool gets to catch for free.
+
+**Input tolerance** — matching how the agent actually knows things: `type`
+accepts a fully-qualified name, a simple name, or a package prefix. A
+simple name that matches several types returns a **disambiguation list**
+(candidates with their coordinates) as an instructional error rather than
+picking one, per the errors-are-instructions rule.
 
 ```json
 {
@@ -432,9 +459,9 @@ rather than a general one.
   "input_schema": {
     "type": "object",
     "properties": {
-      "type": { "type": "string", "description": "Fully-qualified type name, e.g. \"com.fasterxml.jackson.databind.ObjectMapper\"." },
-      "member": { "type": "string", "description": "Optional: restrict to one method or field name. Overloads are all returned." },
-      "include": { "type": "array", "items": { "type": "string", "enum": ["members", "docs", "hierarchy", "annotations"] }, "description": "Defaults to members + docs." },
+      "type": { "type": "string", "description": "Fully-qualified type name, or a simple name to resolve (e.g. \"com.fasterxml.jackson.databind.ObjectMapper\" or \"ObjectMapper\")." },
+      "member": { "type": "string", "description": "Optional: restrict to one method or field name. All overloads are returned." },
+      "include": { "type": "array", "items": { "type": "string", "enum": ["members", "docs", "hierarchy", "annotations", "origin"] }, "description": "Defaults to members, docs and origin." },
       "head_limit": { "type": "integer", "description": "Cap the number of members returned. Defaults to the configured cap." }
     },
     "required": ["type"],
@@ -443,60 +470,57 @@ rather than a general one.
 }
 ```
 
-The result names its own **provenance and fidelity** in the block header
-— `source: sources-jar | javadoc-jar | bytecode`, plus the resolved
-coordinate and version — because those tiers are not equivalent and the
-model must not treat them as such (see gotchas).
+The result leads with **origin** — resolved coordinate and version, direct
+or transitive (with the path), scope, whether other artifacts also
+provide the type — and then the API itself, labelled with the
+**provenance** of the documentation: `sources-jar`, `javadoc-jar`, or
+`bytecode`. Those tiers are not equivalent and the model must not treat
+them as such.
 
-**Resolution order**, degrading explicitly and never silently:
-
-1. **The build manifest decides the version**, never the model and never
-   a search result. Same rule as §2e's `artifact:` scopes, and the same
-   resolver: coordinate → pinned version → artifact. This is the whole
-   reason the tool beats a web search.
-2. Sources jar if published — richest, and lets `ReadSource` take over
-   for a full read.
-3. Javadoc jar — prose plus signatures, no bodies.
-4. Bytecode signatures, read **statically** (`javap`-style / a bytecode
-   reader), when neither jar exists.
-5. Nothing available — say so plainly, with the coordinate that was
-   resolved, rather than guessing from the type's name.
+**Documentation resolution**, once the coordinate is known, degrading
+explicitly and never silently: sources jar → javadoc jar → static
+bytecode signatures → "no documentation published for this coordinate."
+Because the coordinate carries the exact version, the docs match what is
+actually on the classpath — which is the whole reason this beats a web
+search, where the top result is for whatever version ranks highest.
 
 **Gotchas**:
 
 - **Never load classes to reflect on them.** "Use the JVM to see method
   signatures" splits into two very different implementations: static
-  bytecode reading is inert, while reflection-by-classloading runs the
-  class's static initialisers — arbitrary third-party code executing
-  inside an unsupervised agent, triggered by a name the model typed. Only
-  the static path is acceptable.
+  bytecode reading is inert, while reflection-by-classloading runs static
+  initialisers — arbitrary third-party code executing inside an
+  unsupervised agent, triggered by a name the model typed. Only the
+  static path is acceptable. `javap` and the JDK's own class-file
+  readers are sufficient.
 - **Bytecode is lossy in ways that matter**: no documentation, and no
   parameter names unless the artifact was compiled with `-parameters`
-  (otherwise `arg0`, `arg1`). A result that says `source: bytecode` is
-  saying "the names are placeholders" — which the tool must state, not
-  imply.
+  (otherwise `arg0`, `arg1`). A result labelled `bytecode` is saying "the
+  names are placeholders" — state it, don't imply it.
 - **Javadoc jars are untrusted HTML** from further outside the trust
-  boundary than repository files. Strip to text, sanitise as
-  `formats.md` §1 requires, and keep the same accepted-residual-risk
-  stance §2e already states for dependency source.
-- **Fetching artifacts is network access with a supply-chain surface.**
-  In a locked-down deployment this goes through the internal artifact
-  proxy the build already uses — never a direct reach to a public
-  registry — and downloading is not running: nothing fetched here is ever
-  executed.
-- **Cap the member list.** `String` has hundreds of members; the default
-  should be public API only, excluding synthetic, bridge, and
-  inherited-from-`Object` members, with the same `head_limit`/footer
-  contract as every other tool.
+  boundary than repository files: strip to text and sanitise per
+  `formats.md` §1, with the same accepted-residual-risk stance §2e states
+  for dependency source.
+- **Artifact fetching goes through the build's own internal proxy**,
+  never a direct reach to a public registry, and downloading is not
+  running: nothing fetched here is ever executed.
+- **Cap the member list**: public API only by default, excluding
+  synthetic, bridge and inherited-`Object` members, with the same
+  `head_limit`/footer contract as every other tool. `String` alone would
+  otherwise exhaust a call budget.
+- **The classpath is per-module and per-scope.** In a multi-module build,
+  "the classpath" is a question about *which module*, and a test-scoped
+  dependency is not available to main code. The result must name the
+  module and scope it resolved against rather than implying one global
+  answer.
 - **Try the language server first.** If the `Lsp` escalation entry (§7)
   is built, hover plus workspace-symbol search over an indexed classpath
-  covers much of this with no artifact plumbing at all, and with the
-  IDE ecosystem's own source-attachment logic. `DescribeType` earns its
-  place where there is no indexed project — a review run against a diff,
-  a cold container, a dependency that isn't a build input yet (§4a's
-  dependency-change proposals) — and as the cheaper thing to build if the
-  language-server lifecycle isn't wanted. Sequence the evaluation that
-  way rather than building both.
+  answers questions 1 and 2 with no artifact plumbing at all — a JVM
+  language server has already done this resolution. What it does *not*
+  give is questions 3 and 4, the dependency path and the not-yet-a-
+  dependency case, which are the two this tool exists for. Sequence the
+  evaluation that way: measure how much of the need the language server
+  covers before building the resolver.
 
 ---
 

@@ -101,9 +101,14 @@ exposed on purpose, and it needs a resolved, indexed project to work at
 all. The only first-party docs tool found anywhere here is Gemini CLI's
 `get_internal_docs`, which reads its *own* bundled documentation
 directory. Nothing fetches a `-javadoc.jar`, a package registry's docs,
-or a versioned API index. See `agent-design/medium.md` §2e-bis for what
-closing that gap would look like on the JVM, where build manifests pin
-exact coordinates and bytecode carries signatures even when no docs jar
+or a versioned API index. Nor does anything answer the question that
+comes *before* the docs — the agent typically knows a class name and not
+which artifact provides it, which on a real project it cannot know,
+because the class may arrive transitively through someone else's starter
+dependency. See `agent-design/medium.md` §2e-bis for what closing that
+gap would look like on the JVM, where the build resolves exact
+coordinates, class→artifact reverse lookup is mechanical once the
+classpath is known, and bytecode carries signatures even when no docs jar
 was published.
 
 **Takeaway**: this is the axis with the most genuine capability spread in
