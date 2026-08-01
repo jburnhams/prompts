@@ -520,7 +520,90 @@ search, where the top result is for whatever version ranks highest.
   give is questions 3 and 4, the dependency path and the not-yet-a-
   dependency case, which are the two this tool exists for. Sequence the
   evaluation that way: measure how much of the need the language server
-  covers before building the resolver.
+  covers before building the resolver. But see the next block: "language
+  server" is the wrong shape for most of this design's runs.
+
+#### Where the intelligence comes from, without standing up a JVM per run
+
+"Use a language server" is easy to say and awkward to deploy here,
+because a JVM language server needs a checkout, a resolved build
+(dependency downloads included), a long-lived process with a few hundred
+MB of heap, and tens of seconds to minutes of indexing before its first
+useful answer. Several run shapes in this design have none of that
+available: review runs work from a diff and a working tree, the
+learnings run (§6) deliberately has no filesystem at all, and any run
+that only holds a *ref* to some other project has nothing to index.
+
+Two constraints get conflated under "don't load it in a JVM," and they
+have different answers:
+
+- **Don't execute the target's code.** Already settled: static class-file
+  reading only, never classloading. This says nothing about whether a
+  JVM process exists — ours can be one; the target's classes just never
+  get initialised in it.
+- **Don't stand up a build and a language server per project, per ref,
+  per run.** This is the real constraint, and the answer is to **split
+  index production from index querying**.
+
+Producing code intelligence needs the JVM, the build, and the network.
+Querying it needs none of them. LSP is a *live protocol* — a running
+server answering questions about an open workspace — which is exactly the
+shape this design can't afford. The serialized-index shape is the fit:
+SCIP (Sourcegraph's Code Intelligence Protocol, the successor to LSIF) is
+a language-agnostic index emitted by a per-language indexer, with
+`scip-java` covering Java, Scala and Kotlin across Maven, Gradle and
+Bazel. An index is a file; answering from it is a lookup.
+
+So: **produce the index where the build already happens — CI — and let
+the agent query it.** The two index kinds have very different lifetimes,
+and that difference is where the cost goes away:
+
+| Index | Key | Lifetime | Who builds it |
+|---|---|---|---|
+| Project | `repo@ref` | one per indexed commit | CI, as a build by-product |
+| Dependency | `group:artifact:version` | **immutable — built once, ever** | on demand, cached org-wide |
+
+The second row is the leverage: a released artifact never changes, so
+`jackson-databind:2.17.1` is indexed once and reused by every project and
+every run in the organisation, forever. The expensive part amortises to
+approximately zero.
+
+**Two files CI should emit alongside the index**, because they are pure
+by-products of a build that already ran and they answer questions 2 and 3
+outright: the resolved classpath (`dependency:build-classpath` output or
+the Gradle equivalent) and the dependency tree. The build already knows
+everything the resolver above is trying to rediscover; capturing it is
+cheaper than recomputing it.
+
+**Degradation order when there is no index** — which is the honest state
+of the world on day one:
+
+1. Index for this exact ref — best, and the only path that answers
+   references and implementations.
+2. Index for a nearby ancestor ref, **labelled stale**, with the ref it
+   actually came from named. Never answer from a different ref silently;
+   same provenance rule as the docs tiers.
+3. No index: static parse for declarations (a source parser for the
+   repo's own files, class-file reading for artifacts). Gets signatures
+   and structure with no build and no server; loses cross-file resolution.
+4. Nothing available: say so, naming the ref or coordinate that was
+   tried.
+
+**The correctness trap to design against**: an index describes *committed*
+state at a ref, and a coding run's working tree diverges from it the
+moment the agent edits a file. Index-derived answers about a file this
+run has modified are wrong in the most confusing possible way. The rule:
+the working tree wins for any path the run has touched, and the tool says
+which source it answered from. This is the same reason `formats.md` §8
+labels provenance rather than presenting one undifferentiated answer.
+
+None of this reaches the tool schema. `DescribeType` takes a type and
+optionally a scope; whether that resolved through a warm index, a
+bytecode read, or a live language server in a container that happened to
+have one is the harness's business — visible to the model only as the
+provenance label, which it needs in order to judge how much to trust the
+answer. Same harness-owns-the-mapping principle `SearchSource` and
+`AddComment` already follow.
 
 ---
 
@@ -1526,7 +1609,12 @@ the simple version measurably falls short.
   with the same result shape, so by this design's own splitting rule
   (`tools.md`, implementation contract) they belong in one tool. The
   cost is a language-server lifecycle the harness doesn't currently
-  own, which is why it isn't in v1.
+  own, which is why it isn't in v1 — and the name is slightly wrong for
+  what this design would actually build: §2e-bis argues the backing
+  should be a **precomputed index** produced by CI, not a live server
+  per run, since several run shapes have no workspace to index. The
+  tool surface is the same either way; only the harness's mapping
+  changes.
 - **Structural write protection for the project-conventions file**, if
   the post-run flag on conventions-file diffs (`formats.md` §3a) ever
   actually fires on a non-conventions ticket. The upgrade is Roo
