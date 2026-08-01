@@ -376,6 +376,130 @@ Phased on purpose, matching how the need actually arrives:
 
 ---
 
+### 2e-bis. `DescribeType` (dependency API and docs, without the source)
+
+**What**: given a fully-qualified type — `com.fasterxml.jackson.databind.ObjectMapper`
+— return its declaration, public member signatures, type hierarchy, and
+the documentation prose attached to them, resolved from the artifact
+that is *actually on this project's classpath*. Optionally scoped to one
+member. A companion to §2e rather than a duplicate of it: `SearchSource`/
+`ReadSource` are file-and-line oriented and answer "show me the code";
+this is symbol oriented and answers "what can I call, and what does it
+promise".
+
+**Why it's a real gap, not a nicety**: this collection has **no source
+that retrieves dependency documentation or artifacts at all**. The
+field's entire answer to "what's the signature of this library method"
+is one of three things, and each falls short in a different way:
+
+- **LSP tools** — OpenCode's single `lsp` tool (`hover`,
+  `workspaceSymbol`, `documentSymbol`), Crush's eight `lsp_*` tools, Zed's
+  `go_to_definition`/`find_references`, Copilot Chat's
+  `SearchWorkspaceSymbols`. This is the closest analog and, where a
+  language server is running, genuinely covers most of the need: a JVM
+  language server indexes the whole classpath and hovers with Javadoc
+  when sources are attached. The catch is that it needs a *working
+  project* — a resolved build, an indexed workspace, a server process —
+  which a review run or a cold container may not have.
+- **Structured symbol lookups without a language server** — Composio
+  SWE-Kit's `CODE_ANALYSIS_TOOL_GET_CLASS_INFO` / `GET_METHOD_BODY` /
+  `GET_METHOD_SIGNATURE`. The right *shape* (ask about a symbol, get its
+  API back), but scoped to the repository, not its dependencies.
+- **Search the web, or search other people's code** — Crush's
+  `sourcegraph` tool (public-repo search with symbol filters), everyone's
+  `WebFetch`/`WebSearch`. These answer "how do people use this" well and
+  "what is on my classpath" not at all: the docs page found by a search is
+  for whatever version the search engine surfaced, not the version the
+  build resolved.
+
+The only first-party docs tool found anywhere in the collection is Gemini
+CLI's `get_internal_docs`, which lists and reads *its own bundled*
+documentation directory — a precedent for docs-as-a-tool, not for
+third-party API retrieval.
+
+The JVM is unusually well suited to closing this gap, which is why it's
+worth doing here specifically: the build manifest pins exact coordinates,
+`-sources.jar` and `-javadoc.jar` are publishing conventions, and
+bytecode carries signatures even when neither jar exists. Very little of
+that transfers to other ecosystems, so this is a Java-shaped opportunity
+rather than a general one.
+
+**Design sketch**:
+
+```json
+{
+  "name": "DescribeType",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "type": { "type": "string", "description": "Fully-qualified type name, e.g. \"com.fasterxml.jackson.databind.ObjectMapper\"." },
+      "member": { "type": "string", "description": "Optional: restrict to one method or field name. Overloads are all returned." },
+      "include": { "type": "array", "items": { "type": "string", "enum": ["members", "docs", "hierarchy", "annotations"] }, "description": "Defaults to members + docs." },
+      "head_limit": { "type": "integer", "description": "Cap the number of members returned. Defaults to the configured cap." }
+    },
+    "required": ["type"],
+    "additionalProperties": false
+  }
+}
+```
+
+The result names its own **provenance and fidelity** in the block header
+— `source: sources-jar | javadoc-jar | bytecode`, plus the resolved
+coordinate and version — because those tiers are not equivalent and the
+model must not treat them as such (see gotchas).
+
+**Resolution order**, degrading explicitly and never silently:
+
+1. **The build manifest decides the version**, never the model and never
+   a search result. Same rule as §2e's `artifact:` scopes, and the same
+   resolver: coordinate → pinned version → artifact. This is the whole
+   reason the tool beats a web search.
+2. Sources jar if published — richest, and lets `ReadSource` take over
+   for a full read.
+3. Javadoc jar — prose plus signatures, no bodies.
+4. Bytecode signatures, read **statically** (`javap`-style / a bytecode
+   reader), when neither jar exists.
+5. Nothing available — say so plainly, with the coordinate that was
+   resolved, rather than guessing from the type's name.
+
+**Gotchas**:
+
+- **Never load classes to reflect on them.** "Use the JVM to see method
+  signatures" splits into two very different implementations: static
+  bytecode reading is inert, while reflection-by-classloading runs the
+  class's static initialisers — arbitrary third-party code executing
+  inside an unsupervised agent, triggered by a name the model typed. Only
+  the static path is acceptable.
+- **Bytecode is lossy in ways that matter**: no documentation, and no
+  parameter names unless the artifact was compiled with `-parameters`
+  (otherwise `arg0`, `arg1`). A result that says `source: bytecode` is
+  saying "the names are placeholders" — which the tool must state, not
+  imply.
+- **Javadoc jars are untrusted HTML** from further outside the trust
+  boundary than repository files. Strip to text, sanitise as
+  `formats.md` §1 requires, and keep the same accepted-residual-risk
+  stance §2e already states for dependency source.
+- **Fetching artifacts is network access with a supply-chain surface.**
+  In a locked-down deployment this goes through the internal artifact
+  proxy the build already uses — never a direct reach to a public
+  registry — and downloading is not running: nothing fetched here is ever
+  executed.
+- **Cap the member list.** `String` has hundreds of members; the default
+  should be public API only, excluding synthetic, bridge, and
+  inherited-from-`Object` members, with the same `head_limit`/footer
+  contract as every other tool.
+- **Try the language server first.** If the `Lsp` escalation entry (§7)
+  is built, hover plus workspace-symbol search over an indexed classpath
+  covers much of this with no artifact plumbing at all, and with the
+  IDE ecosystem's own source-attachment logic. `DescribeType` earns its
+  place where there is no indexed project — a review run against a diff,
+  a cold container, a dependency that isn't a build input yet (§4a's
+  dependency-change proposals) — and as the cheaper thing to build if the
+  language-server lifecycle isn't wanted. Sequence the evaluation that
+  way rather than building both.
+
+---
+
 ### 2f. `Narrate` (the run narrative)
 
 **What**: a tool the orchestrator calls a handful of times per run to

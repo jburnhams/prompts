@@ -89,6 +89,23 @@ search → LSP-backed symbol search → a delegated search sub-agent.
 | A **dedicated sub-agent** specifically for open-ended/complex search, distinct from the general-purpose task-delegate | Gemini CLI (`codebase_investigator`, gated behind `enableCodebaseInvestigator`, reserved for "complex refactoring, codebase exploration or system-wide analysis"), Copilot Chat (`SearchSubagent`) |
 | A recovery/"pull the full body" tool that complements semantic search once it's found something | Windsurf (`view_code_item` — pulls the full body of a function/class the semantic search only summarized) |
 
+**One capability nobody in this collection has**: retrieving the
+documentation or API surface of a *dependency* — the published docs for
+the exact library version the build resolved. The ladder above is
+entirely about code the agent can already reach: the workspace (grep →
+semantic → LSP), or other people's public repositories (Crush's
+`sourcegraph`). Where a language server is running it covers dependencies
+incidentally, since a JVM or TypeScript server indexes the whole
+classpath — but that is a side effect of indexing, not a tool anyone
+exposed on purpose, and it needs a resolved, indexed project to work at
+all. The only first-party docs tool found anywhere here is Gemini CLI's
+`get_internal_docs`, which reads its *own* bundled documentation
+directory. Nothing fetches a `-javadoc.jar`, a package registry's docs,
+or a versioned API index. See `agent-design/medium.md` §2e-bis for what
+closing that gap would look like on the JVM, where build manifests pin
+exact coordinates and bytecode carries signatures even when no docs jar
+was published.
+
 **Takeaway**: this is the axis with the most genuine capability spread in
 the collection, from Aider's "no search tool, the human curates context"
 to Windsurf/Copilot Chat's semantic-search-plus-symbol-resolution-plus-
