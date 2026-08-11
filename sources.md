@@ -143,6 +143,26 @@ captures only, already in `leaked/`); Continue.dev, Plandex, Aider's
 pass for its toolset/consolidation history, which is currently sourced only
 from its in-band `instructions` block and tool list).
 
+- Command Code, *Tool Call Repairs* —
+  https://commandcode.ai/docs/harness-engineering/tool-call-repairs
+  (Ahmad Awais, 3 May 2026; read 2026-08-11). The published repair
+  catalogue behind `agent-tool-implementations.md` §3h: the four
+  container/nullability malformations that account for ~90% of "this open
+  model can't do tool calls," their required application order, the
+  validate-then-repair inversion and the silent-corruption bug that forced
+  it, `pathString()` over `z.string()`, and relational defaults surfaced
+  as notes rather than errors. Same caveats as the read-tool page below —
+  vendor-authored, and the "DeepSeek V4 Pro beats Opus 4.7 6/10 on our
+  internal evals" headline is an unreplicated internal claim. The failure
+  taxonomy and the ordering constraint are mechanical and checkable; the
+  eval result is not.
+- Command Code, *Memory* and *Taste* —
+  https://commandcode.ai/docs/memory · https://commandcode.ai/docs/taste
+  (read 2026-08-11). Three additive `AGENTS.md` tiers with source-path
+  headers and on-demand subdirectory loading; and taste profiles as
+  push/pull/compose-able artifacts. Used in `agent-memory-learning.md` §9.
+  The `taste-1` learning mechanism itself is undisclosed marketing copy
+  and is recorded as a claim.
 - Can Bölük, *The Minutiae of Tool-calling* —
   https://blog.can.ac/2026/08/03/the-minutiae-of-tool-calling/
   (3 Aug 2026; read 2026-08-11). The design rationale behind OMP's wire

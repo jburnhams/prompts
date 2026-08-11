@@ -99,7 +99,19 @@ dialects** and can strip native structured tool calls altogether, and the
 first benchmarked challenger to this doc's "`cat -n` won, unanimously"
 finding — a line-anchored edit format whose per-file content hash is an
 anchor the model *cites* instead of source text it must *reproduce*,
-measured across 16 models, winning on 14 and losing on 2.
+measured across 16 models, winning on 14 and losing on 2. The same pass
+added the field's only published **tool-call repair catalogue** — the four
+container/nullability malformations that reportedly account for ~90% of
+"this open model can't do tool calls," the order they must be applied in
+(parse a JSON-string array *before* wrapping a bare string, or
+`'["a","b"]'` becomes `['["a","b"]']`: schema-valid, meaning lost), and
+the architectural finding that repairs must run **after** validation
+fails rather than as a pre-pass, because a pre-pass rewrites well-formed
+inputs that merely look malformed — which is how a file write whose
+content was legitimately JSON-shaped got silently corrupted. Two
+independent teams, one open and one closed, land on the same thesis from
+opposite directions: most of what reads as a model capability gap is
+contract design.
 
 **[→ `agent-subagent-architectures.md`](./agent-subagent-architectures.md)**
 — a companion drill-down on one specific tool-surface capability: when

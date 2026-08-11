@@ -186,10 +186,31 @@ each say so in words.
 contract and stay strict (`additionalProperties: false`) — a strict schema
 is what makes provider-side strict tool-calling and the model's own
 pattern-matching work. Tolerance lives entirely in the harness, in four
-declared layers, never as ad-hoc rescue code inside a tool:
+declared layers, never as ad-hoc rescue code inside a tool.
 
-1. **Generic normalisations**, applied to every tool's input before
-   validation, implemented once: parse an input that arrived as a JSON
+**All four run *after* validation fails, never before it.** The input is
+validated as-is first; if it passes, it is shipped **untouched**, and no
+repair ever runs against a well-formed call. Only on failure does the
+harness walk the validator's own issue list and try repairs at the paths
+the schema actually disagreed at. This ordering is not a detail: a
+normalisation pass in front of the validator encodes a prior about what is
+broken before anything has said what is broken, and the failure it
+produces is silent. Command Code shipped the pre-pass version first and
+reverted it after a `write` whose `content` was legitimately JSON-shaped
+got rewritten on the way to disk (`agent-tool-implementations.md` §3h) —
+which this design is equally exposed to, since `Write.content` and
+`Edit.old_string` both routinely carry text that looks like the shapes the
+repairs match. Validating first makes the schema the prior and confines
+the blast radius to fields that were already wrong.
+
+**Repairs are ordered, and the order is part of the contract.** Within a
+failing field, JSON-string parsing runs before scalar-to-array wrapping,
+or `'["a","b"]'` becomes `['["a","b"]']` — schema-valid, meaning lost, and
+undetectable downstream. Every layer-1 transform below is listed in
+application order for this reason.
+
+1. **Generic normalisations**, applied to a failing tool input,
+   implemented once: parse an input that arrived as a JSON
    *string* (or fenced in Markdown) rather than an object; coerce
    stringified scalars (`"3"` → `3`, `"true"` → `true`) **whole-string
    only** — `"2abc"` is an error, never a silent `2`, and a fractional
@@ -234,6 +255,26 @@ declared layers, never as ad-hoc rescue code inside a tool:
    primitive. Only after all candidates miss does the read fail, with the
    did-you-mean suggestion described under `Read` below.
 
+Two rules that cut across all four layers, both from the production
+catalogue in `agent-tool-implementations.md` §3h:
+
+- **Encode a field's destination in its type, not in its description.** A
+  path parameter is declared as a path type rather than a bare string, so
+  every path field on every tool gets the same repairs at once — trimming
+  quotes and backticks, and unwrapping the degenerate markdown auto-link
+  (`[notes.md](http://notes.md)`, where the link text equals the URL minus
+  its protocol) that some models emit because chat formatting leaks across
+  the tool boundary. Real markdown links pass through untouched. The
+  general form: where a family of parameters shares a destination, give
+  them a shared type and repair the family, not the instance.
+- **Where fields are individually valid but jointly wrong, extend the
+  semantics rather than erroring, and say what you did.** No input repair
+  can see a relational problem, because every field validates. `Read`'s
+  accepted `offset`/`limit` pair is the case here: `limit` alone means
+  `start_line: 1`, `offset` alone means "to the default line cap." The
+  chosen default is stated in the result as a `!` note — not an error —
+  so the model sees what was picked and can correct on the next call.
+
 The sorting rule behind items 3 and 4, worth stating because it decides
 future cases: **repair silently what the model has no evidence to fix, and
 suggest what it does.** A misspelled path is visible in the transcript, so
@@ -255,9 +296,12 @@ an inverted pair each have exactly one plausible intent. A bare string for
 unrecognised key that might carry real intent (a `recursive: true` on a
 tool with no such behaviour) is an *error naming the unknown key*, because
 proceeding would silently do something other than what was asked. And
-**every normalisation is counted**: a fired alternate means either the
-description or the schema is wrong for this model, so the telemetry is the
-input to fixing it upstream — promote a frequent alternate into the
+**every normalisation is counted**, per `(model, tool)` pair and split
+into repaired-and-ran versus failed-and-returned: a fired alternate means
+either the description or the schema is wrong for this model, so the
+telemetry is the input to fixing it upstream — and a repair rate that
+moves on one contract is how a model regression surfaces before users
+report it — promote a frequent alternate into the
 advertised schema, and delete one that never fires. Both directions are
 observed in the field: Cline's SDK parses `read_files` against a
 thirteen-branch union while advertising one shape, and OpenCode *removed*

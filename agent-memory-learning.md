@@ -824,6 +824,38 @@ instead of creating a duplicate"); Goose's `remove_memory_category` /
 expiry onto the implementer ("Periodically delete memory files that
 haven't been accessed in a long time").
 
+**Portability — a distribution axis nothing else here has.** Every source
+above treats memory as something that lives where it was written: a file
+in a repo, a row in a database, a patch in an inbox. Command Code's
+**Taste** is the one design that treats learned preference as a
+*publishable artifact*: profiles are pushed, pulled, listed and
+**composed** through a package-manager-shaped CLI (`npx taste push --all`,
+`pull`, `list`, `compose`) against a hosted Studio, so a preference set can
+be shared with a team or the community and several can be layered to match
+a workflow, independent of the project they were learned in. Its ordinary
+memory is conventional by comparison and matches the convergence in §1 and
+§4 — three additive tiers (user `~/.commandcode/AGENTS.md`, project, and
+per-subdirectory), assembled outermost-first with **each block headed by
+its source path so the model knows which file a rule came from**,
+subdirectory files loaded on demand by walking up from any file the
+session touches, and `@path` references transcluded so a memory file
+composes rather than duplicates. Two details worth keeping: it reads
+`AGENTS.md` and ships an `/import` that rewrites references from other
+agents' filenames, which is the cross-vendor convergence on `AGENTS.md`
+showing up as a migration tool rather than an argument; and it explicitly
+guards the path-prefix bug ("a sibling tree that happens to share a path
+prefix is never pulled in").
+
+The learning mechanism underneath Taste is **not** documented — the public
+material describes "a meta neuro-symbolic AI model `taste-1`" learning
+from "every accept, reject, and edit" with continuous RL, which is a claim
+about a closed system with no disclosed signal schema, update rule, or
+evaluation. Recorded here for the portability model, which is concrete and
+copyable, not for the learning model, which is not checkable. It is worth
+reading against §8's review-tool feedback loops, which reach a similar
+goal — learn from human reactions rather than self-assessment — by
+mechanisms their vendors do describe.
+
 ## 10. Memory as an attack surface
 
 Consolidating a transcript means feeding attacker-influenceable text

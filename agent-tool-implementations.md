@@ -550,6 +550,112 @@ flat parameters save parse failures — but they trade against each other,
 and §2e recorded only one side of it. See `agent-design/future.md` for how
 the design resolves that.
 
+### 3h. The repair catalogue, and why it must run *after* validation
+
+§3e establishes that mature harnesses accept more than they advertise;
+§3f puts a floor under it; §3g explains mechanically why the sloppiness
+exists. What none of the code read here supplies is the *list* — which
+malformations actually occur, in what proportion, and in what order to fix
+them. Command Code's ["Tool Call
+Repairs"](https://commandcode.ai/docs/harness-engineering/tool-call-repairs)
+(Ahmad Awais, 3 May 2026) is the only source in this collection that
+publishes one, drawn from production traffic across DeepSeek, GLM and Qwen
+models and reported as running at roughly **1M repairs per 1T tokens**.
+
+**The failure modes are a small finite compositional set.** Four, each
+"~30-100 lines":
+
+| Repair | Model sent | Schema wanted |
+|---|---|---|
+| `null-for-optional` | `{timeoutMs: null}` | `{}` (omitted) |
+| `json-array-parse` | `"[\"a\",\"b\"]"` | `["a","b"]` |
+| `empty-placeholder` | `{}` | `["src/index.ts"]` |
+| `bare-string-wrap` | `"foo"` | `["foo"]` |
+
+The claim attached is the useful part: "when i hear 'this open source model
+can't do tool calls' i now assume one of those four, and so far that's been
+right ~90% of the time." Note that all four are container/nullability
+errors around *non-scalar* parameters — which is §3g's argument arriving
+from the opposite direction, as a bug distribution rather than a token
+mechanism.
+
+**They are order-dependent, and the ordering is not arbitrary.**
+`json-array-parse` must run before `bare-string-wrap`, or `'["a","b"]'`
+gets wrapped into `['["a","b"]']` — **schema-valid, meaning lost**, which
+is the worst outcome available because nothing downstream can detect it.
+Any harness with more than one normalisation rule has this problem and
+mostly hasn't noticed; §3e's sources document *which* transforms they
+apply, none of them document a required order.
+
+**The architectural finding: invert preprocess-then-validate into
+validate-then-repair.** The first implementation normalised inputs before
+the validator ever saw them, and broke immediately — "`writeFile` content
+that happened to be json-shaped got rewritten before it hit disk. silent
+corruption, easy to miss in a smoke test." The replacement:
+
+1. Parse the input as-is. If it validates, **ship it untouched** — valid
+   inputs are never rewritten.
+2. On failure, walk the *validator's own issue list*, and at each issue
+   path try the four repairs in order until one applies.
+3. Parse again. On success log `tool_input_repaired:${toolName}`; on
+   failure log `tool_input_invalid:${toolName}` and return a
+   model-readable retry message.
+
+> when you preprocess, you encode a prior about what's broken. when you let
+> the validator complain first, the schema is the prior, and you only spend
+> repair budget at the exact paths the schema actually disagreed at.
+
+That is a genuine correction to how §3e frames the pattern, and to any
+design that implements tolerance as a normalisation pass in front of the
+validator: a blanket pre-pass cannot distinguish a malformed argument from
+a well-formed one that merely *looks* like a malformation, because it runs
+before anything has said which fields are wrong. The validator localises
+the bug for free, and the repair rate per `(model, tool)` pair falls out as
+telemetry — enough to "notice when a model regresses on a specific
+contract before users do," which is the measurement §3e's "every
+normalisation is counted" rule was reaching for.
+
+**Two failure modes that aren't shape errors at all**, and need different
+machinery:
+
+- **Post-training distribution leaking across the tool boundary.**
+  DeepSeek-Flash emitted file paths as markdown auto-links —
+  `filePath: "/Users/x/proj/[notes.md](http://notes.md)"` — and the write
+  tool "obediently tried creating files literally named
+  `[notes.md](http://notes.md)`." The diagnosis is better than the fix:
+  this is not hallucination but a chat-formatting prior applied where it
+  makes no sense, because nothing in `z.string()` says where the string is
+  going. Hence `pathString()` instead of `z.string()` — encode the
+  destination *in the type*, and every path field on every tool is plugged
+  at once. "'tool confusion' is a more useful frame than 'capability
+  gap.'"
+- **Relational invariants between independently-valid fields.**
+  `readFile({absolutePath, limit: 30})` with no `offset` failed a
+  "provide both or neither" rule; each field was valid on its own, so no
+  input repair can see it. The fix was to extend the tool's semantics —
+  `limit` alone implies `offset: 0`, `offset` alone implies
+  `limit: 2000` — and then **surface the chosen default in the result**,
+  deliberately without an `Error:` prefix: "Note: limit was not provided;
+  defaulted to 2000 lines. To read more or fewer lines, retry with both
+  offset and limit." Stated as a rule: *repair where you can, extend
+  semantics where you can't, surface the choice either way.* This is the
+  second time this source lands on relational-invariants-across-valid-
+  fields as the interesting bug class (§8b is the first, in a different
+  subsystem), and the second time it lands on notes-not-errors (§7b).
+
+**The cross-source convergence is worth stating on its own.** Two
+independent teams — Command Code on closed infrastructure serving open
+models, OMP on an open harness (§3g, §4a) — arrive at the same thesis in
+almost the same words. Command Code: "a lot of what looks like model
+capability is actually contract design… the largest commercial models eat
+that cost invisibly… open models pay it loudly and get dismissed for it."
+OMP: "often the model isn't flaky at understanding the task. it's flaky at
+expressing itself. you're blaming the pilot for the landing gear." Both
+report the same headline result from acting on it — a much cheaper model
+brought level with a frontier one by changing only the harness. Neither
+result is independently replicated and both are vendor-run, so the numbers
+stay claims; the convergence on *where the loss is* is the finding.
+
 ---
 
 ## 4. Mimicry: how much should a tool look like a tool the model already knows?
