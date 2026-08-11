@@ -124,7 +124,18 @@ a real gap in the blocklist reasoning: a name blocklist cannot see a FIFO
 sitting inside the working tree, and the `stat`-based guard that can is
 worth −79% tokens and −81% wall clock on that fixture with accuracy
 unchanged — the shape of defect that survives in shipped harnesses
-precisely because nothing fails.
+precisely because nothing fails. A final pass closed the two loose ends
+with the collection's first **independent** benchmark: JetBrains's
+Diff-XYZ, which separates *generating* an edit from *reading* one and
+finds they want opposite formats — search-replace scores 0.95 on diff
+generation and 0.57 on apply, unified-diff variants 0.92–0.93 on apply
+and 0.06 on generation — so "which edit format is best" is the wrong
+question for an agent that does both jobs, and the model-size interaction
+both vendor benchmarks reported turns up here independently. Reading
+Kilo Code's actual clamp then produced a better answer than the one this
+collection had adopted: compose the ceilings so the byte budget only ever
+decides whether a *whole* line fits, and mid-codepoint truncation and the
+resume off-by-one both stop existing.
 
 **[→ `agent-tool-call-dialects.md`](./agent-tool-call-dialects.md)** — the
 layer below *that* one, and the lowest in this collection: the **wire

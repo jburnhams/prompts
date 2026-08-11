@@ -749,22 +749,85 @@ require the model to know where the function ends — with an explicit rule
 about the case that actually bites (decorators and doc-comments are
 separate nodes: anchor the first decorator to sweep both).
 
-**The prior art the same post assembles** is worth keeping as a reading
-list, because it is the only place in this collection where the
-edit-format question is treated as a measured one rather than a taste one:
+**The independent check: Diff-XYZ.** The obvious weakness of §4a's
+numbers is that the format's author ran them. JetBrains Research's
+[Diff-XYZ](https://arxiv.org/abs/2510.12487) is the closest thing to a
+neutral referee — 1,000 real edits from CommitPackFT, automatic metrics,
+published dataset — and it does something neither vendor benchmark does:
+it **separates generating an edit from reading one**, via three tasks.
+*Apply* (old code + diff → new code) and *anti-apply* (new code − diff →
+old code) measure comprehension; *diff generation* (new − old → diff)
+measures synthesis. Metrics are stripped exact match, plus, for
+generation, parse rate, apply rate, EM/IoU after application, and F1 over
+added and deleted lines.
+
+The headline result is the one that matters most for tool design, and it
+is not subtle. **The format best at generating edits is the worst at
+reading them.** GPT-4.1:
+
+| Format | Apply (EM) | Anti-apply (EM) | Diff generation (EM) |
+|---|---|---|---|
+| udiff | 0.90 | 0.88 | 0.77 |
+| udiff-h (relaxed `@@ … @@` header) | **0.92** | **0.93** | 0.06 |
+| udiff-l (`ADD`/`DEL`/`CON` markers) | 0.91 | 0.88 | 0.06 |
+| search-replace | 0.57 | 0.56 | **0.95** |
+
+Search-replace — the `old_string`/`new_string` family Claude Code, Cline
+and this collection's own design all use — generates near-perfectly and
+comprehends badly. Unified diff variants invert it. The paper's summary:
+"udiff-based formats work best for Apply and Anti-Apply, search-replace
+excels for Diff Generation, but for smaller models modified udiff
+variants perform best."
+
+Three things follow.
+
+**It corroborates the vendor benchmarks on the points where they could
+most easily have been self-serving.** "No single edit format dominates
+across models and use cases" is now a measured finding rather than a
+quotation. The model-size interaction is independently confirmed from the
+other direction: Stencil found hashline helps weak models most and *lost*
+on two strong ones; Diff-XYZ finds search-replace suits larger models
+while "for smaller models modified udiff variants perform best." Both say
+the same thing — **format choice is model-conditional**, which is exactly
+what OMP's `resolveEditMode()` exclusion list implements (§10) and what
+almost nobody else does. And the OpenAI-house-format bias that Stencil
+asserts turns up here as an incidental observation: GPT-4.1 "is more
+sensitive to a task prompt and tends to emit V4A diff format by default."
+
+**It supplies the scaling story the vendor posts only gesture at.**
+Reliable apply/anti-apply emerges around the 7B scale, but "none of the
+open-source models achieve comparable performance on Diff Generation,"
+and the authors draw the inference that "handling diff syntax and
+formatting requires substantially more capacity than simply applying
+edits" — which "may also help explain why smaller models perform poorly
+on complex downstream benchmarks such as SWE-bench, where correctly
+generating patches is critical." That is a strong statement of this
+section's whole thesis from an independent lab: a measurable share of
+what looks like small-model coding weakness is edit-format overhead.
+
+**And it means "which edit format is best" is the wrong question**, because
+a coding agent does both jobs. It *writes* edits (generation — favours
+search-replace) and, in review or diff-reading modes, *reads* them
+(comprehension — favours udiff). A harness that picks one format for both
+directions is accepting a measured penalty on one of them. Splitting by
+direction costs nothing, since the two never share a wire format anyway.
+
+**The rest of the prior art the harness post assembles** is worth keeping
+as a reading list, because it is otherwise the only place in this
+collection where the edit-format question is treated as a measured one
+rather than a taste one:
 Aider's benchmarks, where format choice alone swung GPT-4 Turbo from 26%
 to 59% while GPT-3.5 managed only 19% with the same format because it
-could not reliably produce valid diffs; JetBrains's **Diff-XYZ**
-benchmark, whose systematic finding is that *no single edit format
-dominates across models and use cases*; **EDIT-Bench**, where only one
+could not reliably produce valid diffs; **EDIT-Bench**, where only one
 model clears 60% pass@1 on realistic editing tasks; and Cursor's
 fine-tuned ~70B *apply* model — a whole second model whose only job is
 merging a draft edit into a file, which is the strongest evidence
 available that this problem is hard, alongside Cursor's own reported
 result that "fully rewriting the full file outperforms aider-like diffs
-for files under 400 lines." None of these are read as sources here yet;
-Diff-XYZ in particular would be the natural way to check §4a's numbers
-against something not run by the format's author.
+for files under 400 lines." Neither Aider's benchmark harness nor
+EDIT-Bench has been read as a source here; both would sharpen the
+picture, and EDIT-Bench in particular covers the realistic-task axis
+Diff-XYZ's synthetic triples deliberately don't.
 
 The mimicry question this raises is the one §4c answers generally: `cat -n`
 wins because the model has seen a billion lines of it, and hashline is
@@ -1079,34 +1142,77 @@ chunk rather than emitting it at the boundary. This generalises to any
 exists is a claim, and a streaming reader has to have actually established
 it.
 
-**Resume offsets are computed by the tool, not the model.** Byte-capped
-output resumes **on the last line shown, not the line after it**, because
-that line was cut mid-content; a line-capped read resumes on the next line.
-Getting this backwards silently drops a line from the model's view of the
-file:
+**Resume offsets are computed by the tool, not the model.** In a reader
+that cuts mid-line at the byte cap, byte-capped output resumes **on the
+last line shown, not the line after it**, because that line was
+incomplete; a line-capped read resumes on the next line. Getting this
+backwards silently drops a line from the model's view of the file:
 
 > an off-by-one in a resume hint is a silently corrupted read, which is the
 > one bug class here that's worse than a wasted turn.
 
-Which is also the argument for the tool computing the offset at all: §6a's
-"state the next call" rule is usually justified by saving a round trip, but
+The better answer is to not have two rules — see the whole-line byte
+budget below, which makes every cap resume the same way. But *whichever*
+convention a reader picks, it has to be the one its notes actually
+describe. Which is also the argument for the tool computing the offset at
+all: §6a's "state the next call" rule is usually justified by saving a
+round trip, but
 the stronger reason is that pagination arithmetic done in the model's
 reasoning is both billed and occasionally wrong.
 
-**A byte cap must not cut a codepoint in half.** The corollary nobody
-states until it bites: §6b's second ceiling is measured in *bytes* while
-the payload is UTF-8, so a naive slice at 128 KB lands mid-sequence and
-emits a replacement character or invalid UTF-8 into the model's context —
-and into whatever the model later passes back to `Edit` as a match string.
-Command Code **binary-searches for the longest valid UTF-8 prefix** under
-the cap rather than truncating at the byte offset. The same family of
-hygiene, from the same source, in one line each: strip the BOM (or it
-becomes an invisible first character of the first line, which then fails
-every exact-match edit against that line), and normalise CRLF on the way
-in (§5b, where Gemini CLI's restore-on-write half already lives). These
-are individually trivial and collectively the difference between a read
-tool that works on other people's repositories and one that works on
-yours.
+**A byte cap must not cut a codepoint in half — or must not cut inside a
+line at all.** The corollary nobody states until it bites: §6b's second
+ceiling is measured in *bytes* while the payload is UTF-8, so a naive
+slice at 128 KB lands mid-sequence and emits a replacement character or
+invalid UTF-8 into the model's context — and into whatever the model
+later passes back to `Edit` as a match string. There are two fixes in the
+field, and the less obvious one is better:
+
+- **Cut mid-line, carefully.** Command Code binary-searches for the
+  longest valid UTF-8 prefix under the cap rather than truncating at the
+  byte offset. This is what forces the resume-on-the-cut-line rule above:
+  the last line shown is incomplete, so the model must re-read it.
+- **Never cut inside a line.** Kilo Code composes the ceilings instead:
+  each line is clamped to 2,000 characters *first*, then whole clamped
+  lines are appended to a byte budget measured with
+  `Buffer.byteLength(text, "utf-8")`, and when the next line would exceed
+  the budget the read stops and reports that line as the resume point.
+  Because the per-line clamp has already bounded any single line, the
+  byte ceiling never needs to cut inside one — which removes the
+  mid-codepoint problem from the byte cap entirely *and* removes the
+  off-by-one hazard, since the resume point is always a whole line.
+
+The second is the better architecture for any line-oriented reader, and
+it is worth noticing that it falls out of §6b's three ceilings *composing*
+rather than being three independent checks. The codepoint problem doesn't
+disappear, it just moves to the one place that genuinely has to cut inside
+a line — the per-line clamp — where it is a bounded, local concern.
+
+**A scorecard cell checked against the code.** Command Code's table marks
+Kilo Code's per-line clamp "utf-safe," which is directionally right and
+precisely wrong, and the difference is instructive. The clamp itself is
+`input.slice(0, MAX_LINE_LENGTH)` on a JavaScript string — 2,000 UTF-16
+code *units*, which can split a surrogate pair and leave a lone surrogate
+for any astral character (emoji, CJK extensions, mathematical
+alphanumerics). What *is* unusually careful is everything around it:
+Kilo decodes with `new TextDecoder("utf-8", { fatal: true })` in
+**streaming mode**, so a multi-byte sequence split across an I/O chunk
+boundary is buffered and reassembled rather than mangled, and `fatal:
+true` means invalid UTF-8 raises "File is not valid UTF-8" instead of
+silently substituting U+FFFD — the same fail-loudly posture `formats.md`
+adopts with its `not_utf8` status. It also sets a `discard` flag once a
+pending line passes the clamp while still scanning for a newline, so a
+600 MB single line is bounded in *memory*, not just in output. So: the
+most careful UTF-8 handling of any read tool read here, with the one
+literal cell the table graded left unfixed.
+
+The same family of hygiene, from Command Code, in one line each: strip
+the BOM (or it becomes an invisible first character of the first line,
+which then fails every exact-match edit against that line), and normalise
+CRLF on the way in (§5b, where Gemini CLI's restore-on-write half already
+lives). These are individually trivial and collectively the difference
+between a read tool that works on other people's repositories and one
+that works on yours.
 
 (One incidental note from the same section, for anyone implementing this on
 a JS stream: don't `break` out of a `for await` loop — it calls the

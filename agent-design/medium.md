@@ -1412,6 +1412,19 @@ the simple version measurably falls short.
     `apply_patch` broadly, and hashline beat `replace` for most but not
     all models. So the v1 choice is defensible on its own merits rather
     than merely convenient, which was not previously established here.
+  - **And an independent benchmark says the split this design already
+    makes is the right one.** JetBrains's Diff-XYZ separates *generating*
+    an edit from *reading* one, and finds they want opposite formats:
+    on GPT-4.1, search-replace scores 0.95 on diff generation and 0.57 on
+    apply, while unified-diff variants score 0.92–0.93 on apply and 0.06
+    on generation (`agent-tool-implementations.md` §4a). Forge writes
+    edits with search-replace (`Edit`) and *reads* them as unified diff
+    (the review envelope's pre-baked hunks, `formats.md` §1b) — which is
+    the strong direction of each format, arrived at for unrelated reasons
+    (byte-exactness on one side, line-number fidelity on the other). Worth
+    recording explicitly so a future consolidation doesn't "simplify" the
+    two into one representation: the measured penalty for using either
+    format in both directions is roughly 35 points.
   - **There is a third option this design hadn't considered**: an anchor
     the model *cites* rather than *reproduces*. Hashline returns
     `[path#TAG]` plus bare line numbers and the model edits by line

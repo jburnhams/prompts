@@ -697,11 +697,11 @@ and unambiguous to a parser.
 2000	  "z": 1,
 ! Showed lines 1-2000 of 18422. Pass start_line: 2001 to continue, or narrow with Grep.
 </file>
-<file path="data/fixtures.json" lines="1-847" status="truncated">
+<file path="data/fixtures.json" lines="1-846" total="20114" status="truncated">
 1	[
 ...
-847	  {"id": 8460, "payload": "…
-! Showed lines 1-847 (64 KB size limit reached mid-line). Pass start_line: 847 to continue from that line.
+846	  {"id": 8459, "payload": "…"},
+! Showed lines 1-846 of 20114 (64 KB size limit reached; line 847 did not fit). Pass start_line: 847 to continue.
 </file>
 <file path="src/parsr/index.ts" status="not_found">
 ! No such file. Did you mean src/parser/index.ts?
@@ -742,20 +742,25 @@ Rules:
   apologising and re-planning; a model told the file has 412 lines sends
   the right call next. (Command Code makes this explicit as a design rule;
   Claude Code's past-EOF message has the same shape.)
-- **Which cap fired is named, and the continuation differs by cap.** The
-  note distinguishes the line window from the byte ceiling, because the
-  resume points are not the same: a line-window truncation resumes on the
-  **next** line, a byte-ceiling truncation resumes **on the last line
-  shown**, since that line was cut mid-content. Getting that off by one
-  silently drops a line from the model's view of the file — a corrupted
-  read rather than a wasted turn, which is the worse failure of the two.
-  The harness computes the number; the model never does pagination
-  arithmetic. **A byte ceiling cuts on a codepoint boundary, never a byte
-  offset** — the longest valid UTF-8 prefix under the cap, found by binary
-  search. Slicing at the raw offset emits invalid UTF-8 or a replacement
-  character into the content, which then travels into an `Edit`
-  `old_string` and fails to match for a reason nothing in the transcript
-  explains.
+- **Which cap fired is named, and no cap ever cuts inside a line.** The
+  note says whether the line window or the byte ceiling stopped the read,
+  because the model's next move differs (narrow with `Grep` versus just
+  continue). The resume point does **not** differ: the byte ceiling stops
+  *before* the first line that would exceed it and names that line, so
+  both caps resume on the next line the model has not seen. This is
+  deliberate and it is the whole reason the caps compose in that order —
+  `read.max_line_chars` has already bounded any single line, so the byte
+  budget only ever has to decide whether a *whole* line fits. Two failure
+  modes disappear with it: the off-by-one that silently drops a line when
+  a byte cut lands mid-content, and mid-codepoint truncation, which would
+  put invalid UTF-8 or a replacement character into content that later
+  travels into an `Edit` `old_string` and fails to match for a reason
+  nothing in the transcript explains. (Kilo Code's reader is the
+  precedent; Command Code cuts mid-line and pays for it with a
+  binary-search for a valid UTF-8 prefix plus a resume-on-the-cut-line
+  rule — `agent-tool-implementations.md` §6c.) The one place that must
+  still cut inside a line is `read.max_line_chars` itself, and **that cut
+  is on a codepoint boundary**, never a raw offset.
 - **A `total` the harness has not established is not printed.** `total`
   requires having scanned the file; where a read streamed and stopped at a
   cap without reaching the end, the note states what was shown and the

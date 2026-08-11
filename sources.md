@@ -52,6 +52,7 @@ so a future pass can diff rather than re-read.
 | **Google ADK, Java** (the intended build substrate — see [`agent-design/adk.md`](./agent-design/adk.md)) | `github.com/google/adk-java` | `core/src/main/java/com/google/adk/tools/mcp/` — `AbstractMcpTool.java` (`wrapCallResult`, the result conversion, and `declaration()`), `McpTool.java` (the retry policy), `McpToolset.java` (`toolFilter`, no name prefix); `agents/Callbacks.java` (`BeforeToolCallback`/`AfterToolCallback`); `tools/BaseToolset.java` (`getTools(ReadonlyContext)`, `processLlmRequest`) | `8049f7e` |
 | **Google ADK, Python** (read first; **differs from Java** — kept for the comparison) | `github.com/google/adk-python` | `src/google/adk/tools/mcp_tool/` — `mcp_tool.py` (returns `response.model_dump()` of the whole `CallToolResult`, unlike Java's lossy `wrapCallResult`), `mcp_toolset.py` (`tool_filter`, optional `tool_name_prefix`). Docs live at `adk.dev` now, not `google.github.io/adk-docs` (301) | `c12a025` |
 | **OMP** (Oh My Pi — read 2026-08-11; prompt text stored in [`omp/`](./omp)) | `github.com/can1357/oh-my-pi` | `docs/toolconv/*.md` — **eleven per-model-family tool-call dialect references** (anthropic, harmony, qwen3, gemma, glm-4.5, deepseek, kimi-k2, minimax, gemini, xml, plus the `pi-native` transport), the only documentation of the wire layer in this collection; `docs/tools/*.md` — 30 per-tool *implementation* references naming their own source files; `packages/hashline/src/` — `prompt.md`, `grammar.lark`, and the parser/apply/snapshot/recovery split; `packages/coding-agent/src/prompts/` — ~140 prompt templates, `system/system-prompt.md` being the main one; `packages/coding-agent/src/edit/` — `resolveEditMode()` and the four edit modes; `packages/agent/src/compaction/prompts/` — 16 compaction prompts; `packages/snapcompact/`, `packages/metaharness/`, `packages/typescript-edit-benchmark/` | `eb5e167` |
+| **Kilo Code** (read 2026-08-11 — *targeted*, not a full pass) | `github.com/Kilo-Org/kilocode` | `packages/core/src/tool/read-filesystem.ts` — the whole read path in one file: `MAX_LINE_LENGTH`/`MAX_READ_LINES`/`MAX_READ_BYTES`, the streaming `TextDecoder("utf-8", { fatal: true })` loop, the `discard` flag that bounds a mega-line in memory, and the whole-line byte-budget composition written up in `agent-tool-implementations.md` §6c. Only the read tool was read; it is a Roo/Cline-lineage fork, so the rest is expected to be largely duplicative of sources already here | `64e5dd0` |
 | **Hermes Agent** (Nous Research; read 2026-08-11) | `github.com/NousResearch/hermes-agent` | `evals/readtool/` — an A/B eval harness for read-tool engineering choices: `README.md` (nine hostile fixtures, metrics, rules of engagement), `fixtures.py`, `tasks.py`, `runner.py`, `results/SUMMARY.md` (the only per-feature ship/no-ship log with numbers found anywhere in this collection); `tools/` — ~60 tool modules incl. `browser_*`, `computer_use*`, `delegate_tool.py`, `code_execution_tool.py`; `agent/learn_prompt.py` (`/learn`, skill authoring by the live agent), `agent/system_prompt.py`, `agent/prompt_builder.py`; `skills/` + `optional-skills/`; `trajectory_compressor.py`, `toolsets.py`. MIT, Python-first | `ed5e17f` |
 | **OpenHands** | `github.com/OpenHands/software-agent-sdk` | `openhands-tools/openhands/tools/<tool>/definition.py` (schema + description) and `impl.py` (runtime). **The agent moved out of `All-Hands-AI/OpenHands`**, which is now the web/desktop app | `main` @ 2026-07-31 |
 
@@ -144,6 +145,24 @@ captures only, already in `leaked/`); Continue.dev, Plandex, Aider's
 pass for its toolset/consolidation history, which is currently sourced only
 from its in-band `instructions` block and tool list).
 
+- Glukhov, Conti, Bogomolov & Golubev (JetBrains Research), *Diff-XYZ: A
+  Benchmark for Evaluating Diff Understanding* —
+  https://arxiv.org/abs/2510.12487 (read 2026-08-11 via the arXiv HTML
+  rendering; dataset at
+  `huggingface.co/datasets/JetBrains-Research/diff-xyz`). The one
+  **independent** edit-format benchmark used in this collection, and the
+  only source anywhere here that separates *generating* an edit from
+  *reading* one: three tasks (apply, anti-apply, diff generation) over
+  1,000 real edits from CommitPackFT, four formats (udiff, udiff-h,
+  udiff-l, search-replace), with stripped EM plus parse/apply rates and
+  F1 over added and deleted lines for generation. Numbers and the
+  direction-split finding in `agent-tool-implementations.md` §4a. Caveats:
+  the instances are commit-derived triples rather than realistic agent
+  tasks (EDIT-Bench is the complement, not yet read), diff generation is
+  scored by applying the generated diff so a valid-but-different diff can
+  score 0, and the paper predates the harnesses compared elsewhere in this
+  collection — it validates the *shape* of their claims, not their
+  specific numbers.
 - Command Code, *Tool Call Repairs* —
   https://commandcode.ai/docs/harness-engineering/tool-call-repairs
   (Ahmad Awais, 3 May 2026; read 2026-08-11). The published repair
@@ -221,13 +240,15 @@ from its in-band `instructions` block and tool list).
   numbers — the "hashline v2" of its own results table. Where the two
   disagree, the code is what this collection documents.
 
-**Hermes has since been read** and is in the table above; its read-tool
-eval is written up in `agent-tool-implementations.md` §6e. Three harnesses
-surfaced by the Command Code write-up remain uncovered: **Kilo Code**
-(`Kilo-Org/kilocode`, a Roo/Cline-lineage fork — repo confirmed to exist,
-not yet read; the one cell worth checking is its *UTF-safe* per-line clamp,
-which would be the only clamp in the field that truncates on a codepoint
-boundary rather than a byte one), **OpenClaw**, and **Command Code** itself
-(closed today; the post says "we're also going open source soon"). Kilo is
-the lowest-value of the three to read in full — it is a fork of sources
-already here — but that single cell is worth a targeted look.
+**Hermes and Kilo Code have since been read** and are in the table above
+(Hermes in full, Kilo's read tool only). One harness surfaced by the
+Command Code write-up remains uncovered: **OpenClaw**. **Command Code**
+itself is closed today, though the post says "we're also going open source
+soon," which would make the §6b–§8b material checkable against code rather
+than prose.
+
+Benchmarks worth reading next, in order of what they'd settle:
+**EDIT-Bench** (realistic editing tasks — the complement to Diff-XYZ's
+commit-derived triples), and **Aider's** own benchmark harness (the
+original format-swing result, and the only long-running public
+leaderboard on this question).
