@@ -678,7 +678,7 @@ and unambiguous to a parser.
 ### 8b. `Read`
 
 ```
-<files count="5" ok="2" truncated="2" failed="1">
+<files count="6" ok="2" outlined="1" truncated="2" failed="1">
 <file path="src/parser/index.ts" lines="1-42" total="42" status="ok">
 1	import { Token } from "./lexer"
 2	
@@ -690,6 +690,20 @@ and unambiguous to a parser.
 120	  while (pos < src.length) {
 ...
 180	  }
+</file>
+<file path="src/parser/emit.ts" total="612" status="outlined" shown="41" elided="571">
+1	import { Node } from "./ast"
+2	
+3	export class Emitter {
+4	  constructor(private out: Writer) {}
+5	
+6	  emit(node: Node): void {
+! lines 7-88 elided (82 lines)
+89	  emitBinary(node: BinaryNode): void {
+! lines 90-141 elided (52 lines)
+142	  private indent(): string {
+! lines 143-612 elided (470 lines)
+! Outline only: 41 of 612 lines shown. Re-read the ranges you need — one entry per range, several per call. Editing requires reading the range first.
 </file>
 <file path="src/big-generated.ts" lines="1-2000" total="18422" status="truncated">
 1	// AUTO-GENERATED
@@ -725,7 +739,8 @@ Rules:
   Line numbers are the file's own, so a ranged read starts at
   `start_line`, not at 1 — which is what makes a range citable and
   `Edit`-safe without re-reading from the top.
-- **`status` vocabulary**: `ok`, `truncated` (a cap applied — the note
+- **`status` vocabulary**: `ok`, `outlined` (declarations shown, bodies
+  elided — see below), `truncated` (a cap applied — the note
   gives the continuation), `empty` (zero-byte or whitespace-only file),
   `past_eof` (`start_line` beyond the file's length; the note gives
   `total`), `not_found` (with a did-you-mean when one is computable),
@@ -769,6 +784,29 @@ Rules:
   at the end of a read chunk, whether the file continues is not yet known,
   so the truncation claim is deferred to the next chunk rather than
   asserted at the boundary (`agent-tool-implementations.md` §6c).
+- **`outlined` is a distinct status from `truncated`, and the difference
+  matters.** A truncated read hit a cap and stopped; an outlined read
+  scanned the *whole* file and chose what to show, so `total` is exact and
+  no continuation offset applies. It fires only on a whole-file read (no
+  `start_line`/`end_line`) of a parseable source file at or above
+  `read.summarize.min_lines`; an explicit range, an unparseable language,
+  prose, or a file past `read.summarize.max_bytes` all fall through to the
+  ordinary windowed read. Rules specific to the shape:
+  - **Line numbers are the file's own**, so every shown line is citable
+    and every elision names a range that can be passed straight back as
+    `start_line`/`end_line`.
+  - **Each elision is a `!` note in place**, carrying its inclusive range
+    and line count. This satisfies §8a's invariant without inventing a
+    marker — an elision is a harness note, and harness notes are already
+    unambiguous inside a `<file>` block. The trailing note repeats the
+    aggregate so the recovery instruction survives any later
+    re-truncation, per the head/tail rule.
+  - `shown` and `elided` attributes carry the split; `lines` is omitted,
+    because the content is not a contiguous range.
+  - **An outlined read is a partial view** for the read-state cache
+    (`tools.md`), so `Write` refuses against it. `Edit` needs no special
+    rule: `old_string` must match bytes the model has actually seen, and
+    it has not seen the elided ones.
 - **A failed entry never fails the call.** The tool returns an error only
   when *every* entry failed, and then the error text is the same set of
   `!` notes so nothing is lost.

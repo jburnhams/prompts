@@ -356,8 +356,9 @@ the cache and not the dedup.
 
 The cache entry is **not a boolean**. Per path it records the bytes
 returned, `(mtime, size)` at read time, and whether the view was
-**partial** — a range read, a line-window truncation, or a line the
-per-line clamp cut. That distinction is what the two gates actually need,
+**partial** — a range read, a line-window truncation, a line the per-line
+clamp cut, or an **outlined** read (below), which is the most partial view
+of all and the easiest to mistake for a complete one. That distinction is what the two gates actually need,
 and they need different answers from it:
 
 - **`Edit` accepts a partial view.** Its `old_string` must match the file
@@ -436,6 +437,9 @@ handed a problem rather than a design.
 | `read.default_lines` | 2000 | Claude Code, OpenCode and Cline independently converged on 2000; Crush's 200 is the outlier and reflects an interactive UI where a human scrolls, not an unsupervised run that pays a turn per re-read |
 | `read.max_line_chars` | 2000 | Universal across every source read. Minified and generated files are the target; a legitimate source line never approaches it |
 | `read.max_entry_bytes` | 65,536 (64 KB) | Enforced by **whole lines** — the read stops before the first line that would exceed the budget, never cutting inside one, which is what keeps the byte ceiling from splitting a codepoint or shifting the resume point (`formats.md` §8b). The middle of the three ceilings, and the one this design originally skipped. The line window bounds a file with *many* lines and the per-line clamp bounds a *single* wide line; neither bounds a file whose lines are merely wide — 2,000 lines of 900 characters clears both caps and returns 1.8 MB (`agent-tool-implementations.md` §6b). The value deviates from Command Code's 128 KB and OpenCode's 50 KB deliberately: this `Read` is a batch tool, so a per-entry ceiling above `read.call_budget_chars` would never bind. 64 KB lets one large file take most of a call without letting it take more than the call has |
+| `read.summarize` | on | A whole-file read of a large source file returns its **declarations with bodies elided** rather than its first 2000 lines. OMP's default, and the only source that does this; it fits a turn-budgeted hands-off agent better than the interactive tools it came from, because the alternative to a skeleton here is not "the human scrolls" but "the model spends a turn discovering the file was the wrong one" |
+| `read.summarize.min_lines` | 100 | Below this a file is cheaper to return whole than to summarise and then re-read in pieces. OMP's value |
+| `read.summarize.max_bytes` | 2,097,152 (2 MiB) | Summarising means parsing. Past this, fall back to the ordinary windowed read rather than paying to parse a generated file |
 | `read.max_entries` | 20 | New here — no source has a batch read to cap. Past ~20 files the model is fanning out rather than reading, which is what `List`/`Grep` are for, and a 200-entry call would blow the call budget before the first file finished |
 | `read.call_budget_chars` | 80,000 (≈20k tokens) | A batch should not cost more than one large single read. Claude Code caps a single read at 25,000 tokens; Cline caps at 48,000 chars per read. This sits between them and is measured in characters deliberately — a real tokenizer call per read is a round trip the gate does not justify |
 | `read.file_size_gate_bytes` | 262,144 (256 KB) | Claude Code's value. This is the *explicit-request* gate: past it a read errors instead of truncating, per the implementation contract |
@@ -535,6 +539,16 @@ whole run, so they cannot.
 >   a reasonable size — a partial read that misses the relevant section
 >   costs more than the extra tokens would have. Use ranges when you have
 >   a specific line to land on, or when the file is genuinely large.
+> - **A whole-file read of a large source file comes back as an outline**:
+>   its declarations, with the bodies between them elided and marked in
+>   place with the exact line range each elision covers. This is a map,
+>   not the file. Use it to decide *what* to read, then ask for the ranges
+>   you need — several in one call, one entry per range, since they are
+>   the same batch. A read with an explicit `start_line`/`end_line` is
+>   never outlined; ranges always come back verbatim.
+> - Never edit against an outline. You have not seen the elided lines, so
+>   you cannot match them, and a `Write` over a file you have only seen in
+>   outline is refused. Read the range first.
 > - Each file returns up to 2000 lines and up to 64 KB, whichever it hits
 >   first; one call takes up to 20 entries, and the call has an overall
 >   size budget across all of them — so a batch of twenty large files

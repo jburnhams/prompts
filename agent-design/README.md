@@ -171,6 +171,8 @@ subsequent doc assumes.
 | Learnings-run read path | A capped, flat `<learnings>` envelope tag on coding and review runs; no detail tier, no read tool, and nothing injected at all when the store is empty | Index-plus-detail with topic files materialized into the run's workspace (the earlier draft — broken by workspaces being optional); a dedicated memory read/search tool | Progressive disclosure solves a size problem that doesn't exist yet — Codex ranks to a bounded top-N, Gemini CLI targets 0–5 new entries per run, one repo's memory fits a capped block for a long time. Both alternatives commit to machinery now; not building the middle step leaves the better end state available, since detail can later be served through the same ref-pinned read family rather than a new tool. The cap is harness-enforced with an error rather than a nudge (Claude Code's model: "everything past the limit is dropped on the next load"), and the empty-store case injects nothing so a cold repo never pays tokens for a capability with no content behind it (Codex's read-path builder returns nothing at all on an empty summary) |
 | Run narrative | A `Narrate` tool (`medium.md` §2f) the orchestrator calls a handful of times per run — `phase`/`summary`/`kind`, where `kind: "detour"` marks an approach change — persisted by the harness as a durable artifact serving both a watching human and §6's learnings runs | Mining the raw transcript for the same information after the fact (§6's original position); per-tool-call narration (Windsurf's `toolSummary`); no narrative at all, relying on the `Complete` report alone | The report says what happened; nothing said *why the approach changed*, and that is precisely what a retrospective needs and what a post-hoc reader can least reliably reconstruct — `agent-memory-learning.md` §7 shows Codex spending most of a 569-line prompt inferring exactly this from raw rollouts. Capturing it first-hand at the moment of the pivot is nearly free by comparison. Two independent precedents converge on the same trigger (`agent-turn-output.md` §3a): Gemini CLI's `update_topic` fires on "an unexpected event... that requires a strategic detour," and Codex's `update_plan` requires "an `explanation` of the rationale" whenever the plan changes mid-task. Rate is the failure mode, not volume — both throttle explicitly, and Antigravity supplies the drafting rule ("synthesize a narrative, don't copy checklist items verbatim"). It also fills a real gap on the unsupervised path: an `implement` run currently has no outward channel at all until it completes |
 | What a learning may do to a finding | Inform only — learnings reach the orchestrator and the finders as context, never the validator, and never suppress a finding | Greptile-style suppression of comment classes the team keeps ignoring; feeding learnings to the validator as additional evidence | Validator independence is the load-bearing property of the whole review pipeline (`review.md` §5: re-derive from code, not from the finder's argument), and a learning is exactly the kind of prior argument it must stay independent of — so a learning can change what gets *raised*, and only code decides what gets *confirmed*. On suppression: it is the most valuable thing in the review-bot research and the most dangerous thing to adopt early, and Greptile itself hardcodes an exemption so security findings are never suppressed. Revisit once §3e outcome data exists — tracked in `future.md` as the one genuinely open question left from this pass |
+| Proof obligation on `implement` | Typed by what was asked: a bug fix proves itself with the step-2 reproduction no longer triggering; a behaviour change with the existing tests covering the changed contract; an investigation by running it; anything runnable also gets a smoke test — start it, exercise the changed path, observe. A new test is written only for an observable contract the suite doesn't already cover | A uniform "run the tests, add tests for your change" step (the original draft) | The uniform version has two defects the research surfaced (`omp/`'s verification section is the sharpest statement of both). It produces test churn on investigations and on changes already covered — cost the reviewer pays, since a hands-off agent's output is a diff someone else reads. And it has no *run the program* mode at all: a passing suite is weak evidence for a bug fix, because that suite already failed to catch the bug. The counterpart rule — never re-audit an `Edit` that already returned success — is the same principle spending turns instead of tokens |
+| Whole-file `Read` of a large source file | Returns an **outline**: declarations shown, bodies elided in place with each elision's exact line range, plus a footer naming the re-read. Status `outlined`, distinct from `truncated`; explicit ranges are never outlined | Returning the first `read.default_lines` lines (the original draft, and every source but one); no summarization at all | The first-N-lines answer optimizes for a human scrolling; this agent's alternative is a turn spent discovering the file was the wrong one. An outline plus a targeted range read is usually two calls where a blind whole-file read is one call and a re-read — and the batch `Read` collapses several ranges into that second call. It composes safely here for a reason specific to this design: `Edit` matches bytes exactly, so the model *cannot* edit an elided body without reading it first, and the outline is recorded as a partial view so `Write` refuses too. OMP is the only precedent (`agent-tool-implementations.md`); the cost is a parser dependency and a guess that wants measuring, which is why it is the third open question in `eval.md` |
 
 ## What's deliberately not in v1
 
@@ -213,6 +215,12 @@ implementing v1 itself.
    overriding (the MCP result envelope, the retry policy on mutating
    tools), what to accept, and what to verify against a running stack.
    Deliberately separate so the design itself stays substrate-neutral.
+9. `eval.md` — the measurement harness: the hostile-workspace fixtures,
+   the accuracy-*and*-cost metrics, the rules of engagement (reps, noise
+   floor, two models, caveats recorded next to verdicts), and the
+   ship/no-ship log. This is what turns `tools.md`'s configuration
+   section from seventeen opinions into seventeen decisions, and it
+   carries the list of open questions it exists to close.
 
 This design has been through three full review passes against the rest
 of this repo's research — one after the first draft, one after the docs
@@ -373,3 +381,48 @@ delivery mechanism) and resolved a question that doc had carried as
 unresolved — Gemini CLI's `update_topic` is not a session-title
 mechanism but a progress-narration channel, which is why it is the
 closest precedent for `Narrate`.
+
+An eighth pass went a layer below the seventh — from how tools are
+implemented to what actually crosses the wire and what the evidence for
+any of it is worth. Sources: a vendor teardown of one read tool, two
+harness write-ups and the open-source harness behind them (OMP), a
+second harness's read-tool A/B eval (Hermes), and the academic
+benchmarks plus an audit of them
+([`agent-tool-call-dialects.md`](../agent-tool-call-dialects.md) is the
+new research doc; `agent-tool-implementations.md` §3f–§3h, §4a, §4a2,
+§5d, §6b–§6e and §8b are the rest).
+
+It corrected two latent bugs. `Write` was gated on *whether* a path had
+been read, so a 50-line read of a 2,000-line file licensed a wholesale
+rewrite that destroyed 1,950 unseen lines; the read-state cache now
+records what was seen, and `Write` requires a full view. And the three
+read ceilings were two: a file of merely-wide lines cleared every
+per-entry cap and fell through to the batch rule, which truncates whole
+entries and would have returned nothing for a one-file call.
+
+It inverted one architecture. The tolerance layers ran *before*
+validation — the design that Command Code shipped, broke, and reverted
+after a `write` whose content was legitimately JSON-shaped got rewritten
+on the way to disk. Repairs now run only on a failing input, at the paths
+the validator itself disagreed at, in a declared order (parse a
+JSON-string array before wrapping a bare string, or `'["a","b"]'` becomes
+`['["a","b"]']`: schema-valid, meaning lost).
+
+Two additions came from the same pass rather than from a bug. `Read` now
+outlines a large source file instead of returning its first 2,000 lines,
+which composes safely here because byte-exact `Edit` structurally
+prevents editing what was never shown. And the `implement` prompt's
+verify step became typed by what was asked, with a smoke-test mode it
+never had and a much narrower default on writing new tests.
+
+The pass also produced `eval.md`, and the reason is the most useful thing
+it found: the public evidence base cannot settle these questions. Of
+150+ code benchmarks, two evaluate instructed editing with human
+instructions and tests; both are over 90% Python with no TypeScript or
+Java, contain no documentation or maintenance edits, and carry oracles
+that in most cases cannot detect changes *outside* the edit region —
+which is exactly the failure mode an unsupervised agent has. Every
+credible harness team in the survey built their own eval instead. This
+design now has the specification for one, and `adk.md`'s two
+long-standing "this is the eval that decides it" questions finally have
+somewhere to be answered.
