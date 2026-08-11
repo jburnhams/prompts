@@ -222,6 +222,35 @@ used them." Two teams, independently, arrived at the same epistemics:
 the agent's own words are the least trustworthy part of its own
 transcript.
 
+### (b2) The working agent authors a *skill* on demand, with no distillation engine
+
+Hermes's `/learn` is a fourth shape that fits neither (a) nor (b): it is
+not an inline memory write and not a background consolidator, but a
+user-triggered command that builds one prompt instructing **the live agent
+to author a reusable skill using the toolset it already has** — `read_file`
+and `search_files` for a directory, `web_extract` for a URL, the current
+conversation for "what I just did," the user's text for pasted notes. The
+design note is explicit that this is the point: "There is no separate
+distillation engine and no model-tool footprint: the agent does the work
+with its existing toolset, so this works identically on local, Docker, and
+remote terminal backends."
+
+Two things make it worth recording next to the four background
+consolidators above. First, it inverts their economics — no second model,
+no transcript-reading pass, no scheduling — at the cost of being
+*triggered* rather than automatic, which means it captures what the user
+noticed rather than what the transcript contains. Second, its output
+routes by source size into the same two-tier shape §4 found converging
+everywhere: small sources become one tight `SKILL.md`; large prose corpora
+become "a lean SKILL.md index plus per-chapter `references/` files loaded
+on demand" — an index-plus-on-demand-detail layout arrived at
+independently, and this time for *skills* rather than memories, which is
+the strongest evidence yet that the pattern is about retrieval economics
+rather than about memory specifically. The authoring standards are
+embedded in the prompt as house rules ("description ONE sentence, **<=60
+characters**") so the agent writes skills "the way a maintainer would by
+hand."
+
 ### (c) Humans write it, and the agent is told to ask
 
 The oldest and still the most widely-implemented model —

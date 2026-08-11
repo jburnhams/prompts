@@ -52,6 +52,7 @@ so a future pass can diff rather than re-read.
 | **Google ADK, Java** (the intended build substrate — see [`agent-design/adk.md`](./agent-design/adk.md)) | `github.com/google/adk-java` | `core/src/main/java/com/google/adk/tools/mcp/` — `AbstractMcpTool.java` (`wrapCallResult`, the result conversion, and `declaration()`), `McpTool.java` (the retry policy), `McpToolset.java` (`toolFilter`, no name prefix); `agents/Callbacks.java` (`BeforeToolCallback`/`AfterToolCallback`); `tools/BaseToolset.java` (`getTools(ReadonlyContext)`, `processLlmRequest`) | `8049f7e` |
 | **Google ADK, Python** (read first; **differs from Java** — kept for the comparison) | `github.com/google/adk-python` | `src/google/adk/tools/mcp_tool/` — `mcp_tool.py` (returns `response.model_dump()` of the whole `CallToolResult`, unlike Java's lossy `wrapCallResult`), `mcp_toolset.py` (`tool_filter`, optional `tool_name_prefix`). Docs live at `adk.dev` now, not `google.github.io/adk-docs` (301) | `c12a025` |
 | **OMP** (Oh My Pi — read 2026-08-11; prompt text stored in [`omp/`](./omp)) | `github.com/can1357/oh-my-pi` | `docs/toolconv/*.md` — **eleven per-model-family tool-call dialect references** (anthropic, harmony, qwen3, gemma, glm-4.5, deepseek, kimi-k2, minimax, gemini, xml, plus the `pi-native` transport), the only documentation of the wire layer in this collection; `docs/tools/*.md` — 30 per-tool *implementation* references naming their own source files; `packages/hashline/src/` — `prompt.md`, `grammar.lark`, and the parser/apply/snapshot/recovery split; `packages/coding-agent/src/prompts/` — ~140 prompt templates, `system/system-prompt.md` being the main one; `packages/coding-agent/src/edit/` — `resolveEditMode()` and the four edit modes; `packages/agent/src/compaction/prompts/` — 16 compaction prompts; `packages/snapcompact/`, `packages/metaharness/`, `packages/typescript-edit-benchmark/` | `eb5e167` |
+| **Hermes Agent** (Nous Research; read 2026-08-11) | `github.com/NousResearch/hermes-agent` | `evals/readtool/` — an A/B eval harness for read-tool engineering choices: `README.md` (nine hostile fixtures, metrics, rules of engagement), `fixtures.py`, `tasks.py`, `runner.py`, `results/SUMMARY.md` (the only per-feature ship/no-ship log with numbers found anywhere in this collection); `tools/` — ~60 tool modules incl. `browser_*`, `computer_use*`, `delegate_tool.py`, `code_execution_tool.py`; `agent/learn_prompt.py` (`/learn`, skill authoring by the live agent), `agent/system_prompt.py`, `agent/prompt_builder.py`; `skills/` + `optional-skills/`; `trajectory_compressor.py`, `toolsets.py`. MIT, Python-first | `ed5e17f` |
 | **OpenHands** | `github.com/OpenHands/software-agent-sdk` | `openhands-tools/openhands/tools/<tool>/definition.py` (schema + description) and `impl.py` (runtime). **The agent moved out of `All-Hands-AI/OpenHands`**, which is now the web/desktop app | `main` @ 2026-07-31 |
 
 Already-stored captures used alongside the code (no fetch needed):
@@ -182,6 +183,22 @@ from its in-band `instructions` block and tool list).
   above. Two sibling posts not yet read: *Snapcompact: SoTA Compaction —
   Instant, Local, Free. Pick 3* (relevant to
   `agent-context-compaction.md`) and the Stencil piece below.
+- Stencil, *Snapcompact: SoTA compaction — instant, local, free. Pick 3* —
+  https://blog.can.ac/2026/06/10/snapcompact/
+  (Can Bölük, 10 Jun 2026; read 2026-08-11). Context rendered into dense
+  pixel-font bitmaps and carried as images. Used in
+  `agent-context-compaction.md` §9 for three things: the SQuAD F1
+  measurement of what prose compaction actually destroys (Gemini
+  `UNREADABLE` 240/240, Opus 209/240 — "the summaries preserve what you
+  were doing, not what you knew"), the 35–40 px²/character legibility
+  cliff and the decode tax that offsets the input saving, and the
+  vision-patch-alignment result (lock-on probability 0.39 → 1.00 on
+  Qwen2.5-VL-7B). Caveats: SQuAD extractive QA is a retrieval proxy, not
+  an agent-task proxy; the renderer was tuned against the four models
+  benchmarked and the author states results are a property of each
+  model's vision stack; vendor-run, though the eval harness, renderer,
+  per-question records and white-box probes are open in the OMP repo
+  above and reproduce for ~$35 plus a local GPU for the probes.
 - Stencil, *We improved 15 LLMs at coding in one afternoon. Only the
   harness changed.* — https://stencil.so/blog/the-harness-problem
   (Can Bölük, 12 Feb 2026; read 2026-08-11). The hashline edit-format
@@ -204,13 +221,13 @@ from its in-band `instructions` block and tool list).
   numbers — the "hashline v2" of its own results table. Where the two
   disagree, the code is what this collection documents.
 
-Four harnesses surfaced by the Command Code write-up that this collection
-has no coverage of at all: **Kilo Code** (`kilocode`, a Roo/Cline-lineage
-fork — the nearest neighbour to sources already here), **Hermes**
-(`hermes-agent`), **OpenClaw**, and **Command Code** itself (closed today;
-the post says "we're also going open source soon"). Kilo Code and Hermes
-are scored as having read-tool features this collection hasn't seen
-elsewhere — Kilo's UTF-safe per-line clamp, Hermes's cross-agent
-partial-view ledger, scored did-you-mean, and PDF coverage warning — which
-makes them the highest-value additions of the four, and the ones whose
-absence most weakens the §6/§7/§8 comparisons.
+**Hermes has since been read** and is in the table above; its read-tool
+eval is written up in `agent-tool-implementations.md` §6e. Three harnesses
+surfaced by the Command Code write-up remain uncovered: **Kilo Code**
+(`Kilo-Org/kilocode`, a Roo/Cline-lineage fork — repo confirmed to exist,
+not yet read; the one cell worth checking is its *UTF-safe* per-line clamp,
+which would be the only clamp in the field that truncates on a codepoint
+boundary rather than a byte one), **OpenClaw**, and **Command Code** itself
+(closed today; the post says "we're also going open source soon"). Kilo is
+the lowest-value of the three to read in full — it is a fork of sources
+already here — but that single cell is worth a targeted look.

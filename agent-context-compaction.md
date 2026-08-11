@@ -243,6 +243,110 @@ context independently?
 
 ---
 
+## 9. Someone measured the loss, and proposed a carrier instead of a summary
+
+Every mechanism above is a *summarization* strategy, and this doc has had
+to take on faith the thing they all trade away: fidelity. Stencil's
+["Snapcompact"](https://blog.can.ac/2026/06/10/snapcompact/) (Can Bölük,
+10 Jun 2026 — the same author as the OMP material in
+`agent-tool-implementations.md`) supplies both a measurement of that loss
+and a strategy that isn't on this doc's list.
+
+**The measurement.** SQuAD v1.1 extractive QA over a corpus packed to each
+technique's carrying capacity, 30 questions per chunk spread evenly, four
+frontier models, with `UNREADABLE` as an allowed answer. Against a
+verbatim-text ceiling of ~0.90 F1:
+
+| Technique | Fable 5 | Opus 4.8 | GPT-5.5 | Gemini 3.5 Flash |
+|---|---|---|---|---|
+| text (ceiling) | 0.904 | 0.911 | 0.861 | 0.898 |
+| handoff | 0.540 | 0.248 | 0.368 | 0.889 |
+| compact (prose / server-side) | 0.406 | 0.000 | 0.896 | 0.000 |
+| snapcompact (img-6×10-sent) | 0.882 | 0.601 | 0.822 | 0.805 |
+
+The blunt version, and the single most useful sentence in this doc's whole
+subject area: **"the summaries preserve what you were doing, not what you
+knew."** On compacted context Gemini answered `UNREADABLE` **240 times out
+of 240**, Opus 209 — a total loss of extractable fact, not a degradation.
+That is a hard number to put against §5's "is the discarded detail actually
+gone" question, and the answer for prose compaction is *yes, essentially
+all of it*, on two of four models tested.
+
+Two exceptions matter. **OpenAI's server-side compaction is the outlier
+that works** (0.896, above its own text ceiling of 0.861), which the author
+flags with appropriate suspicion — "they might just be skipping it, who
+knows?" And **Gemini's handoff documents score 0.889 by disobeying their
+own prompt**: they "write down the trivia," which is exactly what a handoff
+is told not to do and exactly what preserves the facts.
+
+**The failure mode of handoffs, stated better than anywhere else here.**
+This doc's §5 treats handoff-style externalization as the strong option.
+The author agrees it is "as good as it gets" and then names its
+pathology: unlike a plan, handoffs are unsteered, so "agents waste precious
+context writing an unnecessarily detailed diary, followed by a TODO list
+that practically begs the next agent to declare the goal impossible and
+ship an 'MVP' instead." The same objection applies to eliding tool results
+— "LLMs complete stories; if half of your story is `[elided...]`, how
+confident do you think it will be about using them?" — which is a
+mechanism-level argument that elision degrades *tool-calling* specifically,
+not just recall.
+
+**The strategy.** Render the context into a dense pixel-font bitmap and
+hand it back as an image. A 1568×1568 PNG holds ~40,000 characters in a
+6×10 font — ~10,000 tokens of text — and bills as 3,279 image tokens under
+Anthropic's pixel formula, so the carrier costs about a third of the text
+it carries, with no summarization step and therefore no fact loss by
+construction. Reported: context carried 170k → 46k tokens (÷3.7), and a
+÷1.8–÷2.9 full-run bill at F1 parity across four frontier models.
+
+Three findings inside it are transferable regardless of whether anyone
+ships this:
+
+- **There is a legibility cliff at 35–40 px² per character**, and it is
+  sharp: 8×13 transcribes at 1.00, 6×10 at 0.79, 5×8 at 0.37, 4×6 at 0.02.
+  Above the cliff, exact transcription degrades long before *identifier*
+  recall does — the model stops reproducing every byte well before it
+  stops reading the names.
+- **The input saving is not free: there is a decode tax.** Models decode
+  dense images by reasoning about them, costing ~5× the output tokens of
+  the text condition. At Anthropic's output pricing that can eat the input
+  saving in a single pass — mitigated only by the fact that the decode
+  happens once while the carry is paid every turn. Any comparison that
+  counts input tokens alone is wrong.
+- **The format can't make the model read sooner, but it can make the
+  reading unambiguous.** White-box probes on Qwen2.5-VL-7B locate the
+  layer where a visual patch's top-1 vocabulary entry becomes the answer's
+  BPE piece ("lock-on"). Aligning glyph cells to the model's 28×28 vision
+  patch grid and repeating lines in alternating hues moved lock-on
+  barely at all (L24 → L22) but took the decoded answer's probability from
+  **0.39 to 1.00**. Depth is architectural; confidence is yours.
+
+The supporting claim — that this is a memory format rather than a party
+trick — rests on representation probes: matched text↔image pairs reach
+cosine 0.66 at layer 19 against −0.06 for mismatched pairs,
+cross-carrier nearest-neighbour retrieval is 12/12 from layer 2 onward, and
+the two carriers' question-similarity geometries correlate at r = 0.94 by
+layer 1. Stated as: "the PNG isn't a picture of your context — it converges
+to being your context."
+
+**Caveats, several supplied by the author.** SQuAD extractive QA is a
+*retrieval* proxy and not an agent-task proxy — it measures whether a fact
+survives the carrier, not whether an agent can still act; a compaction
+strategy is judged on more than fact retention. Whether it works at all "is
+an empirical property of each model's vision stack, and you have to test
+it" — Opus scores 0.601 where Fable scores 0.882 on the same rendering. The
+tuning was done against the four models benchmarked. And this is vendor-run
+research, though unusually the eval harness, font renderer, per-question
+records and probes are open source in the OMP repo (`sources.md`), with a
+stated reproduction cost of ~$35. Prior art is acknowledged: DeepSeek-OCR's
+trained encoder for optical context compression, and Karpathy's riff on
+pixels as an input medium.
+
+For this doc's typology, it is a genuinely new branch: not a trigger, not a
+prompt shape, not a retention policy, but **a change of carrier that makes
+the compression lossless-by-construction and moves the cost from fidelity
+to decode**. Nothing else surveyed here does anything like it.
+
 ## Design takeaways
 
 - **Two unrelated codebases (Claude Code, OpenCode) independently

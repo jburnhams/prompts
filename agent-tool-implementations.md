@@ -1094,6 +1094,100 @@ nothing a coding agent legitimately does involves reading `/dev/urandom`
 through its file-read tool. (A model that genuinely wants entropy has a
 shell.)
 
+### 6e. Someone ran the experiment: Hermes's read-tool A/B eval
+
+The §6b–§6d material is reasoning about failure shapes, published by a
+vendor about its own product. One of the harnesses in that scorecard
+responded by building the measurement — and its `evals/readtool/` is the
+most rigorous artifact this collection has found on any tool.
+
+Its motivation is stated plainly, and is the epilogue to §8b's method note:
+
+> Motivated by Command Code's read-tool writeup (Aug 2026), which
+> benchmarked ten harnesses on hostile-file handling — and whose Hermes
+> column contained several errors (we already ship a per-line clamp,
+> did-you-mean suggestions, notebook/docx/xlsx extraction, PDF conversion,
+> and a device-path blocklist). This eval tests the failure shapes for
+> real, through the real `AIAgent`, instead of trusting anyone's
+> capability table.
+
+Two things follow. First, **the correction loop closed**: the Command Code
+page now credits Hermes with all six of those, and its changelog records
+"Hermes re-read at `8359e760`" on 10 Aug 2026 — the write-up's own promise
+to "correct any [errors] that are pointed out," exercised. Read the two
+together and the lesson is not that either party was careless but that a
+capability table about ten codebases is a perishable artifact, and the
+useful response to one is to re-derive the cells you care about.
+
+Second, and more usefully, **the fixture suite is a reusable
+specification** — nine deterministic hostile files, each isolating one
+failure shape from §6b–§6d:
+
+| Fixture | Shape | What it tests |
+|---|---|---|
+| `package-lock.json`, 80K lines / 2.7 MB | token tarpit | the line window |
+| `src/app.min.js`, one 600 KB line | the case the other ceilings miss | the per-line clamp |
+| `logs/server.log`, 150K lines, one ERROR near the tail | needle past the window | paging, or reaching for search |
+| `data/report.txt`, 412 lines | offset past EOF | the recovery note, §7b |
+| `config/overrides.yaml` | empty file | non-silence |
+| `notes/Meeting…PM.txt` | NFD + U+202F + U+2019 in the name | Unicode filename repair, §7b |
+| `AGENT.md` beside a real `AGENTS.md` | near-miss name | did-you-mean |
+| `logs/live.pipe` | **FIFO inside the workspace** | a read that never returns |
+| `data/data.txt` holding PNG bytes | lying extension | magic-byte sniffing, §5d |
+
+Metrics per task are accuracy against planted ground truth *plus*
+`api_turns`, `tool_calls`, `read_file_calls`, `total_tokens` and `wall_s`,
+which is the combination that makes the results interpretable — most of
+these features do not change whether the agent succeeds, only what success
+costs.
+
+**The finding that changes a §6d conclusion.** §6d framed unbounded reads
+as a *naming* problem solved by a blocklist. The FIFO fixture shows why
+that is only half of it: `logs/live.pipe` is an ordinary
+repository-relative path, so no blocklist of `/dev/*` and `/proc/*` can
+see it — "which cannot see an arbitrary workspace FIFO." The fix is a
+`stat` on the resolved path, refusing FIFOs, sockets and char/block
+devices by *type*. Measured, 3 reps, both arms same prompt, file-only
+toolset:
+
+| `fifo_hang` | baseline | stat-guard | delta |
+|---|---|---|---|
+| opus-4.8 tokens | 40k | 23k | −43% |
+| opus-4.8 turns | 5.7 | 4.0 | −30% |
+| qwen3.8-max tokens | 122k | 26k | −79% |
+| qwen3.8-max turns | 9.3 | 5.0 | −46% |
+| qwen3.8-max wall (worst rep) | 618s | 115s | −81% |
+| accuracy (both) | 1.00 | 1.00 | held |
+
+Both models recover *eventually* without the guard — which is exactly why
+this class of defect survives in shipped harnesses. Nothing fails; it just
+costs 7.5× the tokens and up to ten minutes.
+
+**The methodology is worth copying wholesale**, and is stricter than
+anything else cited in this doc:
+
+- **Three reps minimum**, with a stated noise floor: "single-run deltas
+  within ±3% are noise, not wins."
+- **Two models on purpose** — "a frontier model (opus) that can absorb
+  sloppy reads, and a strong open model (qwen-max) where harness quality
+  shows. A feature that only helps qwen still counts — that's the
+  population the hardening serves." This is the same
+  constraint-is-a-feature thesis as §6b and §3h, turned into an
+  experimental design.
+- **Errored runs score 0 and stay in the accuracy denominator but are
+  excluded from efficiency means**, so a crash can't flatter the token
+  numbers.
+- **Caveats recorded next to the verdict**, including one that invalidates
+  a comparison the authors could have quietly kept: the full-toolset
+  baseline and stat-guard FIFO numbers "are NOT comparable — the fifo
+  prompt was tightened between series," and with a full toolset "models
+  dodge the hang by using `stat`/`file` first, so real-world savings
+  depend on the model reaching for `read_file` before terminal."
+
+That last caveat is the honest boundary on the whole result, and it
+generalises: a hardening measured against a file-only toolset is an upper
+bound on what it buys an agent that also has a shell.
+
 ---
 
 ## 7. Errors are prompts
@@ -1340,6 +1434,16 @@ be read that way — we expect errors in it" — so the cells are treated
 throughout this doc as claims worth checking, while the failure modes,
 which are reproducible reasoning rather than measurement, are treated as
 findings.
+
+That posture is now vindicated from an unexpected direction: **another
+harness in the same table found errors in its own column, said so, and the
+table was corrected** — see §6e, where Hermes documents the six
+capabilities it was wrongly marked down on and Command Code's changelog
+records the re-read. The Claude Code disagreement above stays unresolved
+for the reason given (nobody outside Anthropic can re-derive a flag-gated
+cell), but the general case has an answer: a capability table spanning ten
+codebases decays, and the response is to re-measure the cells you are
+about to make a decision on.
 
 ---
 

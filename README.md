@@ -111,7 +111,20 @@ inputs that merely look malformed — which is how a file write whose
 content was legitimately JSON-shaped got silently corrupted. Two
 independent teams, one open and one closed, land on the same thesis from
 opposite directions: most of what reads as a model capability gap is
-contract design.
+contract design. A follow-up pass then found the one thing all of that was
+missing — **somebody actually ran the experiment**. Nous Research's Hermes
+built an A/B eval for read-tool engineering choices, explicitly because the
+vendor scorecard above got its column wrong, and its
+`evals/readtool/` is the most rigorous artifact in this collection: nine
+deterministic hostile fixtures, accuracy *and* cost metrics, three reps
+with a stated ±3% noise floor, a frontier model and a strong open model on
+purpose, and a per-feature ship/no-ship log with the caveats that
+invalidate its own comparisons recorded next to the verdicts. It also found
+a real gap in the blocklist reasoning: a name blocklist cannot see a FIFO
+sitting inside the working tree, and the `stat`-based guard that can is
+worth −79% tokens and −81% wall clock on that fixture with accuracy
+unchanged — the shape of defect that survives in shipped harnesses
+precisely because nothing fails.
 
 **[→ `agent-subagent-architectures.md`](./agent-subagent-architectures.md)**
 — a companion drill-down on one specific tool-surface capability: when
@@ -140,6 +153,18 @@ before compaction happens" strategy via a persistent memory tool),
 prompt-cache interaction, sub-agent isolation, and — compared in
 detail — actual numeric token budgets (reserved buffers, summary
 output caps, retention thresholds) across the sources that expose them.
+A later pass added §9, which supplies the one thing the rest of the doc
+had to take on faith — **a measurement of what compaction destroys**.
+On a SQuAD-based benchmark against a verbatim-text ceiling, prose
+compaction is a total loss of extractable fact on two of four frontier
+models (Gemini answered `UNREADABLE` 240 times out of 240, Opus 209):
+"the summaries preserve what you were doing, not what you knew." The
+same source proposes a branch that is not on this doc's typology at all
+— rendering the context into dense pixel-font bitmaps and carrying it as
+*images*, which is lossless by construction and moves the cost from
+fidelity to a decode tax — with a legibility cliff at 35–40 px² per
+character and a vision-patch-alignment trick that drives decode
+confidence from 0.39 to 1.00.
 
 **[→ `agent-turn-output.md`](./agent-turn-output.md)** — a further
 drill-down on what a single LLM turn actually produces, across 22

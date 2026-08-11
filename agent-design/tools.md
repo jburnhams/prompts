@@ -159,15 +159,30 @@ the model receives a preview plus that path. `Read` is the deliberate
 exception — spilling a read to a file the model then reads back is circular
 — so `Read` self-bounds via its own limits instead.
 
-**Some paths are refused before any I/O.** A cap can only bound a read that
-*finishes*, so anything unbounded has to be refused by identity instead:
-`Read` (and `List`'s line-counting pass, which opens files for the same
-reason) checks the resolved path against a fixed blocklist —
-`/dev/zero`, `/dev/urandom`, `/dev/random`, `/dev/stdin`, and
-`/proc/<pid>/fd/*` — and returns a `refused_path` status without calling
-`open()`. The working-tree boundary is not a substitute: it doesn't apply
-when the working directory is `/`, and these paths are reachable by
-absolute path regardless. The false-positive cost is nil — nothing a coding
+**Some reads are refused before any I/O, by name *and* by type.** A cap can
+only bound a read that *finishes*, so anything unbounded has to be refused
+up front, and that takes two independent checks:
+
+1. **A name blocklist.** `Read` (and `List`'s line-counting pass, which
+   opens files for the same reason) checks the resolved path against a
+   fixed list — `/dev/zero`, `/dev/urandom`, `/dev/random`, `/dev/stdin`,
+   `/proc/<pid>/fd/*` — and returns `refused_path` without calling
+   `open()`. The working-tree boundary is not a substitute: it doesn't
+   apply when the working directory is `/`, and these paths are reachable
+   by absolute path regardless.
+2. **A `stat` on the resolved path**, refusing FIFOs, sockets, and
+   character/block devices whatever they are called. This is the check
+   that actually matters, because **a name blocklist cannot see a FIFO
+   sitting inside the working tree** — `logs/live.pipe` is an ordinary
+   repository-relative path that blocks forever on `open()`. Hermes added
+   exactly this guard after its own read-tool eval
+   (`agent-tool-implementations.md` §6e) and measured it: on a
+   FIFO-in-workspace task, a strong open model spent 122k tokens and up to
+   ten minutes of wall clock recovering without the guard versus 26k
+   tokens with it (−79% tokens, −81% worst-case wall), and a frontier
+   model −43% tokens — with task accuracy unchanged at 1.00 in both arms,
+   since both models do eventually recover. The guard is pure efficiency,
+   which is precisely why it is easy to ship without and never notice. The false-positive cost is nil — nothing a coding
 or review run legitimately does reads `/dev/urandom` through a file-read
 tool, and a model that wants entropy has `Bash` — which makes this the
 cheapest safety rule in the document, and the only one whose absence is a
