@@ -220,6 +220,17 @@ client-side half, since it is invocation-scoped rather than static.
 started with that run's mode and configuration. That makes the process
 boundary the state boundary — the read-before-edit cache lives and dies
 with the run — and it matches the config precedence in `tools.md`, where
+that cache now holds the bytes of every file read this run (`tools.md`'s
+read-before-edit rule), not a set of paths, so the per-run process is
+also carrying real memory: a run that reads a hundred files at the 64 KB
+per-entry ceiling is holding a few MB, which is fine for one process per
+run and would not be for a shared long-lived one. Hashing rather than
+retaining the bytes is the obvious economy, and it costs the `Write` gate
+its ability to distinguish "clamped but complete" from "genuinely
+partial" only if the hash is taken over the *displayed* text rather than
+the raw file — so hash the raw bytes if this ever matters.
+
+It matches the config precedence in `tools.md` too, where
 per-run overrides are server-start parameters rather than anything the
 model can see. It also forces one non-obvious constraint: **the file tools
 and `Bash` must be served by the same process**, because `Bash` can

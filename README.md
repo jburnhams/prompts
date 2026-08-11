@@ -70,7 +70,24 @@ success; errors written as instructions; the side channels attached to tool
 results (JIT conventions injection, unchanged-file dedup, read-before-edit
 gates); and the tool set as a runtime artifact — per-model-family schemas
 (Gemini CLI), model-based tool routing (Cline), and deferred loading behind
-a search tool (Claude Code, Codex).
+a search tool (Claude Code, Codex). A later pass went one level deeper on
+the single most-called tool, adding the first **vendor engineering
+write-up** to this collection's source types (Command Code's read-tool
+teardown, benchmarked across ten harnesses): the **three ceilings** a read
+tool needs and the file shape each one is the only defence against;
+recovery text as a closed catalogue typed as *notes rather than errors*;
+the failures a model **provably cannot diagnose** (macOS's NFD-decomposed
+filenames, narrow no-break spaces, curly-quote renames — byte-different,
+pixel-identical) and the rule that sorts tool-side retry from model-side
+suggestion; truncation claims you cannot honestly make yet at a stream
+chunk boundary; a **production deadlock** in which a per-line clamp, a
+read-before-write ledger and an unchanged-file dedup — each correct alone,
+none of them calling another — lock a model into an infinite re-read loop,
+and the "consume-on-hit" cache rule that stops a dedup stub pointing into
+context that compaction has since eaten; and, as a method note, what it
+means that the write-up's live probe of Claude Code and this collection's
+reading of its leaked source **disagree** on two features (source-reading
+establishes what was built; probing establishes what is switched on).
 
 **[→ `agent-subagent-architectures.md`](./agent-subagent-architectures.md)**
 — a companion drill-down on one specific tool-surface capability: when
@@ -381,4 +398,8 @@ gpt-engineer, Plandex, bolt.diy (community multi-LLM fork of Bolt).
 From the scaffold-taxonomy paper above: AutoCodeRover, Agentless,
 Moatless Tools, DARS-Agent, Prometheus (all SWE-bench-family agents, same
 category as `swe-agent/`/`mini-swe-agent/`/`live-swe-agent/`/
-`augment-swebench-agent/` above).
+`augment-swebench-agent/` above). From Command Code's read-tool benchmark
+(see [`sources.md`](./sources.md)): **Kilo Code**, **Hermes**, **OpenClaw**,
+and **Command Code** itself — four harnesses this collection has no
+coverage of, two of which (Kilo Code, Hermes) are credited with read-tool
+features found nowhere in the sources read so far.

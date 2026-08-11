@@ -94,6 +94,35 @@ things learned this pass that are worth adding to that assessment:
   (`content` vs `structuredContent`, `outputSchema`, `isError`,
   `annotations`: `readOnlyHint`/`destructiveHint`/`idempotentHint`/
   `openWorldHint`, resource links, pagination).
+- Command Code, *The Read Tool* —
+  https://commandcode.ai/docs/harness-engineering/read-tool
+  (Ahmad Awais, published on X 9 Aug 2026, long-form on the docs site;
+  read 2026-08-11, page carries a changelog entry dated 10 Aug 2026).
+  A capability-by-capability teardown of one tool across ten harnesses:
+  the three-ceilings model (2,000 lines / 128 KB / 2,000 chars per line),
+  a closed catalogue of recovery messages, the clamp→ledger→dedup
+  deadlock, consume-on-hit dedup, seven-candidate Unicode filename
+  retry, deferred chunk-boundary truncation, the JPEG quality ladder and
+  downscale coordinate disclosure, notebook cells over 10K chars as `jq`
+  pointers, `Number()`-not-`parseInt` coercion, and a device-path
+  blocklist. Used throughout `agent-tool-implementations.md` §5d, §6b–§6d,
+  §7b and §8b. **Read with three caveats, all disclosed by the page
+  itself**: it is marketing for the product it benchmarks; the benchmark
+  "was produced by AI with little human review, and should be read that
+  way — we expect errors in it"; and the Claude Code column was **probed
+  live rather than read** (four crafted files: a 3,000-line file, a
+  3,900-character line, an empty file, a missing `AGENT.md` beside a real
+  `AGENTS.md`), with "a dash means we looked and did not find it." Two of
+  its Claude Code cells (unchanged-read dedup, did-you-mean) contradict
+  this collection's own reading of the leaked source — see
+  `agent-tool-implementations.md` §8b for why both readings are probably
+  right. The other nine columns cite commits, read 29 July 2026: `pi`
+  `027a584`, `opencode` `8cbea4f`, `codex` `d06c7ac`, `grok-build`
+  `5da6962`, `cline` `c39c6d4`, `kilocode` `f844790`, `cloud` `8f32eff`,
+  `openclaw` `18535626`, and `hermes-agent` `8359e760` (re-read 10 Aug
+  2026) — useful for a future pass that wants to diff rather than
+  re-derive, though the repos behind `hermes`, `kilocode`, `openclaw` and
+  `cloud` are not identified by URL on the page.
 
 ## Live-session sources
 
@@ -112,3 +141,14 @@ captures only, already in `leaked/`); Continue.dev, Plandex, Aider's
 `coders/` (open, not yet needed); `github/github-mcp-server` (open — worth a
 pass for its toolset/consolidation history, which is currently sourced only
 from its in-band `instructions` block and tool list).
+
+Four harnesses surfaced by the Command Code write-up that this collection
+has no coverage of at all: **Kilo Code** (`kilocode`, a Roo/Cline-lineage
+fork — the nearest neighbour to sources already here), **Hermes**
+(`hermes-agent`), **OpenClaw**, and **Command Code** itself (closed today;
+the post says "we're also going open source soon"). Kilo Code and Hermes
+are scored as having read-tool features this collection hasn't seen
+elsewhere — Kilo's UTF-safe per-line clamp, Hermes's cross-agent
+partial-view ledger, scored did-you-mean, and PDF coverage warning — which
+makes them the highest-value additions of the four, and the ones whose
+absence most weakens the §6/§7/§8 comparisons.

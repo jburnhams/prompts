@@ -26,6 +26,19 @@ already-stored tool-JSON captures for Manus, Windsurf, Cursor and Grok
 Build, plus Anthropic's own published tool-design guidance and the MCP tool
 specification.
 
+A later pass added a fourth class of source, marked wherever it is used: a
+**vendor engineering write-up** about a closed harness — Command Code's
+["The Read Tool"](https://commandcode.ai/docs/harness-engineering/read-tool)
+(Ahmad Awais, 9 Aug 2026), a capability-by-capability teardown of one tool
+across ten harnesses. It is the only account here written by a team that
+rebuilt a read tool and then said what broke, which makes it the richest
+single source on `read` in this collection and also the least neutral: it is
+marketing for the product it benchmarks, and its own competitor column is
+partly wrong where this collection has read the code (§6b, §8b). The
+findings below separate the two — the failure modes it describes are
+reproducible reasoning about a tool anyone can build; the scorecard is
+treated as a claim, not a finding.
+
 ---
 
 ## 1. A tool has three consumers, and the good implementations give each its own channel
@@ -399,6 +412,32 @@ The general principle: **a rejected tool call costs a full round trip and
 teaches the model nothing; a normalised one costs nothing.** Reject only
 what you cannot disambiguate.
 
+### 3f. Tolerance has a floor, and it is arithmetic
+
+"Accept sloppy" is not "accept anything," and Command Code's write-up
+supplies the sharpest statement of where the line falls. Its repair layer
+takes ten aliases for `file_path` (`filePath`, `absolutePath`,
+`target_file`, …) and coerces numeric strings — but coerces them **via
+`Number()`, never `parseInt`**, so `"2abc"` is rejected rather than
+silently read as `2`, and fractional offsets are rejected rather than
+floored. The reasoning is one line and it generalises past this tool:
+
+> a silently wrong window is worse than an error.
+
+That is the missing half of §3e. Alias repair is information-preserving —
+`filePath` and `file_path` mean the same thing, and the transform is
+reversible. `parseInt("2abc")` is not: it invents a value the caller never
+supplied, and the resulting read succeeds, so nothing downstream ever
+learns it was wrong. The test to apply per-field is whether a repair can
+produce a *plausible wrong answer* rather than an obvious failure; where it
+can, reject. Note that the harnesses using off-the-shelf coercion inherit
+the opposite behaviour by default: Zod's `z.coerce.number()` (Cline's
+choice, §3e) is `Number()`-based and so rejects `"2abc"` too, but it
+happily accepts `1.5` for a line number, which then flows into a slice.
+Clamping and coercion each need this test applied field by field — Zed
+clamping `start >= 1` is safe because 0 has exactly one plausible intent,
+whereas rounding 1.5 does not.
+
 ---
 
 ## 4. Mimicry: how much should a tool look like a tool the model already knows?
@@ -577,9 +616,55 @@ GrowthBook flags (`tengu_amber_wren` gates `maxSizeBytes`/`maxTokens`;
 `Edit` description text switching with it) — rather than a shape baked
 through the whole codebase.
 
+### 5d. When the payload isn't text at all
+
+Every format decision above assumes the file is text. A read tool is also
+the entry point for everything that isn't, and Command Code's teardown is
+the only source here that treats that as a format problem rather than an
+afterthought. Four rules, each with a stated failure mode:
+
+- **Sniff magic bytes, never the extension.** "garbage in a `.png` must
+  never reach the api, real webp must pass." The extension is
+  attacker- and accident-controlled; the provider's image endpoint is the
+  thing that rejects the call, one round trip later. OpenCode, Kilo Code
+  and Grok Build are scored as doing this too.
+- **Degrade rather than fail to attach.** Images are compressed down a
+  JPEG quality ladder (95 → 80 → 60 → 40 → 20) and attached at the first
+  size that fits, so a 4K screenshot arrives degraded instead of not
+  arriving. This is the §6 caps argument applied to a binary payload: a
+  worse answer beats a missing one, as long as it says so.
+- **A downscaled image must disclose its scale factor.** "on disk
+  3024x1964 / attached 1092x709 → multiply displayed coords by 2.77."
+  Nothing in the pixels records that the image was resized on the way in,
+  so every coordinate the model computes off a screenshot is confidently
+  wrong and *nothing surfaces the error* — the same invisible-failure class
+  as §7b's filenames. The write-up scores only Pi and OpenClaw as doing
+  this as well, and it is the one item here that matters mainly to
+  computer-use rather than coding runs.
+- **Structured documents render as documents, and large cell outputs
+  become pointers.** Raw `.ipynb` is "json soup: base64 blobs,
+  per-character source arrays"; the tool returns tagged cells with plots
+  attached as images, and **any cell output over 10,000 characters is
+  replaced by a `jq` pointer** rather than inlined. That last move is the
+  transferable one, and it is not really about notebooks: when a payload's
+  *existence and shape* are what the model needs and its *contents* are
+  not, return an address and the means to query it. One dataframe dump
+  cannot then eat the read budget, and the model can still fetch the rows
+  it turns out to need. SVG is treated as editable XML (it is text), a
+  binary returns its MIME type and nothing else, and PDF returns a
+  `pdftotext` hint.
+
+The general shape: for a non-text file the read tool's job is to return the
+*smallest thing that preserves the model's ability to act* — an attached
+image for something it must see, a MIME line for something it must not
+read, a pointer for something it may need to query — and to say which of
+those it did.
+
 ---
 
 ## 6. Limits, truncation and pagination
+
+### 6a. The numbers, and four practices worth lifting
 
 Every source caps output; the differences are in the numbers and, more
 importantly, in what the cap *says*.
@@ -634,13 +719,108 @@ the right split — cap *by default* (cheap, the model asked for everything
 and gets a page), error on *explicit over-limit requests* (the model asked
 for something specific and impossible).
 
+### 6b. Three ceilings, not one
+
+The table in §6a records which sources have a line cap and which have a
+byte cap, but not *why a harness needs both plus a third*. Command Code's
+write-up supplies the argument, and it is the single most portable idea in
+that source:
+
+> every codebase keeps a small zoo of hostile files: the 80,000-line
+> lockfile, the minified bundle that's technically one line, the log that
+> never stops growing. each ceiling handles one animal.
+
+- The **line window** (2,000) bounds a file that is ordinarily large.
+- The **byte budget** (128 KB) bounds a file whose lines are *wide rather
+  than many* — the ceiling that catches what the line window lets through.
+- The **per-line clamp** (2,000 chars) catches the case the other two both
+  miss: *one* minified line that sits comfortably inside the line window
+  and, on its own, consumes the entire byte budget. Without it the model
+  gets back "a single unusable mega-string that displaced everything the
+  model actually needed to see."
+
+The point is that these are not three settings of the same dial; each is
+the only defence against one file shape, and they compose. "drop any one
+ceiling and there's a shape of file that costs you the whole read. no log
+will ever show it, just a turn where the model got nothing and paid full
+price for it." Checking §6a's table against this framing is a useful
+exercise: OpenCode, Cline and Crush have all three; Claude Code's read has
+the line window and the byte gate but no per-line clamp recorded in the
+source read here, which is also what Command Code's live probe found (a
+3,900-character line "returned whole, no clamp") — the one Claude Code cell
+in its scorecard that this collection's own reading independently agrees
+with.
+
+The clamp also has a second-order effect worth flagging, because it is
+where §6 and §8 collide: a clamped line means the model has *not* seen the
+file's bytes, which makes the read partial in a way the line count doesn't
+reveal. §8b is what happens when a harness forgets that.
+
+### 6c. The truncation you cannot yet honestly claim
+
+Two implementation details from the same source, both about reads that
+stream rather than load the file into memory (OpenCode, Kilo Code and Cline
+stream too; Claude Code is scored as not doing so):
+
+**Defer the decision at a chunk boundary.** If the line limit is reached
+*exactly* at the end of a chunk, the tool does not yet know whether the
+file continues — the answer to "is there more?" hasn't been read yet.
+Guessing "more of the file remains" is "a lie roughly half the time, and
+it's a lie that costs a turn every time it fires," because the model spends
+a call fetching a page that doesn't exist. The rule: **when you can't know
+yet, say nothing yet** — carry the truncation claim forward to the next
+chunk rather than emitting it at the boundary. This generalises to any
+`total` or "N of M" figure a tool reports: a footer that says how much
+exists is a claim, and a streaming reader has to have actually established
+it.
+
+**Resume offsets are computed by the tool, not the model.** Byte-capped
+output resumes **on the last line shown, not the line after it**, because
+that line was cut mid-content; a line-capped read resumes on the next line.
+Getting this backwards silently drops a line from the model's view of the
+file:
+
+> an off-by-one in a resume hint is a silently corrupted read, which is the
+> one bug class here that's worse than a wasted turn.
+
+Which is also the argument for the tool computing the offset at all: §6a's
+"state the next call" rule is usually justified by saving a round trip, but
+the stronger reason is that pagination arithmetic done in the model's
+reasoning is both billed and occasionally wrong.
+
+(One incidental note from the same section, for anyone implementing this on
+a JS stream: don't `break` out of a `for await` loop — it calls the
+iterator's `return()` and destroys the underlying stream.)
+
+### 6d. The ceiling that isn't a number: paths refused before any I/O
+
+`/dev/zero` is an infinitely long file. So is `/dev/urandom`. No line
+window, byte budget or per-line clamp helps, because the failure is that
+the read never terminates — and a workspace-boundary check doesn't help
+either when the working directory is `/`. Command Code refuses
+`/dev/zero`, `/dev/urandom`, `/dev/stdin` and `/proc/<pid>/fd/*` **by name,
+before any I/O**, and states the consequence plainly: "a read tool that
+hangs on `/dev/zero` is a denial of service you shipped yourself." Its
+scorecard finds only one other harness of ten with such a list.
+
+This belongs in §6 rather than in a security section because it is a limits
+problem wearing a safety costume: the general rule is that a cap can only
+bound a read that *finishes*, so anything unbounded has to be refused by
+identity instead. It is also cheap — a fixed list checked before `open()` —
+and, unlike most safety machinery, it has no false-positive cost, because
+nothing a coding agent legitimately does involves reading `/dev/urandom`
+through its file-read tool. (A model that genuinely wants entropy has a
+shell.)
+
 ---
 
 ## 7. Errors are prompts
 
 Tool errors go into the transcript, so they are prompt text that gets
 written at exactly the moment the model is paying attention. Every source
-read here treats them that way:
+read here treats them that way.
+
+### 7a. Five ways the field writes them
 
 - **Fuzzy recovery.** Claude Code's `Read`: "File does not exist. …
   Did you mean `<cwd-relative suggestion>`?", falling back to a
@@ -664,12 +844,87 @@ read here treats them that way:
   message lists them: send an empty command to wait longer, send other
   commands, send `C-c`/`C-z`/`C-d`, or raise the timeout parameter.
 
+### 7b. Silence is the expensive answer, and some failures are invisible
+
+Command Code's teardown pushes §7a's principle further in two directions
+that no source read as code states outright.
+
+**Every dead end names its own recovery, and the set is enumerable.** The
+write-up lists them as a closed table rather than as scattered strings —
+empty file → "is empty"; past EOF → "retry smaller"; byte cap →
+`offset=1847`; line cap → `offset=2001`; PDF → "pdftotext" — on the
+argument that the costliest result a tool can return is an *ambiguous
+non-answer*:
+
+> an empty result string is indistinguishable, from inside the model, from
+> a broken tool. so it re-reads. widens the window. tries a different path.
+> burns three turns learning what one sentence could have told it.
+
+The worked comparison is the clearest statement of §7's whole thesis: the
+same call either returns nothing (3 turns, no new information) or returns
+`Note: offset 900 is beyond the end of the file (412 lines scanned). Retry
+with a smaller offset.` (1 turn, correct next call). Claude Code's
+equivalent past-EOF message (§7a) says the same thing in the same shape,
+which is the corroboration that matters — this is a convergent design, not
+one vendor's idea.
+
+Two details are genuinely new here, though. First, **none of these carry an
+`Error:` prefix**: they are notes, so the TUI doesn't paint them red "and
+the model doesn't treat a fact about the world as a failure worth
+apologizing for." An empty file is not an error; a start line past EOF is
+not an error; both are facts, and typing them as errors spends output
+tokens on apology and, in a harness with an error-rate circuit breaker,
+can trip it. Second, the *catalogue* framing is itself the practice: the
+recovery strings are a table with one row per way the tool can decline to
+return content, which is auditable in a way that a codebase's worth of
+ad-hoc `throw` sites is not.
+
+**Some failures the model provably cannot diagnose, and those are the
+tool's job to retry.** The best example in the source, and the one finding
+here with no analogue anywhere else in this collection:
+
+> macos names screenshots with a NARROW NO-BREAK SPACE before AM/PM. it
+> stores filenames NFD-decomposed. finder renames turn `'` into `’`.
+
+Two byte strings; in a terminal, the same picture. The model reads the path
+off the screen, retypes it faithfully, gets "file not found," and **no
+amount of reasoning recovers, because the difference isn't rendered**. So
+before failing, the tool retries **seven candidate spellings** — narrow
+space ↔ regular, NFD, NFC, straight ↔ curly quote, NFD+curly — each one
+re-checked against the workspace boundary, "because a repair must never
+quietly become an escape hatch." Only then does it fall back to
+did-you-mean: substring match *plus a bounded Levenshtein of 2*, which is
+what catches `AGENT.md` → `AGENTS.md` where substring matching finds
+nothing.
+
+The generalisable rule is the one the write-up states: **when a failure is
+invisible to the model, retrying is the tool's job**, because the model
+will retry the same wrong bytes forever. That is a sharper test than "be
+helpful on errors" — it sorts failures by whether the evidence needed to
+fix them is present in what the model can see. A missing file whose name is
+merely misspelled is visible (hence did-you-mean is a *suggestion*, handed
+back for the model to act on); a missing file whose name differs by a
+codepoint that renders identically is not (hence the retry happens inside
+the tool, before any error text exists). The same test explains §5d's
+coordinate-scale disclosure: a resized image carries no visible evidence
+that it was resized, so the tool has to say so.
+
+The security note attached to it is worth keeping as stated: a repair layer
+that resolves paths is an attack surface, and re-validating every candidate
+spelling against the workspace boundary — rather than validating the
+original and then repairing — is the ordering that keeps normalisation from
+becoming traversal.
+
 ---
 
 ## 8. The side channels attached to tool results
 
 A tool result is also the harness's chance to inject policy at the moment
-of use. Three independent implementations of the same idea:
+of use.
+
+### 8a. Four kinds of side channel
+
+Three independent implementations of the same idea:
 
 - **Instruction files ride along with reads.** OpenCode appends
   `<system-reminder>` blocks carrying nearby `AGENTS.md`-style instructions
@@ -694,6 +949,115 @@ of use. Three independent implementations of the same idea:
   errors if an existing file wasn't read first. This is enforced in code via
   a per-session `readFileState` cache, not by instruction — the same
   structural-gate principle `agent-design/README.md` already adopts.
+
+### 8b. The bug class no schema catches: relational invariants
+
+Every mechanism in §8a is *stateful*, and §8a describes each one in
+isolation. Command Code's write-up is the only source here that describes
+what happens when they compose, and it is the most valuable single passage
+in it — a production deadlock with no invalid input anywhere in it:
+
+```
+read → one clamped line → ledger says partial → write DENIED
+  → model re-reads → dedup returns "unchanged" → ↺ forever
+```
+
+A file with one very long line is read; the per-line clamp (§6b) fires, so
+the ledger records the view as **partial**; `write_file` refuses to
+overwrite a file the model has only partly seen (correctly — it would
+destroy the unseen part); the model does the only sensible thing and
+re-reads; the unchanged-file dedup recognises the identical window and
+returns its "unchanged, refer to the earlier result" stub; the ledger still
+says partial; repeat. It was hit in the wild, on plan files during plan
+review. As the write-up puts it: "every field in every call was valid. the
+invariant that broke lived in the relationship between three tools that
+never call each other."
+
+The stated fix is three-sided, and each side is a rule worth having
+independently:
+
+1. **A clamped read still records the exact raw bytes**, and `write_file`
+   accepts an overwrite whenever the ledger's recorded content matches
+   what is on disk — *even if the view was flagged partial*. The gate's
+   real question is "would this write destroy content the model never
+   saw," and byte equality answers it directly; "was the view partial" is
+   only a proxy for it.
+2. **A genuinely partial view gets its own error** — `Only part of this
+   file has been read` — instead of the misleading "has not been read
+   yet," which "had been sending models into tiny-window re-read loops."
+   §7's error-as-instruction rule applied to a state gate: the message has
+   to name the *actual* state, or the model's correct response to it is
+   wrong.
+3. **The dedup does not stub a from-line-1 re-read unless the ledger holds
+   a full view**, and that guard runs *before* the dedup check, because a
+   dedup hit consumes its record (below).
+
+The generalisation is the part to keep: **shape invariants are checkable
+per field, and every schema you write already checks them; relational
+invariants across stateful tools are where the real bugs live**, and they
+are only found by watching production traffic. Two of §8a's four side
+channels are relational in exactly this sense — the dedup and the state
+gates, which is precisely the pair that deadlocked — and the JIT
+conventions injection is adjacent, since it keys off which file a read
+touched. This collection has been cataloguing them one at a time without
+asking what they do to each other.
+
+**And a corollary about the dedup specifically: a cache whose stale hit is
+catastrophic should expire itself on use.** The dedup stub points at an
+*earlier tool result in the conversation* — but
+[`agent-context-compaction.md`](./agent-context-compaction.md) is a whole
+doc about that earlier result being summarised away. If compaction ate it,
+the model has been told to refer to something it can no longer see, and
+nothing about a retry escapes it, because the retry hits the same cache.
+The fix is that **a dedup hit consumes its record**, so the natural retry
+gets real content:
+
+> cheap miss, catastrophic stale hit → self-expiring cache.
+
+Worst case is one wasted turn instead of an unbounded loop; the premium is
+one turn against an unbounded failure. This is a real gap in §8a's account
+of Claude Code's `file_unchanged` — this collection recorded it as "the
+highest token-leverage single feature found in this pass" without noticing
+that it creates a dangling reference into a context window another part of
+the same harness is actively rewriting. Any harness shipping both dedup and
+compaction needs an answer here, and consume-on-hit is the cheapest one.
+
+**A note on the scorecard, and on Claude Code's column.** Command Code
+scores Claude Code as having *neither* unchanged-read dedup nor
+did-you-mean suggestions. This collection read both in the leaked Claude
+Code source (§7a, §8a) — `file_unchanged` is a declared variant of the read
+tool's output schema, and the "Did you mean…?" fallback is right there in
+the not-found path. Both cannot be right, and the interesting part is that
+the disagreement is probably not an error by either side:
+
+- The write-up is explicit that Claude Code's column was **probed live,
+  not read** ("claude code ships no source, so its column came from feeding
+  the live tool crafted files"), that the probes were four specific files,
+  and that "a dash means we looked and did not find it, not that it is
+  impossible or unplanned." Dedup was not among the four probes, so that
+  cell is a capture gap rather than a measurement. The did-you-mean cell
+  *was* probed (a missing `AGENT.md` beside a real `AGENTS.md`) and came
+  back with no suggestion.
+- This collection has twice found Claude Code features that exist in the
+  leaked source but are **flag- or `USER_TYPE === 'ant'`-gated** out of the
+  shipped product (`agent-self-verification.md`'s adversarial verification
+  subagent; `agent-permissions-approval.md`'s `yoloClassifier.ts`), and
+  §5c records that the read tool's own limits and line-prefix format sit
+  behind GrowthBook flags. A third instance — code present, behaviour
+  absent from a live probe — is exactly the pattern already documented.
+
+Which makes the pair of readings more useful than either alone, and worth
+stating as a method note: **source-reading establishes what was built;
+probing establishes what is switched on.** They answer different questions,
+and where a leak and a probe disagree about a flagged codebase, the
+honest reading is "built, not enabled for this account," not "one of them
+is wrong." The rest of the scorecard should be read with the same
+discipline the source itself asks for — it carries an unusual disclosure
+that the benchmark "was produced by AI with little human review, and should
+be read that way — we expect errors in it" — so the cells are treated
+throughout this doc as claims worth checking, while the failure modes,
+which are reproducible reasoning rather than measurement, are treated as
+findings.
 
 ---
 
@@ -860,13 +1224,47 @@ independent implementations (sources in brackets).
 18. Use the tool result as an injection point for just-in-time instructions
     (nearby conventions files, policy reminders, freshness notes).
     [OpenCode, Gemini CLI, Claude Code]
-19. Deduplicate re-reads of unchanged files. [Claude Code]
-20. Enforce read-before-edit in code, not in prose. [Claude Code]
+19. Deduplicate re-reads of unchanged files — and **consume the dedup
+    record on a hit**, because the stub points into a context window
+    compaction may have rewritten. [Claude Code; Command Code for the
+    consume rule]
+20. Enforce read-before-edit in code, not in prose — and record *what was
+    seen* (bytes, and whether the view was partial), not merely *that* a
+    read happened. [Claude Code; Command Code]
 21. Generate description text from the same constants the code enforces.
     [Crush, OpenHands, Claude Code]
 22. Treat the tool *set* as per-model configuration, and be ready to defer
     rarely-used tools behind a search. [Gemini CLI, Cline, Claude Code,
     Codex]
+
+**The read tool specifically** (§5d, §6b–§6d, §7b, §8b — mostly one
+source, so marked)
+23. Ship three ceilings, not one: a line window, a byte budget, and a
+    per-line clamp. Each is the only defence against one file shape.
+    [OpenCode, Cline, Crush have all three; Command Code for the argument]
+24. Refuse unbounded paths (`/dev/zero`, `/dev/urandom`, `/proc/<pid>/fd/*`)
+    by name before any I/O — a cap can only bound a read that finishes.
+    [Command Code, Hermes]
+25. Compute resume offsets in the tool, and get the off-by-one right: a
+    byte-capped read resumes *on* the cut line, a line-capped read on the
+    next one. Never claim "more remains" you haven't established — at a
+    stream chunk boundary, defer the claim. [Command Code]
+26. Retry inside the tool for failures the model cannot see (Unicode
+    filename variants: NFC/NFD, narrow space, curly quotes), and *suggest*
+    for failures it can (did-you-mean, substring + bounded Levenshtein).
+    Re-validate every repaired candidate against the workspace boundary.
+    [Command Code]
+27. Type "empty file", "past EOF" and "capped" as **notes, not errors** —
+    they are facts about the world, and an `Error:` prefix buys apology
+    tokens. [Command Code; Claude Code's past-EOF message has the same
+    shape]
+28. Detect file type by magic bytes, never extension; degrade images down a
+    quality ladder rather than failing to attach; disclose the scale factor
+    of anything downscaled. [Command Code, OpenCode, Kilo Code, Grok Build]
+29. For structured documents, return a pointer rather than the payload once
+    a part exceeds a threshold (a `jq` path for a >10K-char notebook cell),
+    so the model keeps the ability to query what it didn't receive.
+    [Command Code]
 
 ---
 
@@ -899,3 +1297,42 @@ blocked on cache invalidation a v1 without command-level `Bash` visibility
 can't do safely — is recorded in
 [`agent-design/README.md`](./agent-design/README.md)'s decision log and
 tracked in `agent-design/medium.md`.
+
+**The read-tool pass (§5d, §6b–§6d, §7b, §8b) changed six more things**,
+two of which were latent bugs in the design rather than additions:
+
+- **A per-entry byte ceiling** (`read.max_entry_bytes`, 64 KB) — the
+  middle of §6b's three ceilings, which the design was missing. It had a
+  line window, a per-line clamp and a *call* budget, so a single file of
+  2,000 merely-wide lines cleared every per-entry cap and then hit the
+  batch rule, which truncates whole entries and would therefore have
+  returned nothing at all for a one-file call. The value deviates from
+  Command Code's 128 KB because this `Read` is a batch tool and a
+  per-entry ceiling above the call budget never fires.
+- **`Write` now requires a *full* view, not any view** (§8b). The gate as
+  written asked only whether a path had been read this run, so a model
+  could read 50 lines of a 2,000-line file and then replace it wholesale,
+  destroying 1,950 lines it had never seen. The read-state cache
+  correspondingly stops being a boolean and records bytes,
+  `(mtime, size)`, and whether the view was partial — with byte equality,
+  not the partial flag, as the thing the gate actually tests.
+- **Unicode filename repair inside the tool** (§7b), sorted by the rule
+  that repair is for failures the model cannot see and suggestion is for
+  failures it can — with every candidate re-validated against the working
+  tree, and the repaired path echoed back so the model learns the real
+  bytes.
+- **A refused-path list checked before `open()`** (§6d), plus the note
+  that it is extendable and never emptyable.
+- **A floor under tolerant parsing** (§3f): coercion is whole-string, so
+  `"2abc"` and `1.5` are errors rather than a silently wrong window.
+- **Result-format precision** (`formats.md` §8b): which cap fired is
+  named, byte-capped reads resume *on* the cut line while line-capped
+  reads resume on the next, `empty`/`past_eof`/`truncated` are typed as
+  notes rather than errors, and a `total` the harness hasn't established
+  is omitted rather than guessed.
+
+The dedup entry in `medium.md` §2g also gained three conditions on the
+version that eventually lands (consume-on-hit, ordering against the write
+gate, and the interaction with batch reads), because §8b is the account of
+a team shipping that exact feature into a harness with this design's exact
+combination of clamp, gate and dedup, and finding it deadlocked.

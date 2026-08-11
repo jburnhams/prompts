@@ -496,9 +496,46 @@ it should land only with a conservative invalidation rule (any `Bash`
 call at all invalidates the whole cache, tightened later if that proves
 too blunt).
 
+**Three conditions on the version that does land**, all from Command
+Code's account of shipping this exact feature
+(`agent-tool-implementations.md` §8b), and none of them obvious from the
+feature description above:
+
+1. **The dedup record is consumed on a hit.** The stub tells the model to
+   refer to an earlier tool result — and this agent compacts its own
+   context, so that result may have been summarised away. A record that
+   survives every hit points the model at something it can no longer see,
+   *permanently*, and no retry escapes it because the retry hits the same
+   cache. Consuming the record on use bounds the worst case at one wasted
+   turn: the natural re-read returns real content. The shape is general
+   enough to be worth naming — **a cache whose stale hit is catastrophic
+   and whose miss is cheap should expire itself on use** — and it applies
+   to any other "refer to what I told you earlier" stub this design grows.
+2. **It must not fire while a write gate is blocking on the same file.**
+   The clamp/gate/dedup deadlock in §8b closes precisely when a dedup
+   answers a re-read that the model was making *in order to satisfy*
+   `Write`'s full-view requirement. The guard: a from-line-1 re-read is
+   never stubbed unless the cache already holds a full view, and that
+   check runs *before* the dedup check — which matters because the dedup
+   check has a side effect (condition 1).
+3. **Batch `Read` makes both of these more likely, not less.** A
+   five-file batch where four are unchanged is the case this feature
+   exists for, but it is also four chances per call to hand back a stub
+   whose referent has been compacted. Per-entry stubbing means the
+   dangling-pointer risk scales with batch size while the token saving
+   does too.
+
+The first condition is a genuine correction to how this design recorded
+the feature: `agent-tool-implementations.md` §8a called Claude Code's
+`file_unchanged` "the highest token-leverage single feature found in this
+pass" without noticing that it creates a reference into a context window
+[`agent-context-compaction.md`](../agent-context-compaction.md) describes
+another part of the same harness actively rewriting. The saving is real;
+it just has a precondition nobody had written down.
+
 **Precedent**: Claude Code's `Read` has exactly this as a `file_unchanged`
 variant of its output schema, returning a fixed stub string
-(`agent-tool-implementations.md` §8). No other source surveyed does it,
+(`agent-tool-implementations.md` §8a). No other source surveyed does it,
 which is why it is tracked here rather than treated as table stakes.
 
 ## 3. Review pipeline upgrades

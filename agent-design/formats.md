@@ -596,7 +596,7 @@ seeing them, which is only safe because they are unambiguous by
 construction.
 
 Structure here is fixed; the numbers in the examples are not. Every limit
-shown (2000 lines, depth 3, 250 matches) is the default from `tools.md`'s
+shown (2000 lines, 64 KB, depth 3, 250 matches) is the default from `tools.md`'s
 configuration section, rendered from the effective config at runtime — a
 deployment tunes the values, never the shapes.
 
@@ -653,7 +653,14 @@ quote. Attribute escaping never touches block *content*.
 tree, and absolute otherwise. The path echoed back is the *resolved* one,
 not the string the model passed, so a call that was normalised (a
 `file_path` alias, a relative path, a trailing space) shows the model what
-was actually read.
+was actually read. This matters most in the case the model cannot see:
+where a read succeeded only because the harness retried a Unicode
+respelling of the name (`tools.md`'s tolerance layer 4), the echoed path
+carries the *real* bytes, and the block adds a `!` note saying the name
+was repaired — otherwise the model reads the file, learns nothing about
+why its own spelling failed, and passes the same broken string to `Edit`
+one turn later. The repair is silent about *how*; it is never silent about
+*that*.
 
 **Text is UTF-8, with line endings normalised to `\n`.** A file stored
 with CRLF is displayed without the `\r`, and `Edit`/`Write` restore the
@@ -671,7 +678,7 @@ and unambiguous to a parser.
 ### 8b. `Read`
 
 ```
-<files count="4" ok="2" truncated="1" failed="1">
+<files count="5" ok="2" truncated="2" failed="1">
 <file path="src/parser/index.ts" lines="1-42" total="42" status="ok">
 1	import { Token } from "./lexer"
 2	
@@ -689,6 +696,12 @@ and unambiguous to a parser.
 ...
 2000	  "z": 1,
 ! Showed lines 1-2000 of 18422. Pass start_line: 2001 to continue, or narrow with Grep.
+</file>
+<file path="data/fixtures.json" lines="1-847" status="truncated">
+1	[
+...
+847	  {"id": 8460, "payload": "…
+! Showed lines 1-847 (64 KB size limit reached mid-line). Pass start_line: 847 to continue from that line.
 </file>
 <file path="src/parsr/index.ts" status="not_found">
 ! No such file. Did you mean src/parser/index.ts?
@@ -718,8 +731,34 @@ Rules:
   `total`), `not_found` (with a did-you-mean when one is computable),
   `is_directory` (the note says to use `List`), `binary` (with the byte
   size; no content), `not_utf8`, `too_large` (the file exceeds the
-  hard byte ceiling even for a ranged read), and `unreadable`
-  (permissions or I/O error, with the reason).
+  hard byte ceiling even for a ranged read), `refused_path` (the resolved
+  path is on the blocklist of things that never terminate — `tools.md`'s
+  implementation contract), and `unreadable` (permissions or I/O error,
+  with the reason).
+- **`status` is not `error`.** `empty`, `past_eof` and `truncated` are
+  facts about the world, not failures: they render as `!` notes with no
+  `Error:` prefix, and the harness does not count them toward any
+  error-rate signal. A model told it failed spends output tokens
+  apologising and re-planning; a model told the file has 412 lines sends
+  the right call next. (Command Code makes this explicit as a design rule;
+  Claude Code's past-EOF message has the same shape.)
+- **Which cap fired is named, and the continuation differs by cap.** The
+  note distinguishes the line window from the byte ceiling, because the
+  resume points are not the same: a line-window truncation resumes on the
+  **next** line, a byte-ceiling truncation resumes **on the last line
+  shown**, since that line was cut mid-content. Getting that off by one
+  silently drops a line from the model's view of the file — a corrupted
+  read rather than a wasted turn, which is the worse failure of the two.
+  The harness computes the number; the model never does pagination
+  arithmetic.
+- **A `total` the harness has not established is not printed.** `total`
+  requires having scanned the file; where a read streamed and stopped at a
+  cap without reaching the end, the note states what was shown and the
+  next call, and omits `total` rather than guessing it. The boundary case
+  worth naming, because it is easy to get wrong: when a cap falls exactly
+  at the end of a read chunk, whether the file continues is not yet known,
+  so the truncation claim is deferred to the next chunk rather than
+  asserted at the boundary (`agent-tool-implementations.md` §6c).
 - **A failed entry never fails the call.** The tool returns an error only
   when *every* entry failed, and then the error text is the same set of
   `!` notes so nothing is lost.
