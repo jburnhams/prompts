@@ -135,7 +135,18 @@ both vendor benchmarks reported turns up here independently. Reading
 Kilo Code's actual clamp then produced a better answer than the one this
 collection had adopted: compose the ceilings so the byte budget only ever
 decides whether a *whole* line fits, and mid-codepoint truncation and the
-resume off-by-one both stop existing.
+resume off-by-one both stop existing. A final look at the academic
+literature added §4a2 and a warning to go with it — Diff-XYZ's roster is
+entirely superseded, and an April 2026 **audit** of the only two
+benchmarks that evaluate instructed code editing with human instructions
+and tests finds both are over 90% Python with zero TypeScript, invert the
+real domain mix, contain no documentation or maintenance edits, and carry
+oracles so thin that 59% of EDIT-Bench's low-coverage suites cannot detect
+changes made *outside* the edit region, which is exactly the failure mode
+an unsupervised agent has. The synthesis is deflating and worth stating:
+there is no public evidence base good enough to pick an edit format from,
+and what every credible actor in this space actually did was build their
+own eval on their own harness.
 
 **[→ `agent-tool-call-dialects.md`](./agent-tool-call-dialects.md)** — the
 layer below *that* one, and the lowest in this collection: the **wire

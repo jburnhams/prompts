@@ -1412,19 +1412,36 @@ the simple version measurably falls short.
     `apply_patch` broadly, and hashline beat `replace` for most but not
     all models. So the v1 choice is defensible on its own merits rather
     than merely convenient, which was not previously established here.
-  - **And an independent benchmark says the split this design already
-    makes is the right one.** JetBrains's Diff-XYZ separates *generating*
-    an edit from *reading* one, and finds they want opposite formats:
-    on GPT-4.1, search-replace scores 0.95 on diff generation and 0.57 on
-    apply, while unified-diff variants score 0.92–0.93 on apply and 0.06
-    on generation (`agent-tool-implementations.md` §4a). Forge writes
+  - **An independent benchmark suggests the split this design already
+    makes is the right one — on 2025 models.** JetBrains's Diff-XYZ
+    separates *generating* an edit from *reading* one and found they
+    wanted opposite formats: search-replace 0.95 on diff generation
+    versus 0.57 on apply, unified-diff variants 0.92–0.93 on apply versus
+    0.06 on generation (`agent-tool-implementations.md` §4a). Forge writes
     edits with search-replace (`Edit`) and *reads* them as unified diff
-    (the review envelope's pre-baked hunks, `formats.md` §1b) — which is
-    the strong direction of each format, arrived at for unrelated reasons
+    (the review envelope's pre-baked hunks, `formats.md` §1b) — the strong
+    direction of each format, arrived at for unrelated reasons
     (byte-exactness on one side, line-number fidelity on the other). Worth
-    recording explicitly so a future consolidation doesn't "simplify" the
-    two into one representation: the measured penalty for using either
-    format in both directions is roughly 35 points.
+    recording so a future consolidation doesn't "simplify" the two into
+    one representation. **But do not carry the numbers forward**: that
+    benchmark's roster (GPT-4o, GPT-4.1, Claude 4 Sonnet, Qwen2.5-Coder)
+    is entirely superseded, and edit-format compliance is exactly the axis
+    labs post-train against, so the gap has plausibly narrowed. The claim
+    to keep is directional — reading and writing diffs are different
+    skills and may want different representations — and the action if it
+    ever matters is to re-run it, not to cite it.
+  - **And before any of this drives a decision, read
+    `agent-tool-implementations.md` §4a2.** The public evidence base on
+    edit formats is worse than it looks: an April 2026 audit found that of
+    150+ code benchmarks only two evaluate instructed editing with human
+    instructions and tests, both are >90% Python with zero TypeScript,
+    Java, C# or Go, neither contains documentation/test/maintenance edits
+    at all, and 59% of EDIT-Bench's low-coverage suites cannot detect
+    changes made *outside* the edit region — which is precisely the
+    failure mode an unsupervised agent has. If the edit format ever
+    becomes load-bearing here, the move every credible actor in this space
+    actually made was to build their own eval on their own harness, on the
+    repositories and languages they ship.
   - **There is a third option this design hadn't considered**: an anchor
     the model *cites* rather than *reproduces*. Hashline returns
     `[path#TAG]` plus bare line numbers and the model edits by line

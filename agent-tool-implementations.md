@@ -749,11 +749,21 @@ require the model to know where the function ends — with an explicit rule
 about the case that actually bites (decorators and doc-comments are
 separate nodes: anchor the first decorator to sweep both).
 
-**The independent check: Diff-XYZ.** The obvious weakness of §4a's
-numbers is that the format's author ran them. JetBrains Research's
-[Diff-XYZ](https://arxiv.org/abs/2510.12487) is the closest thing to a
-neutral referee — 1,000 real edits from CommitPackFT, automatic metrics,
-published dataset — and it does something neither vendor benchmark does:
+**The independent check: Diff-XYZ — with a hard expiry date.** The obvious
+weakness of §4a's numbers is that the format's author ran them. JetBrains
+Research's [Diff-XYZ](https://arxiv.org/abs/2510.12487) is the closest
+thing to a neutral referee — 1,000 real edits from CommitPackFT, automatic
+metrics, published dataset. **Read the numbers below as a 2025 snapshot,
+not as current fact**: it was submitted 14 October 2025 and its roster is
+GPT-4o/4o-mini, GPT-4.1/4.1-mini, Claude 4 Sonnet, Gemini 2.5 Flash and
+Qwen2.5-Coder 0.5B–32B — every one of them superseded, and several by two
+generations. Model capability on exactly this axis has moved more than on
+most, since edit-format compliance is a thing labs actively post-train
+for. What survives that is the *method* and the *shape* of the result; the
+specific cells do not, and the dataset being published is what makes
+re-running it the right response rather than citing it.
+
+What it does that neither vendor benchmark does:
 it **separates generating an edit from reading one**, via three tasks.
 *Apply* (old code + diff → new code) and *anti-apply* (new code − diff →
 old code) measure comprehension; *diff generation* (new − old → diff)
@@ -762,8 +772,8 @@ generation, parse rate, apply rate, EM/IoU after application, and F1 over
 added and deleted lines.
 
 The headline result is the one that matters most for tool design, and it
-is not subtle. **The format best at generating edits is the worst at
-reading them.** GPT-4.1:
+is not subtle — on the models it tested. **The format best at generating
+edits was the worst at reading them.** GPT-4.1, October 2025:
 
 | Format | Apply (EM) | Anti-apply (EM) | Diff generation (EM) |
 |---|---|---|---|
@@ -805,12 +815,15 @@ generating patches is critical." That is a strong statement of this
 section's whole thesis from an independent lab: a measurable share of
 what looks like small-model coding weakness is edit-format overhead.
 
-**And it means "which edit format is best" is the wrong question**, because
-a coding agent does both jobs. It *writes* edits (generation — favours
-search-replace) and, in review or diff-reading modes, *reads* them
-(comprehension — favours udiff). A harness that picks one format for both
-directions is accepting a measured penalty on one of them. Splitting by
-direction costs nothing, since the two never share a wire format anyway.
+**And it means "which edit format is best" is probably the wrong
+question**, because a coding agent does both jobs. It *writes* edits
+(generation — favoured search-replace) and, in review or diff-reading
+modes, *reads* them (comprehension — favoured udiff). A harness that picks
+one format for both directions may be accepting a penalty on one of them,
+and splitting by direction costs nothing since the two never share a wire
+format anyway. This is the finding most worth re-testing on a current
+roster: it is the one with a direct design consequence, and also the one
+most likely to have narrowed as models improved at both directions.
 
 **The rest of the prior art the harness post assembles** is worth keeping
 as a reading list, because it is otherwise the only place in this
@@ -837,6 +850,83 @@ same move Codex makes with `apply_patch.lark`) plus a 133-line prompt with
 six WRONG/RIGHT anti-pattern pairs. That is the real cost of leaving a
 mimicked format: you pay for it in grammar and prompt, and you need a
 benchmark to know whether you got it back.
+
+### 4a2. How good is the evidence on edit formats, actually?
+
+§4a leans on four measurements, and it is worth being explicit that each
+is weak in a *different* way, because the temptation is to average them
+into a confidence none of them supports.
+
+| Evidence | Strength | Weakness |
+|---|---|---|
+| Stencil / hashline (Feb 2026) | 16 models, end-to-end agent runs, current-ish roster, harness open source | vendor-run on its own format; fixtures are injected mutations, not real tasks |
+| Command Code read-tool table (Aug 2026) | breadth across ten harnesses | vendor-run, self-disclosed as AI-produced with little review, and one column already corrected (§6e) |
+| Diff-XYZ (Oct 2025) | independent, published dataset, separates comprehension from generation | roster entirely superseded; synthetic commit triples with no tests; a valid-but-different diff scores zero |
+| Hermes read-tool eval (2026) | rigorous method, reps, noise floor, ship/no-ship log | one harness, one tool, not about edit formats at all |
+
+And then there is a fifth thing, which is the most useful and the most
+deflating: **someone audited the academic benchmarks and found them
+narrow.** ["Edit, But Verify: An Empirical Audit of Instructed
+Code-Editing Benchmarks"](https://arxiv.org/abs/2604.05100) (April 2026)
+starts from the observation that instructed code editing "accounts for
+roughly 19% of real-world coding assistant interactions," then reports
+that out of **a survey of over 150 code-related benchmarks, only two**
+target it with human-authored instructions and test-based evaluation:
+CanItEdit and [EDIT-Bench](https://arxiv.org/abs/2511.04486). It audits
+both across all 213 problems, and the findings are severe:
+
+- **Over 90% of both benchmarks is Python.** TypeScript — GitHub's
+  most-used language since August 2025 — has *zero* representation, as do
+  Java, C#, Go and Rust. Six languages cover 80% of new repositories.
+- **The domain mix is inverted.** EDIT-Bench puts 36.1% of its problems in
+  AI/ML against a 7% real-world prevalence; CanItEdit puts 68.6% in
+  algorithmic problem-solving against an 18% share. Backend and frontend
+  work, 46% of real editing activity, is absent from one and 24.1% of the
+  other.
+- **Documentation, testing, build-config and maintenance edits — 31.4% of
+  real pull requests — have zero representation in either.**
+- **The oracles are thin.** Median test counts are 13 (CanItEdit) and 4
+  (EDIT-Bench); 56% of EDIT-Bench suites scope only to the edited code and
+  **59% of its low-coverage suites would not detect modifications outside
+  the edit region** — in a domain where LLMs "routinely make extraneous
+  modifications in practice." A benchmark that only asks "was the edit
+  made?" cannot see the failure mode agents actually have.
+- **Some of the difficulty is the benchmark's own fault.** 15 EDIT-Bench
+  problems are solved by none of 40 models, and 11 of those trace to poor
+  benchmark artifacts rather than model limitations. 29% of its problems
+  share a codebase with another problem.
+
+The paper's six desiderata (proportional language coverage; domain mix
+anchored to real workloads; maintenance/docs/test edits included;
+**verify preservation of existing behaviour, not just the edit**; problem
+independence plus published quality metadata; and a refreshed slice for
+emerging paradigms like agent orchestration) are a good specification for
+anyone building an internal eval, and D4 is the one that matters most to
+a harness: the thing you actually fear is collateral damage, and most
+public benchmarks cannot detect it.
+
+EDIT-Bench itself is worth knowing for one harness-relevant finding
+independent of all that. It is built from real instructions and contexts
+collected in the wild from ~500 developers via a VS Code extension, 540
+problems, and its problems are **context-dependent** — the model gets code
+context, highlighted code and cursor position alongside the instruction.
+Across 40 models only one scores over 60% pass@1, and: "varying levels of
+contextual information greatly affect task success rate, with performance
+varying up to **11%**." That is an eleven-point swing from *what the
+harness chose to put in the prompt*, on a fixed model and a fixed task —
+the same thesis as §3h and §6e, measured by a third party who was not
+selling a harness.
+
+**The honest synthesis is uncomfortable and worth stating plainly.**
+There is no public evidence base good enough to pick an edit format from.
+The independent benchmarks measure a narrower construct than deployment
+requires and are Python-shaped; the vendor benchmarks measure the right
+construct and are run by interested parties on rosters that go stale in
+months. What every credible actor in this space actually did was **build
+their own eval on their own harness with their own models** — OMP for edit
+formats, Hermes for read tools, both published with method and caveats.
+That is the transferable practice, not any particular number in this
+section.
 
 ### 4b. Where mimicry pays, and where it doesn't
 

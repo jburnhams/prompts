@@ -158,11 +158,37 @@ from its in-band `instructions` block and tool list).
   F1 over added and deleted lines for generation. Numbers and the
   direction-split finding in `agent-tool-implementations.md` §4a. Caveats:
   the instances are commit-derived triples rather than realistic agent
-  tasks (EDIT-Bench is the complement, not yet read), diff generation is
-  scored by applying the generated diff so a valid-but-different diff can
-  score 0, and the paper predates the harnesses compared elsewhere in this
-  collection — it validates the *shape* of their claims, not their
-  specific numbers.
+  tasks, diff generation is scored by applying the generated diff so a
+  valid-but-different diff can score 0, and the paper predates the
+  harnesses compared elsewhere in this collection — it validates the
+  *shape* of their claims, not their specific numbers. **The staleness
+  caveat is the load-bearing one**: submitted 14 Oct 2025, roster
+  GPT-4o/4o-mini, GPT-4.1/4.1-mini, Claude 4 Sonnet, Gemini 2.5 Flash and
+  Qwen2.5-Coder 0.5B–32B — all superseded, on the one axis labs actively
+  post-train for. The dataset is published, so re-running it beats citing
+  it.
+- Chi et al., *EDIT-Bench: Evaluating LLM Abilities to Perform Real-World
+  Instructed Code Edits* — https://arxiv.org/abs/2511.04486 (Nov 2025;
+  **abstract read 2026-08-11, full paper not yet read**). 540 problems
+  built from instructions and code contexts collected in the wild from
+  ~500 developers via a VS Code extension, with cursor position and
+  highlighted code part of the problem; 40 models, only one above 60%
+  pass@1. The finding used in `agent-tool-implementations.md` §4a2 is the
+  harness-relevant one: contextual information alone swings success by up
+  to 11 points. Same staleness caveat as above.
+- *Edit, But Verify: An Empirical Audit of Instructed Code-Editing
+  Benchmarks* — https://arxiv.org/abs/2604.05100 (April 2026; read
+  2026-08-11). The most useful of the three and a corrective to both: of
+  150+ code benchmarks only CanItEdit and EDIT-Bench evaluate instructed
+  editing with human-authored instructions and test-based evaluation, and
+  both are >90% Python with zero TypeScript/Java/C#/Go/Rust, invert the
+  real domain mix, contain no documentation/testing/maintenance edits, and
+  carry thin oracles (median 13 and 4 tests; 59% of EDIT-Bench's
+  low-coverage suites cannot detect changes outside the edit region). Also
+  11 of the 15 EDIT-Bench problems unsolved by all 40 models are benchmark
+  artifacts, and 29% of its problems share a codebase with another. Its
+  six desiderata are a usable specification for an internal eval. Read
+  this before citing either benchmark.
 - Command Code, *Tool Call Repairs* —
   https://commandcode.ai/docs/harness-engineering/tool-call-repairs
   (Ahmad Awais, 3 May 2026; read 2026-08-11). The published repair
@@ -247,8 +273,12 @@ itself is closed today, though the post says "we're also going open source
 soon," which would make the §6b–§8b material checkable against code rather
 than prose.
 
-Benchmarks worth reading next, in order of what they'd settle:
-**EDIT-Bench** (realistic editing tasks — the complement to Diff-XYZ's
-commit-derived triples), and **Aider's** own benchmark harness (the
-original format-swing result, and the only long-running public
-leaderboard on this question).
+Benchmarks worth reading next: **CanItEdit** (the other half of the
+audited pair, and the better-constructed one — near-complete whole-file
+coverage with fail-before/pass-after validation), **Aider's** own
+benchmark harness (the original format-swing result, and the only
+long-running public leaderboard on this question), and **EDIT-Bench** in
+full rather than by abstract. All three carry the same caveat the audit
+establishes: they answer a narrower question than "which edit format
+should this harness ship," and none is a substitute for an internal eval
+on the languages and repositories a deployment actually touches.
