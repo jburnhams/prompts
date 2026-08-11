@@ -750,7 +750,12 @@ Rules:
   silently drops a line from the model's view of the file — a corrupted
   read rather than a wasted turn, which is the worse failure of the two.
   The harness computes the number; the model never does pagination
-  arithmetic.
+  arithmetic. **A byte ceiling cuts on a codepoint boundary, never a byte
+  offset** — the longest valid UTF-8 prefix under the cap, found by binary
+  search. Slicing at the raw offset emits invalid UTF-8 or a replacement
+  character into the content, which then travels into an `Edit`
+  `old_string` and fails to match for a reason nothing in the transcript
+  explains.
 - **A `total` the harness has not established is not printed.** `total`
   requires having scanned the file; where a read streamed and stopped at a
   cap without reaching the end, the note states what was shown and the

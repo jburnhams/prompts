@@ -126,6 +126,30 @@ worth −79% tokens and −81% wall clock on that fixture with accuracy
 unchanged — the shape of defect that survives in shipped harnesses
 precisely because nothing fails.
 
+**[→ `agent-tool-call-dialects.md`](./agent-tool-call-dialects.md)** — the
+layer below *that* one, and the lowest in this collection: the **wire
+format** under "the model called a tool." What crosses the wire is text —
+a grammar rendered into the prompt by the provider's chat template and
+scanned back out by a parser — which makes the tool channel a variable you
+control on any model where you own the prompt. Covers why your schema is
+documentation rather than enforcement; the five ways a call gets delimited
+and why the tokenizer's `special: true`/`false` flag (Qwen3 and GLM
+register their tool markers as *non*-special **so they survive decoding**
+and a regex parser can find them) predicts parser behaviour; argument
+encoding from GLM's `<arg_key>`/`<arg_value>` pairs that need no escaping
+at all, through Gemma 4's string-delimiter *token*, to the JSON-blob
+families where every structured parameter is a parse failure waiting to
+happen; how tools get advertised (a `<tools>` block, a TypeScript
+namespace, or prose); results correlated by ID versus by position, the
+three different envelope roles a tool result can take, and the dialect
+with **no error channel at all**, where prose is the only way an error can
+be seen; and what implementing one costs — renderer *and* a deliberately
+wider scanner, ID minting, streaming partial delimiters, history
+conversion both ways. The practical answer to "how do you give tools to a
+model with no function-calling support," and a caution that prompt-only
+formats leak: Gemini's Pythonic syntax was reverse-engineered from
+`MALFORMED_FUNCTION_CALL` bug reports.
+
 **[→ `agent-subagent-architectures.md`](./agent-subagent-architectures.md)**
 — a companion drill-down on one specific tool-surface capability: when
 and how a scaffold spawns another agent. Covers delegation triggers,

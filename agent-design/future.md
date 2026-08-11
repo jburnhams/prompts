@@ -223,4 +223,9 @@ re-litigated later.
   whatever the provider SDK does, which is the right call for one model
   family on a managed API, and OMP's eleven dialect converters are the
   shape this takes if Forge ever runs on open-weights models where
-  nobody else is fixing it.
+  nobody else is fixing it. The build list is
+  `agent-tool-call-dialects.md` §7 — a renderer plus a deliberately
+  wider scanner, call-ID minting where the dialect has none, streaming
+  that holds partial delimiters across chunks, history conversion in
+  both directions, and the tool catalogue moving into the system prompt
+  at a cost paid every turn.

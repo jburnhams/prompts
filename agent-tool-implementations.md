@@ -449,6 +449,12 @@ whereas rounding 1.5 does not.
 
 ### 3g. Below the schema: the tool-call channel is text, and its shape is a choice
 
+*(The per-family detail behind this section has its own doc:
+[`agent-tool-call-dialects.md`](./agent-tool-call-dialects.md) — the five
+delimiter families, argument encodings compared, result correlation, and
+what it costs to drive a model with no function-calling support in-band.
+This section is the argument; that doc is the reference.)*
+
 Everything above §3f assumes the provider's native tool channel is a given
 and the only question is what to put in it. Two sources added in a later
 pass — Can Bölük's ["The Minutiae of
@@ -742,6 +748,23 @@ its opening line through its end, so "replace this function" does not
 require the model to know where the function ends — with an explicit rule
 about the case that actually bites (decorators and doc-comments are
 separate nodes: anchor the first decorator to sweep both).
+
+**The prior art the same post assembles** is worth keeping as a reading
+list, because it is the only place in this collection where the
+edit-format question is treated as a measured one rather than a taste one:
+Aider's benchmarks, where format choice alone swung GPT-4 Turbo from 26%
+to 59% while GPT-3.5 managed only 19% with the same format because it
+could not reliably produce valid diffs; JetBrains's **Diff-XYZ**
+benchmark, whose systematic finding is that *no single edit format
+dominates across models and use cases*; **EDIT-Bench**, where only one
+model clears 60% pass@1 on realistic editing tasks; and Cursor's
+fine-tuned ~70B *apply* model — a whole second model whose only job is
+merging a draft edit into a file, which is the strongest evidence
+available that this problem is hard, alongside Cursor's own reported
+result that "fully rewriting the full file outperforms aider-like diffs
+for files under 400 lines." None of these are read as sources here yet;
+Diff-XYZ in particular would be the natural way to check §4a's numbers
+against something not run by the format's author.
 
 The mimicry question this raises is the one §4c answers generally: `cat -n`
 wins because the model has seen a billion lines of it, and hashline is
@@ -1070,6 +1093,21 @@ Which is also the argument for the tool computing the offset at all: §6a's
 the stronger reason is that pagination arithmetic done in the model's
 reasoning is both billed and occasionally wrong.
 
+**A byte cap must not cut a codepoint in half.** The corollary nobody
+states until it bites: §6b's second ceiling is measured in *bytes* while
+the payload is UTF-8, so a naive slice at 128 KB lands mid-sequence and
+emits a replacement character or invalid UTF-8 into the model's context —
+and into whatever the model later passes back to `Edit` as a match string.
+Command Code **binary-searches for the longest valid UTF-8 prefix** under
+the cap rather than truncating at the byte offset. The same family of
+hygiene, from the same source, in one line each: strip the BOM (or it
+becomes an invisible first character of the first line, which then fails
+every exact-match edit against that line), and normalise CRLF on the way
+in (§5b, where Gemini CLI's restore-on-write half already lives). These
+are individually trivial and collectively the difference between a read
+tool that works on other people's repositories and one that works on
+yours.
+
 (One incidental note from the same section, for anyone implementing this on
 a JS stream: don't `break` out of a `for await` loop — it calls the
 iterator's `return()` and destroys the underlying stream.)
@@ -1391,7 +1429,11 @@ gets real content:
 > cheap miss, catastrophic stale hit → self-expiring cache.
 
 Worst case is one wasted turn instead of an unbounded loop; the premium is
-one turn against an unbounded failure. This is a real gap in §8a's account
+one turn against an unbounded failure. The same source pairs the mechanism
+with an operational rule worth generalising: the dedup **ships behind a
+kill-switch environment variable**, "because every cache needs one." A
+correctness-affecting optimisation that can only be disabled by a release
+is one you will be debugging in production with no way to isolate it. This is a real gap in §8a's account
 of Claude Code's `file_unchanged` — this collection recorded it as "the
 highest token-leverage single feature found in this pass" without noticing
 that it creates a dangling reference into a context window another part of
@@ -1537,9 +1579,12 @@ Anthropic-style `<invoke>`, Harmony, Qwen3/Hermes ChatML, Gemma 4's
 token-delimited `call:NAME{…}`, GLM-4.5, DeepSeek, Kimi K2, MiniMax,
 Gemini, a generic XML dialect, and a lossless `pi-native` gateway transport
 — each documenting special-token IDs and parser quirks for one family
-(`docs/toolconv/`). `auto` resolves by family, and falls back to a known
-family dialect rather than the generic one when a model reports
-`supportsTools: false`.
+(`docs/toolconv/`; compared in
+[`agent-tool-call-dialects.md`](./agent-tool-call-dialects.md)). `auto`
+resolves by family, and falls back to a known family dialect rather than
+the generic one when a model reports `supportsTools: false` — on the
+argument that a grammar *some* family was trained on beats a neutral
+grammar nobody was.
 
 That is a fifth axis, and the lowest one: not *which* tools (§10's tool
 sets), not *what the schema says* (per-family declarations), but **how the
