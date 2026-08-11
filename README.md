@@ -88,6 +88,18 @@ context that compaction has since eaten; and, as a method note, what it
 means that the write-up's live probe of Claude Code and this collection's
 reading of its leaked source **disagree** on two features (source-reading
 establishes what was built; probing establishes what is switched on).
+A further pass went one layer lower still, to the **wire format** — the
+part below "what the schema says," added with [`omp/`](./omp) and its
+author's two write-ups: how a tools array is actually rendered into the
+prompt as text, why a scalar parameter is delimiter-matched and free
+while an array or object forces escaped JSON into the same slot (which
+puts a measured cost on the batch-`Read` shape this collection's own
+design adopted), a harness that ships **eleven per-model-family tool-call
+dialects** and can strip native structured tool calls altogether, and the
+first benchmarked challenger to this doc's "`cat -n` won, unanimously"
+finding — a line-anchored edit format whose per-file content hash is an
+anchor the model *cites* instead of source text it must *reproduce*,
+measured across 16 models, winning on 14 and losing on 2.
 
 **[→ `agent-subagent-architectures.md`](./agent-subagent-architectures.md)**
 — a companion drill-down on one specific tool-surface capability: when
@@ -293,6 +305,7 @@ Rules, and Gemini CLI deleted `save_memory` outright ("There is no
 | [`codeact-hyperlight/`](./codeact-hyperlight) | [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) | Tool-use pattern (CodeAct) + sandboxed execution, not a standalone agent | MIT |
 | [`pi-agent/`](./pi-agent) | [Pi](https://github.com/badlogic/pi-mono) | Coding agent (minimal terminal harness) | MIT |
 | [`zed/`](./zed) | [Zed](https://github.com/zed-industries/zed) | Coding agent (AI-native code editor's Agent Panel) | GPL-3.0-or-later / Apache-2.0 |
+| [`omp/`](./omp) | [OMP / Oh My Pi](https://github.com/can1357/oh-my-pi) | Coding agent (terminal; fork of `pi-agent/` with LSP/DAP wired in) | MIT |
 
 Note: Roo Code and Copilot Chat's source repos were both archived
 (read-only) shortly before this collection was put together — files are

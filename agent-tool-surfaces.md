@@ -330,6 +330,39 @@ whether any are redundant/competing.
   vision-capable — almost no source names a dedicated "view this image"
   tool; what multimodal handling exists is a side effect of browser
   screenshots or notebook output mimetypes, not a first-class capability.
+- **OMP ([`omp/`](./omp)) resets the top of several of these axes at
+  once**, which is worth stating plainly because it was added after the
+  rest of this doc and would otherwise change a dozen rows quietly. It is
+  a fork of Pi (§ above) that claims, and appears to have, *31 built-in
+  tools, 14 LSP operations, 28 DAP operations, and 60+ providers*. Against
+  this doc's axes: **search/navigation** — it lands at the top with LSP
+  operations mandated over text search in the system prompt ("NEVER use
+  search or manual edits for code intelligence"), plus `ast_grep` and
+  `ast_edit` for structural discovery and codemods; **code execution** —
+  a Python REPL, an `eval` tool, and notebook support, i.e. all three of
+  the CodeAct answers above at once rather than a choice between them;
+  **debugger** — 28 DAP operations, and *no other source in this
+  collection exposes a debugger to the model at all*, making it the one
+  genuinely new capability class since this doc was written; **browser and
+  computer use** — both, where §4 recorded interactive browser control as
+  a two-source rarity; **multimodal** — a dedicated `inspect_image` tool
+  with a prompt rule preferring it over `read` "to spare session
+  context," which is precisely the first-class treatment §5 found missing
+  nearly everywhere; **memory** — `retain`/`recall`/`reflect`/`learn` plus
+  a `memory://` resource scheme; **extensibility** — MCP, skills, hooks,
+  extensions, a marketplace, and `xd://` tool devices, where extra tools
+  are invoked by *writing a JSON args object to a URL with the `write`
+  tool* and "invalid args return the schema in the error." The interesting
+  part is not the count but the *consolidation strategy that makes the
+  count survivable*: `read` is one tool whose single `path` string reaches
+  files, directories, archives, SQLite (with `?q=SELECT`), notebooks,
+  documents, images, web URLs and a family of internal schemes
+  (`skill://`, `agent://`, `history://`, `artifact://`, `issue://`,
+  `pr://`, `ssh://`), so breadth is bought at the URI layer rather than by
+  adding tools. Read alongside `agent-tool-implementations.md` §2's
+  granularity spread: OMP is simultaneously near Manus's tool *count* and
+  near Goose's tool *surface area per tool*, which the §2 rule did not
+  predict.
 - **Dynamic tool-surface rendering (Gemini CLI's imported tool-name
   constants, Pi's `toolSnippets`, CodeAct+Hyperlight's live sandbox-config
   rendering, Goose's plugin-only model) is a maturity signal, not a
@@ -337,4 +370,10 @@ whether any are redundant/competing.
   tool that doesn't actually exist in that deployment, which is exactly
   the failure mode Cursor's and Crush's explicit "this patch tool doesn't
   exist" denials (see `coding-agent-approaches.md` §5) exist to patch
-  after the fact with static text instead.
+  after the fact with static text instead. OMP is now the furthest point
+  on this axis: its system prompt refers to tools *only* through
+  `{{toolRefs.<name>}}` variables and gates whole sections on
+  `{{#has tools "lsp"}}`, so a session without a language server never
+  sees the LSP mandate and a renamed tool cannot desynchronise from its
+  own instructions — the prompt is compiled against the session's actual
+  tool set rather than describing an assumed one.

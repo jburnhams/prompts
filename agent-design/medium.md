@@ -1390,9 +1390,43 @@ the simple version measurably falls short.
   capability, selected at wiring time; `tools.md`'s implementation
   contract already states that the tool set is per-model configuration.
   One constraint if this is built on the intended MCP substrate: MCP
-  tools carry JSON Schema only, so the patch would travel as a JSON
-  string parameter and lose the un-escaped-body advantage that is half
-  the argument for the fork (`adk.md` §2).
+  tools carry JSON Schema only, so the patch would travel as a
+  string-typed parameter rather than a grammar-constrained freeform body
+  (`adk.md` §2). What that costs is *constrained decoding*, not escaping
+  — a schema-declared string is still rendered verbatim into the model's
+  dialect, un-escaped, per `agent-tool-implementations.md` §3g. Codex
+  gets both; on MCP the fork gets one.
+
+  **OMP is the strongest available evidence on this, and it complicates
+  the picture** (`agent-tool-implementations.md` §4a). It ships *four*
+  edit modes — `hashline`, `apply_patch`, `patch`, `replace` — with
+  `resolveEditMode()` choosing per model and a documented exclusion list
+  falling back to `replace`, and its author published a 16-model
+  head-to-head. Three things that bear on this entry:
+  - **The fork is not two artifacts, it is five.** OMP's schema, prompt,
+    examples, renderer and optional Lark grammar all switch with the
+    mode. Budget accordingly; "a second declaration of the same
+    capability" understates it.
+  - **The format v1 ships — byte-exact `old_string` — is the *middle*
+    performer, not the floor.** In that benchmark `replace` beat
+    `apply_patch` broadly, and hashline beat `replace` for most but not
+    all models. So the v1 choice is defensible on its own merits rather
+    than merely convenient, which was not previously established here.
+  - **There is a third option this design hadn't considered**: an anchor
+    the model *cites* rather than *reproduces*. Hashline returns
+    `[path#TAG]` plus bare line numbers and the model edits by line
+    range, so it never retypes existing content or whitespace, and a
+    stale four-hex file hash rejects the edit before any write. That is
+    strictly more information than `Read`'s current `cat -n` output
+    carries, it composes with the partial-view read state `tools.md`
+    already requires (OMP rejects hunks on lines the model never saw —
+    the same invariant, arrived at independently), and it would replace
+    `Edit`'s uniqueness requirement with a staleness check. It is also
+    the most invasive change available: `Read`'s prefix format is on
+    `tools.md`'s deliberately-not-configurable list precisely because
+    `Edit` is written against it, so this is a fork of *both* tools plus
+    a session snapshot store. Worth a benchmark before it is worth a
+    branch.
 - **Deferred tool loading behind a search tool**, if the surface grows
   past roughly twenty tools or starts carrying MCP servers. V1's eleven
   tools are cheap enough to send in full every turn, and a search

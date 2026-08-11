@@ -201,3 +201,26 @@ re-litigated later.
 - **`NotebookEdit` and other niche editors.** Still not load-bearing
   for "implement a ticket / review a diff"; add per-format tools only
   when the repo mix demands them.
+- **A flat spelling of batch `Read`, if parse failures ever show up in
+  the normalisation telemetry.** `Read`'s `files: [{path, start_line,
+  end_line}]` is an array of objects, which is the one parameter shape
+  that forces the model to emit escaped JSON inside the tool-call
+  channel rather than a delimiter-matched primitive
+  (`agent-tool-implementations.md` §3g). The flat alternative already
+  exists in the tolerance table as an accepted input — an array of path
+  strings — and could be promoted to the advertised schema with ranges
+  moved into the string (`src/a.ts:120-180`, OMP's selector grammar),
+  keeping batching *and* flatness at the cost of a mini-language the
+  description has to teach. Deliberately not done pre-emptively: the
+  telemetry rule in `tools.md` exists exactly for this, every
+  normalisation is already counted, and a malformed-arguments rate is
+  the signal that would justify the change. Ordering matters here —
+  measure, then reshape.
+- **Dialect-aware tool-call scanning.** §3g's other half: a harness that
+  handles its wire format's failure modes rather than treating a bad
+  call as the model's problem — a call leaked into output text, a
+  malformed call header, a turn that emits no call at all. V1 inherits
+  whatever the provider SDK does, which is the right call for one model
+  family on a managed API, and OMP's eleven dialect converters are the
+  shape this takes if Forge ever runs on open-weights models where
+  nobody else is fixing it.

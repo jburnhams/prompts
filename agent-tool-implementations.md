@@ -26,7 +26,16 @@ already-stored tool-JSON captures for Manus, Windsurf, Cursor and Grok
 Build, plus Anthropic's own published tool-design guidance and the MCP tool
 specification.
 
-A later pass added a fourth class of source, marked wherever it is used: a
+A later pass added **OMP** (Oh My Pi) to the code-read list — see
+[`omp/`](./omp) — which is the only source here that documents the *wire
+layer* underneath everything above: eleven per-model-family tool-call
+dialect references, a benchmarked alternative to `cat -n` + exact-match
+editing, and a harness that can remove native structured tool calls
+altogether. It is used in §3g, §4a and §10, alongside its author's two
+write-ups (recorded in [`sources.md`](./sources.md)), which supply the
+reasoning and the benchmark behind those choices.
+
+The same pass added a fourth class of source, marked wherever it is used: a
 **vendor engineering write-up** about a closed harness — Command Code's
 ["The Read Tool"](https://commandcode.ai/docs/harness-engineering/read-tool)
 (Ahmad Awais, 9 Aug 2026), a capability-by-capability teardown of one tool
@@ -438,6 +447,109 @@ Clamping and coercion each need this test applied field by field — Zed
 clamping `start >= 1` is safe because 0 has exactly one plausible intent,
 whereas rounding 1.5 does not.
 
+### 3g. Below the schema: the tool-call channel is text, and its shape is a choice
+
+Everything above §3f assumes the provider's native tool channel is a given
+and the only question is what to put in it. Two sources added in a later
+pass — Can Bölük's ["The Minutiae of
+Tool-calling"](https://blog.can.ac/2026/08/03/the-minutiae-of-tool-calling/)
+and the harness he builds, [OMP](./omp) — treat the channel itself as a
+design variable, which reframes several conclusions in this section.
+
+**The mechanism.** A tool call is not a decision; it is tokens. The tools
+array never reaches the model as structured data — each provider's template
+renders it into the prompt as text. In OpenAI's Harmony format the tools
+arrive as a TypeScript-ish namespace in a *developer* message:
+
+```
+## functions
+namespace functions {
+// Compare one digit guess against the secret door keypad digit
+// at a 1-indexed position. Returns -1 too low, 0 exact, +1 too high.
+type probe = (_: {
+// keypad position, 1 through 5
+position: number,
+// digit guess, 0 through 9
+digit: number,
+}) => any;
+} // namespace functions
+```
+
+and a "call" is the model emitting the family's grammar — for the
+Anthropic-style dialect, `<invoke name="…"><parameter name="…">value
+</parameter></invoke>`, with parallel calls being additional `<invoke>`
+blocks. Hence: "Your schema is documentation; validation happens in your
+code" — the `minimum`/`maximum`/`description` fields you write may or may
+not be rendered, and may or may not be enforced by the inference stack.
+This is the mechanical explanation for why §3e's advertise-strict/
+accept-tolerant pattern is universal, and it is a stronger argument than
+"models are sloppy."
+
+**The consequence that changes parameter design.** Because the closing
+delimiter is a special token, a *primitive* parameter body needs no
+escaping — the model emits the raw value and stops. A complex value does
+not have that property:
+
+> if it's a complex object or an array? Well, it now has to emit a valid
+> JSON escaped value, which needs to be parsed back, or a tool calling
+> error happens!
+
+OMP's XML dialect implements exactly this split, using the tool's schema to
+decide: a schema-declared string renders verbatim with whitespace
+preserved; a number, boolean, `null`, array or object renders as JSON and
+is parsed back through a "repair-capable JSON parser," falling back to
+treating the body as a string when repair fails. So an array-of-objects
+parameter is not merely more tokens — it moves that parameter from a
+delimiter-matched channel into a nested one that can fail to parse, on
+every call.
+
+**The experiment.** Five interfaces to the same toy task (guess a 5-digit
+code in 24 turns, given a per-digit comparison oracle): (A) one comparison
+per call; (B) the same batched into an array of objects; (C) "clever"
+integer packing (`27` = position 2, digit 7); (D) a flat `check(code)`
+returning a sign per position; (E) **no tools at all** — the model replies
+`🔍2=7` to probe and `🔑01756` to submit, and the harness scans it out of
+the text. E wins on both win-rate and cost; on a frontier model it ties A–D
+on win-rate while spending 2–3× fewer tokens, and on a weak model it is the
+only interface that works well. B and C are the losers, for the reason
+above: they are the two that force JSON into the parameter body. The stated
+rule of thumb:
+
+> reliability degrades with nesting × heterogeneity × cleverness, and you
+> NEED the harness to handle the common failure modes of the dialect.
+
+**The honest limits**, stated by the author rather than extracted from him:
+post-training genuinely does push probability mass toward the native tool
+channel, so this is not an argument for shipping emoji — "the moment you
+have 10 tools instead of 2, native tool-calls win on ergonomics alone and I
+use it like everyone else." But RL teaches *the shapes RL practiced*: "flat
+args, boring schemas." A clever encoding is off-distribution for the
+tool-use post-training in the same way it was for the base model, and the
+tail never reaches zero — "reliability is rate × exposure, and real agents
+run thousands of turns, not 24," so a per-turn failure rate too small to
+see in a 24-turn demo is a certainty across a real session. The failure
+mode to design for is concrete and ugly: sampled garbage in the call
+header, e.g. `to=functions.check.commentary (json.Xna 天天送钱 code`, or a
+turn that emits no call at all.
+
+**What this argues for**, then, is not a format but a preference order:
+flat scalar parameters over nested ones; a single primitive carrying a thin
+grammar over a structured object when the grammar is genuinely thin; and a
+harness that scans and repairs the dialect's known failure modes rather
+than one that treats a parse failure as the model's problem. OMP's `read`
+is the applied version — one `path` string whose trailing selector carries
+line ranges (`:50-200`), multiple ranges (`:5-16,960-973`), counts
+(`:50+150`) and modes (`:raw`), rather than `offset`/`limit` fields or an
+array of file objects (`omp/tools/read.md`).
+
+It also cuts directly against §2e's batching argument and against the
+`Read` shape this collection's own design adopted (`files:
+[{path, start_line, end_line}]`), which is precisely the array-of-objects
+case. The two claims are not actually contradictory — batching saves turns,
+flat parameters save parse failures — but they trade against each other,
+and §2e recorded only one side of it. See `agent-design/future.md` for how
+the design resolves that.
+
 ---
 
 ## 4. Mimicry: how much should a tool look like a tool the model already knows?
@@ -469,6 +581,70 @@ lives in a code comment tying the two tools together.
 **Implication: read-format and edit-format are one contract, not two.** If
 you change how `Read` numbers lines, you must change the `Edit` description
 in the same commit.
+
+**The unanimity has one challenger, and it is benchmarked.** OMP's default
+read format is not `cat -n` but a per-file *snapshot header* plus bare
+numbers:
+
+```
+[greet.py#A1B2]
+1:def greet(name):
+2:    msg = "Hello, " + name
+```
+
+`A1B2` is a four-uppercase-hex content hash of the whole normalized file,
+recorded in a session snapshot store. Every edit must open with
+`[PATH#TAG]` copied from the most recent `read`, `grep` or successful
+`edit`; a stale tag means the file changed underneath the model and the
+edit is rejected **before** anything is written, rather than corrupting it.
+The format's own name for what it buys: the model never has to reproduce
+old content — no whitespace, no indentation, no recalled snippet — to prove
+it knows what it is editing. It cites `PUT 4.=4:` and supplies only the new
+lines.
+
+That is optimistic concurrency control applied to file editing, and it is
+the first serious alternative to `cat -n` + exact-match this collection has
+found. It is also the only edit format here with a published head-to-head:
+its author benchmarked it against `apply_patch` and `str_replace` across 16
+models, 180 tasks × 3 runs, fresh session each, on mutations injected into
+the React codebase. Reported results, with the caveats in
+[`sources.md`](./sources.md) — vendor-run, and one of the two blog posts
+that supply OMP's rationale:
+
+- Hashline beat `apply_patch` in **14 of 16** models; a later revision beat
+  the first in 12 of 16.
+- **The weakest models gain the most.** Grok Code Fast 1 went 6.7% → 68.3%,
+  which the author reads as edit-format failures having hidden the model's
+  actual coding ability rather than the format adding capability.
+- **Patch failure rates on models the format wasn't trained for**: Grok 4
+  at 50.7%, GLM-4.7 at 46.2% — the mechanism behind §3g's "RL teaches the
+  shapes RL practiced," since `apply_patch` is OpenAI's house format.
+- **Two models regressed** (DeepSeek V3.2, −5 points vs patch; GPT-5.2
+  Codex, +4.6 vs patch but −0.4 vs replace and +26% output tokens), which
+  is the result that keeps this from being a clean win — and which OMP
+  itself handles by keeping four edit modes and a model exclusion list that
+  falls back to `replace` (§10).
+- Output tokens fell for most models (−61% best case) because retry loops
+  stopped.
+
+Two further design details worth separating from the benchmark, because
+they are independent of it. **Line numbers refer to the original snapshot,
+not to earlier hunks in the same call**, which removes the offset
+arithmetic every unified-diff format imposes when a call carries several
+hunks. And **block anchors** (`PUT 1*:`) resolve a tree-sitter node from
+its opening line through its end, so "replace this function" does not
+require the model to know where the function ends — with an explicit rule
+about the case that actually bites (decorators and doc-comments are
+separate nodes: anchor the first decorator to sweep both).
+
+The mimicry question this raises is the one §4c answers generally: `cat -n`
+wins because the model has seen a billion lines of it, and hashline is
+*not* a format any model saw in pre-training. Its author's answer is the
+constrained-decoding grammar (`omp/hashline-grammar.lark`, 27 lines — the
+same move Codex makes with `apply_patch.lark`) plus a 133-line prompt with
+six WRONG/RIGHT anti-pattern pairs. That is the real cost of leaving a
+mimicked format: you pay for it in grammar and prompt, and you need a
+benchmark to know whether you got it back.
 
 ### 4b. Where mimicry pays, and where it doesn't
 
@@ -1138,6 +1314,48 @@ Claude Code's `renderPromptTemplate` composes the `Read` description from
 runtime limits and capability checks (`isPDFSupported()`). Codex swaps the
 entire `shell_command` description on Windows, PowerShell examples and all.
 
+**Two more mechanisms, both from OMP, both a level below the four above.**
+
+*The wire dialect is per-model-family, and native tools are optional.* A
+`tools.format` setting (default `auto`) selects how tool calls are
+serialized for this session, including options that **remove native
+structured tools from the provider request entirely**, append an in-band
+tool catalogue and format guide to the system prompt, convert prior calls
+and results to text, and scan assistant text back into structured
+tool-call events. OMP ships eleven such dialect references —
+Anthropic-style `<invoke>`, Harmony, Qwen3/Hermes ChatML, Gemma 4's
+token-delimited `call:NAME{…}`, GLM-4.5, DeepSeek, Kimi K2, MiniMax,
+Gemini, a generic XML dialect, and a lossless `pi-native` gateway transport
+— each documenting special-token IDs and parser quirks for one family
+(`docs/toolconv/`). `auto` resolves by family, and falls back to a known
+family dialect rather than the generic one when a model reports
+`supportsTools: false`.
+
+That is a fifth axis, and the lowest one: not *which* tools (§10's tool
+sets), not *what the schema says* (per-family declarations), but **how the
+call is encoded on the wire**. §3g is why it matters — the encoding decides
+what has to be escaped and therefore what can fail to parse. Two details
+are worth copying regardless of whether you ever swap dialects: the scanner
+deliberately accepts more than the renderer emits (`<function_calls>` and
+`antml:`-prefixed variants as aliases, a bare invoke with no wrapper) —
+§3e's advertise-strict/accept-tolerant rule reappearing one layer down; and
+the generic XML dialect has **no success/error marker at all**, rendering
+`isError: true` in the same `<tool_response>` shape as success, so "the
+error must be intelligible from its text." That is §7's errors-are-prompts
+rule turned into a hard constraint by the format.
+
+*The edit format is model-conditional, with a benchmarked fallback.*
+`resolveEditMode()` picks among `hashline`, `apply_patch`, `patch` and
+`replace` — model-specific configured variant, then env var, then config,
+then the default — and "unless `PI_STRICT_EDIT_MODE` is set, a short model
+exclusion list can replace the default hashline contract with `replace`."
+Cline does the same thing by provider substring (§3b); the difference is
+that OMP's exclusion list is populated from its own 16-model benchmark
+(§4a), including the two models where the default format measurably lost.
+The tool's "schema, prompt, examples, renderer, and optional custom Lark
+format all switch with the selected mode" — so an edit-format fork is five
+artifacts, not one, which is the practical reason this stays rare.
+
 ---
 
 ## 11. MCP-specific practice
@@ -1265,6 +1483,27 @@ source, so marked)
     a part exceeds a threshold (a `jq` path for a >10K-char notebook cell),
     so the model keeps the ability to query what it didn't receive.
     [Command Code]
+
+**The wire layer** (§3g, §4a, §10 — from OMP and its author's write-ups)
+30. Prefer flat scalar parameters. A primitive parameter body is
+    delimiter-matched and needs no escaping; an array or object forces
+    JSON into the same body, where it can fail to parse on every call.
+    [OMP's dialect converters, the keypad experiment]
+31. Where a grammar is genuinely thin, put it in one string rather than in
+    a structured object (`path:50-200`, `path:5-16,960-973`) — but only
+    where thin is true, since this trades §2e's turn savings for parse
+    reliability. [OMP `read`]
+32. Handle your dialect's failure modes in the harness: malformed call
+    headers, a leaked call in output text, a turn with no call at all.
+    "There is no fix coming" from the provider. [OMP scanners]
+33. Give the model a stable anchor it did not have to reproduce — a content
+    hash it cites rather than source text it must retype — and reject a
+    stale anchor before writing rather than after. [OMP hashline; and the
+    same invariant as Command Code's partial-view write gate, §8b]
+34. If you leave a format the model has seen a billion lines of, budget for
+    a constrained-decoding grammar, an anti-pattern-heavy prompt, and a
+    benchmark — and expect to keep the old format for the models that
+    regress. [OMP: 4 edit modes + an exclusion list; Codex `apply_patch.lark`]
 
 ---
 
