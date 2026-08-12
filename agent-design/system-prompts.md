@@ -101,12 +101,38 @@ inconvenient:
    careful reader) — never comments that restate what the code already
    says. Do not refactor, generalize, or add abstractions beyond what
    the task asked for.
-4. **Verify.** Run the project's existing tests. Run its lint/typecheck
-   command if one exists — if you can't find it, check the
-   project-conventions file; if it's genuinely not discoverable, note
-   that in your final report rather than guessing. Confirm your
-   reproduction script from step 2 now passes, if there was one. Add or
-   update tests to cover the change you made.
+4. **Verify — and the proof depends on what was asked.** Never report
+   work as done without evidence that the deliverable behaves. What
+   counts as evidence is not the same for every task:
+   - **Bug fix** → the reproduction from step 2 no longer triggers. That
+     is the proof; a passing test suite alone is not, because the suite
+     did not catch the bug in the first place.
+   - **Behaviour change or new feature** → the project's existing tests
+     that cover the changed contract.
+   - **Investigation, spike, or one-off script** → run it. The output
+     *is* the proof, and there is nothing here to test.
+   - **Anything with a runnable surface** → smoke-test it: start the
+     thing, exercise the changed path, observe the result. Running a test
+     file is not the same as running the program, and a change that has
+     never been executed has not been verified.
+
+   Then, in every case: run the project's existing test suite and its
+   lint/typecheck command. If you can't find them, check the
+   project-conventions file; if they're genuinely not discoverable, say
+   so in your final report rather than guessing.
+
+   **Add a test only when the change introduces an observable contract
+   the suite does not already cover**, or when the task asked for one.
+   A test that restates what an existing test already asserts is churn
+   the reviewer has to read. When you do write one, it must fail on a
+   plausible bug — test the behaviour, boundary or invariant, never the
+   plumbing.
+
+   **Don't re-audit an edit that already succeeded.** A successful `Edit`
+   result is confirmation that the change landed; re-reading the file to
+   check costs a turn and tells you nothing the tool result didn't. Read
+   again only when something else has run since — your own `Bash` command,
+   a formatter, a build.
 5. **Stop, don't ship.** You are already working on the task's target
    branch — it was checked out before this run started, and you never
    create, switch, or check out a branch yourself. Under `implement`, a

@@ -70,7 +70,107 @@ success; errors written as instructions; the side channels attached to tool
 results (JIT conventions injection, unchanged-file dedup, read-before-edit
 gates); and the tool set as a runtime artifact — per-model-family schemas
 (Gemini CLI), model-based tool routing (Cline), and deferred loading behind
-a search tool (Claude Code, Codex).
+a search tool (Claude Code, Codex). A later pass went one level deeper on
+the single most-called tool, adding the first **vendor engineering
+write-up** to this collection's source types (Command Code's read-tool
+teardown, benchmarked across ten harnesses): the **three ceilings** a read
+tool needs and the file shape each one is the only defence against;
+recovery text as a closed catalogue typed as *notes rather than errors*;
+the failures a model **provably cannot diagnose** (macOS's NFD-decomposed
+filenames, narrow no-break spaces, curly-quote renames — byte-different,
+pixel-identical) and the rule that sorts tool-side retry from model-side
+suggestion; truncation claims you cannot honestly make yet at a stream
+chunk boundary; a **production deadlock** in which a per-line clamp, a
+read-before-write ledger and an unchanged-file dedup — each correct alone,
+none of them calling another — lock a model into an infinite re-read loop,
+and the "consume-on-hit" cache rule that stops a dedup stub pointing into
+context that compaction has since eaten; and, as a method note, what it
+means that the write-up's live probe of Claude Code and this collection's
+reading of its leaked source **disagree** on two features (source-reading
+establishes what was built; probing establishes what is switched on).
+A further pass went one layer lower still, to the **wire format** — the
+part below "what the schema says," added with [`omp/`](./omp) and its
+author's two write-ups: how a tools array is actually rendered into the
+prompt as text, why a scalar parameter is delimiter-matched and free
+while an array or object forces escaped JSON into the same slot (which
+puts a measured cost on the batch-`Read` shape this collection's own
+design adopted), a harness that ships **eleven per-model-family tool-call
+dialects** and can strip native structured tool calls altogether, and the
+first benchmarked challenger to this doc's "`cat -n` won, unanimously"
+finding — a line-anchored edit format whose per-file content hash is an
+anchor the model *cites* instead of source text it must *reproduce*,
+measured across 16 models, winning on 14 and losing on 2. The same pass
+added the field's only published **tool-call repair catalogue** — the four
+container/nullability malformations that reportedly account for ~90% of
+"this open model can't do tool calls," the order they must be applied in
+(parse a JSON-string array *before* wrapping a bare string, or
+`'["a","b"]'` becomes `['["a","b"]']`: schema-valid, meaning lost), and
+the architectural finding that repairs must run **after** validation
+fails rather than as a pre-pass, because a pre-pass rewrites well-formed
+inputs that merely look malformed — which is how a file write whose
+content was legitimately JSON-shaped got silently corrupted. Two
+independent teams, one open and one closed, land on the same thesis from
+opposite directions: most of what reads as a model capability gap is
+contract design. A follow-up pass then found the one thing all of that was
+missing — **somebody actually ran the experiment**. Nous Research's Hermes
+built an A/B eval for read-tool engineering choices, explicitly because the
+vendor scorecard above got its column wrong, and its
+`evals/readtool/` is the most rigorous artifact in this collection: nine
+deterministic hostile fixtures, accuracy *and* cost metrics, three reps
+with a stated ±3% noise floor, a frontier model and a strong open model on
+purpose, and a per-feature ship/no-ship log with the caveats that
+invalidate its own comparisons recorded next to the verdicts. It also found
+a real gap in the blocklist reasoning: a name blocklist cannot see a FIFO
+sitting inside the working tree, and the `stat`-based guard that can is
+worth −79% tokens and −81% wall clock on that fixture with accuracy
+unchanged — the shape of defect that survives in shipped harnesses
+precisely because nothing fails. A final pass closed the two loose ends
+with the collection's first **independent** benchmark: JetBrains's
+Diff-XYZ, which separates *generating* an edit from *reading* one and
+finds they want opposite formats — search-replace scores 0.95 on diff
+generation and 0.57 on apply, unified-diff variants 0.92–0.93 on apply
+and 0.06 on generation — so "which edit format is best" is the wrong
+question for an agent that does both jobs, and the model-size interaction
+both vendor benchmarks reported turns up here independently. Reading
+Kilo Code's actual clamp then produced a better answer than the one this
+collection had adopted: compose the ceilings so the byte budget only ever
+decides whether a *whole* line fits, and mid-codepoint truncation and the
+resume off-by-one both stop existing. A final look at the academic
+literature added §4a2 and a warning to go with it — Diff-XYZ's roster is
+entirely superseded, and an April 2026 **audit** of the only two
+benchmarks that evaluate instructed code editing with human instructions
+and tests finds both are over 90% Python with zero TypeScript, invert the
+real domain mix, contain no documentation or maintenance edits, and carry
+oracles so thin that 59% of EDIT-Bench's low-coverage suites cannot detect
+changes made *outside* the edit region, which is exactly the failure mode
+an unsupervised agent has. The synthesis is deflating and worth stating:
+there is no public evidence base good enough to pick an edit format from,
+and what every credible actor in this space actually did was build their
+own eval on their own harness.
+
+**[→ `agent-tool-call-dialects.md`](./agent-tool-call-dialects.md)** — the
+layer below *that* one, and the lowest in this collection: the **wire
+format** under "the model called a tool." What crosses the wire is text —
+a grammar rendered into the prompt by the provider's chat template and
+scanned back out by a parser — which makes the tool channel a variable you
+control on any model where you own the prompt. Covers why your schema is
+documentation rather than enforcement; the five ways a call gets delimited
+and why the tokenizer's `special: true`/`false` flag (Qwen3 and GLM
+register their tool markers as *non*-special **so they survive decoding**
+and a regex parser can find them) predicts parser behaviour; argument
+encoding from GLM's `<arg_key>`/`<arg_value>` pairs that need no escaping
+at all, through Gemma 4's string-delimiter *token*, to the JSON-blob
+families where every structured parameter is a parse failure waiting to
+happen; how tools get advertised (a `<tools>` block, a TypeScript
+namespace, or prose); results correlated by ID versus by position, the
+three different envelope roles a tool result can take, and the dialect
+with **no error channel at all**, where prose is the only way an error can
+be seen; and what implementing one costs — renderer *and* a deliberately
+wider scanner, ID minting, streaming partial delimiters, history
+conversion both ways. The practical answer to "how do you give tools to a
+model with no function-calling support," and a caution that prompt-only
+formats leak: Gemini's Pythonic syntax was reverse-engineered from
+`MALFORMED_FUNCTION_CALL` bug reports.
 
 **[→ `agent-subagent-architectures.md`](./agent-subagent-architectures.md)**
 — a companion drill-down on one specific tool-surface capability: when
@@ -99,6 +199,18 @@ before compaction happens" strategy via a persistent memory tool),
 prompt-cache interaction, sub-agent isolation, and — compared in
 detail — actual numeric token budgets (reserved buffers, summary
 output caps, retention thresholds) across the sources that expose them.
+A later pass added §9, which supplies the one thing the rest of the doc
+had to take on faith — **a measurement of what compaction destroys**.
+On a SQuAD-based benchmark against a verbatim-text ceiling, prose
+compaction is a total loss of extractable fact on two of four frontier
+models (Gemini answered `UNREADABLE` 240 times out of 240, Opus 209):
+"the summaries preserve what you were doing, not what you knew." The
+same source proposes a branch that is not on this doc's typology at all
+— rendering the context into dense pixel-font bitmaps and carrying it as
+*images*, which is lossless by construction and moves the cost from
+fidelity to a decode tax — with a legibility cliff at 35–40 px² per
+character and a vision-patch-alignment trick that drives decode
+confidence from 0.39 to 1.00.
 
 **[→ `agent-turn-output.md`](./agent-turn-output.md)** — a further
 drill-down on what a single LLM turn actually produces, across 22
@@ -276,6 +388,7 @@ Rules, and Gemini CLI deleted `save_memory` outright ("There is no
 | [`codeact-hyperlight/`](./codeact-hyperlight) | [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) | Tool-use pattern (CodeAct) + sandboxed execution, not a standalone agent | MIT |
 | [`pi-agent/`](./pi-agent) | [Pi](https://github.com/badlogic/pi-mono) | Coding agent (minimal terminal harness) | MIT |
 | [`zed/`](./zed) | [Zed](https://github.com/zed-industries/zed) | Coding agent (AI-native code editor's Agent Panel) | GPL-3.0-or-later / Apache-2.0 |
+| [`omp/`](./omp) | [OMP / Oh My Pi](https://github.com/can1357/oh-my-pi) | Coding agent (terminal; fork of `pi-agent/` with LSP/DAP wired in) | MIT |
 
 Note: Roo Code and Copilot Chat's source repos were both archived
 (read-only) shortly before this collection was put together — files are
@@ -381,4 +494,8 @@ gpt-engineer, Plandex, bolt.diy (community multi-LLM fork of Bolt).
 From the scaffold-taxonomy paper above: AutoCodeRover, Agentless,
 Moatless Tools, DARS-Agent, Prometheus (all SWE-bench-family agents, same
 category as `swe-agent/`/`mini-swe-agent/`/`live-swe-agent/`/
-`augment-swebench-agent/` above).
+`augment-swebench-agent/` above). From Command Code's read-tool benchmark
+(see [`sources.md`](./sources.md)): **Kilo Code**, **Hermes**, **OpenClaw**,
+and **Command Code** itself — four harnesses this collection has no
+coverage of, two of which (Kilo Code, Hermes) are credited with read-tool
+features found nowhere in the sources read so far.

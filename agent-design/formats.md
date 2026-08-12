@@ -596,7 +596,7 @@ seeing them, which is only safe because they are unambiguous by
 construction.
 
 Structure here is fixed; the numbers in the examples are not. Every limit
-shown (2000 lines, depth 3, 250 matches) is the default from `tools.md`'s
+shown (2000 lines, 64 KB, depth 3, 250 matches) is the default from `tools.md`'s
 configuration section, rendered from the effective config at runtime — a
 deployment tunes the values, never the shapes.
 
@@ -653,7 +653,14 @@ quote. Attribute escaping never touches block *content*.
 tree, and absolute otherwise. The path echoed back is the *resolved* one,
 not the string the model passed, so a call that was normalised (a
 `file_path` alias, a relative path, a trailing space) shows the model what
-was actually read.
+was actually read. This matters most in the case the model cannot see:
+where a read succeeded only because the harness retried a Unicode
+respelling of the name (`tools.md`'s tolerance layer 4), the echoed path
+carries the *real* bytes, and the block adds a `!` note saying the name
+was repaired — otherwise the model reads the file, learns nothing about
+why its own spelling failed, and passes the same broken string to `Edit`
+one turn later. The repair is silent about *how*; it is never silent about
+*that*.
 
 **Text is UTF-8, with line endings normalised to `\n`.** A file stored
 with CRLF is displayed without the `\r`, and `Edit`/`Write` restore the
@@ -671,7 +678,7 @@ and unambiguous to a parser.
 ### 8b. `Read`
 
 ```
-<files count="4" ok="2" truncated="1" failed="1">
+<files count="6" ok="2" outlined="1" truncated="2" failed="1">
 <file path="src/parser/index.ts" lines="1-42" total="42" status="ok">
 1	import { Token } from "./lexer"
 2	
@@ -684,11 +691,31 @@ and unambiguous to a parser.
 ...
 180	  }
 </file>
+<file path="src/parser/emit.ts" total="612" status="outlined" shown="41" elided="571">
+1	import { Node } from "./ast"
+2	
+3	export class Emitter {
+4	  constructor(private out: Writer) {}
+5	
+6	  emit(node: Node): void {
+! lines 7-88 elided (82 lines)
+89	  emitBinary(node: BinaryNode): void {
+! lines 90-141 elided (52 lines)
+142	  private indent(): string {
+! lines 143-612 elided (470 lines)
+! Outline only: 41 of 612 lines shown. Re-read the ranges you need — one entry per range, several per call. Editing requires reading the range first.
+</file>
 <file path="src/big-generated.ts" lines="1-2000" total="18422" status="truncated">
 1	// AUTO-GENERATED
 ...
 2000	  "z": 1,
 ! Showed lines 1-2000 of 18422. Pass start_line: 2001 to continue, or narrow with Grep.
+</file>
+<file path="data/fixtures.json" lines="1-846" total="20114" status="truncated">
+1	[
+...
+846	  {"id": 8459, "payload": "…"},
+! Showed lines 1-846 of 20114 (64 KB size limit reached; line 847 did not fit). Pass start_line: 847 to continue.
 </file>
 <file path="src/parsr/index.ts" status="not_found">
 ! No such file. Did you mean src/parser/index.ts?
@@ -712,14 +739,74 @@ Rules:
   Line numbers are the file's own, so a ranged read starts at
   `start_line`, not at 1 — which is what makes a range citable and
   `Edit`-safe without re-reading from the top.
-- **`status` vocabulary**: `ok`, `truncated` (a cap applied — the note
+- **`status` vocabulary**: `ok`, `outlined` (declarations shown, bodies
+  elided — see below), `truncated` (a cap applied — the note
   gives the continuation), `empty` (zero-byte or whitespace-only file),
   `past_eof` (`start_line` beyond the file's length; the note gives
   `total`), `not_found` (with a did-you-mean when one is computable),
   `is_directory` (the note says to use `List`), `binary` (with the byte
   size; no content), `not_utf8`, `too_large` (the file exceeds the
-  hard byte ceiling even for a ranged read), and `unreadable`
-  (permissions or I/O error, with the reason).
+  hard byte ceiling even for a ranged read), `refused_path` (the resolved
+  path is on the blocklist of things that never terminate — `tools.md`'s
+  implementation contract), and `unreadable` (permissions or I/O error,
+  with the reason).
+- **`status` is not `error`.** `empty`, `past_eof` and `truncated` are
+  facts about the world, not failures: they render as `!` notes with no
+  `Error:` prefix, and the harness does not count them toward any
+  error-rate signal. A model told it failed spends output tokens
+  apologising and re-planning; a model told the file has 412 lines sends
+  the right call next. (Command Code makes this explicit as a design rule;
+  Claude Code's past-EOF message has the same shape.)
+- **Which cap fired is named, and no cap ever cuts inside a line.** The
+  note says whether the line window or the byte ceiling stopped the read,
+  because the model's next move differs (narrow with `Grep` versus just
+  continue). The resume point does **not** differ: the byte ceiling stops
+  *before* the first line that would exceed it and names that line, so
+  both caps resume on the next line the model has not seen. This is
+  deliberate and it is the whole reason the caps compose in that order —
+  `read.max_line_chars` has already bounded any single line, so the byte
+  budget only ever has to decide whether a *whole* line fits. Two failure
+  modes disappear with it: the off-by-one that silently drops a line when
+  a byte cut lands mid-content, and mid-codepoint truncation, which would
+  put invalid UTF-8 or a replacement character into content that later
+  travels into an `Edit` `old_string` and fails to match for a reason
+  nothing in the transcript explains. (Kilo Code's reader is the
+  precedent; Command Code cuts mid-line and pays for it with a
+  binary-search for a valid UTF-8 prefix plus a resume-on-the-cut-line
+  rule — `agent-tool-implementations.md` §6c.) The one place that must
+  still cut inside a line is `read.max_line_chars` itself, and **that cut
+  is on a codepoint boundary**, never a raw offset.
+- **A `total` the harness has not established is not printed.** `total`
+  requires having scanned the file; where a read streamed and stopped at a
+  cap without reaching the end, the note states what was shown and the
+  next call, and omits `total` rather than guessing it. The boundary case
+  worth naming, because it is easy to get wrong: when a cap falls exactly
+  at the end of a read chunk, whether the file continues is not yet known,
+  so the truncation claim is deferred to the next chunk rather than
+  asserted at the boundary (`agent-tool-implementations.md` §6c).
+- **`outlined` is a distinct status from `truncated`, and the difference
+  matters.** A truncated read hit a cap and stopped; an outlined read
+  scanned the *whole* file and chose what to show, so `total` is exact and
+  no continuation offset applies. It fires only on a whole-file read (no
+  `start_line`/`end_line`) of a parseable source file at or above
+  `read.summarize.min_lines`; an explicit range, an unparseable language,
+  prose, or a file past `read.summarize.max_bytes` all fall through to the
+  ordinary windowed read. Rules specific to the shape:
+  - **Line numbers are the file's own**, so every shown line is citable
+    and every elision names a range that can be passed straight back as
+    `start_line`/`end_line`.
+  - **Each elision is a `!` note in place**, carrying its inclusive range
+    and line count. This satisfies §8a's invariant without inventing a
+    marker — an elision is a harness note, and harness notes are already
+    unambiguous inside a `<file>` block. The trailing note repeats the
+    aggregate so the recovery instruction survives any later
+    re-truncation, per the head/tail rule.
+  - `shown` and `elided` attributes carry the split; `lines` is omitted,
+    because the content is not a contiguous range.
+  - **An outlined read is a partial view** for the read-state cache
+    (`tools.md`), so `Write` refuses against it. `Edit` needs no special
+    rule: `old_string` must match bytes the model has actually seen, and
+    it has not seen the elided ones.
 - **A failed entry never fails the call.** The tool returns an error only
   when *every* entry failed, and then the error text is the same set of
   `!` notes so nothing is lost.

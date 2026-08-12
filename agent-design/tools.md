@@ -159,6 +159,36 @@ the model receives a preview plus that path. `Read` is the deliberate
 exception — spilling a read to a file the model then reads back is circular
 — so `Read` self-bounds via its own limits instead.
 
+**Some reads are refused before any I/O, by name *and* by type.** A cap can
+only bound a read that *finishes*, so anything unbounded has to be refused
+up front, and that takes two independent checks:
+
+1. **A name blocklist.** `Read` (and `List`'s line-counting pass, which
+   opens files for the same reason) checks the resolved path against a
+   fixed list — `/dev/zero`, `/dev/urandom`, `/dev/random`, `/dev/stdin`,
+   `/proc/<pid>/fd/*` — and returns `refused_path` without calling
+   `open()`. The working-tree boundary is not a substitute: it doesn't
+   apply when the working directory is `/`, and these paths are reachable
+   by absolute path regardless.
+2. **A `stat` on the resolved path**, refusing FIFOs, sockets, and
+   character/block devices whatever they are called. This is the check
+   that actually matters, because **a name blocklist cannot see a FIFO
+   sitting inside the working tree** — `logs/live.pipe` is an ordinary
+   repository-relative path that blocks forever on `open()`. Hermes added
+   exactly this guard after its own read-tool eval
+   (`agent-tool-implementations.md` §6e) and measured it: on a
+   FIFO-in-workspace task, a strong open model spent 122k tokens and up to
+   ten minutes of wall clock recovering without the guard versus 26k
+   tokens with it (−79% tokens, −81% worst-case wall), and a frontier
+   model −43% tokens — with task accuracy unchanged at 1.00 in both arms,
+   since both models do eventually recover. The guard is pure efficiency,
+   which is precisely why it is easy to ship without and never notice. The false-positive cost is nil — nothing a coding
+or review run legitimately does reads `/dev/urandom` through a file-read
+tool, and a model that wants entropy has `Bash` — which makes this the
+cheapest safety rule in the document, and the only one whose absence is a
+denial of service the harness shipped itself
+(`agent-tool-implementations.md` §6d).
+
 **Errors are instructions.** Every tool error states what happened, what to
 do about it, and — where the harness can compute one — a concrete
 suggestion. "File does not exist. Did you mean `src/parser/index.ts`?" beats
@@ -170,13 +200,36 @@ each say so in words.
 **Advertise strict, accept tolerant.** The schemas below are the advertised
 contract and stay strict (`additionalProperties: false`) — a strict schema
 is what makes provider-side strict tool-calling and the model's own
-pattern-matching work. Tolerance lives entirely in the harness, in three
-declared layers, never as ad-hoc rescue code inside a tool:
+pattern-matching work. Tolerance lives entirely in the harness, in four
+declared layers, never as ad-hoc rescue code inside a tool.
 
-1. **Generic normalisations**, applied to every tool's input before
-   validation, implemented once: parse an input that arrived as a JSON
+**All four run *after* validation fails, never before it.** The input is
+validated as-is first; if it passes, it is shipped **untouched**, and no
+repair ever runs against a well-formed call. Only on failure does the
+harness walk the validator's own issue list and try repairs at the paths
+the schema actually disagreed at. This ordering is not a detail: a
+normalisation pass in front of the validator encodes a prior about what is
+broken before anything has said what is broken, and the failure it
+produces is silent. Command Code shipped the pre-pass version first and
+reverted it after a `write` whose `content` was legitimately JSON-shaped
+got rewritten on the way to disk (`agent-tool-implementations.md` §3h) —
+which this design is equally exposed to, since `Write.content` and
+`Edit.old_string` both routinely carry text that looks like the shapes the
+repairs match. Validating first makes the schema the prior and confines
+the blast radius to fields that were already wrong.
+
+**Repairs are ordered, and the order is part of the contract.** Within a
+failing field, JSON-string parsing runs before scalar-to-array wrapping,
+or `'["a","b"]'` becomes `['["a","b"]']` — schema-valid, meaning lost, and
+undetectable downstream. Every layer-1 transform below is listed in
+application order for this reason.
+
+1. **Generic normalisations**, applied to a failing tool input,
+   implemented once: parse an input that arrived as a JSON
    *string* (or fenced in Markdown) rather than an object; coerce
-   stringified scalars (`"3"` → `3`, `"true"` → `true`); treat explicit
+   stringified scalars (`"3"` → `3`, `"true"` → `true`) **whole-string
+   only** — `"2abc"` is an error, never a silent `2`, and a fractional
+   line number is an error, never floored; treat explicit
    `null` on an optional field as absent; unwrap a one-element array where
    a scalar is expected and wrap a scalar where an array is expected; trim
    whitespace and stray quotes/backticks from path-shaped strings; and
@@ -202,16 +255,68 @@ declared layers, never as ad-hoc rescue code inside a tool:
    the explicit past-EOF marker rather than an error. (Zed does exactly
    this in code, with a comment noting the model "occasionally passes 0
    despite instructions to be 1-indexed.")
+4. **Repair, inside the tool, the failures the model cannot see.** A
+   missing path is retried against a small fixed set of Unicode
+   respellings before it is allowed to fail — NFC ↔ NFD, narrow no-break
+   space ↔ regular space, straight ↔ curly apostrophe, and NFD+curly —
+   because these render *identically* in a terminal and in a diff, so a
+   model that copied the name off the screen has no evidence to reason
+   from and will retype the same wrong bytes indefinitely. macOS supplies
+   all three variants natively (NFD-decomposed storage, a narrow no-break
+   space before AM/PM in screenshot names, Finder's curly-quote renames),
+   so this is ordinary traffic, not an edge case. **Every candidate is
+   re-validated against the working-tree boundary**, not just the original
+   — a repair layer that resolves paths must not become a traversal
+   primitive. Only after all candidates miss does the read fail, with the
+   did-you-mean suggestion described under `Read` below.
+
+Two rules that cut across all four layers, both from the production
+catalogue in `agent-tool-implementations.md` §3h:
+
+- **Encode a field's destination in its type, not in its description.** A
+  path parameter is declared as a path type rather than a bare string, so
+  every path field on every tool gets the same repairs at once — trimming
+  quotes and backticks, and unwrapping the degenerate markdown auto-link
+  (`[notes.md](http://notes.md)`, where the link text equals the URL minus
+  its protocol) that some models emit because chat formatting leaks across
+  the tool boundary. Real markdown links pass through untouched. The
+  general form: where a family of parameters shares a destination, give
+  them a shared type and repair the family, not the instance.
+- **Where fields are individually valid but jointly wrong, extend the
+  semantics rather than erroring, and say what you did.** No input repair
+  can see a relational problem, because every field validates. `Read`'s
+  accepted `offset`/`limit` pair is the case here: `limit` alone means
+  `start_line: 1`, `offset` alone means "to the default line cap." The
+  chosen default is stated in the result as a `!` note — not an error —
+  so the model sees what was picked and can correct on the next call.
+
+The sorting rule behind items 3 and 4, worth stating because it decides
+future cases: **repair silently what the model has no evidence to fix, and
+suggest what it does.** A misspelled path is visible in the transcript, so
+the tool hands back a suggestion and lets the model choose; a path
+differing by a codepoint that renders identically is not, so the retry
+happens inside the tool before any error text exists.
 
 Two limits keep this from becoming a pile of hidden formats.
 **Normalise only when the transform is information-preserving and
-unambiguous** — a bare string for `Read` has one plausible meaning, but an
+unambiguous** — the operative test being whether a repair can produce a
+*plausible wrong answer* rather than an obvious failure. `filePath` →
+`file_path` cannot: the transform is reversible and means one thing.
+`parseInt("2abc")` → `2` can: it invents a value the caller never supplied,
+the read then succeeds, and nothing downstream ever learns it was wrong.
+A silently wrong window is worse than an error, which is why the coercion
+above is whole-string and why clamping is confined to ranges, where 0 and
+an inverted pair each have exactly one plausible intent. A bare string for
+`Read` has one plausible meaning, but an
 unrecognised key that might carry real intent (a `recursive: true` on a
 tool with no such behaviour) is an *error naming the unknown key*, because
 proceeding would silently do something other than what was asked. And
-**every normalisation is counted**: a fired alternate means either the
-description or the schema is wrong for this model, so the telemetry is the
-input to fixing it upstream — promote a frequent alternate into the
+**every normalisation is counted**, per `(model, tool)` pair and split
+into repaired-and-ran versus failed-and-returned: a fired alternate means
+either the description or the schema is wrong for this model, so the
+telemetry is the input to fixing it upstream — and a repair rate that
+moves on one contract is how a model regression surfaces before users
+report it — promote a frequent alternate into the
 advertised schema, and delete one that never fires. Both directions are
 observed in the field: Cline's SDK parses `read_files` against a
 thirteen-branch union while advertising one shape, and OpenCode *removed*
@@ -241,12 +346,44 @@ appended inside a `<system-reminder>` block (OpenCode, Gemini CLI and Claude
 Code each do a version of this); and any content originating outside the
 repository is sanitized before it lands, per `formats.md` §1.
 
-**Read-before-edit is harness-side state.** `Edit` and `Write` fail on a
-path this run has not `Read` (for `Write`, only when the file already
-exists), enforced by a per-run read-state cache rather than by prompt text
-— the same structural-gate principle as the git-write blocklist. That
-cache is also what a later unchanged-file read dedup would be built on
-(`medium.md` §2g); v1 keeps the cache and not the dedup.
+**Read-before-edit is harness-side state, and the state is *what was
+seen*.** `Edit` and `Write` fail on a path this run has not `Read` (for
+`Write`, only when the file already exists), enforced by a per-run
+read-state cache rather than by prompt text — the same structural-gate
+principle as the git-write blocklist. That cache is also what a later
+unchanged-file read dedup would be built on (`medium.md` §2g); v1 keeps
+the cache and not the dedup.
+
+The cache entry is **not a boolean**. Per path it records the bytes
+returned, `(mtime, size)` at read time, and whether the view was
+**partial** — a range read, a line-window truncation, a line the per-line
+clamp cut, or an **outlined** read (below), which is the most partial view
+of all and the easiest to mistake for a complete one. That distinction is what the two gates actually need,
+and they need different answers from it:
+
+- **`Edit` accepts a partial view.** Its `old_string` must match the file
+  byte-for-byte and uniquely, so the match anchors the change to bytes
+  that demonstrably exist; content the model never saw is not at risk.
+- **`Write` requires a *full* view** — replacing a file wholesale after
+  seeing 50 of its 2,000 lines destroys 1,950 lines the model never read,
+  and a gate that only asks "was this path read at all" waves that
+  through. The check that decides it is byte equality, not the partial
+  flag: a `Write` is permitted when the cache's recorded content matches
+  what is on disk *now*, which a clamped-but-complete read satisfies (the
+  clamp affects what was *displayed*; the cache records the raw bytes) and
+  a 50-line window does not. Where it fails, the error names the actual
+  state — "only part of this file has been read; re-read it in full before
+  replacing it" — rather than the misleading "has not been read yet."
+
+Both refinements come from a production deadlock reported by Command Code
+(`agent-tool-implementations.md` §8b) in a harness with this design's exact
+combination of features: a per-line clamp marks a read partial → the write
+gate refuses → the model re-reads → a dedup returns "unchanged" → forever.
+Every field in every call was valid; the invariant that broke lived
+*between* three tools. The deadlock needs all three of clamp, gate and
+dedup to close, so v1 (no dedup) cannot hit it — but v1 is the version that
+gets the state shape right, because §2g's dedup lands on top of this cache
+and inherits whatever it recorded.
 
 **Per-tool harness metadata.** Every tool declares, in code, whether it is
 read-only, whether it is safe to run concurrently with another call, and
@@ -299,6 +436,10 @@ handed a problem rather than a design.
 |---|---|---|
 | `read.default_lines` | 2000 | Claude Code, OpenCode and Cline independently converged on 2000; Crush's 200 is the outlier and reflects an interactive UI where a human scrolls, not an unsupervised run that pays a turn per re-read |
 | `read.max_line_chars` | 2000 | Universal across every source read. Minified and generated files are the target; a legitimate source line never approaches it |
+| `read.max_entry_bytes` | 65,536 (64 KB) | Enforced by **whole lines** — the read stops before the first line that would exceed the budget, never cutting inside one, which is what keeps the byte ceiling from splitting a codepoint or shifting the resume point (`formats.md` §8b). The middle of the three ceilings, and the one this design originally skipped. The line window bounds a file with *many* lines and the per-line clamp bounds a *single* wide line; neither bounds a file whose lines are merely wide — 2,000 lines of 900 characters clears both caps and returns 1.8 MB (`agent-tool-implementations.md` §6b). The value deviates from Command Code's 128 KB and OpenCode's 50 KB deliberately: this `Read` is a batch tool, so a per-entry ceiling above `read.call_budget_chars` would never bind. 64 KB lets one large file take most of a call without letting it take more than the call has |
+| `read.summarize` | on | A whole-file read of a large source file returns its **declarations with bodies elided** rather than its first 2000 lines. OMP's default, and the only source that does this; it fits a turn-budgeted hands-off agent better than the interactive tools it came from, because the alternative to a skeleton here is not "the human scrolls" but "the model spends a turn discovering the file was the wrong one" |
+| `read.summarize.min_lines` | 100 | Below this a file is cheaper to return whole than to summarise and then re-read in pieces. OMP's value |
+| `read.summarize.max_bytes` | 2,097,152 (2 MiB) | Summarising means parsing. Past this, fall back to the ordinary windowed read rather than paying to parse a generated file |
 | `read.max_entries` | 20 | New here — no source has a batch read to cap. Past ~20 files the model is fanning out rather than reading, which is what `List`/`Grep` are for, and a 200-entry call would blow the call budget before the first file finished |
 | `read.call_budget_chars` | 80,000 (≈20k tokens) | A batch should not cost more than one large single read. Claude Code caps a single read at 25,000 tokens; Cline caps at 48,000 chars per read. This sits between them and is measured in characters deliberately — a real tokenizer call per read is a round trip the gate does not justify |
 | `read.file_size_gate_bytes` | 262,144 (256 KB) | Claude Code's value. This is the *explicit-request* gate: past it a read errors instead of truncating, per the implementation contract |
@@ -315,11 +456,15 @@ handed a problem rather than a design.
 | `spill_threshold_chars` | 30,000 | Any tool result past this is written to scratch and previewed, per the implementation contract — except `Read`, which is exempt because spilling a read to a file the model then reads back is circular |
 | `tolerance.enabled` | on | The alternate-forms table above is data, so a deployment can prune it; turning tolerance off entirely is available and is the wrong default, per the decision log |
 
-Two derived rules the harness validates at startup, rather than trusting
-the config: `read.call_budget_chars` must exceed what a single
-`read.default_lines` read can produce, or a one-file batch would truncate
-for no reason; and no cap may be set to zero, which would make a tool
-silently return nothing. Claude Code validates each of its limit fields
+Three derived rules the harness validates at startup, rather than trusting
+the config: `read.max_entry_bytes` must not exceed `read.call_budget_chars`,
+or the per-entry ceiling never fires and a single wide file is cut by the
+batch rule instead — which truncates whole entries and so would return
+nothing at all for a one-file call; `read.max_line_chars` ×
+`read.default_lines` should be recognised as *not* a bound (it is 4 MB at
+the defaults, which is the whole reason the byte ceiling exists) so no rule
+is written against it; and no cap may be set to zero, which would make a
+tool silently return nothing. Claude Code validates each of its limit fields
 individually and falls back to the hardcoded default on anything invalid,
 with a comment noting there is deliberately "no route to cap=0" — the same
 posture applies here.
@@ -352,7 +497,11 @@ one has tested:
   partial-failure-never-fails-the-call.
 - **Caps must self-describe** — a deployment may change *what* the limit
   is, never whether the result says it was hit and how to continue.
-- **Read-before-edit**, and the git-write blocklist.
+- **Read-before-edit** (including the full-view requirement on `Write`),
+  and the git-write blocklist.
+- **The refused-path list**, which a deployment may extend and may never
+  empty — it is the only defence against a read that never returns, and a
+  configurable-to-zero denial of service is not a tunable.
 
 The line between the two lists is exactly the model channel versus the
 harness channel: numbers are facts the model is told at the moment they
@@ -390,11 +539,22 @@ whole run, so they cannot.
 >   a reasonable size — a partial read that misses the relevant section
 >   costs more than the extra tokens would have. Use ranges when you have
 >   a specific line to land on, or when the file is genuinely large.
-> - Each file returns up to 2000 lines by default, one call takes up to
->   20 entries, and the call has an overall size budget across all of
->   them — so a batch of twenty large files comes back partly elided even
->   though no single entry hit its own cap. If you want more than twenty
->   files, you are exploring rather than reading: use List or Grep.
+> - **A whole-file read of a large source file comes back as an outline**:
+>   its declarations, with the bodies between them elided and marked in
+>   place with the exact line range each elision covers. This is a map,
+>   not the file. Use it to decide *what* to read, then ask for the ranges
+>   you need — several in one call, one entry per range, since they are
+>   the same batch. A read with an explicit `start_line`/`end_line` is
+>   never outlined; ranges always come back verbatim.
+> - Never edit against an outline. You have not seen the elided lines, so
+>   you cannot match them, and a `Write` over a file you have only seen in
+>   outline is refused. Read the range first.
+> - Each file returns up to 2000 lines and up to 64 KB, whichever it hits
+>   first; one call takes up to 20 entries, and the call has an overall
+>   size budget across all of them — so a batch of twenty large files
+>   comes back partly elided even though no single entry hit its own cap.
+>   If you want more than twenty files, you are exploring rather than
+>   reading: use List or Grep.
 > - Lines longer than 2000 characters are truncated, and say so in place.
 > - Every capped or elided entry says what it showed, how much exists, and
 >   the exact next call (`showed lines 1-2000 of 8123 — pass start_line:
@@ -506,8 +666,10 @@ canonical-forms table.
 > existing file discards everything not repeated in `content`. Use Write
 > for genuinely new files, or when a rewrite is so extensive that
 > reconstructing it via Edit calls would be less reliable than writing
-> it fresh. Overwriting a file you have not Read in this run fails;
-> creating a new one does not.
+> it fresh. Overwriting a file you have not Read **in full** in this run
+> fails — a range read or a truncated read is not enough, because the
+> lines you never saw are exactly the ones a rewrite would destroy.
+> Creating a new file has no such requirement.
 >
 > Only write into the repository working tree for files meant to be
 > part of the actual change. Anything throwaway — a reproduction

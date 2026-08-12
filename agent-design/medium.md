@@ -496,9 +496,46 @@ it should land only with a conservative invalidation rule (any `Bash`
 call at all invalidates the whole cache, tightened later if that proves
 too blunt).
 
+**Three conditions on the version that does land**, all from Command
+Code's account of shipping this exact feature
+(`agent-tool-implementations.md` §8b), and none of them obvious from the
+feature description above:
+
+1. **The dedup record is consumed on a hit.** The stub tells the model to
+   refer to an earlier tool result — and this agent compacts its own
+   context, so that result may have been summarised away. A record that
+   survives every hit points the model at something it can no longer see,
+   *permanently*, and no retry escapes it because the retry hits the same
+   cache. Consuming the record on use bounds the worst case at one wasted
+   turn: the natural re-read returns real content. The shape is general
+   enough to be worth naming — **a cache whose stale hit is catastrophic
+   and whose miss is cheap should expire itself on use** — and it applies
+   to any other "refer to what I told you earlier" stub this design grows.
+2. **It must not fire while a write gate is blocking on the same file.**
+   The clamp/gate/dedup deadlock in §8b closes precisely when a dedup
+   answers a re-read that the model was making *in order to satisfy*
+   `Write`'s full-view requirement. The guard: a from-line-1 re-read is
+   never stubbed unless the cache already holds a full view, and that
+   check runs *before* the dedup check — which matters because the dedup
+   check has a side effect (condition 1).
+3. **Batch `Read` makes both of these more likely, not less.** A
+   five-file batch where four are unchanged is the case this feature
+   exists for, but it is also four chances per call to hand back a stub
+   whose referent has been compacted. Per-entry stubbing means the
+   dangling-pointer risk scales with batch size while the token saving
+   does too.
+
+The first condition is a genuine correction to how this design recorded
+the feature: `agent-tool-implementations.md` §8a called Claude Code's
+`file_unchanged` "the highest token-leverage single feature found in this
+pass" without noticing that it creates a reference into a context window
+[`agent-context-compaction.md`](../agent-context-compaction.md) describes
+another part of the same harness actively rewriting. The saving is real;
+it just has a precondition nobody had written down.
+
 **Precedent**: Claude Code's `Read` has exactly this as a `file_unchanged`
 variant of its output schema, returning a fixed stub string
-(`agent-tool-implementations.md` §8). No other source surveyed does it,
+(`agent-tool-implementations.md` §8a). No other source surveyed does it,
 which is why it is tracked here rather than treated as table stakes.
 
 ## 3. Review pipeline upgrades
@@ -1353,9 +1390,73 @@ the simple version measurably falls short.
   capability, selected at wiring time; `tools.md`'s implementation
   contract already states that the tool set is per-model configuration.
   One constraint if this is built on the intended MCP substrate: MCP
-  tools carry JSON Schema only, so the patch would travel as a JSON
-  string parameter and lose the un-escaped-body advantage that is half
-  the argument for the fork (`adk.md` §2).
+  tools carry JSON Schema only, so the patch would travel as a
+  string-typed parameter rather than a grammar-constrained freeform body
+  (`adk.md` §2). What that costs is *constrained decoding*, not escaping
+  — a schema-declared string is still rendered verbatim into the model's
+  dialect, un-escaped, per `agent-tool-implementations.md` §3g. Codex
+  gets both; on MCP the fork gets one.
+
+  **OMP is the strongest available evidence on this, and it complicates
+  the picture** (`agent-tool-implementations.md` §4a). It ships *four*
+  edit modes — `hashline`, `apply_patch`, `patch`, `replace` — with
+  `resolveEditMode()` choosing per model and a documented exclusion list
+  falling back to `replace`, and its author published a 16-model
+  head-to-head. Three things that bear on this entry:
+  - **The fork is not two artifacts, it is five.** OMP's schema, prompt,
+    examples, renderer and optional Lark grammar all switch with the
+    mode. Budget accordingly; "a second declaration of the same
+    capability" understates it.
+  - **The format v1 ships — byte-exact `old_string` — is the *middle*
+    performer, not the floor.** In that benchmark `replace` beat
+    `apply_patch` broadly, and hashline beat `replace` for most but not
+    all models. So the v1 choice is defensible on its own merits rather
+    than merely convenient, which was not previously established here.
+  - **An independent benchmark suggests the split this design already
+    makes is the right one — on 2025 models.** JetBrains's Diff-XYZ
+    separates *generating* an edit from *reading* one and found they
+    wanted opposite formats: search-replace 0.95 on diff generation
+    versus 0.57 on apply, unified-diff variants 0.92–0.93 on apply versus
+    0.06 on generation (`agent-tool-implementations.md` §4a). Forge writes
+    edits with search-replace (`Edit`) and *reads* them as unified diff
+    (the review envelope's pre-baked hunks, `formats.md` §1b) — the strong
+    direction of each format, arrived at for unrelated reasons
+    (byte-exactness on one side, line-number fidelity on the other). Worth
+    recording so a future consolidation doesn't "simplify" the two into
+    one representation. **But do not carry the numbers forward**: that
+    benchmark's roster (GPT-4o, GPT-4.1, Claude 4 Sonnet, Qwen2.5-Coder)
+    is entirely superseded, and edit-format compliance is exactly the axis
+    labs post-train against, so the gap has plausibly narrowed. The claim
+    to keep is directional — reading and writing diffs are different
+    skills and may want different representations — and the action if it
+    ever matters is to re-run it, not to cite it.
+  - **And before any of this drives a decision, read
+    `agent-tool-implementations.md` §4a2.** The public evidence base on
+    edit formats is worse than it looks: an April 2026 audit found that of
+    150+ code benchmarks only two evaluate instructed editing with human
+    instructions and tests, both are >90% Python with zero TypeScript,
+    Java, C# or Go, neither contains documentation/test/maintenance edits
+    at all, and 59% of EDIT-Bench's low-coverage suites cannot detect
+    changes made *outside* the edit region — which is precisely the
+    failure mode an unsupervised agent has. If the edit format ever
+    becomes load-bearing here, the move every credible actor in this space
+    actually made was to build their own eval on their own harness, on the
+    repositories and languages they ship.
+  - **There is a third option this design hadn't considered**: an anchor
+    the model *cites* rather than *reproduces*. Hashline returns
+    `[path#TAG]` plus bare line numbers and the model edits by line
+    range, so it never retypes existing content or whitespace, and a
+    stale four-hex file hash rejects the edit before any write. That is
+    strictly more information than `Read`'s current `cat -n` output
+    carries, it composes with the partial-view read state `tools.md`
+    already requires (OMP rejects hunks on lines the model never saw —
+    the same invariant, arrived at independently), and it would replace
+    `Edit`'s uniqueness requirement with a staleness check. It is also
+    the most invasive change available: `Read`'s prefix format is on
+    `tools.md`'s deliberately-not-configurable list precisely because
+    `Edit` is written against it, so this is a fork of *both* tools plus
+    a session snapshot store. Worth a benchmark before it is worth a
+    branch.
 - **Deferred tool loading behind a search tool**, if the surface grows
   past roughly twenty tools or starts carrying MCP servers. V1's eleven
   tools are cheap enough to send in full every turn, and a search
