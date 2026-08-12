@@ -376,6 +376,261 @@ Phased on purpose, matching how the need actually arrives:
 
 ---
 
+### 2e-bis. `DescribeType` (what is this class, where does it come from)
+
+**What**: the agent has a package and a class name, maybe a method —
+`com.fasterxml.jackson.databind.ObjectMapper`, or just `ObjectMapper`
+lifted from a stack trace. It does **not** know which jar that lives in,
+and on a real project it can't: the class may arrive through a
+dependency three levels down someone else's `spring-boot-starter`. This
+tool answers, in one call: *what is this type, what can I call on it,
+where does it come from, and how did it get onto my classpath*.
+
+The docs are the easy half. The resolution is the tool.
+
+**The four questions the harness answers**, in order, stopping at the
+first that resolves:
+
+1. **Is it the project's own code?** Cheap and exact — the working tree
+   is already there, ref-pinned. Answer from source.
+2. **Which artifact on the resolved classpath provides it?** This is the
+   reverse index: fully-qualified class name → the jar(s) that contain
+   it, at the exact versions this build resolved.
+3. **How did that artifact get here?** Direct dependency, or transitive
+   via which path, in which scope. The agent asking "can I call this?"
+   needs the difference: code that compiles today against a
+   transitively-inherited jar breaks the day an intermediate dependency
+   drops it.
+4. **If it isn't on the classpath at all** — does it exist anywhere? Maven
+   Central's search API indexes class names for exactly this
+   (`fc:` for a fully-qualified name, `c:` for a simple one), so
+   "which artifact would I need" is answerable rather than guesswork. A
+   type that resolves only at this step is not a fact about the codebase,
+   it's a *proposal*, and it feeds §4a's dependency-change flow rather
+   than being silently treated as available.
+
+**Resolution mechanics, opinionated:**
+
+- **Ask the build tool; never re-implement transitive resolution.**
+  Maven's conflict mediation (nearest-wins, `dependencyManagement`, BOM
+  imports, exclusions) is subtle enough that a hand-rolled approximation
+  will be wrong in exactly the cases that matter. `mvn
+  dependency:build-classpath` yields the resolved jar list with paths
+  into the local repository; `mvn dependency:tree` yields the graph that
+  answers question 3. Where running the build is undesirable, use **Maven
+  Resolver (Aether) as a library** — the same resolver Maven itself uses
+  — against the local repository and the internal proxy. Gradle is
+  harder, because build scripts are code rather than data: ask Gradle
+  itself (a resolvable configuration such as `runtimeClasspath`, or the
+  Tooling API), and treat "no build tool reachable" as a stated failure
+  rather than a reason to guess.
+- **Build the class→artifact index from the jar list**, by listing
+  `.class` entries per jar. Cache it keyed by a hash of the resolved
+  dependency set, so it is computed once per dependency change rather
+  than once per call. Resolution is the expensive step — seconds to
+  minutes on a cold cache — and it is why this tool must be
+  resolve-once-per-run, not resolve-per-question.
+- **Return every provider, not the first.** Duplicate classes across jars
+  are normal in the JVM ecosystem (`javax.*` vs `jakarta.*` splits,
+  `commons-logging` vs `jcl-over-slf4j`, anything shaded). When a type
+  resolves to more than one artifact, say so and say **which one wins by
+  classpath order** — the agent otherwise cannot know it is reading the
+  documentation of a class that loses at runtime. This is information no
+  other tool in the surface can give it.
+- **Handle relocation and multi-release jars explicitly**: a shaded class
+  lives under a rewritten package and is a different type from the
+  original; a multi-release jar can carry different signatures per JDK,
+  so the answer must name the JDK level it read.
+- **Flag transitive-only usage.** If a type resolves through a transitive
+  dependency, the result says so and suggests declaring it directly —
+  the same finding `mvn dependency:analyze` reports as "used undeclared
+  dependency", which is a real, well-established Java-specific defect
+  class this tool gets to catch for free.
+
+**Input tolerance** — matching how the agent actually knows things: `type`
+accepts a fully-qualified name, a simple name, or a package prefix. A
+simple name that matches several types returns a **disambiguation list**
+(candidates with their coordinates) as an instructional error rather than
+picking one, per the errors-are-instructions rule.
+
+```json
+{
+  "name": "DescribeType",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "type": { "type": "string", "description": "Fully-qualified type name, or a simple name to resolve (e.g. \"com.fasterxml.jackson.databind.ObjectMapper\" or \"ObjectMapper\")." },
+      "member": { "type": "string", "description": "Optional: restrict to one method or field name. All overloads are returned." },
+      "likely_artifacts": { "type": "array", "items": { "type": "string" }, "description": "Optional hint: artifacts you believe provide this type, e.g. [\"com.fasterxml.jackson.core:jackson-databind\"]. Searched first, but never exclusively — if the type actually comes from somewhere else, the result says so." },
+      "include": { "type": "array", "items": { "type": "string", "enum": ["members", "docs", "hierarchy", "annotations", "origin"] }, "description": "Defaults to members, docs and origin." },
+      "head_limit": { "type": "integer", "description": "Cap the number of members returned. Defaults to the configured cap." }
+    },
+    "required": ["type"],
+    "additionalProperties": false
+  }
+}
+```
+
+The result leads with **origin** — resolved coordinate and version, direct
+or transitive (with the path), scope, whether other artifacts also
+provide the type — and then the API itself, labelled with the
+**provenance** of the documentation: `sources-jar`, `javadoc-jar`, or
+`bytecode`. Those tiers are not equivalent and the model must not treat
+them as such.
+
+**Documentation resolution**, once the coordinate is known, degrading
+explicitly and never silently: sources jar → javadoc jar → static
+bytecode signatures → "no documentation published for this coordinate."
+Because the coordinate carries the exact version, the docs match what is
+actually on the classpath — which is the whole reason this beats a web
+search, where the top result is for whatever version ranks highest.
+
+**Gotchas**:
+
+- **Never load classes to reflect on them.** "Use the JVM to see method
+  signatures" splits into two very different implementations: static
+  bytecode reading is inert, while reflection-by-classloading runs static
+  initialisers — arbitrary third-party code executing inside an
+  unsupervised agent, triggered by a name the model typed. Only the
+  static path is acceptable. `javap` and the JDK's own class-file
+  readers are sufficient.
+- **Bytecode is lossy in ways that matter**: no documentation, and no
+  parameter names unless the artifact was compiled with `-parameters`
+  (otherwise `arg0`, `arg1`). A result labelled `bytecode` is saying "the
+  names are placeholders" — state it, don't imply it.
+- **Javadoc jars are untrusted HTML** from further outside the trust
+  boundary than repository files: strip to text and sanitise per
+  `formats.md` §1, with the same accepted-residual-risk stance §2e states
+  for dependency source.
+- **Artifact fetching goes through the build's own internal proxy**,
+  never a direct reach to a public registry, and downloading is not
+  running: nothing fetched here is ever executed.
+- **Cap the member list**: public API only by default, excluding
+  synthetic, bridge and inherited-`Object` members, with the same
+  `head_limit`/footer contract as every other tool. `String` alone would
+  otherwise exhaust a call budget.
+- **The classpath is per-module and per-scope.** In a multi-module build,
+  "the classpath" is a question about *which module*, and a test-scoped
+  dependency is not available to main code. The result must name the
+  module and scope it resolved against rather than implying one global
+  answer.
+- **Weigh it against a language server.** If the `Lsp` escalation entry
+  (§7) is built, hover plus workspace-symbol search over an indexed
+  classpath answers questions 1 and 2 — a JVM language server has already
+  done this resolution. What it does *not* give is questions 3 and 4, the
+  dependency path and the not-yet-a-dependency case, which are the two
+  this tool exists for. It also costs a language-server lifecycle per
+  container, where the next block's approach costs a script and a cache.
+  Measure before choosing; they are not mutually exclusive.
+
+#### Where the analysis runs
+
+Coding runs have a container, a checked-out workspace, and full `Bash`.
+That collapses most of this: the resolution is **local**, the jars are
+already in the build's own cache after a build, and the tool is a thin
+wrapper over commands the agent could in principle run itself.
+
+That "in principle" is the whole argument for making it a tool rather
+than leaving it to `Bash`. Doing this by hand is a six-step recipe —
+resolve the classpath, find the jar, list its entries, extract, read
+signatures, format — and the agent pays a turn per step, re-derives the
+recipe slightly differently every time, and gets no caching. The tool
+collapses it to one call with a stable output shape. It is the same
+dedicated-tool-versus-shell trade `agent-tool-implementations.md` §2c
+lays out, and here the deciding factor is caching: the same lookups
+recur constantly within a run and across runs on the same repo.
+
+The implementation follows from that: **a script in the container image,
+plus a cache, plus a stable output format** — not a service.
+
+**Lookup order**, and the four answers must stay distinguishable because
+they lead to different actions:
+
+1. **The workspace's own source** — the type is in this repo. Name the
+   module.
+2. **On this module's resolved classpath** — name the artifact, version,
+   and whether it is direct or transitive.
+3. **Present in the local artifact cache but *not* on this module's
+   classpath** — a different module's dependency, or a different scope.
+   The honest answer is "exists, but you cannot call it from here," which
+   is a different fact from either of the above.
+4. **Not present locally at all** — not a dependency. Optionally
+   resolvable to a coordinate through a registry class-name search
+   (`fc:`), and if so the answer is a *proposal* feeding §4a, not a
+   capability.
+
+**Caching, in three layers keyed by what actually changes:**
+
+| Layer | Key | Invalidated by |
+|---|---|---|
+| Resolved classpath / dependency tree per module | hash of the build files (`pom.xml`, `build.gradle`, lockfiles) | the agent editing a build file — which it does, so this must be checked, not assumed |
+| class → jar index | hash of the resolved classpath | the layer above changing |
+| Per-jar class list, and per-class signatures | the **jar's own checksum** | never — a released artifact is immutable |
+
+The bottom row is the same immutability leverage as a shared index
+service, obtained locally and for free: a per-checksum cache can live in
+the container image or on a mounted volume and be reused by every run
+and every project that touches the same artifact.
+
+**Resolve at container start, not on first call.** The harness already
+checks out the target branch before the run begins; resolving the
+classpath there too means the first `DescribeType` call is a cache hit
+rather than a multi-minute cold Maven resolution. Better still, bake the
+dependency cache into the image (a `go-offline`-style pre-fetch), so the
+common case needs no network at all. A tool whose first invocation costs
+minutes will be avoided by the model — or worse, called speculatively in
+parallel — so this is a real design constraint, not an optimisation.
+
+**The model's dependency guesses are a hint, never an authority.** It is
+tempting to let the call carry the dependencies to look in, since the
+model often has a good idea ("this is probably Jackson"). Accept it — as
+an *ordering* input that puts likely jars first in the search, never as a
+restriction on where to look. Two reasons: the model cannot know the
+transitive set (that is the premise of this whole entry), and its version
+guess will drift from what the build resolved. Taking the hint as
+authority would also destroy the entry's most useful output — the
+correction. "You assumed `jackson-databind`; this type comes from
+`jackson-core:2.17.1`, pulled in transitively via
+`spring-boot-starter-json`" is exactly the kind of finding that stops a
+wrong implementation in its first minute rather than at review.
+
+**Brute force is the backstop, and it is cheap.** If the class is not in
+the resolved classpath index, scan every jar in the local artifact cache.
+Reading a jar's central directory does not decompress it, so a few
+thousand jars is seconds, parallelised — and the per-checksum cache makes
+the second scan free. That is what makes step 3 above answerable at all.
+
+**Runs without a workspace** — the review pipeline reading around a diff,
+the learnings run (§6), or any question about a *ref* to a project that
+was never checked out — cannot do any of the above, because there is no
+container with that project built in it. For those, the only options are
+a precomputed index (SCIP, the successor to LSIF, with `scip-java`
+covering Java/Scala/Kotlin over Maven/Gradle/Bazel) produced where the
+build already happens, or degraded static parsing of fetched files. Two
+build by-products are worth having CI publish for this reason alone: the
+resolved classpath and the dependency tree, which answer questions 2 and
+3 with no build at query time. Treat that as a later tier, not a
+prerequisite — the in-container path above covers coding runs, which is
+where the need actually is.
+
+**The correctness trap, wherever the answer came from**: an index or a
+cached classpath describes a *committed* state, and a coding run's
+working tree diverges from it the moment the agent edits a file.
+Index-derived answers about a file this run has modified are wrong in the
+most confusing possible way. The working tree wins for any path the run
+has touched, and every answer names the source it came from — the same
+provenance discipline `formats.md` §8 applies to everything else.
+
+None of this reaches the tool schema. `DescribeType` takes a type, an
+optional member, and an optional hint; whether the answer came from
+workspace source, a warm classpath index, a raw jar scan, or a
+precomputed index is the harness's business, surfaced to the model only
+as the provenance label it needs in order to judge the answer. Same
+harness-owns-the-mapping principle `SearchSource` and `AddComment`
+already follow.
+
+---
+
 ### 2f. `Narrate` (the run narrative)
 
 **What**: a tool the orchestrator calls a handful of times per run to
@@ -1478,8 +1733,13 @@ the simple version measurably falls short.
   OpenCode's is the shape to copy here — every operation is read-only
   with the same result shape, so by this design's own splitting rule
   (`tools.md`, implementation contract) they belong in one tool. The
-  cost is a language-server lifecycle the harness doesn't currently
-  own, which is why it isn't in v1.
+  cost is a language-server lifecycle per container, which the harness
+  doesn't currently own — and §2e-bis argues that for the JVM most of
+  the same need is met by a cached in-container script over the build's
+  own resolved classpath, at a fraction of that cost, plus a
+  precomputed index for the run shapes that have no workspace at all.
+  The tool surface is the same whichever backs it; only the harness's
+  mapping changes.
 - **Structural write protection for the project-conventions file**, if
   the post-run flag on conventions-file diffs (`formats.md` §3a) ever
   actually fires on a non-conventions ticket. The upgrade is Roo
