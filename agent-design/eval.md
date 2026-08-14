@@ -180,5 +180,8 @@ design that can retire one.
    above some fan-out. The measurement that settles it is cheap and
    doesn't require building it: instrument how much of a finder's
    context is spent on reads whose content appears in no returned
-   finding. If that fraction is small, the question is closed and the
-   entry in `deepseek-lessons.md` §8 can be dropped rather than tracked.
+   finding. If that fraction is small, the question is closed — a second
+   calling convention would be cost with no return, and nothing further
+   needs tracking. If it is large, the prerequisite is typed return
+   schemas on every tool in `tools.md`, which the surface does not
+   declare today.

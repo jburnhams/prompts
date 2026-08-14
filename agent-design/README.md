@@ -245,19 +245,11 @@ does not need lifecycle folders or a format gate):
    ship/no-ship log. This is what turns `tools.md`'s configuration
    section from seventeen opinions into seventeen decisions, and it
    carries the list of open questions it exists to close.
-10. `deepseek-lessons.md` — a source-specific delta, written after
-    reading DeepSeek Harness (`../deepseek-harness/`): six changes worth
-    making now (a `<gates>` envelope block that suppresses findings a
-    green check already proves; blocker/suggestion separation as a
-    schema field; **nonce-tagging `<existing_comments>`, which closes a
-    real prompt-injection hole in `review.md` §5**; a negative control on
-    proposed regression tests; the inverse API-bloat check; and
-    report-shaped distrust of delegate output), one gated on the
-    telemetry `medium.md` already plans (adoption-verified criteria
-    maintenance), two with the trade stated, and an explicit
-    leave-these list. Kept separate from the roadmap files for the same
-    reason `adk.md` is: it is what one source argues, not what the
-    design has decided.
+Per-source notes — what one harness does and whether it transfers —
+live in that harness's own folder, not here. `../deepseek-harness/`
+is the worked example: its README carries the travels/doesn't-travel
+split, and what this design took from it is stated in the design files
+themselves at the point of the decision.
 
 This design has been through three full review passes against the rest
 of this repo's research — one after the first draft, one after the docs

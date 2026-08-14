@@ -192,6 +192,52 @@ sidecar) that gates skip and prose may not modernize, with an append-only
 content manifest. The skills that touch prose all carry the same
 exclusion — `.agents/notes/archived/` is never edited, only cited.
 
+## What travels, and what doesn't
+
+This repo's process apparatus is unusually heavy, and most of it is a
+consequence of *its* constraints rather than a transferable idea. Sorting
+it, since the temptation on reading a source this disciplined is to copy
+the discipline rather than the reasoning:
+
+**Travels.** Adoption proven from the tree rather than the thread; the
+"omit what a green gate already enforces" scope rule; rewriting a
+criteria document wholesale instead of appending to it; the
+negative-control rule for regression guards; treating review comments as
+untrusted input; the inverse API-bloat check; and "alternatives are
+recorded, never invented." Each is a rule you can apply on day one with
+no infrastructure behind it. Where these landed in this collection's own
+design work is recorded in [`../agent-design/`](../agent-design) —
+`future.md` for the maintenance loop, `formats.md`/`review.md`/
+`system-prompts.md` for the rest.
+
+**Doesn't travel.**
+
+- **Per-file 100% coverage as a merge gate.** DeepSeek runs it *and*
+  writes down that it proves nothing ("coverage is necessary but not
+  evidence that the scenario is correct"). The second half is the
+  transferable part; the first is a policy choice for a repo with a
+  full-time gate budget.
+- **The bilingual apparatus.** Paired `.zh.md` files, pairing hashes, a
+  translation-pairing gate, and the rule that "a green pairing hash does
+  not prove translation quality." Real engineering, entirely downstream
+  of shipping bilingual docs.
+- **Everything-is-a-plugin.** The composability is genuine; the cost is
+  a vendored DI framework and 44 subsystem reference pages.
+- **The eleven-tier doc taxonomy and word budgets.** The idea underneath
+  — one home per fact, link everywhere else — is worth having as a
+  habit. The gate enforcing it is for a repo with 2,300 markdown files.
+- **The Agent Note lifecycle in full.** Lifecycle folders, a format gate
+  per folder, frozen archive triplets with a content manifest. Two rules
+  from it survive extraction on their own (see
+  `../agent-memory-learning.md` §9): a record is superseded rather than
+  edited into a different decision, and alternatives are recorded rather
+  than invented.
+- **The maintenance tool's single-operator, out-of-repo home.** Its own
+  Risks section names the cost — "single-maintainer bus factor… its
+  interruption stops skill maintenance entirely." The reasoning behind
+  it (repo overhead exceeds the value for one skill, one maintainer) is
+  narrow and does not generalize.
+
 ## Reading the snapshots as prompt text
 
 Both prompt files are **test expectations**, re-recorded by
