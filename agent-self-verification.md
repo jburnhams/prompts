@@ -577,6 +577,84 @@ third research pass on this leaked source (`planning-mode.txt` and
   requesting user review"), so it coexists with, rather than replaces,
   an ordinary no-verification path for small changes.
 
+## 12. Evidence rules: DeepSeek Harness on what counts as having checked
+
+Almost everything above is about *when* verification runs. DeepSeek
+Harness ([`deepseek-harness/`](./deepseek-harness)) is the only source in
+this collection with a developed position on **what makes a check
+count as evidence** — and its answers are aimed squarely at the failure
+mode where an agent runs something green and calls it proof. Five rules,
+all from agent-facing process docs rather than the runtime:
+
+- **A regression guard must be proven to fail.** From
+  `docs/cookbook/responding-to-pr-review-on-a-stack.md`: "for a
+  regression guard, prove it FAILS on the unfixed code (introduce the
+  regression, watch red, revert) — **a guard that passes both ways
+  guards nothing**." The review skill states the general form as a
+  requirement on the repo's own invariant machinery: "a deliberately
+  invalid case fails through the real runner for the intended rule."
+  This is the negative control that §2's completion gates and §3's LLM
+  judges both structurally lack — every mechanism in those sections
+  establishes that a check passed, none establishes that the check was
+  capable of failing.
+- **A subagent's report is intent, not outcome.** "Treat delegated fixes
+  as trust-but-verify: a sub-agent's report describes intent, not
+  necessarily what landed. Re-run the gates yourself on the actual
+  tree." And the sharpest line: "**A sub-agent that reframes a problem
+  as already handled is a signal to dig in personally.**" Compare §3's
+  judge patterns, which take the sub-model's verdict as the result;
+  here the parent is told the child's *confidence* is itself a
+  suspicious signal. The same rule appears in the review skill's test
+  criteria — assertions must "verify external state, logs, events, or
+  disposal rather than restating the implementation **or trusting an
+  agent's report**."
+- **Coverage is necessary and is not evidence.** "Coverage is necessary
+  but not evidence that the scenario is correct" — stated alongside a CI
+  gate that enforces per-file **100%** coverage on `packages/*/*/src`.
+  A repo that mandates total coverage and then writes down that total
+  coverage proves nothing is making a point most sources here never
+  reach: the metric and the property are different things.
+- **Report only the commands you actually ran.** `AGENTS.md` carries it
+  as a standing order ("report only commands run"), and
+  `dsh-pre-push-checks` builds the whole skill around choosing the
+  *narrowest* check that would fail for the change's regression rather
+  than reflexively running everything — with explicit anti-patterns:
+  don't re-run a passing check because a push follows, don't use
+  `--passWithNoTests` or narrow a coverage scope "merely to hide an
+  uncovered affected file," and don't attribute a failure to the
+  environment without proving it (record the exact command, the failing
+  test, and the platform-specific mismatch). The inverse of §7's
+  prompted-only instructions: the risk being managed is not *skipping*
+  verification but *claiming* it.
+- **Prompt and schema text is behavior, and is snapshot-tested.** The
+  testing policy requires every non-trivial model-visible change to add
+  or update a keyless snapshot "through a real runnable example in the
+  same PR," and states that package tests, e2e-only assertions, and
+  mock-only fixtures **do not substitute** for the assembled application
+  transcript. The prompt files stored in
+  [`deepseek-harness/`](./deepseek-harness) are those expectations. No
+  other source in this collection treats its own system prompt as
+  something a regression test protects.
+
+One runtime mechanism belongs here as a contrast rather than a gate.
+`packages/guard/repeat-tool-reminder` watches each agent's stream of tool
+calls, counts consecutive calls with **identical canonicalized
+arguments** (deep key-sort + `JSON.stringify`, so argument order doesn't
+launder a repeat), and at configured run lengths (default `[3, 5, 8]`)
+injects an escalating advisory telling the model to stop repeating
+itself, re-read the last result, and either change approach or conclude.
+It is explicitly **not** a veto: "the decision — retry differently,
+gather more evidence, or finish — stays entirely with the model; a
+legitimately repeated call is delayed by nothing and blocked by nothing,"
+and it never appears in the tool list. Two design details are the
+interesting part: calls excluded from tracking are **transparent to the
+chain** rather than resetting it (so interleaving `todo_write` into a
+loop cannot launder it), and **denied calls count**, because "a model
+hammering a denied call is exactly the loop worth breaking." Set against
+OpenCode's `doom_loop` in `agent-permissions-approval.md` §5 — same
+detection, opposite response: OpenCode escalates to the human, DeepSeek
+escalates to the model.
+
 ## Absences
 
 - **OpenCode**: no hidden self-review agent (confirmed absence — the

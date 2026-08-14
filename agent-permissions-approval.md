@@ -256,6 +256,37 @@ approval?
   classification. Copilot Chat's Family H/MiniMax prompts carry
   identical text, confirming the same UI pattern exists there too but
   gated per model-family.
+- **Escalation as the sanctioned *consent* channel, with asking-in-chat
+  explicitly forbidden** — DeepSeek Harness
+  ([`deepseek-harness/`](./deepseek-harness)). Its `bash` schema carries
+  two paired optional fields, `sandbox_permissions`
+  (`workspace-write` | `danger-full-access`) and a required-with-it
+  one-sentence `justification`, and the tool description spends its
+  longest passage on when they may be used. The rules, in order:
+  attempting a command the sandbox may deny is "safe and expected — run
+  it and read the marker rather than assuming the denial"; on a denial,
+  **retry the exact same command once in the same turn** with the
+  narrowest wider mode plus a justification; and then the line that
+  inverts the usual instinct — *"Do not detour through chat to ask
+  permission first — the approval prompt raised by that retry is how the
+  user consents."* Escalation is not a request for a decision, it is the
+  mechanism that renders the decision. Four bounds keep it honest: the
+  escalation must be *grounded in a real denial* ("never escalate
+  speculatively"; escalating up front is allowed only when this session
+  already denied the same access); a rejected escalation is final for
+  that command — "stop and explain, never work around it" — but does not
+  forbid escalating a different command later; a denial is reported as a
+  structured marker (`[sandbox: file access denied under <mode> mode]`)
+  described to the model as "a policy denial, not a bug in the command;
+  do not retry another way"; and if the deployment has approval prompts
+  disabled, "there is no exception: a denial is final — do not set
+  `sandbox_permissions`." The same two fields appear on `write` and
+  `edit`, so the contract is uniform across every mutating tool rather
+  than a shell special case. Compare Codex CLI's
+  `with_escalated_permissions`/`justification` pair, which is the same
+  shape; DeepSeek's addition is the explicit anti-detour rule and the
+  ban on speculative escalation, both of which target model behavior
+  (over-asking and pre-emptive over-requesting) rather than enforcement.
 - **No escalation mechanism found** — Devin, Warp, Cline (beyond the
   count-based auto-approval-limit message, which is closer to §4's
   persistence axis than a true re-classification trigger), Factory/

@@ -192,6 +192,44 @@ also take over advertising, and the catalogue then costs prompt tokens
 and the reason deferred tool loading (`agent-tool-implementations.md`
 §10) matters more here than on a native channel.
 
+**A fourth shape, and the one that goes furthest: a compiling `.d.ts`.**
+DeepSeek Harness's Code Mode
+([`deepseek-harness/system-prompt-code-mode.md`](./deepseek-harness/system-prompt-code-mode.md))
+advertises its tools as generated TypeScript — `interface ToolArgsMap`,
+`interface ToolOutputMap`, `declare class ToolCallError`, `declare const
+tools` — with every parameter and every *return* type declared, JSDoc
+comments carrying the descriptions, and the model asked for the body of
+an async function instead of a call. It looks like Harmony's namespace
+shape one size up, but it differs on the thing that matters: Harmony
+declares `=> any`, so the model is told what it may send and nothing
+about what comes back, while `ToolOutputMap` declares the exact canonical
+return type of every tool. That is what makes a *program* writable rather
+than a single call — you cannot branch on `result.exitCode` or
+`.filter(Boolean)` a list of handles against `any`.
+
+The cost is severe and worth stating plainly: the plain assembled prompt
+for the same deployment is ~3.4 KB, and the Code Mode one is ~28 KB, the
+overwhelming majority of it this declaration block. That buys back
+something no dialect in §2 can offer — *"ONLY what you print or return
+comes back to you — intermediate tool results never enter the
+conversation"* — so a fan-out over fifty files costs one result in
+context instead of fifty. The trade is therefore not tokens-vs-tokens but
+**a fixed per-turn prompt cost against a variable per-result transcript
+cost**, which is a different curve from every other row in this section
+and only wins above some fan-out. That the same harness ships both modes
+(and a `both-mode-turn` snapshot carrying each) suggests DeepSeek treats
+it as a per-deployment choice rather than a replacement.
+
+Two consequences for the result protocol in §5 fall out of it, and are
+easy to miss: correlation ceases to exist as a wire concern (the program
+holds the value in a variable; there is no id to match), and an error
+stops being an envelope field and becomes a **catchable exception** —
+`ToolCallError`, with `toolName` and a human-readable `message`, so a
+program can `try/catch` a failed call and continue. The schema
+deliberately exposes nothing else: "programs can inspect only its `name`,
+`toolName`, and human-readable `message`, not internal error codes or a
+failure union."
+
 ---
 
 ## 5. Results: correlation, envelope, and whether an error can be seen

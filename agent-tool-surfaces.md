@@ -34,7 +34,12 @@ tracking and cross-session memory, and for the richest sync/async/detach
 shell state machine surveyed in §6 — and Grok Build, xAI's coding CLI,
 whose tool descriptions in several places match Claude Code's own
 leaked tool text near-verbatim, and whose `video_gen` tool is the only
-dedicated video-generation capability found in this collection). The
+dedicated video-generation capability found in this collection), plus
+DeepSeek Harness (open source, MIT; profiled from recorded prompt
+snapshots and package docs rather than a single prompt file, and the only
+source here whose tool surface is *assembled per deployment* from
+plugins — so "its tool surface" means the set the shipped example
+profiles load, not a fixed list). The
 broader `leaked/` set (Manus, Devin,
 Replit, v0, Same.dev, Trae, Emergent, Traycer, Amp, etc.) and
 `github-pr-bots/` aren't individually profiled here — see each folder's
@@ -283,6 +288,8 @@ whether any are redundant/competing.
 | **Skill directories spanning multiple vendors' own conventions, read directly by name** | Grok Build (leaked) — skill files are searched for at `~/.grok/skills/`, `~/.grok/bundled/skills/`, **and also** `~/.claude/skills/` and `~/.agents/skills/`: an explicit, named cross-tool-compatibility gesture (reading Claude Code's own skill directory, plus a generic vendor-neutral `.agents/skills/` location) not found described this explicitly anywhere else in this collection's extensibility survey |
 | A **mandatory schema-fetch-before-first-use** MCP calling convention, enforced by prompt instruction rather than by the client withholding the schema | Grok Build (leaked) — `search_tool` must be called to retrieve an MCP tool's input schema before every first `use_tool` invocation of it: "NEVER guess or infer parameter names from the tool's name or description -- the schema from `search_tool` is the only source of truth" |
 | A user-facing **recurring/scheduled-task tool**, not matched by any other coding-agent source surveyed | Grok Build (leaked) — `scheduler_create`/`scheduler_list`/`scheduler_delete` (interval strings like `"5m"`/`"2h"`/`"1d"`, max 50 concurrent, 7-day auto-expiry unless `durable: true`) lets the model schedule a prompt to re-fire on its own, independent of any sub-agent or MCP mechanism |
+| **The model writes plugins that extend the harness it is running inside** — the far end of this axis, and unmatched here | DeepSeek Harness ([`deepseek-harness/`](./deepseek-harness)) — seven `cordis_*` tools (`inspect_list`/`inspect_query`/`inspect_self`/`define`/`run`/`stop`/`undefine`) let the model author a Cordis plugin *in the running process*: it can consume services, listen to events, **register new model tools**, and mount browser UI into queried slots. Immutability and identity are the whole design — `pluginId` names a plugin across versions, `packageId` names one immutable source version ("to change code, define a new Package; never overwrite an old version"), `pluginRunId` names one activation attempt. Everything else in this table extends the agent with capabilities *someone else* registered; this is the only source where the agent writes the registration. Note what bounds it: definitions "exist only in the current process… do not survive a process restart," `cordis_run` may require user approval and returns `awaiting-approval` (with the model told not to wait, retry, or claim it is running), and the sandbox is disclaimed outright — "the restricted execution environment prevents accidental misuse; it is **not** a security boundary for malicious code." |
+| **Skills as a provider registry rather than a directory scan** — layered, per-scope, with incomplete-discovery semantics | DeepSeek Harness — `ctx.skills` merges catalogs from any number of providers (local dirs, packaged, remote) across a host layer and per-agent-scope layers, so an agent preset can carry skills the global session does not see; a provider may return an explicit `SkillProviderObservation` marking its discovery **incomplete but usable**, which contributes candidates while making the result uncacheable. Every other row above treats "what skills exist" as a filesystem fact; this treats it as a query with partial-failure semantics. |
 
 ---
 

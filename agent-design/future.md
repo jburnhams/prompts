@@ -9,6 +9,16 @@ hasn't reached. Nothing here should influence a v1 implementation; it
 exists so these ideas are tracked instead of forgotten or silently
 re-litigated later.
 
+Source-specific proposals from DeepSeek Harness — including the one
+long-horizon item that belongs on this list, **adoption-verified
+criteria maintenance** (mine merged PRs for human review feedback, prove
+adoption from the tree rather than from thread state, rewrite the
+criteria file wholesale, two independent judges, human promotion) — are
+in [`deepseek-lessons.md`](./deepseek-lessons.md) rather than duplicated
+here. It is gated on the same finding-outcome telemetry `medium.md`
+already plans, which is the reason it is a future item and not a
+medium-term one.
+
 - **Typed sub-agent registry beyond three types.** Coding mode has one
   delegate type; review mode has two (`reviewer`, `validator`). Claude
   Code, Gemini CLI, and Amp all show the next step (named, narrower

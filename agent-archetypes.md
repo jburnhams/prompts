@@ -147,6 +147,18 @@ program, run it in an isolated micro-VM) that any archetype-1 or
 archetype-2 agent could adopt on top of whatever else it already does.
 Worth knowing about, not worth placing on the same map.
 
+DeepSeek Harness ([`deepseek-harness/`](./deepseek-harness)) strains the
+map for a different reason: it is a **substrate**, not an agent. Its
+archetype is a deployment's `cordis.yml`, because the harness identity is
+one fixed sentence, the persona is a config field, and everything else —
+which tools exist, which guidance sections render, whether Code Mode is
+on — is which plugins got loaded. The `text-turn` and `code-mode-turn`
+snapshots stored in that folder are the *same* build producing prompts
+3.4 KB and 28 KB long. That makes it the closest thing here to Google
+ADK (see [`agent-design/adk.md`](./agent-design/adk.md)) — a thing you
+build archetypes *with* — while still shipping runnable ones, which is
+why it appears in the table below with a caveat rather than a number.
+
 ## Where each source sits
 
 | Source | Primary archetype | Notes |
@@ -175,6 +187,7 @@ Worth knowing about, not worth placing on the same map.
 | `skills/*` (7 review tools) | 5 | some also 4 (parallel/sequential sub-agents) |
 | `github-pr-bots/*` (4 bots) | 5 | |
 | Leaked app-builders (Lovable, v0, Replit, Same.dev, Manus, Orchids) | 6 | |
+| DeepSeek Harness | 1, but see note | the persona is `config`, not source: identity, tool set, guidance sections and even Code Mode are per-deployment plugin composition, so it can be assembled into 1, 2 or 4. The shipped `headless` profile is archetype 2; the web profile is archetype 1 |
 | CodeAct + Hyperlight | *(pattern, not an archetype)* | |
 
 ## See also
