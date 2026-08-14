@@ -80,6 +80,14 @@ Things to notice:
 - The orchestrator wrote only `<focus>` — two sentences of direction
   derived from the description, no restatement of any diff content
   (`review.md` §4 rule 1).
+- The `nonce` on `<description>` and `<existing_comments>` is the
+  **envelope's**, not something the orchestrator minted for this brief —
+  compare `review-envelope-initial.md`, where it is identical. Those two
+  blocks are copied whole, tags included; the orchestrator writes the
+  `<pr>`, `<diff>`, `<gates>` and `<focus>` tags around harness-authored
+  content, but never writes a tag around attacker-authored content
+  (`review.md` §4). An assembler that emits `<description>` itself is an
+  assembler that can emit it bare.
 - `<gates>` is transcluded verbatim like every other envelope block.
   Note what it does *not* do here: `pytest` is green at the head, and
   the finding below still stands, because `tests/test_retry.py` asserts

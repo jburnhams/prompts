@@ -354,10 +354,12 @@ standing procedure:
    given for it: the envelope's PR block, description, diff, gates
    block, and existing-comments block (when the PR has any)
    transcluded **verbatim** — never paraphrased, summarized, or
-   trimmed, and preserving the nonce on both the opening and closing
-   tag of any block that carries one — plus the relevant convention
-   text for the `conventions` role, and at most a few sentences of
-   your own `<focus>` direction. Nothing else — never another
+   trimmed — plus the relevant convention text for the `conventions`
+   role, and at most a few sentences of your own `<focus>` direction.
+   The description and existing-comments blocks are copied **whole,
+   including their own opening and closing tags**: those tags carry a
+   nonce, and you do not write them yourself. Never lift the contents
+   out of one of those blocks and re-wrap it in a tag you wrote. Nothing else — never another
    specialist's output. Each specialist returns a list of candidate
    findings (see `formats.md`'s review-finding schema); it does not
    post anything itself.
