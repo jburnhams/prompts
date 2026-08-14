@@ -13,6 +13,31 @@ skill from mined human feedback — is what bears on a review agent. So
 almost everything below lands on `review.md`, `medium.md` and `eval.md`
 rather than on the runtime design.
 
+## Status: merged
+
+All six "take now" items are **in the design as of this pass**, not
+proposals. Where they landed:
+
+| Lesson | Landed in |
+|---|---|
+| 1. Gate suppression | `formats.md` §1b (`<gates>` block + cache row), `review.md` §4/§5 briefs, `system-prompts.md` §4 reviewer core |
+| 2. Volume framing + blocker separation | `formats.md` §4 (`class` field), `system-prompts.md` §4 (core) and §2a step 6 (delivery order) |
+| 3. Untrusted `<existing_comments>` | `formats.md` §1b (`nonce` on `<description>`/`<existing_comments>`), both briefs in `review.md`, `system-prompts.md` §4 |
+| 4. Negative control | `formats.md` §3a (`regression_evidence`), first-call checklist gate (`tools.md`) |
+| 5. Inverse API-bloat check | **`medium.md` §3g, not v1** — it has no home in v1's three lenses, since `bugs` needs the code to be wrong and `conventions` needs a quotable rule. It became a fifth lens (`interface_scope`) rather than being wedged into an existing one |
+| 6. Report-shaped distrust | `system-prompts.md` §2a step 3 |
+| 8. KV-cache accounting | `formats.md` §1b, per-block table |
+| 8. Code Mode | `eval.md` open question 7 |
+| 9. Alternatives/supersession rules | `README.md`, "Maintaining these documents" |
+| 7. Adoption-verified maintenance | still gated — `future.md`, pending `medium.md`'s finding-outcome telemetry |
+
+The single-vs-multi-agent evidence this source supplied is written up
+separately in `review.md` §6a, and became `eval.md` open question 6.
+
+The sections below are kept as the *reasoning* behind those changes —
+what the source argued and what was rejected — since the design files
+themselves carry only the decision.
+
 ---
 
 ## Take these
@@ -138,8 +163,11 @@ diff plus a grep for callers, which makes it a good specialist check
 rather than a judgment call. It is the single most transferable *content*
 rule in the skill, as opposed to its process rules.
 
-**Concrete change.** Add to the architecture/scope specialist's brief. Its
-companion in the same skill is also worth lifting: *map each abstraction,
+**Concrete change.** It became `medium.md` §3g, an `interface_scope`
+lens, rather than a line in an existing brief — v1's `bugs` lens needs
+the code to be wrong and `conventions` needs a quotable documented rule,
+so a correct, secure, convention-compliant API nobody needs passes all
+three. Its companion in the same skill is lifted with it: *map each abstraction,
 state machine, option, defensive copy, and compatibility path to its
 current contract, production consumer, and owning module* — with the
 production/non-production/ambiguous corpus split from

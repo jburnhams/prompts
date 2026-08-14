@@ -186,6 +186,30 @@ the long-horizon and measurement-gated ideas, kept deliberately lean.
 Both are separate from this README so they don't distract from
 implementing v1 itself.
 
+## Maintaining these documents
+
+Two rules, adopted from the Agent Note discipline in
+[`../deepseek-harness/`](../deepseek-harness) (see
+[`../agent-memory-learning.md`](../agent-memory-learning.md) §9 for the
+full scheme, most of which is deliberately not adopted — this folder
+does not need lifecycle folders or a format gate):
+
+- **A decision is never edited into a different decision.** Supersede it
+  and cross-link, keeping both legible. Editing a decision row to track
+  where its subject now *lives* — a renamed tool, a moved section, a
+  changed default — is required, not forbidden; changing what it decided
+  is what needs a new row saying what it replaced and why. The decision
+  log below accumulates re-litigated items precisely because that line
+  has not been drawn, and "we already considered that" is only useful
+  when the record says what was considered.
+- **Alternatives are recorded, never invented.** Where the alternatives a
+  decision beat are genuinely not reconstructible, say so in that row
+  rather than writing plausible-sounding ones after the fact. DeepSeek's
+  gate accepts an explicit marker for exactly this case, which is a
+  better answer than a well-written guess — a fabricated alternative
+  reads identically to a real one and quietly makes the record
+  worthless.
+
 ## Reading order
 
 1. `system-prompts.md` — the two orchestrator prompts and the three

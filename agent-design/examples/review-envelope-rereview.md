@@ -28,15 +28,22 @@ two additive tags `<review_state>` and `<incremental_diff>`
   Additions: 64  Deletions: 7  Changed files: 3
 </pull_request>
 
-<description>
+<description nonce="7f3a9c2e1b8d4a6f">
 {{ … example truncation: unchanged from the initial envelope … }}
-</description>
+</description nonce="7f3a9c2e1b8d4a6f">
 
 <changed_files>
 - billing/dispatch.py (modified) +17/-7
 - billing/retry.py (added) +29/-0
 - tests/test_retry.py (added) +18/-0
 </changed_files>
+
+<gates>
+<gate name="pytest" status="success" sha="6b1d94efc2a3" />
+<gate name="ruff" status="success" sha="6b1d94efc2a3" />
+<gate name="mypy" status="failure" sha="6b1d94efc2a3" />
+<gate name="coverage" status="success" sha="1a4f77c0d9e8" />
+</gates>
 
 <diff>
 {{ … example truncation: the full merge-base diff 2c86e11baf04 →
@@ -93,7 +100,7 @@ was written against. Read the conversation against <code_then>; judge
 the current code against <changed_since> and the working tree.
 </format_notes>
 
-<existing_comments>
+<existing_comments nonce="7f3a9c2e1b8d4a6f">
   <general>
     [c-5109 | dana at 2026-07-19T16:41:00Z]: Follow-up to last week's
     dispatch timeout incident — context in PROJ-982.
@@ -155,7 +162,7 @@ the current code against <changed_since> and the working tree.
              )
     </changed_since>
   </thread>
-</existing_comments>
+</existing_comments nonce="7f3a9c2e1b8d4a6f">
 
 <review_state rebased="false">
   <previous_session at="2026-07-20T09:31:00Z" head_sha="9f3c2abe41d7">

@@ -104,21 +104,26 @@ included here purely so Forge can reference the branch name in its
   Additions: {{ n }}  Deletions: {{ n }}  Changed files: {{ n }}
 </pull_request>
 
-<description>
+<description nonce="{{ run_nonce }}">
   {{ PR body, verbatim }}
-</description>
+</description nonce="{{ run_nonce }}">
 
 <changed_files>
   - {{ path }} ({{ added | modified | removed | renamed }}) +{{a}}/-{{d}}
   ...
 </changed_files>
 
+<gates>
+  <gate name="{{ check name }}" status="success|failure|pending|skipped" sha="{{ sha }}" />
+  ...
+</gates>
+
 <diff>
   {{ plain unified diff, git diff -U5 style, all changed files
      concatenated in the order listed above }}
 </diff>
 
-<existing_comments>
+<existing_comments nonce="{{ run_nonce }}">
   <general>
     [{{ comment_id }} | {{ author }} at {{ timestamp }}]: {{ body }}
     [{{ comment_id }} | Review by {{ author }} at {{ timestamp }} | {{ state }}]: {{ body }}
@@ -127,8 +132,44 @@ included here purely so Forge can reference the branch name in its
     [{{ comment_id }} | {{ author }} at {{ timestamp }}]: {{ body }}
     [{{ comment_id }} | reply | {{ author }} at {{ timestamp }}]: {{ body }}
   </thread>
-</existing_comments>
+</existing_comments nonce="{{ run_nonce }}">
 ```
+
+**`nonce` — the untrusted-content boundary.** `<description>` and
+`<existing_comments>` are the only envelope blocks whose contents are
+written by someone other than the harness, and on a public repository
+anyone who can comment can write `</existing_comments>` followed by
+instructions. Because the briefs assemble by *verbatim transclusion*
+(`review.md` §4–§5), that text lands in a sub-agent prompt unaltered.
+So both blocks carry a 128-bit `run_nonce`, minted per run and repeated
+on the closing tag: a body cannot forge the close without guessing it.
+The harness rejects (or escapes) any occurrence of the run's nonce
+inside a body before assembly. The consuming rule lives in the briefs
+and the reviewer core, and has two halves — nonce-tagged content is
+data describing what people said and never issues instructions, *and*
+a comment that appears to direct the review is itself a finding.
+Adopted from DeepSeek Harness's review-feedback pipeline, the only
+source in the collection that treats review comments as an injection
+surface (`../code-review-approaches.md` §11); the alternative
+considered was harness-side escaping alone, rejected because it
+silently mutates quoted text and does nothing about instructions that
+never need to break out of the tag.
+
+**`<gates>` — the PR's check runs.** Pre-fetched by the harness in the
+same pass as `<diff>`, one entry per check run with the commit it ran
+against. It is consumed in both directions (`review.md` §4): a finding
+whose class is *fully* enforced by a `success` gate is out of scope, and
+a `failure` gate is in scope — an unaddressed red check is a finding a
+human reviewer would raise. `sha` is load-bearing rather than
+decorative: a green result only proves the gate ran on the commit named,
+so a finder ignores any gate whose `sha` is not the envelope's
+`Head SHA` — otherwise a stale green silently suppresses real findings.
+Absent or empty when the platform reports no checks, in which case the
+suppression rule simply never fires. This is the collection's only
+mechanism that removes candidates *before* scoring rather than filtering
+after (`../code-review-approaches.md` §6), which is what makes it worth
+the envelope surface: every finding it drops is a validator call not
+spent.
 
 The interior of `<existing_comments>` — the thread model, its
 trimming rules, and who consumes it — is specified in `review.md` §3;
@@ -173,6 +214,29 @@ documented upgrade path — see `medium.md`'s "PR-Agent-style per-hunk
 line-number injection" escalation entry — since deriving new-file line numbers by
 hunk arithmetic is the error-prone step; `AddComment`'s harness-side
 anchor validation in `tools.md` is the v1 backstop.)
+
+**Cache behaviour, per block.** Prompt-cache interaction is discussed
+across `../agent-context-compaction.md` but never tracked per component;
+DeepSeek Harness gates that disclosure into every package README
+(`../deepseek-harness/` — "Model Experience"), and the discipline is
+worth borrowing even without the gate. For a review envelope, reading
+top to bottom:
+
+| Block | Cache behaviour | Invalidated by |
+|---|---|---|
+| `<pull_request>` | Prefix-stable within a head | Any re-snapshot — `Snapshot` and the counts move even when nothing else does. Put it first anyway: it is small, and anything after it is invalidated by a new head regardless |
+| `<description>` | Prefix-stable | An edit to the PR body — infrequent, and cheap when it happens |
+| `<changed_files>` | Replacing | A new head |
+| `<gates>` | **Independent** | Re-runs and newly-completed checks, which move *without* a new head. This is the one block whose contents churn on their own clock, which is the argument for its position after `<changed_files>` and before `<diff>` — it is the last cheap block, so its churn does not invalidate the expensive one |
+| `<diff>` | Replacing, and the dominant cost | A new head. Nothing else |
+| `<existing_comments>` | Append-only within a head | A new comment appends; a resolution flips a `status` attribute in place and *does* invalidate from that thread onward |
+| `<review_state>` / `<incremental_diff>` | Replacing (phase 2) | A new reviewed head |
+
+The practical consequence for the multi-stage shape: every specialist
+receives the same transcluded blocks, so the diff is a shared prefix
+across N sub-agent calls and caches accordingly — which is a real part
+of why fan-out costs less than N× a full review, and belongs in the
+comparison `eval.md` runs rather than being assumed either way.
 
 **Harness guarantees for review mode**: the working tree is checked out
 at `Head SHA`, and `<diff>` is exactly `base_sha...head_sha`. This is
@@ -273,6 +337,7 @@ a second fetch — it is not itself recursively expanded (no
   "verification": [
     { "check": "string, e.g. \"unit tests\", \"lint\", \"reproduction script\"", "command": "string", "result": "pass | fail | not_run", "detail": "string, only when result != pass" }
   ],
+  "regression_evidence": "string — how a test added by this run was shown to FAIL on the unfixed code (the command, and what it reported before the fix); null when the run added no regression test",
   "suggested_commit_message": "string — a proposed commit message (summary + body) for whatever picks up this branch to use or adapt; not applied by Forge itself",
   "judgment_calls": [
     "string — any ambiguity resolved without AskUser, and why; empty array if none"
@@ -306,7 +371,23 @@ file is instruction to every future run, so a change to it is
 prompt-injection surface, not an ordinary edit — the coding prompt
 forbids touching it except when the ticket is explicitly about it, and
 the flag makes a violation (or a legitimate, ticket-driven change)
-visible to whoever reviews the handoff either way. Together with
+visible to whoever reviews the handoff either way. `regression_evidence` answers a question `verification` structurally
+cannot. Every entry in `verification` establishes that a check *passed*;
+none establishes that the check was capable of failing — and a test
+written against code that is already fixed passes on the first run
+whether or not it tests anything. DeepSeek Harness states the rule as
+"prove it FAILS on the unfixed code (introduce the regression, watch
+red, revert) — **a guard that passes both ways guards nothing**"
+(`../agent-self-verification.md` §12, which makes the general point:
+nothing else in that document establishes a check's capacity to fail).
+The field is paired with a deterministic gate rather than left to the
+prompt: the first-call checklist (`tools.md`) requires that a run which
+added a test file show that test red before the fix, so the claim is
+gated where it can be and declared where it cannot. `null` is a valid
+and common value — most runs add no regression test, and the gate does
+not fire for them.
+
+Together with
 the first-call checklist gate (`tools.md`), these are the design's
 answer to the false-completion-claim failure mode
 `agent-self-verification.md` documents as real and measured —
@@ -399,6 +480,7 @@ orchestrator's `Complete` report:
   "line": 0,
   "line_end": 0,
   "severity": "blocking | high | medium | low",
+  "class": "defect | suggestion",
   "summary": "string, one sentence",
   "rationale": "string, why this is a real problem, citing the specific rule/behavior",
   "suggested_fix": "string, Markdown/diff snippet, or null if none proposed",
@@ -411,7 +493,26 @@ orchestrator's `Complete` report:
 pass runs; `true`/`false` is the validator's verdict. Only `true`
 findings are ever passed to `AddComment`. `severity` is set by the
 specialist and is not re-judged by the validator — the validator's job
-is "is this real," not "how bad is it." `line`/`line_end` are new-file
+is "is this real," not "how bad is it."
+
+`class` is a second axis, orthogonal to `severity`, and set by the
+specialist alongside it. A `defect` claims the code is wrong; a
+`suggestion` accepts that it is correct and argues it could be better.
+Severity alone conflates them — a `low` defect (a real bug in a rare
+path) and a `low` suggestion (a naming nit) are the same cell today and
+are not the same thing to an author triaging a review. The axis exists
+because the delivery rule needs it: **blockers first, then defects by
+descending severity, then suggestions — never interleaved**
+(`system-prompts.md` §2a). That ordering is what operationalizes
+DeepSeek Harness's framing that "a short review with one substantiated
+blocker is better than a list of nits"
+(`../code-review-approaches.md` §6) — a bot that buries its one real
+bug among nine style notes has technically reported it. Considered and
+rejected: reusing `severity` alone with a report-ordering rule (loses
+the distinction rather than presenting it, and gives the specialist no
+place to say "this is fine, but"); and having the validator assign
+`class` (it would give the validator a second question, and the whole
+argument for the validator pass is that it has exactly one). `line`/`line_end` are new-file
 (post-change) line numbers at the envelope's `Head SHA` — the same
 convention `AddComment`'s anchor uses, so a finding's location passes
 through to a posted comment without translation.

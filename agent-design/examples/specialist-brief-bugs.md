@@ -11,7 +11,7 @@ carries only data, assembled by verbatim transclusion (`review.md` §4).
   "subagent_type": "reviewer",
   "role": "bugs",
   "description": "Bugs review of PR #87",
-  "prompt": "<pr>\n…\n</pr>\n\n<description>\n…\n</description>\n\n<diff>\n…\n</diff>\n\n<existing_comments>\n…\n</existing_comments>\n\n<focus>\n…\n</focus>"
+  "prompt": "<pr>\n…\n</pr>\n\n<description nonce=\"7f3a9c2e1b8d4a6f\">\n…\n</description nonce=\"7f3a9c2e1b8d4a6f\">\n\n<diff>\n…\n</diff>\n\n<gates>\n…\n</gates>\n\n<existing_comments nonce=\"7f3a9c2e1b8d4a6f\">\n…\n</existing_comments nonce=\"7f3a9c2e1b8d4a6f\">\n\n<focus>\n…\n</focus>"
 }
 ```
 
@@ -34,12 +34,12 @@ system prompt):
   Additions: 65  Deletions: 7  Changed files: 3
 </pr>
 
-<description>
+<description nonce="7f3a9c2e1b8d4a6f">
 Gateway 5xx blips currently fail invoice dispatch outright (see
 PROJ-982). This adds a small retry helper with exponential backoff and
 uses it in `InvoiceDispatcher.dispatch`. Only transport-level errors
 are retried; client errors still fail immediately.
-</description>
+</description nonce="7f3a9c2e1b8d4a6f">
 
 <diff>
 {{ … example truncation: the envelope's <diff> contents, byte-for-byte
@@ -47,7 +47,14 @@ are retried; client errors still fail immediately.
    wire this is always the verbatim text, never a summary … }}
 </diff>
 
-<existing_comments>
+<gates>
+<gate name="pytest" status="success" sha="9f3c2abe41d7" />
+<gate name="ruff" status="success" sha="9f3c2abe41d7" />
+<gate name="mypy" status="failure" sha="9f3c2abe41d7" />
+<gate name="coverage" status="success" sha="1a4f77c0d9e8" />
+</gates>
+
+<existing_comments nonce="7f3a9c2e1b8d4a6f">
   <general>
     [c-5109 | dana at 2026-07-19T16:41:00Z]: Follow-up to last week's
     dispatch timeout incident — context in PROJ-982.
@@ -57,7 +64,7 @@ are retried; client errors still fail immediately.
     invoice payloads at INFO before — this includes cardholder name and
     address. Can we log just the invoice id here?
   </thread>
-</existing_comments>
+</existing_comments nonce="7f3a9c2e1b8d4a6f">
 
 <focus>
 The description says only transport-level errors are retried and that
@@ -73,6 +80,12 @@ Things to notice:
 - The orchestrator wrote only `<focus>` — two sentences of direction
   derived from the description, no restatement of any diff content
   (`review.md` §4 rule 1).
+- `<gates>` is transcluded verbatim like every other envelope block.
+  Note what it does *not* do here: `pytest` is green at the head, and
+  the finding below still stands, because `tests/test_retry.py` asserts
+  no call counts. The specialist's rationale says so explicitly — a
+  finding that survives a green gate should name why the gate misses it,
+  which is also what the validator checks it against (`review.md` §5).
 - The `<existing_comments>` block is transcluded verbatim as intent
   context, governed by the discussion rules (§4 rule 2): Bob's thread
   is the record of what a human already asked for, not a verdict and
@@ -101,6 +114,7 @@ Things to notice:
   "line": 20,
   "line_end": 20,
   "severity": "high",
+  "class": "defect",
   "summary": "send_with_retry makes one fewer attempt than max_attempts, and raises None when max_attempts=1",
   "rationale": "range(1, max_attempts) iterates max_attempts-1 times, so the configured attempt budget is never delivered (max_attempts=3 yields 2 calls). With max_attempts=1 the loop body never runs, last_exc stays None, and `raise last_exc` at line 29 raises TypeError instead of a TransportError. tests/test_retry.py never asserts call counts, so both cases pass CI.",
   "suggested_fix": "for attempt in range(1, max_attempts + 1):",
