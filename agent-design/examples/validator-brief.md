@@ -16,6 +16,7 @@ orchestrator assigned it an id:
   "line": 38,
   "line_end": 38,
   "severity": "medium",
+  "class": "defect",
   "summary": "dispatch() failure exception type changed from RuntimeError to TransportError, breaking existing callers' handlers",
   "rationale": "The old code raised RuntimeError on gateway 5xx; the new _post_once raises TransportError. Any caller with `except RuntimeError` around dispatch() no longer catches gateway failures.",
   "suggested_fix": null,
@@ -31,7 +32,7 @@ The `Task` call:
   "subagent_type": "validator",
   "description": "Validate finding f-2",
   "finding": { "…": "the JSON above, verbatim" },
-  "prompt": "<candidate_finding>\n…\n</candidate_finding>\n\n<pr>\n…\n</pr>\n\n<description>\n…\n</description>\n\n<diff>\n…\n</diff>\n\n<existing_comments>\n…\n</existing_comments>"
+  "prompt": "<candidate_finding>\n…\n</candidate_finding>\n\n<pr>\n…\n</pr>\n\n<description nonce=\"7f3a9c2e1b8d4a6f\">\n…\n</description nonce=\"7f3a9c2e1b8d4a6f\">\n\n<diff>\n…\n</diff>\n\n<gates>\n…\n</gates>\n\n<existing_comments nonce=\"7f3a9c2e1b8d4a6f\">\n…\n</existing_comments nonce=\"7f3a9c2e1b8d4a6f\">"
 }
 ```
 
@@ -47,9 +48,9 @@ With the `prompt` unpacked:
    — see review-envelope-initial.md … }}
 </pr>
 
-<description>
+<description nonce="7f3a9c2e1b8d4a6f">
 {{ … example truncation: the envelope's <description>, verbatim … }}
-</description>
+</description nonce="7f3a9c2e1b8d4a6f">
 
 <diff>
 {{ … example truncation: the envelope's full <diff>, verbatim — the
@@ -57,13 +58,20 @@ With the `prompt` unpacked:
    judged from the diff's own old-side lines (review.md §5) … }}
 </diff>
 
-<existing_comments>
+<gates>
+<gate name="pytest" status="success" sha="9f3c2abe41d7" />
+<gate name="ruff" status="success" sha="9f3c2abe41d7" />
+<gate name="mypy" status="failure" sha="9f3c2abe41d7" />
+<gate name="coverage" status="success" sha="1a4f77c0d9e8" />
+</gates>
+
+<existing_comments nonce="7f3a9c2e1b8d4a6f">
 {{ … example truncation: the envelope's block, verbatim — Bob's
    thread and Dana's general comment. Neither bears on f-2, but had a
    thread explicitly requested the RuntimeError→TransportError change,
    it would feed the validator's "would a senior engineer flag this"
    judgment (review.md §5) … }}
-</existing_comments>
+</existing_comments nonce="7f3a9c2e1b8d4a6f">
 ```
 
 How this validation actually runs (per the validator system prompt,

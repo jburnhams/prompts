@@ -24,6 +24,17 @@ etc.) — only things whose job is specifically reviewing code.
 | [`github-pr-bots/codex-review`](./github-pr-bots/codex-review) | GitHub PR | OpenAI reference implementation |
 | [`github-pr-bots/opencode-review`](./github-pr-bots/opencode-review) | GitHub PR (`/oc` mention, or automated) | GitHub Action |
 | [`composio-swekit/pr_review`](./composio-swekit) | GitHub PR | Multi-agent framework template (LangGraph) |
+| [`deepseek-harness/skills/dsh-code-review`](./deepseek-harness) | GitHub PR, one repo only | Repo-resident skill + a self-maintenance loop |
+
+The last row is a different animal from the other thirteen and is worth
+saying so up front. Every other source here is a **portable** review tool:
+it ships criteria that are meant to apply to any repository. `dsh-code-review`
+is deliberately the opposite — a skill that reviews *one* codebase, whose
+content is the accumulated residue of that repo's own human review
+history, and which is **rewritten periodically from mined review
+comments** rather than authored once. It therefore contributes almost
+nothing to stages 1–4 below (it delegates all of those to its host agent)
+and dominates a stage none of the others have, which is why §11 exists.
 
 ---
 
@@ -211,6 +222,8 @@ arguably where most of the engineering effort in this whole space goes.
 | Two-pass LLM verification: initial scan → broader "final review" pass → separate refutation prompt | [`security-guidance`](./skills/anthropic/security-guidance) |
 | Severity classification only, no explicit false-positive filtering step described | [`gemini-code-review`](./github-pr-bots/gemini-code-review), [`codex-review`](./github-pr-bots/codex-review) (has a `confidence_score` field but no filtering logic in the prompt), [`claude-code-cookbook`](./skills/claude-code-cookbook) |
 | Explicit "show what got filtered and why" transparency to the user | [`turingmind`](./skills/turingmind) only — a fixed "Filtered Issues" section with counts by reason |
+| Suppress anything a green CI gate already proves, as a stated scope rule | [`dsh-code-review`](./deepseek-harness) — "omit issues already enforced by a green gate"; the skill's declared job is the residue automation cannot reach |
+| Volume cap stated as a preference, not a threshold: one substantiated blocker beats a list | [`dsh-code-review`](./deepseek-harness) — "a short review with one substantiated blocker is better than a list of nits" |
 
 ## 7. Output format & schema
 
@@ -270,9 +283,122 @@ what's already on the PR.
 
 ---
 
+## 11. Where the review criteria come from
+
+Stages 1–10 all assume the criteria already exist. Thirteen of the
+fourteen sources here treat that as out of scope: someone wrote the
+skill, and it says what it says. `dsh-code-review` is the only source in
+this collection that makes **criteria provenance a pipeline stage of its
+own**, so this section is mostly one source — but the questions it
+answers are ones any long-lived review bot eventually has to.
+
+### The mechanism
+
+A private periodic tool, run daily by one designated operator against a
+clean checkout at refreshed `origin/master` (spec:
+`.agents/notes/proposed/process/2026-07-13-human-review-skill-maintenance.md`;
+operator doc: `docs/cookbook/maintaining-dsh-code-review.md`):
+
+1. **Select merged PRs** in a two-UTC-day window whose merge commit is an
+   ancestor of `master`.
+2. **Collect pre-merge human review feedback** — inline comments and
+   review submissions, admitted only when GitHub reports the actor `type`
+   as `User` *and* both creation and last-edit timestamps strictly
+   predate the merge.
+3. **Two independently configured reviewer adapters** classify each item
+   twice: who wrote it (`human-authored` / `forwarded-automation` /
+   `unclear`) and whether the landed change adopted it (`adopted` /
+   `rejected` / `unclear`). Only matching `human-authored` + `adopted`
+   pairs survive.
+4. **Classify the survivors against the current skill**: candidate /
+   already covered / implementation-specific / not feedback.
+5. **The primary adapter drafts a complete revised `SKILL.md`**; both
+   adapters review the same diff; blocking findings loop until both
+   approve; `doc-sync` and `lint` run before success is declared.
+6. **A human promotes** — or discards, or batches — the candidate.
+
+### The five decisions worth stealing
+
+- **Adoption is proven by diff, never by social signal.** Merge status, a
+  resolved thread, an author's "fixed" reply, and a same-file edit are
+  each explicitly named as *context rather than adoption proof*. The
+  comparison is between two PR-specific patch snapshots —
+  `merge-base(B,T)→B` at feedback time and `T→M` at landing — chosen
+  precisely so that a change arriving independently on the target branch
+  appears in neither, and cannot be miscredited to the comment. This is
+  the single most transferable idea in the source: **"did the author act
+  on this?" is a question about the tree, not about the thread.**
+- **The learning source is human feedback only, by contract.** Bot
+  findings are excluded, and so are humans forwarding bot findings —
+  rejected explicitly, on the grounds that the source contract is human
+  review. A review bot that learns from review bots converges on
+  whatever the bots already emphasise.
+- **Two adapters, never one as both author and judge.** The stated reason
+  is that "independent verdicts expose unsupported generalization before
+  it reaches the skill." The tool refuses to run when the two adapter
+  commands resolve to byte-identical executables — while the Agent Note
+  admits in its Risks section that byte-distinctness is all it can check,
+  and genuine provider independence is a deployment contract it cannot
+  verify.
+- **Mined feedback is untrusted input.** It is wrapped in an
+  `<untrusted-feedback nonce="…">` block with a 128-bit nonce so a comment
+  body cannot forge the closing tag; adapters run with a scrubbed
+  environment and `cwd` in a private run directory, not the repo root.
+  This is the only place in this collection where a review pipeline
+  treats *the review comments themselves* as a prompt-injection surface.
+- **The human promoting is instructed not to defer.** "Do not defer to
+  'the reviewers approved'; the maintainer contract is that the operator
+  makes the final decision" — and is told exactly what to hunt for:
+  checklist bloat, historical prose, unsupported extrapolation from a
+  single incident, duplicated coverage. Committing adapter output
+  verbatim is called out as wrong; small edits during promotion are
+  "expected and preserve the reviewer judgment the workflow depends on."
+
+### What the measured run says
+
+The Agent Note's acceptance criteria carry the numbers from the
+2026-07-15 end-to-end run: **62 merged PRs scanned, 5 skipped, 426 human
+feedback items considered, 0 candidates surfaced.** Adoption plus
+analysis took ~8 minutes across the two adapters, and one adapter
+id-hallucination was absorbed by batch-level fail-closed without aborting
+the run.
+
+Zero is the headline result, and the cookbook pre-empts the obvious
+misreading: "Days without a skill update are the workflow behaving
+correctly, not a stall." A pipeline that turns 426 comments into zero
+rule changes is one whose filters are doing the work — the failure mode
+it was built against is checklist bloat, and the note names the two ways
+in: "treating every comment as a lesson produces checklist bloat;
+treating merge, thread resolution, or an author's 'fixed' reply as proof
+of adoption promotes feedback that the final code may not implement."
+Note also that recurrence is explicitly *not* required — "a singleton may
+qualify" — so the zero is not an artifact of demanding repeated evidence.
+
+### The rest of the loop that isn't the loop
+
+Two adjacent process documents in the same repo carry the review lessons
+that didn't fit in a skill:
+
+- **Regression guards must be proven to fail.** From
+  `docs/cookbook/responding-to-pr-review-on-a-stack.md`: "prove it FAILS
+  on the unfixed code (introduce the regression, watch red, revert) — a
+  guard that passes both ways guards nothing." Same doc, on delegation:
+  "a sub-agent's report describes intent, not necessarily what landed …
+  A sub-agent that reframes a problem as already handled is a signal to
+  dig in personally."
+- **Review-state handoff is modelled as commands, not derived state**
+  (`.agents/notes/implemented/process/2026-08-10-event-directed-pr-review-status.md`).
+  `review_requested` → `In review`; `review.submitted` with state
+  `changes_requested` → back to `In progress`. The note rejects deriving
+  it from GitHub's aggregate `reviewDecision` because an old
+  `CHANGES_REQUESTED` stays effective after the author has fixed the code
+  and re-requested review — and guards the one backward transition on the
+  latest status event having been written by the automation actor, so
+  automation can never overwrite a human-owned status.
+
 ## Design takeaways
 
-A few things stood out across all twelve:
+A few things stood out across all fourteen:
 
 - **Diff format and delivery mechanism are the two axes that most
   determine engineering complexity.** Pre-formatting the diff (PR-Agent,
@@ -289,7 +415,7 @@ A few things stood out across all twelve:
   Cookbook) are necessarily worse — they may just push that judgment into
   the base model's instructions rather than a separate pipeline stage.
 - **Most of these don't read existing PR comments**, though the exceptions
-  are informative. Of thirteen sources, `claude-code-action` reads them as
+  are informative. Of the fourteen, `claude-code-action` reads them as
   context, `claude-code-cookbook`'s `pr-fix` exists entirely to consume
   them, and `composio-swekit/pr_review` goes furthest — an explicit,
   twice-stated instruction to check for and avoid duplicate comments
@@ -308,3 +434,33 @@ A few things stood out across all twelve:
   what the model is actually operating under end to end — pair it with
   the relevant host prompt (`gemini-cli/`, `codex/`, or the leaked
   `leaked/claude-code/`) for the full picture.
+- **Nobody but DeepSeek treats "where did this criterion come from?" as a
+  question.** Thirteen sources ship hand-authored criteria with no stated
+  provenance and no revision mechanism; `dsh-code-review` is rewritten
+  from mined, adoption-verified human feedback on a daily cadence (§11).
+  The gap matters most for the sources with the *longest* checklists,
+  since a checklist that only ever grows is the failure mode the
+  DeepSeek workflow is explicitly designed against.
+- **A review skill can be scoped to one repo and get sharper, not
+  narrower.** The portable sources have to state criteria generally
+  ("check for security issues"), which is why their false-positive
+  machinery has to be so elaborate (§6). `dsh-code-review` can instead
+  say "for every touched `./invariant`, require an owner event-stream or
+  mutable-data relationship at the point where that package can observe
+  it" — a check that is mechanical to apply and impossible to state
+  portably. The trade is real: it needs a per-repo maintenance loop to
+  stay true.
+- **"What the model sees" is itself reviewable, and only one source
+  reviews it.** `dsh-code-review` makes *model perspective* a manual
+  check — "inspect the exact prompts, tool schemas, results, and
+  diagnostics the model receives across affected modes; flag concepts
+  outside the model's task, then verify stable text verbatim and dynamic
+  behavior through snapshots." For anyone building agent infrastructure,
+  prompt and schema text is production behavior, and this is the only
+  review source in the collection that puts it in the diff.
+- **The strongest anti-false-positive lever may be subtraction, not
+  scoring.** §6 is dominated by machinery that rates findings after
+  generating them. DeepSeek's two rules — omit anything a green gate
+  already enforces, and prefer one substantiated blocker over a list —
+  cut the candidate set before scoring rather than filtering after, which
+  costs nothing to implement and is orthogonal to every rubric in §6.

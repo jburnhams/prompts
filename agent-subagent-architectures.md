@@ -252,6 +252,7 @@ answer arrive back at the orchestrator?
 | **Explicit trust instruction — take the report at face value** | Claude Code ("The agent's outputs should generally be trusted"), Composio SWE-Kit's integration playbook ("Always implement... EXACTLY as specified in the playbook returned") |
 | **Structural mediation instead of a trust/distrust instruction** — the orchestrator isn't told to trust or verify a summary after the fact, because it's kept in the loop on risky actions *as they happen* | Codex CLI — `codex_delegate.rs` routes the sub-agent's exec/patch/permission/user-input approval requests up to the parent session rather than letting the child auto-resolve them; the parent doesn't see every intermediate model turn, but it does gate every risky action, which sidesteps the trust-the-summary question other sources have to answer explicitly |
 | **A structural variant of mediation**: the "orchestrator" (parent task) is blocked until the child finishes, so there's no window where an untrusted summary could be acted on prematurely — but nothing gates the child's *actions* the way Codex's approval-routing does | Roo Code — the parent literally cannot resume until `attempt_completion` fires and injects the result; this prevents "acting on a stale/wrong summary while the child is still working" but doesn't provide Codex's per-action approval gate, and no explicit trust/verify instruction was found either |
+| **Distrust stated as a *type* claim about the report, not as an instruction to double-check** | DeepSeek Harness ([`deepseek-harness/`](./deepseek-harness)) — the `ralph` tool's own prompt section says "Completion and blockers are **worker reports, not independent evaluation**," and the review skill bans an agent's report as evidence in the same breath as coverage ("verify external state, logs, events, or disposal rather than restating the implementation or trusting an agent's report"). The stack cookbook adds the behavioral tell: "a sub-agent that reframes a problem as already handled is a signal to dig in personally" — distrust triggered by the *shape* of the report rather than applied uniformly. Closest to Emergent's row above, but where Emergent names failure modes, DeepSeek reclassifies the artifact: a report is a claim of intent, and the tree is the evidence. |
 | **Quantified trust, decided by a dedicated scoring model rather than a prompt instruction to the orchestrator** | SWE-agent's `ScoreRetryLoop` — a `Reviewer` LLM assigns a numeric acceptance score to a completed attempt (optionally sampled multiple times for self-consistency, averaged and variance-penalized), and that score — not an instruction to the orchestrator about how much to trust free text — decides whether the attempt is accepted or another is run. The only source in this survey where "how much to trust the result" is itself computed by a model call rather than stated as a policy. |
 
 **Takeaway**: this is the sharpest split in the whole comparison — some
@@ -425,6 +426,69 @@ implemented as scripted orchestration rather than a `Builder`-configured
 topology — a third distinct shape (Team, Workflow, and Microsoft Agent
 Framework's five patterns) for solving overlapping but not identical
 problems, none of which were designed with the others in mind.
+
+**DeepSeek Harness ships the same primitive, under the same names.** Its
+`workflow` tool ([`deepseek-harness/system-prompt-code-mode.md`](./deepseek-harness/system-prompt-code-mode.md))
+exposes `agent(prompt, opts?)`, `pipeline(items, ...stages)`,
+`parallel(thunks)`, `phase(title)` and `log(message)` to a plain-JS
+script body with top-level await, gated behind the same user-opt-in rule
+("ONLY when the user explicitly asks for a workflow or for large
+multi-agent orchestration … for one or two delegations, prefer plain
+subagent calls"). Four primitives with four matching names is not
+convergent evolution; this is the second appearance of one design, and
+worth reading as such. Where it differs is instructive:
+
+- **No resumability.** No `resumeFromRunId`, no cached prefix, and
+  correspondingly no ban on `Date.now()`/`Math.random()` — instead the
+  script gets no filesystem, network, timers, or Node APIs at all: "the
+  agents do the work, the script only coordinates them."
+- **Identity is a parameter, not code.** Claude Code's script carries an
+  `export const meta`; DeepSeek pulls `meta` (`name`, `description`,
+  `whenToUse`, `phases[]`) out into a separate JSON tool argument and
+  says so twice in the schema — "NO `export const meta` statement — meta
+  is a parameter, not code." A script body that must not contain a
+  declaration is a much easier thing to validate than one that must.
+- **Failure semantics are specified per primitive**, which Claude Code's
+  capture doesn't state: a failed `agent()` resolves `null` (the
+  description tells the model to `.filter(Boolean)`), an ordinary stage
+  throw drops **that item** to `null` and skips its remaining stages,
+  and `pipeline` is explicitly preferred over `parallel` because it has
+  no barrier between stages. Against that, "misused hooks — bad
+  arguments, unknown options, unsupported schemas, tripped caps — throw
+  errors that ALWAYS kill the script; they never dissolve into a
+  per-item `null`." That distinction (data failures degrade, contract
+  failures abort) is the clearest statement of orchestration error policy
+  in this section.
+- **Structured output is opt-in and deliberately restricted**: with
+  `opts.schema` the call resolves to a validated object, but the schema
+  may use "ONLY type/properties/required/additionalProperties/items/enum/
+  const/oneOf — no pattern/format/numeric bounds."
+
+Alongside it DeepSeek carries three more delegation shapes, which
+together make it the widest single delegation surface in this survey:
+`subagent` (background by default, returns a durable id, continuable via
+`send_message`), **`subagent_fork`** — a child seeded with *all completed
+turns of the parent conversation*, "it already sees this conversation's
+completed turns, so build on them freely and state only what is new,"
+which no other source here offers as a distinct tool — and `ralph`, a
+fresh-agent loop where "each round opens a new child with no parent
+conversation or prior child session; the shared workspace is long-term
+memory, and only a bounded structured report crosses rounds." Read as a
+set, the axis being exposed is **how much context crosses the boundary**:
+everything (`subagent_fork`), a written brief (`subagent`), or nothing
+but the filesystem (`ralph`).
+
+One small piece of prompt engineering in the same surface deserves
+copying. `list_agents` defines its three statuses in terms of the
+misreadings it expects: running means "working right now," idle means
+"loaded but between turns (it may be waiting on agents it started)," and
+`ready` "means it exists only in storage — **resumable, not terminal, and
+not a result waiting to be collected**." The same description then
+undercuts its own authority — "the snapshot is not a delivery promise;
+`send_message` performs the authoritative check and may still fail" — and
+tells the model not to use the tool for the thing it will want to use it
+for: "use it to recall which ones you started, **not to poll for
+completion** — you are told when one finishes."
 
 ## 8. Absences worth noting
 

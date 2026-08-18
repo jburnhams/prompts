@@ -186,6 +186,30 @@ the long-horizon and measurement-gated ideas, kept deliberately lean.
 Both are separate from this README so they don't distract from
 implementing v1 itself.
 
+## Maintaining these documents
+
+Two rules, adopted from the Agent Note discipline in
+[`../deepseek-harness/`](../deepseek-harness) (see
+[`../agent-memory-learning.md`](../agent-memory-learning.md) §9 for the
+full scheme, most of which is deliberately not adopted — this folder
+does not need lifecycle folders or a format gate):
+
+- **A decision is never edited into a different decision.** Supersede it
+  and cross-link, keeping both legible. Editing a decision row to track
+  where its subject now *lives* — a renamed tool, a moved section, a
+  changed default — is required, not forbidden; changing what it decided
+  is what needs a new row saying what it replaced and why. The decision
+  log below accumulates re-litigated items precisely because that line
+  has not been drawn, and "we already considered that" is only useful
+  when the record says what was considered.
+- **Alternatives are recorded, never invented.** Where the alternatives a
+  decision beat are genuinely not reconstructible, say so in that row
+  rather than writing plausible-sounding ones after the fact. DeepSeek's
+  gate accepts an explicit marker for exactly this case, which is a
+  better answer than a well-written guess — a fabricated alternative
+  reads identically to a real one and quietly makes the record
+  worthless.
+
 ## Reading order
 
 1. `system-prompts.md` — the two orchestrator prompts and the three
@@ -221,6 +245,11 @@ implementing v1 itself.
    ship/no-ship log. This is what turns `tools.md`'s configuration
    section from seventeen opinions into seventeen decisions, and it
    carries the list of open questions it exists to close.
+Per-source notes — what one harness does and whether it transfers —
+live in that harness's own folder, not here. `../deepseek-harness/`
+is the worked example: its README carries the travels/doesn't-travel
+split, and what this design took from it is stated in the design files
+themselves at the point of the decision.
 
 This design has been through three full review passes against the rest
 of this repo's research — one after the first draft, one after the docs

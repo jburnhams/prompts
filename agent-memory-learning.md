@@ -48,7 +48,10 @@ here.
 
 **With rich, code-confirmed mechanisms** (live-source investigated):
 Codex CLI, Gemini CLI, PR-Agent/Qodo Merge (the configuration surface
-only — generation is closed-source).
+only — generation is closed-source), DeepSeek Harness (the Agent Note
+tree and its four enforcing gates are in-repo; the review-skill
+maintenance tool that writes to it is specified in public but its
+implementation is deliberately private — see §8 and §9).
 
 **With confirmed prompt-text-level mechanisms**: Claude Code (leaked
 prompts + `architecture-notes.md` + vendor docs), Windsurf (leaked
@@ -793,11 +796,67 @@ contribution has to be.
   that security findings are never suppressed. Learning is team-scoped
   and, per the docs, has no user-facing controls at all.
 
+- **DeepSeek Harness — `dsh-code-review` maintenance (explicit, periodic,
+  adoption-verified, human-promoted).** The fourth of these, and the only
+  one whose mechanism is **fully specified in public** — the other three
+  are documented from vendor docs and observable behavior, while
+  DeepSeek's is written out as an Agent Note with a protocol, a risks
+  section, and a measured acceptance run
+  (`.agents/notes/proposed/process/2026-07-13-human-review-skill-maintenance.md`;
+  operator doc `docs/cookbook/maintaining-dsh-code-review.md`; both read
+  via [`deepseek-harness/`](./deepseek-harness)). It differs from the
+  other three on four axes at once:
+  - **What it learns from is inverted.** Qodo/CodeRabbit/Greptile all
+    mine reactions *to the bot's own output*. DeepSeek mines human
+    review comments on **human-authored PRs**, and explicitly rejects the
+    alternative of learning from bot findings that got fixed — "the
+    source contract is human review feedback," with humans forwarding
+    automated findings filtered out by the author check. The bot is not
+    in the loop it learns from at all.
+  - **Adoption is established from the tree, not the thread.** Greptile's
+    "was it addressed" compares first and last commit; DeepSeek does the
+    same idea properly, comparing two PR-specific patch snapshots
+    (`merge-base(B,T)→B` and `T→M`) chosen so a change that arrived on
+    the target branch independently can't be miscredited to the comment.
+    Merge status, thread resolution, and an author's "fixed" reply are
+    each explicitly named as insufficient.
+  - **The write target is the skill file itself**, not a side knowledge
+    base. Qodo writes a wiki file consulted as an extra layer; CodeRabbit
+    writes DB rows retrieved per comment; DeepSeek **rewrites
+    `SKILL.md` wholesale** — the primary adapter returns complete
+    candidate file content, so every run re-derives the whole document
+    and rules can be folded or dropped rather than only appended. That is
+    the structural answer to checklist bloat: an append-only store can
+    only grow.
+  - **It is the least automatic of the four**, deliberately. Creating or
+    merging repository changes automatically was considered and rejected
+    — "the tool first needs a track record of useful periodic output."
+    Two independent adapters must agree; then a human promotes, and is
+    told in writing not to defer to them.
+
+  Two mechanisms here have no counterpart in the other three: the mined
+  feedback is treated as **untrusted input** (nonce-tagged
+  `<untrusted-feedback>` wrapper, scrubbed environment, adapter `cwd`
+  outside the repo), and the run is **idempotent by construction** —
+  overlapping time windows re-classify already-incorporated guidance as
+  `covered`, so no cursor state is kept and a missed day self-heals.
+
 The axis worth naming: **coding agents mine their own trajectories;
 review bots mine human responses to their output.** The second signal is
 better (a human actually accepted or ignored the suggestion), which is
 probably why the review tools were comfortable making their loops fully
 automatic while the coding agents wrap theirs in approval queues.
+
+DeepSeek adds a third position that breaks the dichotomy: **mine humans
+reviewing each other, and let the bot read the result.** The signal is
+cleaner still — it is not contaminated by what the bot already says, so
+it can surface a rule the bot never proposed — and it is the only one of
+the four that can produce a *deletion*. It is also the only loop here
+whose published output is mostly nothing: 426 human feedback items in the
+acceptance window produced **zero** rule changes, which the operator doc
+frames as the workflow working. Read against the other three, that number
+is the real finding of this section — the hard part of learning from
+humans is not extraction, it is refusing to extract.
 
 ## 9. Governance: approval, citation, staleness, forgetting
 
@@ -852,6 +911,52 @@ instead of creating a duplicate"); Goose's `remove_memory_category` /
 `remove_specific_memory`; and Anthropic's memory-tool docs, which push
 expiry onto the implementer ("Periodically delete memory files that
 haven't been accessed in a long time").
+
+**Supersession and freezing — DeepSeek's Agent Notes.** Every forgetting
+mechanism above is either eviction (drop what is unused) or overwrite
+(update in place). [`deepseek-harness`](./deepseek-harness) uses a third
+model, and it is the most developed decision-memory scheme in this
+collection because it is designed for records a human will re-read years
+later rather than for a context budget. `.agents/notes/` stores one
+decision per file at `{lifecycle}/{class}/yyyy-mm-dd-topic.md`, where
+**both axes are the path**: lifecycle is
+`proposed`/`implemented`/`rejected` and the file physically moves between
+folders as status changes, with `verify-agent-note-format` enforcing a
+different required body skeleton per folder. Moving `proposed →
+implemented` must rewrite `## Proposal` into a present-tense
+`## Decision` and fold `## Acceptance criteria` and `## Risks` into
+`## Consequences` in the same change — the gate rejects the move
+otherwise, and rejects proposal-era headings surviving inside an
+implemented note at all. Four rules are worth lifting whole:
+
+- **A note is never edited into a different decision.** Supersede it with
+  a new one and keep both cross-linked. Editing an implemented note to
+  track where its decision *lives* (renamed paths, moved packages) is
+  required; changing what it decided is forbidden. This separates "the
+  record drifted from the code" from "we changed our minds," which every
+  overwrite-based store above conflates.
+- **`## Alternatives considered` is mandatory** — "a decision recorded
+  without what it beat invites re-litigation, the failure Agent Notes
+  exist to prevent." Notes predating the format carry an exact
+  machine-recognised comment declaring their alternatives
+  unreconstructible, rather than having plausible ones invented for them:
+  **"alternatives are recorded, never invented."** Compare §2's
+  consolidator prompts, which have no equivalent honesty marker for a
+  fact the extractor could not establish.
+- **Deletion has a burden of proof.** A fully-superseded note may be
+  consolidated into its successor only after every unique rationale,
+  alternative, consequence, verification, and named coverage gap is
+  preserved and every inbound link repaired — and "consolidation must not
+  rely on git history as the only copy of rationale." Partial
+  supersession disqualifies: keep both, cross-linked.
+- **The archive is frozen, not merely old.** Low-value implemented notes
+  move to `archived/{class}/` as sealed triplets (English, Chinese,
+  consistency sidecar) under an append-only content manifest. Gates skip
+  them; the prose skills all carry the same exclusion; active docs may
+  cite them but never modernize them, and they are explicitly "never
+  current authority." Nothing else here distinguishes *retired* memory
+  from *deleted* memory — and the distinction is what makes it safe to
+  retire aggressively.
 
 **Portability — a distribution axis nothing else here has.** Every source
 above treats memory as something that lives where it was written: a file

@@ -162,3 +162,26 @@ design that can retire one.
    enough to justify the flat spelling in `future.md`?
 5. Does read-before-edit's full-view requirement on `Write` ever block a
    legitimate rewrite?
+6. **Does role specialization beat one broad lens at equal total spend?**
+   The multi-stage and single-stage shapes (`review.md` §6) are wire-
+   identical by construction, so this is directly A/B-able: same PRs,
+   same envelope, N specialists versus one `all`-lens finder given a
+   comparable budget. Measure recall against a seeded-defect fixture set
+   and precision against the validator's reject rate, not finding count.
+   The question is live because the field is split — most review tools
+   in `../code-review-approaches.md` §5 fan out, DeepSeek Harness's
+   review skill deliberately does not (`review.md` §6a) — and because
+   the usual justification for fan-out (each agent covers different
+   code) does not apply when every reviewer needs the whole diff.
+7. **Is review fan-out context-bound enough to pay for Code Mode?**
+   DeepSeek's typed-`.d.ts` tool advertisement costs ~25 KB of fixed
+   prompt and buys back "intermediate tool results never enter the
+   conversation" (`../agent-tool-call-dialects.md` §4). It only wins
+   above some fan-out. The measurement that settles it is cheap and
+   doesn't require building it: instrument how much of a finder's
+   context is spent on reads whose content appears in no returned
+   finding. If that fraction is small, the question is closed — a second
+   calling convention would be cost with no return, and nothing further
+   needs tracking. If it is large, the prerequisite is typed return
+   schemas on every tool in `tools.md`, which the surface does not
+   declare today.

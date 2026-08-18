@@ -31,7 +31,42 @@ plus the two axes that explain most of the variance between them.
 a synthesized comparison of every code/PR-review-specific source in this
 collection, stage by stage (system prompt, diff format, context,
 filtering, output format, delivery, safety), with links back to each
-source for detail.
+source for detail. A later pass added the first source in this collection
+that treats **where review criteria come from** as a pipeline stage of
+its own ([`deepseek-harness/`](./deepseek-harness), §11): a repo-resident
+review skill rewritten periodically from mined human review comments,
+where adoption is proven by comparing two PR-specific patch snapshots
+rather than by merge status or a "fixed" reply, two independently
+configured reviewer adapters must agree before anything reaches a draft,
+bot findings are excluded from the learning source by contract, the mined
+comments are handled as untrusted input behind a nonce-tagged wrapper,
+and a human promotes the candidate under written instructions not to
+defer to the reviewers. Its published acceptance run is the finding:
+426 human feedback items over 62 merged PRs produced **zero** rule
+changes, which the operator doc frames as the workflow working —
+the hard part of learning from human review is refusing to extract.
+
+**[→ `deepseek-harness/`](./deepseek-harness)** — DeepSeek AI's
+open-source agent harness (MIT, developer preview, read 2026-08-14), and
+a different *kind* of source from the rest of the collection: no file in
+it contains a system prompt, because the prompt is assembled per request
+from per-plugin sections, so what is stored here are the assembled
+**snapshots the repo checks in as test expectations** — which is itself
+the finding, since prompt wording is treated as behavior under test.
+Alongside them, the repo's own agent-facing process corpus: `AGENTS.md`
+under a word-budget gate, five of its eleven skills, an eight-class
+taxonomy of **chain-of-thought leakage** in committed prose (with the
+four overcorrection traps that shipped and were caught in review), a
+decision-memory tree whose lifecycle is encoded in the file path and
+whose archive is cryptographically frozen, and a machine-enforced
+**"Model Experience"** section required in every package README
+declaring what the model sees, what it costs in tokens, and what
+invalidates KV cache — the only instance here of a repository gating
+that disclosure per component. Its **Code Mode** advertises every tool
+as a compiling `.d.ts` with declared return types and asks for a program
+rather than a call, which is what lets it say the sentence the rest of
+this collection's context-management docs are circling: intermediate
+tool results never enter the conversation.
 
 **[→ `coding-agent-approaches.md`](./coding-agent-approaches.md)** — the
 companion doc, one level down: a comparison of the *full* coding-agent

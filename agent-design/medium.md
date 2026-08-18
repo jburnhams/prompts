@@ -924,6 +924,46 @@ full scope, `rebased="true"`), and the one-round cap on standing-firm
 replies is load-bearing: a bot that argues in rounds destroys the
 trust the validator pass exists to protect.
 
+### 3g. An `interface_scope` lens
+
+**What**: a fifth specialist lens covering the claims v1's three roles
+structurally cannot make. `bugs` requires the code to be wrong,
+`security` requires a vulnerability, and `conventions` requires a
+quotable documented rule — so a diff that adds a correct, secure,
+convention-compliant API nobody needs passes all three. The lens asks
+one question in two directions:
+
+- **Is this used?** Map each new abstraction, state machine, option,
+  defensive copy, and compatibility path to a current production
+  consumer. Classify consumers into production, non-production (tests,
+  docs, fixtures), and ambiguous (examples and scripts, inspected
+  before classifying) — a symbol whose only consumers are tests is not
+  load-bearing.
+- **Is this public for a reason?** The inverse, and the sharper half:
+  a new public method on a generic service whose only caller is one
+  internal consumer is an unnecessary API expansion, and the fix is a
+  private capability handed to that consumer at construction rather
+  than a method everyone can now call.
+
+**Why**: lifted from `dsh-code-review` and `dsh-find-simplifications`
+(`../deepseek-harness/`), which are the only sources in the collection
+that state the inverse direction at all. It is a good *specialist* lens
+rather than a prompt line because it is mechanically checkable — the
+finding is "this symbol has no production caller," which a `Grep` can
+support or refute — which also makes it unusually validator-friendly
+compared with the taste-adjacent findings it superficially resembles.
+
+**Gotcha**: it needs the consumer corpus, not just the diff, so it is
+the first lens whose cost scales with repository size rather than diff
+size — and it is the lens most likely to produce findings an author
+disputes on roadmap grounds ("that's for the next PR"). Ship it with
+`class: suggestion` as the default and require a named production
+consumer in the rationale before it may claim `defect`; the
+speculative-generality argument is legitimate but it is an argument,
+not a defect, unless the symbol is genuinely unreachable. Gate the
+whole lens on `3e`'s finding-outcome telemetry showing the other three
+lenses are not already saturating reviewer attention.
+
 ---
 
 ## 4. Cross-repo escalation and long-horizon waiting

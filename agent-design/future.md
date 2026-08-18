@@ -9,6 +9,46 @@ hasn't reached. Nothing here should influence a v1 implementation; it
 exists so these ideas are tracked instead of forgotten or silently
 re-litigated later.
 
+- **Adoption-verified criteria maintenance.** The reviewer core
+  (`system-prompts.md` §4) is hand-authored and has no revision
+  mechanism — it says what it says until someone edits it. The upgrade
+  is a periodic job that rewrites it from human review feedback that the
+  code actually adopted. Precedent and full mechanism:
+  `../code-review-approaches.md` §11 (DeepSeek Harness is the only
+  source in the collection that treats criteria provenance as a pipeline
+  stage; Qodo, CodeRabbit and Greptile do adjacent things from weaker
+  signals — `../agent-memory-learning.md` §8). Five parts carry the
+  design, roughly in order of how much each is worth:
+  - **Adoption is a question about the tree, not the thread.** A
+    resolved thread, a merge, a 👍, and an author's "fixed" reply are
+    all context, not proof — a PR can merge with feedback rejected or
+    superseded. The evidence is two PR-specific patch snapshots
+    (feedback-time baseline→`B`, and target-parent→merge), chosen so a
+    change that arrived independently on the target branch appears in
+    neither and cannot be miscredited to the comment.
+  - **Rewrite the criteria wholesale, never append.** The drafting pass
+    returns complete replacement text, so every run re-derives the whole
+    document and a rule can be folded or dropped. An append-only store
+    can only grow, and checklist bloat is the failure mode this exists
+    to prevent — not finding rules.
+  - **Two independent judges, never author-as-judge.** Independent
+    verdicts are what expose unsupported generalization from a single
+    incident before it reaches the criteria.
+  - **A human promotes**, and is instructed not to defer to the judges:
+    hunt for checklist bloat, extrapolation from one PR, and duplicated
+    coverage with what the core already says.
+  - **Expect zero.** DeepSeek's published acceptance run turned 426
+    human feedback items over 62 merged PRs into zero rule changes. A
+    version of this that produces a candidate every run is broken.
+
+  **Gated on** `medium.md` §3e's finding-outcome telemetry, which is the
+  input this needs and does not yet exist — build the measurement first.
+  **Not** worth copying: DeepSeek keeps the mechanism on a single
+  operator's machine outside the repository, and its own risks section
+  names the consequence (single-maintainer bus factor). That reasoning
+  was specific to one skill and one maintainer; it does not transfer to
+  a tool serving criteria across every repo Forge reviews.
+
 - **Typed sub-agent registry beyond three types.** Coding mode has one
   delegate type; review mode has two (`reviewer`, `validator`). Claude
   Code, Gemini CLI, and Amp all show the next step (named, narrower

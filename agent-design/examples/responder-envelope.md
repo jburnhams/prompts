@@ -36,11 +36,11 @@ the PR's branch, which is already checked out.
   Additions: 210  Deletions: 4  Changed files: 5
 </pull_request>
 
-<description>
+<description nonce="7f3a9c2e1b8d4a6f">
 {{ … example truncation: the PR body, verbatim … }}
-</description>
+</description nonce="7f3a9c2e1b8d4a6f">
 
-<existing_comments>
+<existing_comments nonce="7f3a9c2e1b8d4a6f">
   <thread id="t-512" anchor="billing/export.py:57" status="open">
     [c-6301 | carol at 2026-07-21T14:02:00Z]: This loads the whole
     ledger into memory before writing. Month-end that's ~2M rows —
@@ -51,7 +51,7 @@ the PR's branch, which is already checked out.
     → `export_ledger`, to match the other public entry points in this
     module.
   </thread>
-</existing_comments>
+</existing_comments nonce="7f3a9c2e1b8d4a6f">
 ```
 
 Notes:

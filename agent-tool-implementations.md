@@ -106,6 +106,64 @@ and then `mapToolResultToToolResultBlockParam` converts that into what the
 model sees — which for the `text` case is just `cat -n`-numbered file
 content with no JSON envelope at all.
 
+### 1a. DeepSeek Harness splits the model channel in two, and makes the human channel replay-pure
+
+[`deepseek-harness`](./deepseek-harness) is the strongest confirmation of
+this section's thesis, and it refines it in two places. Its `defineTool`
+contract (`docs/cookbook/adding-a-tool.md`) has four channels, not three:
+
+| Channel | Members | Consumer |
+|---|---|---|
+| Model, prose | `output.render(args, value)` | the transcript |
+| Model, programmatic | `output.schema` + the returned canonical value | Code Mode programs (`await tools.name(args)`) |
+| Harness | `timeoutMs`, `parameters` (validated pre-`execute`), `exec.token`/`signal`/`agent`, the `tools/pre-execute`→`execute`→`post-execute`→`result` waterfall | policy, deadlines, observation |
+| Human | `presentCall(args)` / `presentResult(args, result)` returning a `card`-tagged render intent, plus `output.presentationMeta(args, value)` | the UI, live **and on replay** |
+
+The **model channel splitting in two** is the new part. `execute` returns
+exactly one canonical JSON value, which the registry snapshots losslessly,
+validates against `output.schema`, and freezes; `output.render` then turns
+that same value into the prose the model reads in an ordinary turn, while
+Code Mode hands the frozen value straight to the program. The cookbook
+states the consequence as a rule, and it is the sharpest sentence on this
+topic anywhere in the collection: a background-job tool's renderer may
+emit `started background job bash-1`, but **"Code Mode must never parse
+that prose to recover the id."** So the guidance "design `output.schema`
+as a useful programmatic API: return handles and fields directly … and
+keep human explanation in `output.render`" is not style advice — it is
+what stops the two channels collapsing back into one. Compare Claude
+Code's `outputSchema`, which is declared but whose model-facing form is
+still the only thing anything consumes.
+
+The **human channel being pure** is the second refinement, and it is a
+constraint the other sources don't state because they don't have replay.
+`presentCall`/`presentResult` "run on live streaming AND on session-log
+REPLAY, so they must be pure functions of `args` (+ the result) — NO I/O,
+NO reading session state, NO clock/random." That forces an otherwise
+invisible design decision into the open: `write`'s call-time diff card
+uses `oldText: null` because a call-time presenter *cannot* know the
+file's prior content, and anything that needs result-time facts must be
+projected into durable metadata by `output.presentationMeta` so it
+survives replay. The cookbook names the temptation and rules on it: "If
+you find yourself wanting the file's old content or the working directory
+inside `presentCall`, stop — that belongs in durable result metadata or
+the adapter, not the presenter." Two more rules fall out of the same
+purity requirement: UI-only formatting (a fenced ` ```console ` block, a
+relativized path) may never be smuggled into the canonical value or the
+model-facing content "merely to serve a UI," and a malformed or
+older logged argument makes the display wrapper return `undefined` for a
+generic fallback **rather than throw**, because "display must never crash
+a replay."
+
+The card kinds themselves are a small closed union worth recording, since
+they are the only published taxonomy of tool-render intents here:
+`generic` (with `kind` for an icon and `locations: [{path, line?}]` so an
+editor can follow along), `terminal` (the call *is* a shell command),
+`diff` (`[{path, oldText, newText}]`), `search` (grouped-by-file matches
+or a flat path list, carrying `truncated`/`total` "so a UI never presents
+a capped result as complete"), and `web`. `AGENTS.md` makes choosing one
+a design-time obligation: "**A tool's UI render intent is part of its
+design**, decided up front."
+
 ---
 
 ## 2. Granularity: how many tools?
