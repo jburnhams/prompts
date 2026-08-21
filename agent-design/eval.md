@@ -98,6 +98,24 @@ Accuracy alone hides most of what this eval is for. Every task records:
 - **api_turns**, **tool_calls**, and per-tool call counts.
 - **total_tokens**, split input/output.
 - **wall_s**.
+- **envelope_inflation** — the ratio between the bytes a tool *returned*
+  and the tokens that reached the model for it. This is the one metric
+  here that measures the harness rather than the agent, and it exists
+  because `adk.md` §2c's escaping question was open-ended until it
+  acquired a budget. Independent measurement
+  ([`../agent-tool-result-transport.md`](../agent-tool-result-transport.md)
+  §1a) puts single-level JSON escaping at **~1.11× on tag-framed prose**
+  and **~1.22× on the code-shaped payloads `Read` returns**, so those are
+  the expected values, not a target to beat. **Materially above ~1.25× is
+  a bug report, not a cost**: it means something in the chain is
+  double-encoding, and the candidates are few enough to check by hand —
+  a payload serialised into a JSON string rather than carried as text, a
+  result envelope being stringified whole, or a fact-shaped field
+  duplicated into two channels. Record it per tool, since `Read` and
+  `Bash` will differ and the difference is diagnostic. Caveat to carry in
+  the log: the published ratios were derived with a GPT tokenizer as a
+  proxy, so re-derive the baseline on the model actually under test
+  before calling a deviation a defect.
 
 Efficiency aggregates are **per-task means, never sums**. Errored runs
 score 0 and stay in the accuracy denominator but are **excluded from

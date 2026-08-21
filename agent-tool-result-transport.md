@@ -786,6 +786,30 @@ cross-references are one hop.
 - Artifacts are a genuine gap in the design and are now tracked in
   `agent-design/future.md`, with ADK's `ArtifactService` as the substrate
   and OMP's "same tool, new URI scheme" as the model-facing shape.
+- **The design cannot target `2026-07-28`, and the reason generalises.**
+  Read from source on 2026-08-21: `adk-java` at HEAD (`c1bda9c`) pins
+  `<mcp.version>1.1.2</mcp.version>`; the MCP Java SDK's
+  `ProtocolVersions.java` declares exactly four constants —
+  `2024-11-05`, `2025-03-26`, `2025-06-18`, `2025-11-25` — in both 1.1.2
+  and in 2.0.1, the latest release. There is no `MCP_2026_07_28`
+  anywhere. Java is a **Tier 2** SDK, which commits to new protocol
+  features "within 6 months" against Tier 1's "before the spec release";
+  the four SDKs that shipped `2026-07-28` on publication day were the
+  Tier 1 four (TypeScript, Python, C#, Go). So the realistic path to the
+  current revision runs through a Java SDK release around January 2027
+  *and then* an `adk-java` bump off the 1.1.x line.
+
+  The transferable part is not the dates. It is that **a design's usable
+  protocol version is set by its SDK's tier and its framework's pin, not
+  by the specification** — two dependencies deep, neither of them
+  announced in the design's own documents. Anyone reasoning about MCP
+  capabilities from the spec alone is reasoning about a protocol their
+  code cannot speak. The corollary that made this cheap rather than
+  painful for `agent-design/`: every rule in it is written against the
+  protocol's *shape* — text blocks, an error flag, named fields — which
+  is stable from `2024-11-05` through `2026-07-28`, so a three-revision
+  lag is a scheduling fact and not a design constraint. `adk.md` §0
+  carries the full accounting.
 
 ---
 

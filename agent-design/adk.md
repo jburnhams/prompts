@@ -14,11 +14,70 @@ override**, and **what to verify against a running stack** before trusting
 it.
 
 Grounded in `adk-java` at `8049f7e` (read 2026-07-31; paths in
-[`../sources.md`](../sources.md)). **Java ADK is not Python ADK.** Several
+[`../sources.md`](../sources.md)), with §0's dependency pin re-read at
+`c1bda9c` (2026-08-19) alongside the MCP Java SDK at `v1.1.2`/`v2.0.1`. **Java ADK is not Python ADK.** Several
 behaviours below differ between them — the Java MCP result conversion in
 particular is materially different and lossier — so nothing here should be
 inferred from Python examples, docs, or blog posts, and all of it should
 be re-checked on a version bump.
+
+---
+
+## 0. Which MCP are we even speaking?
+
+Numbered zero because it precedes every other decision here, and because
+the answer is not the one anybody wants.
+
+**The design targets MCP `2025-11-25`, and cannot target `2026-07-28`
+today.** The gap is two layers deep, and neither layer is ours:
+
+| Layer | State on 2026-08-21 | Ceiling it imposes |
+|---|---|---|
+| The specification | `2026-07-28` is current | — |
+| **MCP Java SDK** | latest release `2.0.1` (2026-08-19); `ProtocolVersions.java` declares exactly four constants — `2024-11-05`, `2025-03-26`, `2025-06-18`, `2025-11-25`. There is **no `MCP_2026_07_28`** | `2025-11-25` |
+| **`adk-java`** | pins `<mcp.version>1.1.2</mcp.version>` at HEAD (`c1bda9c`, 2026-08-19) — the 1.1.x line, a major version behind the SDK's own latest, though 1.1.2 does carry the `2025-11-25` constant | `2025-11-25`, and only if ADK negotiates it |
+
+And the timeline is not short. Java is a **Tier 2** SDK, not Tier 1. Tier 1
+(TypeScript, Python, C#, Go) commits to shipping new protocol features
+*before* a spec release; **Tier 2 commits to "within 6 months"** and to an
+80% conformance pass rate. The four SDKs that shipped `2026-07-28` support
+on publication day were the Tier 1 four. On the published commitment,
+`2026-07-28` reaches the Java SDK by roughly **January 2027**, and reaches
+*us* only after `adk-java` also moves off the 1.1.x line.
+
+**What this costs, concretely: nothing the design wanted.** Working
+through the revision's changes against `tools.md` and `formats.md`:
+
+- **Statelessness, `server/discover`, `resultType`, `ttlMs`/`cacheScope`,
+  MRTR** — all *server obligations* we don't have to meet yet, and all
+  things a per-run stdio server gets nothing from. Being late here is
+  free.
+- **The one thing worth wanting is already ours.** The revision's
+  "Stateful Tools" guidance — server-minted handles instead of protocol
+  sessions — is a *replacement* for a mechanism this design never used.
+  §6's per-run process already makes the process boundary the state
+  boundary. We arrive at the destination without taking the journey.
+- **The one thing genuinely deferred is the tasks extension**
+  (`io.modelcontextprotocol/tasks`): durable poll handles for long-running
+  calls, which is the protocol-native version of background `Bash`
+  returning a pid and a log path. Extensions are explicitly **not required
+  at any tier**, so this may never arrive on this stack. §7's note that
+  the Java MCP path has no progress-notification plumbing stands, and
+  background `Bash` stays exactly as `tools.md` describes it.
+- **`2026-07-28` does move one argument in our favour** — see §5.
+
+**The rule that follows**, and it is the reason this section exists rather
+than a footnote: **write the design against the protocol's *shape*, not
+its revision.** Every rule in `tools.md` and `formats.md` §8 is expressed
+in terms of text blocks, an error flag, and named fields — concepts stable
+across `2024-11-05` through `2026-07-28`. Nothing in the design depends on
+a handshake, a session id, or a feature added after `2025-06-18`. That is
+what makes a three-revision lag a scheduling fact rather than a design
+constraint, and it is worth preserving deliberately: **do not adopt a
+protocol feature into the design before the SDK we are pinned to can
+speak it.** The corollary is the honest one — re-read this section on
+every `adk-java` bump, because the pin is the thing that will move first
+and silently.
 
 ---
 
@@ -176,22 +235,51 @@ record / human rendering) looks like it maps onto MCP's
 `McpTool.runAsync` wraps the call in
 `.retryWhen(errors -> errors.delay(100ms).take(3).doOnNext(reinitializeSession))`
 — **up to three retries with a fresh session on any exception from
-`callTool`**. For a read that is a convenience. For `Write`, `Edit`, and
-especially `AddComment` it is a correctness hazard: a transport timeout
-*after* the server has already applied the change (or posted the comment)
-produces a duplicate on retry. `AddComment` is the sharp end — it is
-externally visible, and a double-posted review comment is exactly the
-noise the whole validator pipeline exists to prevent.
+`callTool`**. For a read that is a convenience. For `Write`, `Edit`,
+`Bash` and especially `AddComment` it is a correctness hazard: a transport
+timeout *after* the server has already applied the change (or posted the
+comment, or run the command) produces a duplicate on retry. `AddComment`
+is the sharp end for *visibility* — it is externally visible, and a
+double-posted review comment is exactly the noise the whole validator
+pipeline exists to prevent — but **`Bash` is the sharp end for blast
+radius**, and it is the one the obvious fix does not cover:
+
+- `Bash` is the only tool here that can do something the harness cannot
+  see or undo. A retried `git commit`, `mvn deploy`, migration script or
+  `curl -X POST` runs twice, and the second run's failure ("nothing to
+  commit", "tag already exists") is what reaches the model, not the first
+  run's success.
+- **Workaround 2 below cannot gate it.** Retry-on-`idempotentHint` needs a
+  per-tool annotation, and §7's own table already states the problem:
+  "`Bash` read-only-ness" is a *per-call* classification while "MCP
+  annotations are per-tool". There is no annotation that means "idempotent
+  when the command is `git status`, not when it is `git push`". So `Bash`
+  is annotated non-idempotent wholesale — which disables the retry for
+  read-only commands too, and that is the correct trade: the retry buys a
+  transport-flake recovery the model can perform itself by calling again,
+  and costs a duplicated side effect it cannot detect.
+- Which means **workaround 1 is not "the durable fix", it is the only
+  fix** for `Bash`, and the design should treat it as mandatory rather
+  than preferred.
 
 This is the single most important thing to override.
 
 *Workarounds, in the order to apply them:*
 
-1. **Idempotency keys, server-side.** Every call carries the invocation's
-   tool-call id (via MCP `_meta`, or an explicit parameter); the server
-   records applied call-ids and returns the original result for a repeat
-   rather than re-applying. This is the durable fix and it's independent
-   of ADK's behaviour.
+1. **Idempotency keys, server-side — mandatory, not preferred.** Every
+   call carries the invocation's tool-call id (via MCP `_meta`, or an
+   explicit parameter); the server records applied call-ids and returns
+   the original result for a repeat rather than re-applying. This is the
+   durable fix, it's independent of ADK's behaviour, and per the `Bash`
+   case above it is the *only* fix for the tool with the largest blast
+   radius. It has a second payoff the design needs anyway: it is what
+   makes **spill-to-scratch retry-safe**. Without it, three retries of a
+   truncated `Bash` write three log files and hand the model a path to
+   whichever attempt happened to finish; with it, the retry returns the
+   first attempt's result and the first attempt's path. `tools.md`'s
+   spill rule states the naming requirement (scratch filenames are
+   derived from the tool-call id) so the two mechanisms agree even before
+   the key is wired up.
 2. **Retry only what's safe.** Subclass `McpTool` (or wrap the toolset) so
    the retry policy is keyed off the tool's MCP annotations — retry when
    `idempotentHint`/`readOnlyHint` is set, surface the error otherwise.
@@ -199,6 +287,35 @@ This is the single most important thing to override.
 3. **Make the failure legible either way**: when a retry does fire on a
    mutating tool, log it loudly enough that a duplicated side effect is
    diagnosable after the fact.
+
+**The retry policy also decides which MCP channel our errors travel on.**
+`tools.md`'s errors-are-instructions rule says what an error must *say*;
+this is where it acquires a wire requirement. MCP has two error
+mechanisms, and the choice is not stylistic:
+
+- a **tool execution error** — a normal result with `isError: true` —
+  which the spec says clients **SHOULD** hand to the model, described in
+  the spec as "actionable feedback that language models can use to
+  self-correct";
+- a **protocol error** — a JSON-RPC error — which clients only **MAY**
+  pass on, and which the spec reserves for malformed requests and unknown
+  tools, "issues with the request structure itself that models are less
+  likely to be able to fix".
+
+Every error this design defines is the first kind: "file does not exist,
+did you mean X", "found 3 matches for `old_string`", "only part of this
+file has been read". None of them is a request-structure problem, and all
+of them are written to be acted on. **So they are returned as `isError:
+true` results and never thrown as protocol errors** — on the audience
+argument alone, and on this stack for a second reason: a protocol error
+surfaces as an exception, and an exception is precisely what `retryWhen`
+keys off. A deterministic `ENOENT` thrown as a protocol error would be
+retried three times with a fresh session each time before reaching the
+model as the instruction it was from the start — 300 ms and three round
+trips spent re-deriving a failure that was never going to change. The
+design's most frequent errors would be its most retried ones. (The
+exception-on-protocol-error step is inferred from the retry predicate
+being untyped; §9 carries it as a thing to confirm.)
 
 ---
 
@@ -216,6 +333,19 @@ least likely to be honoured. (ADK's own `Claude.java` carries normalisation
 code for `allOf`/`anyOf`/`oneOf`/`prefixItems`, which is direct evidence
 that these keywords need per-backend handling rather than passing through
 cleanly.)
+
+**The protocol has since moved in our favour, which sharpens where the
+blame sits.** MCP `2026-07-28` loosened `inputSchema`/`outputSchema` to
+permit *any* JSON Schema 2020-12 keywords, and added explicit `$ref`
+resolution requirements and resource bounds on composition keywords
+(SEP-2106). So `allOf`/`if`/`then` are not merely tolerated by the
+protocol, they are sanctioned by it. Nothing changes for us today — §0's
+ceiling means we speak `2025-11-25` — but it settles the attribution: the
+constraint is **entirely the model backend's function-declaration
+subset**, not MCP and not ADK's pass-through. That matters for where a
+fix would go if the backend ever rejects the keywords outright: at the
+declaration boundary, per-backend, which is exactly where ADK's own
+`Claude.java` normalisation already lives.
 
 *Compromise*: keep the blocks in the published schema — they document
 intent and cost nothing — but **do not rely on them**. The server
@@ -248,8 +378,27 @@ client-side half, since it is invocation-scoped rather than static.
 **The corollary that shapes deployment**: one MCP server process per run,
 started with that run's mode and configuration. That makes the process
 boundary the state boundary — the read-before-edit cache lives and dies
-with the run — and it matches the config precedence in `tools.md`, where
-that cache now holds the bytes of every file read this run (`tools.md`'s
+with the run —
+
+> **This decision has since acquired a second justification it wasn't
+> made for.** MCP `2026-07-28` **removed protocol-level sessions
+> outright** — no `initialize` handshake, no `Mcp-Session-Id`, and a
+> stated replacement rule: servers needing cross-call state use explicit
+> server-minted handles passed as ordinary tool arguments. A design that
+> had parked the read-before-edit cache in *session* state would now be
+> broken twice over: once because the protocol no longer has sessions,
+> and once because §4's retry policy calls `reinitializeSession` on every
+> attempt, so the cache would be discarded by the very mechanism meant to
+> recover from a flake. Keeping it in process state dodges both without
+> anyone having planned to. Two consequences worth writing down: **do not
+> "simplify" this into a shared long-lived server** — that is the change
+> that would reintroduce both problems and a cross-run state-leak besides;
+> and note that one process per run with a fixed tool set is *not* in
+> tension with `2026-07-28`'s "`tools/list` MUST NOT vary per-connection"
+> rule, since the variation here is between processes, not between
+> connections to one process.
+
+That cache now holds the bytes of every file read this run (`tools.md`'s
 read-before-edit rule), not a set of paths, so the per-run process is
 also carrying real memory: a run that reads a hundred files at the 64 KB
 per-entry ceiling is holding a few MB, which is fine for one process per
@@ -306,7 +455,11 @@ A short list, all small, in the order they'd be needed:
    text through unprefixed, never return `{}`, and skip the
    parse-text-as-JSON step entirely.
 2. **`McpTool.runAsync`'s retry policy**: annotation-gated, so mutating
-   tools don't silently re-run (§4).
+   tools don't silently re-run (§4) — with `Bash` annotated
+   non-idempotent wholesale, since its read-only-ness is per-call and no
+   annotation can express that. Server-side idempotency keys (§4,
+   workaround 1) are the half of this that actually has to ship; the
+   annotation gate is defence in depth.
 3. **A run-scoped `BaseToolset`**: `getTools(ReadonlyContext)` returns the
    surface for this run's mode, pointing at the server started for it.
 4. **`afterToolCallback`**: sanitiser and cap backstop for third-party
@@ -331,6 +484,24 @@ call to settle, and each could change a decision above:
 - How is the `Map<String, Object>` function response **actually
   serialised into the prompt** — how much escaping and envelope noise
   does the model really see, and does it change with model version (§2c)?
+  This one now has a **budget to fail against** rather than being
+  open-ended: `../agent-tool-result-transport.md` §1a measures
+  JSON-escaping at ~1.11× on tag-framed prose and ~1.22× on the
+  code-shaped payloads `Read` returns. Observed inflation materially
+  above that means something is double-encoding — which is a bug to find,
+  not a cost to accept. `eval.md` carries it as a measured quantity.
+- **Does a JSON-RPC protocol error surface as an exception on the
+  `callTool` path**, and therefore trip §4's `retryWhen`? The retry
+  predicate is untyped, so this is the inference the
+  errors-travel-as-`isError` rule rests on. If it holds, a protocol error
+  costs three retries before reaching the model; if it doesn't, the rule
+  still stands on the spec's audience argument alone, but with less
+  urgency.
+- **Which protocol version does the pinned stack actually negotiate?**
+  §0 establishes the ceiling from source (`adk-java` pins MCP Java SDK
+  1.1.2; the SDK's `ProtocolVersions` tops out at `2025-11-25`), but the
+  negotiated value on a live connection is what decides it. Re-check on
+  every `adk-java` bump — the pin is what will move first and silently.
 - Does `Edit` still land first-try on files heavy in **tabs, quotes and
   backslashes** once the content has been through that envelope? This is
   the eval that decides whether §2c is a note or a problem.
