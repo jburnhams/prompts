@@ -1046,6 +1046,14 @@ up (§1).
 | Codex | `exec_command`/`write_stdin` declare a JSON `output_schema`: `{chunk_id, wall_time_seconds, exit_code, session_id, original_token_count, output}` |
 | MCP | both, formally: `content[]` text + optional `structuredContent` validated against `outputSchema` |
 
+The MCP row hides a gap the others don't have, because MCP is the only
+entry here where the tool author and the harness are different people:
+the protocol specifies the *shape* of a result and not its **projection**
+into model context, so the seven client projections compared in that
+doc — six of them read from source — disagree completely — three of them by putting MCP's own schema in front of
+the model. That layer, and the escaping question it raises, is
+[`agent-tool-result-transport.md`](./agent-tool-result-transport.md).
+
 So the split is not "text vs JSON" but **what kind of payload it is**:
 
 - **Prose-shaped payloads** (file bodies, diffs, logs, match lines) go back
@@ -1102,7 +1110,11 @@ partial failure reported. The field's answers are thinner than you'd hope:
 
 **Nobody escapes file content, and nobody should.** Escaping is what would
 break the byte-exact match that every `str_replace`-family edit tool
-depends on (§4a). The way out is already present in most of these formats
+depends on (§4a). It is also, measured, no cheaper than the alternative:
+JSON-escaping costs ~1.11× on prose and ~1.22× on quote-and-tab-heavy
+code, while adding a line-number prefix to every line costs ~1.13× — the
+same price for a framing that keeps the bytes intact
+([`agent-tool-result-transport.md`](./agent-tool-result-transport.md) §1a). The way out is already present in most of these formats
 without being stated as its purpose: **line-number prefixes are the
 escaping mechanism.** If every content line begins with `<number><TAB>` —
 blank lines included — then no line of file content can be mistaken for a
@@ -1219,7 +1231,14 @@ outputs cost **quadratically** over the remaining run."
 oversized result to a file and hands the model a preview plus the path — and
 carries an explicit exception for `Read` (`maxResultSizeChars: Infinity`)
 because "persisting creates a circular Read→file→Read loop". Goose does the
-same for shell output over 2,000 lines.
+same for shell output over 2,000 lines. The same harness now applies the
+rule to *MCP* results (documented: over the threshold, "persisted to disk
+and replaced with a file reference in the conversation", with a per-tool
+opt-out a server declares in its own `tools/list` entry), which makes it
+the shipping instance of a pattern five other groups arrived at
+independently — see
+[`agent-tool-result-transport.md`](./agent-tool-result-transport.md) §7 for
+the comparison and the six decisions it forces.
 
 **4. Throwing beats truncating — measured.** The single most useful
 empirical note found this pass, in Claude Code's `FileReadTool/limits.ts`:

@@ -59,6 +59,16 @@ implementation code with only a small amount of embedded prompt text
   skills system (`Skill.Service`), both conditionally injected only when
   something is actually configured/available — same "don't pad the prompt
   with unused capability text" instinct as Pi's dynamic tool listing.
+  A later targeted read of the MCP module and the Code Mode tool
+  (2026-08-21, `ba72a6f`) makes this the **best-designed result
+  projection found in the collection**: OpenCode ships two deliberately
+  opposite ones — `content`-first when a model will read the result,
+  `structuredContent`-first when a sandboxed program will — and its
+  `projectMcpResult` is the only implementation read that routes images,
+  audio and resource blobs to a separate attachment channel while
+  leaving a `[N files attached to the result]` stub in the text. See
+  [`../agent-tool-result-transport.md`](../agent-tool-result-transport.md)
+  §3a.
 
 ## Sub-agents
 

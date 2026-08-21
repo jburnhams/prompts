@@ -72,7 +72,15 @@ below.
   calls OpenRouter's image-generation models for real text-to-image and
   image-to-image generation, writing the result to a workspace file.
   `UseMcpToolTool.ts`/`accessMcpResourceTool.ts` also extract image
-  content (not just text) from MCP tool responses/resources.
+  content (not just text) from MCP tool responses/resources. A later
+  targeted read of `processToolContent` (2026-08-21, `b867ec9`) found the
+  other half of that projection, and it is less flattering: text blocks
+  pass through raw, but an embedded resource is `JSON.stringify`d with
+  its `blob` field destructured away, and `resource_link`, `audio` and
+  `structuredContent` all fall through to `return ""` — dropped with no
+  note to the model. See
+  [`../agent-tool-result-transport.md`](../agent-tool-result-transport.md)
+  §3b.
 - **Browser/web — corrected with important history, not a flat
   absence**: Roo Code *did* ship a Puppeteer-based `browser_action`-style
   tool ("Browser Use 2.0," added Nov 2025) and then **removed it

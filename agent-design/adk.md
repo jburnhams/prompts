@@ -86,6 +86,17 @@ work that assumes multimodal tool results. *Workaround if needed*:
 subclass `AbstractMcpTool` and convert `ImageContent` into a Gemini inline
 part rather than an error.
 
+> **Dated 2026-08-21.** The *ceiling* named above has moved and the
+> workaround is now the supported path rather than a hack: Gemini 3 and
+> later accept multimodal `parts` with `inlineData` inside a
+> `functionResponse`, so a function response carrying an image is a
+> first-class shape at the model layer. What remains true is the
+> statement about `AbstractMcpTool`: the Java binding still errors, so
+> **the binding is the ceiling, not the API**. That makes this a
+> subclass-one-class problem rather than a re-architecture, and it
+> changes the calculus for anything that wants to return a screenshot.
+> See `../agent-tool-result-transport.md` §5.
+
 **2c. Our text is JSON-escaped on the way to the model.** The function
 response is a struct, so newlines become `\n`, tabs `\t`, and quotes in
 source code `\"`. This erodes the premise behind `formats.md` §8a that
@@ -98,6 +109,24 @@ escaped payloads routinely. *Compromise*: accept it, and treat "does
 as an explicit eval rather than an assumption. The `Edit` description's
 existing "strip the line number and the tab, keep everything after it"
 rule is already doing adjacent work.
+
+> **Priced, 2026-08-21.** This is now a number rather than a worry.
+> Measured in `../agent-tool-result-transport.md` §1a: JSON-escaping
+> costs **1.11×** on tag-framed prose of the kind `formats.md` §8
+> specifies and **1.22×** on the quote-and-tab-heavy source `Read`
+> actually returns. Two conclusions follow. First, it is a bounded tax,
+> not a reason to change transport. Second — and this is the one that
+> settles the §8a debate rather than deferring it — **line-number
+> framing costs 1.13×, the same as escaping**, so the design was never
+> choosing between a free framing and an expensive one; it was choosing
+> between two framings of equal cost, one of which preserves `Edit`'s
+> byte-exact match and one of which destroys it. The eval named above is
+> still the right eval; its result just has a smaller decision hanging
+> on it than it looked. The same doc's §3f is the other update worth
+> carrying: the standing rule below (one text block, no
+> `structuredContent`, never rely on anything but block zero) turns out
+> to be the correct defensive posture against *every* client's
+> projection, not just ADK's.
 
 **2d. Never return bare JSON as the text payload.** ADK tries to parse
 every text block as JSON and, if it succeeds, hands the *parsed map* to

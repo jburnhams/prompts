@@ -2,6 +2,15 @@
 
 All notable changes to this repository, grouped by day, newest first. Generated from git history.
 
+## 2026-08-21
+
+Added a new layer to the tool docs — MCP as a **result transport** rather than an extensibility checkbox — grounded in a targeted source read of three clients' MCP projections, and carried the findings into the agent design.
+
+- `agent-tool-result-transport.md` — new: the three layers escaping can appear at and what each costs (measured), MCP's result model at revision `2026-07-28`, six client projections compared from source, the `structuredContent` duplication trap, binary handling, artifacts/handles and the six decisions they force, and the audience channel
+- Root docs: `README.md` (index entry), `sources.md` (three targeted repo reads + eleven web references), `agent-tool-implementations.md` (§5a/§5b/§6a cross-links and the measured escaping-vs-framing cost)
+- `agent-design/` — `adk.md` (§2b dated against Gemini 3 multimodal function responses; §2c priced), `future.md` (artifact store and audience-channel entries)
+- Source folders: `opencode/README.md`, `roocode/README.md` — MCP projection notes
+
 ## 2026-08-18
 
 Merged PR #20 (`claude/deepseek-harness-investigation`), integrating the DeepSeek Harness work from 2026-08-14 into `main`.

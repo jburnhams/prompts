@@ -269,3 +269,69 @@ re-litigated later.
   that holds partial delimiters across chunks, history conversion in
   both directions, and the tool catalogue moving into the system prompt
   at a cost paid every turn.
+- **Artifacts: a session-scoped store, and a stub in place of the
+  payload.** V1 has no answer for a tool result that is legitimately
+  large — the caps in `tools.md` truncate or error, and both are the
+  right default for the *file* case, where the model asked for
+  something specific and the recovery is a narrower call. They are the
+  wrong default for the case where the payload's *shape* is what the
+  model needs and its *contents* are not: a 40k-row query, a
+  full dependency tree, a screenshot, a heap dump. The pattern the
+  field converged on — store the bytes out of context, return a stub
+  describing the shape, and give the model operations that *reduce*
+  rather than a way to load it all back one turn later — is written up
+  in `../agent-tool-result-transport.md` §7, including the six
+  decisions it forces and the two traps this collection has already
+  documented (the circular `Read`→file→`Read` spill, and the stub
+  whose referent outlives, or fails to outlive, compaction).
+  Three things make this cheaper here than it would be elsewhere:
+  - **The substrate exists on the target stack.** ADK ships an
+    `ArtifactService` — named, versioned `Part`/`Blob` objects, session
+    scope by default with a `user:` prefix widening to all of a user's
+    sessions, `InMemory` and GCS backends — and, critically,
+    `LoadArtifactsTool` appends a loaded artifact **to that request
+    only**, never to conversation history. That is a strictly better
+    contract than a file path, because it makes an expensive load a
+    one-turn cost instead of a permanent one. Nothing here needs
+    building; it needs wiring and a policy.
+  - **The model-facing shape costs zero new tools.** OMP's answer is
+    the one to copy: `artifact://<id>` is a URI scheme the existing
+    read tool already understands, taking the same selector grammar as
+    a file (`:N-M`, `:raw:N-M`). `Read` already has a path parameter, a
+    range concept and a paging contract; an `artifact:` scheme reuses
+    all three, and the alternative — a `LoadArtifact` tool plus a
+    `QueryArtifact` tool plus their descriptions — is the tool-count
+    inflation `tools.md`'s granularity rule exists to resist.
+  - **The stub format is already specified.** `formats.md` §8a's block
+    grammar (tag-framed, attributes carry facts, `!` lines carry notes)
+    covers an artifact stub without inventing anything: an
+    `<artifact id=… kind=… rows=… bytes=… expires=…>` header with a
+    preview inside it is the same shape as `<file>`.
+
+  **Gated on** a real case. V1's tools are `Read`/`Grep`/`List`/`Bash`
+  over a working tree, and the honest position is that none of them
+  routinely produces something worth storing — `Bash` is the only
+  candidate and its cap plus a truncation notice has not yet been shown
+  to fail. Build this when a tool that legitimately returns bulk data
+  is added (the `medium.md` §2e classpath/dependency index is the first
+  plausible one), not before: an artifact store with nothing in it is
+  the unused-escape-hatch surface `tools.md` §1 argues against. Two
+  decisions to make **at that point, not now**: whether minting is
+  automatic on overflow (Claude Code's spill) or explicit (a tool
+  chooses), and whether a stub must survive compaction or fail loudly
+  when its referent is gone.
+- **An audience channel on tool results.** Related but separable, and
+  smaller: `formats.md`'s result blocks assume one reader, the model.
+  Three of the field's mechanisms assume a result routinely contains
+  something for the model, something for the user, and something for
+  neither — MCP's `annotations.audience`, the `_meta` convention, and
+  MCP Apps' `ui://` views (`../agent-tool-result-transport.md` §8).
+  The generalisation is worth writing down even while v1 has no user
+  surface to route to: **audience is a property of a content block,
+  not of a tool call**, and a format that can only mark the whole
+  result will push everything into the model's context by default.
+  Forge's user-facing channel today is `AddComment` and the `Complete`
+  report, both of which are separate tools rather than annotations on a
+  result — which is a coherent answer, and worth revisiting only if a
+  run ever needs to hand back an artifact (a chart, a profile, a
+  screenshot) that isn't prose.

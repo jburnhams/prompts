@@ -56,6 +56,9 @@ so a future pass can diff rather than re-read.
 | **Hermes Agent** (Nous Research; read 2026-08-11) | `github.com/NousResearch/hermes-agent` | `evals/readtool/` — an A/B eval harness for read-tool engineering choices: `README.md` (nine hostile fixtures, metrics, rules of engagement), `fixtures.py`, `tasks.py`, `runner.py`, `results/SUMMARY.md` (the only per-feature ship/no-ship log with numbers found anywhere in this collection); `tools/` — ~60 tool modules incl. `browser_*`, `computer_use*`, `delegate_tool.py`, `code_execution_tool.py`; `agent/learn_prompt.py` (`/learn`, skill authoring by the live agent), `agent/system_prompt.py`, `agent/prompt_builder.py`; `skills/` + `optional-skills/`; `trajectory_compressor.py`, `toolsets.py`. MIT, Python-first | `ed5e17f` |
 | **DeepSeek Harness** (`dsh`; read 2026-08-14 — prompt text and skills stored in [`deepseek-harness/`](./deepseek-harness)) | `github.com/deepseek-ai/deepseek-harness` | Nothing here holds a system prompt as a file — it is *assembled* from per-plugin sections, so read the **recorded snapshots** instead: `examples/acp-agent/tests/snapshots/*/system-prompt.expected.md` (17 variants; `text-turn` is the plain assembly, `code-mode-turn` the typed-TS one, `advanced-toolchain` the maximal 45 KB one) and `apps/web/tests/snapshots/`. `packages/core/system-prompt/` — the assembler (`section`/`context`/`tools`/`variable`/`assemble`, order bands, `toolOrder` with its one `'<unlisted-tools>'` rest entry, strict `{{var}}` interpolation). `packages/core/tools/` — the tool registry and Code Mode. `.agents/skills/` — 11 skills, incl. `dsh-code-review`, `dsh-prose-standard`, `dsh-trim-cot-leakage`. `.agents/notes/` — the Agent Note tree (`{lifecycle}/{class}/yyyy-mm-dd-topic.md`) and `notes/README.md`, its format spec. `docs/cookbook/maintaining-dsh-code-review.md` + `.agents/notes/proposed/process/2026-07-13-human-review-skill-maintenance.md` — the review-skill self-maintenance loop and its measured acceptance run. `docs/cookbook/adding-a-tool.md`, `docs/cookbook/adding-a-package.md` §4 (the Model Experience contract), `docs/AGENTS.md` (doc tiers + slop checklist), `docs/subsystems/` (44 pages, each with a generated `cordis-surface` region). `packages/guard/repeat-tool-reminder/` — the advisory loop-breaker. `scripts/verify-*.ts` — 30+ prose/doc gates, incl. `verify-package-readme-model-experience.ts`, `verify-agent-note-format.ts`, `verify-doc-budgets.ts`. MIT | `47f9438` |
 | **OpenHands** | `github.com/OpenHands/software-agent-sdk` | `openhands-tools/openhands/tools/<tool>/definition.py` (schema + description) and `impl.py` (runtime). **The agent moved out of `All-Hands-AI/OpenHands`**, which is now the web/desktop app | `main` @ 2026-07-31 |
+| **OpenCode — MCP result projection** (read 2026-08-21 — *targeted*, a second pass on a repo already above) | `github.com/sst/opencode` | `packages/opencode/src/mcp/` — `catalog.ts` (`convertTool`: returns the whole `CallToolResult`, and synthesises a text block from `structuredContent` **only when `content` is empty**), `index.ts` (the client/catalog service, ~1,000 lines; `McpTool` is "an MCP tool in its native shape; consumers adapt it"). `packages/opencode/src/tool/code-mode.ts` — the Code Mode tool: `describeCatalog`/`toolTree` build a `server.tool` tree for a sandboxed program, and **`projectMcpResult`** is the named projection function (structuredContent-first, an `attachments` channel for image/audio/blob, a `[N files attached]` stub, `resource_link` kept as text). The two projections are deliberately opposite; see `agent-tool-result-transport.md` §3a | `ba72a6f` |
+| **Roo Code** (read 2026-08-21 — *targeted*; prompt text stored in [`roocode/`](./roocode)) | `github.com/RooCodeInc/Roo-Code` | `src/core/tools/UseMcpToolTool.ts` — `processToolContent`, the whole MCP→model projection in 30 lines: text raw, embedded resource `JSON.stringify`d with `blob` destructured away, image routed to an `images[]` array, everything else `return ""`. `src/core/tools/accessMcpResourceTool.ts` (100 lines) is the `resources/read` side | `b867ec9` |
+| **Cline — MCP result projection** (read 2026-08-21 — *targeted*, a second pass on a repo already above) | `github.com/cline/cline` | `sdk/packages/core/src/extensions/mcp/` — `types.ts` (`export type McpToolCallResult = unknown`), `tools.ts` (`createMcpTools` wraps each server tool with no MCP-aware flattening), `manager.ts`, `client.ts`. `sdk/packages/core/src/session/persisted-tool-result-content.ts` — the three-branch rule (string → as-is, array → as-is, **object → `JSON.stringify`**) that decides what an MCP result looks like in `ToolResultContent["content"]` (`sdk/packages/shared/src/llms/messages.ts`). Note the file is named for persistence; it is reached through `runtime/config/agent-message-codec.ts` | `fb60f9e` |
 
 Already-stored captures used alongside the code (no fetch needed):
 `leaked/claude-code/Tools.json` (16 tools, full JSON Schemas),
@@ -98,6 +101,91 @@ things learned this pass that are worth adding to that assessment:
   (`content` vs `structuredContent`, `outputSchema`, `isError`,
   `annotations`: `readOnlyHint`/`destructiveHint`/`idempotentHint`/
   `openWorldHint`, resource links, pagination).
+- MCP specification, **`2026-07-28`** (the current revision; read
+  2026-08-21) — https://modelcontextprotocol.io/specification/2026-07-28/server/tools
+  and .../changelog. Supersedes the entry above for anything structural.
+  The **"Stateful Tools"** section is the load-bearing new material for
+  `agent-tool-result-transport.md` §7: protocol-level sessions and the
+  `initialize` handshake are **removed**, and server-minted opaque handles
+  passed as ordinary tool arguments are the sanctioned replacement, with
+  four stated design rules (authorize on every call, keep handles opaque,
+  put the retention policy in the creation tool's description, make expiry
+  a recoverable tool-execution error). Also: `resultType` on every result,
+  Multi Round-Trip Requests replacing server-initiated requests, tasks
+  moved to an extension, Sampling/Roots/Logging **deprecated**,
+  `ttlMs`/`cacheScope`, `icons`, `x-mcp-header`, and deterministic
+  `tools/list` ordering justified by prompt-cache hit rates. The
+  `structuredContent` backwards-compatibility SHOULD ("also return the
+  serialized JSON in a TextContent block") survives unchanged — it is the
+  duplication trap in §4.
+- MCP, *tasks extension* (`io.modelcontextprotocol/tasks`) —
+  https://modelcontextprotocol.io/extensions/tasks/overview (durable poll
+  handles: `resultType: "task"`, `taskId`, TTL, `pollIntervalMs`,
+  `tasks/get`/`tasks/update`/`tasks/cancel`; call-now/fetch-later).
+- MCP, *SEP-1865: MCP Apps* —
+  https://modelcontextprotocol.io/seps/1865-mcp-apps-interactive-user-interfaces-for-mcp
+  (`ui://` HTML resources, `text/html;profile=mcp-app`, linked to a tool
+  through `_meta`, rendered in a locked-down iframe with a CSP that blocks
+  external requests; stable 2026-01-26; supported by Claude web/desktop,
+  VS Code Insiders, Goose, Postman). The most mature "return this to the
+  user" mechanism in the ecosystem — `agent-tool-result-transport.md` §8.
+- **SEP-1624**, *Clarify `structuredContent` vs `content` usage guidance* —
+  https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1624
+  (read 2026-08-21, **open**, not merged). The client-behaviour survey is
+  the useful part: Cursor prefers `content`, VS Code prefers
+  `structuredContent`, most clients ignore it entirely, some forward both.
+  Worked example: 284 tokens structured vs 189 as prose. Companion:
+  issue #1710 / discussion #1715, a proposed configurable response format
+  (`text` / `structured` / `both`).
+- **DesktopCommanderMCP issue #521** —
+  https://github.com/wonderwhy-er/DesktopCommanderMCP/issues/521
+  (read 2026-08-21). The best field measurement of base64-in-context found
+  this pass: a 146 KB PNG returned with base64 in `structuredContent`
+  alongside a native image block cost **106,356 tokens** through Claude
+  Code vs **39,199** for the built-in read — 2.7× for identical visual
+  output. Caveat: a bug report, single-case, numbers self-reported by the
+  server's author, and the disagreement about whose fault it is (client
+  stringifying vs server over-populating) is itself the finding.
+- Anthropic, *Introducing advanced tool use on the Claude Developer
+  Platform* — https://www.anthropic.com/engineering/advanced-tool-use
+  (read 2026-08-21). Tool Search Tool with `defer_loading` (~72K → ~8.7K
+  tokens of definitions); **programmatic tool calling**, where results
+  process in a sandbox and "Claude only sees the final output" — 43,588 →
+  27,297 tokens average, −37%, on complex research tasks; tool use
+  examples, 72% → 90% on complex parameter handling. Vendor-reported,
+  internal testing, no external replication.
+- Cloudflare, *Code Mode: the better way to use MCP* —
+  https://blog.cloudflare.com/code-mode/ (MCP schemas compiled to a
+  documented TypeScript API, model writes a program, V8 isolate sandbox
+  with no direct internet and MCP reached over bindings; the stated
+  rationale — "the output of each tool call must feed into the LLM's
+  neural network, just to be copied over to the inputs of the next call").
+  The third independent arrival at the pattern, alongside Anthropic's and
+  DeepSeek's; OpenCode's `code-mode.ts` is the fourth and is readable.
+- Claude Code docs, *Connect Claude Code to tools via MCP* —
+  https://code.claude.com/docs/en/mcp (read 2026-08-21). The only
+  published per-tool cap negotiation found in any client:
+  `_meta["anthropic/maxResultSizeChars"]` in a `tools/list` entry, ceiling
+  500,000 chars, independent of `MAX_MCP_OUTPUT_TOKENS` (default 25,000,
+  warning fixed at 10,000, image content exempt from the former but not
+  the latter) — and the sentence that makes it an artifact system:
+  oversized results are "persisted to disk and replaced with a file
+  reference in the conversation." Also documents the root-level-combinator
+  flattening for input schemas the Claude API won't accept.
+- Google ADK docs, *Artifacts* — https://adk.dev/artifacts/ (read
+  2026-08-21; note `google.github.io/adk-docs` 301s here). Named,
+  **versioned** binary objects as `google.genai.types.Part`/`Blob`;
+  session scope by default and a `user:` filename prefix for
+  cross-session scope; `InMemoryArtifactService` and `GcsArtifactService`;
+  and the property that matters for context budgets — artifact data does
+  not automatically enter the LLM context, and `LoadArtifactsTool`
+  appends a loaded artifact **to that request only**, not to history.
+  The substrate for the artifact proposal in `agent-design/future.md`.
+- Gemini API docs, *Function calling* —
+  https://ai.google.dev/gemini-api/docs/function-calling (read
+  2026-08-21). For Gemini 3 and later, a `functionResponse` may carry
+  multimodal `parts` with `inlineData` — which is what dates the
+  forward-looking half of `agent-design/adk.md` §2b.
 - Command Code, *The Read Tool* —
   https://commandcode.ai/docs/harness-engineering/read-tool
   (Ahmad Awais, published on X 9 Aug 2026, long-form on the docs site;
