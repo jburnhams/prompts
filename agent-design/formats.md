@@ -1041,9 +1041,27 @@ Rules:
   start with `!` is therefore ambiguous only in position, not in
   consequence.
 - When output exceeds the cap, the head and tail are kept and the middle
-  is elided with a `! … N lines elided …` note (never the head or tail,
-  per `tools.md`'s edge rule), `truncated="true"` is set, and a `log`
-  attribute carries the scratch-directory path holding the full output.
+  is elided (never the head or tail, per `tools.md`'s edge rule),
+  `truncated="true"` is set, and a `log` attribute carries the
+  scratch-directory path holding the full output.
+- **The elision note is a stub, and states shape and the next call, not
+  just the loss.** `tools.md`'s self-describing-cap rule applies here like
+  everywhere else — "showed X of Y, here is the exact call for the rest" —
+  and a bare `! … N lines elided …` with a path satisfies neither half: it
+  says how much was cut but not how much exists, and it hands over an
+  address without saying what to do with it. The form is:
+
+  ```
+  ! 3,847 lines elided of 12,004 (840 KB) — Read {{SCRATCH_DIR}}/bash-<call-id>.log for the full output
+  ```
+
+  Totals first because they are what decides *whether* to fetch; the call
+  second because it is what makes fetching possible without guessing. The
+  same wording covers the background case, where nothing was elided but
+  everything is in the log.
+- **The log filename carries the tool-call id**, per `tools.md`'s spill
+  rule, so a retried call overwrites its own file rather than leaving the
+  model holding a path to whichever attempt finished last.
 - Background commands return immediately with `exit` absent, a
   `pid` attribute, and the `log` path — the mechanism `tools.md`'s Bash
   description already describes.

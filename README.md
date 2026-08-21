@@ -207,6 +207,54 @@ model with no function-calling support," and a caution that prompt-only
 formats leak: Gemini's Pythonic syntax was reverse-engineered from
 `MALFORMED_FUNCTION_CALL` bug reports.
 
+**[→ `agent-tool-result-transport.md`](./agent-tool-result-transport.md)** —
+one layer to the *side* of those three, and the first doc here about MCP as
+a **result transport** rather than as an extensibility checkbox: what
+happens to a tool result between the process that produced it and the
+model's context. Opens by disentangling the escaping folklore into three
+layers — the JSON-RPC transport (decoded before tokenisation, **free**),
+the provider's own rendering (Anthropic passes a raw string, Gemini's
+`FunctionResponse` is a Struct and *does* escape, the in-band dialects
+write raw text), and the payload the tool itself built — with the cost of
+each **measured**: single-level escaping is 1.11× on prose and 1.22× on
+quote-and-tab-heavy code, double-encoding 1.48×, base64 2.58–3.61×, and —
+the number that settles the design question — a line-number prefix costs
+1.13×, i.e. the *same* as escaping, while preserving the byte-exact match
+escaping destroys. The core finding is a gap in the spec: **MCP specifies
+the shape of a result and not its projection into model context**, so
+every client invents one, and the seven compared here — six of them
+read from source — disagree completely.
+OpenCode ships two deliberately opposite projections in one codebase
+(`content`-first for a model, `structuredContent`-first for its Code Mode
+program) and the only binary handling in the field that routes images and
+blobs to a separate attachment channel while leaving a *stub* in the text;
+Roo Code passes text raw but `JSON.stringify`s embedded resources, strips
+`blob` fields and drops `resource_link`, `audio` and `structuredContent`
+**silently**; Cline's SDK types an MCP result as `unknown` and
+`JSON.stringify`s the whole envelope into the conversation; ADK's Java and
+Python bindings ship two incompatible projections of the same protocol in
+the same release train. Also: the spec's own duplication trap (servers
+SHOULD serialise `structuredContent` into a text block too, so any client
+forwarding both pays twice — 284 vs 189 tokens on SEP-1624's own example);
+the 146 KB PNG that cost **106,356 tokens instead of 39,199** because a
+client stringified base64 it was already rendering natively; and, for
+payloads that shouldn't be in context at all, the **six decisions an
+artifact system forces** — minting, opaque-vs-legible naming, what the
+stub says (shape, never contents), an operation set that *reduces* rather
+than defers, expiry-as-recoverable-error, and whether a load is permanent
+— synthesised across six independent arrivals at the same pattern: MCP
+`2026-07-28`'s new "Stateful Tools" guidance (sessions were removed from
+the protocol, and server-minted handles passed as ordinary tool arguments
+are the sanctioned replacement), `resource_link`, the tasks extension,
+Claude Code persisting oversized MCP results to disk and replacing them
+with a file reference, OMP's `artifact://` reusing the file selector
+grammar so the operation set costs zero new tools, and ADK's versioned
+`ArtifactService` whose loads are appended to *one request* rather than to
+history. Closes with the protocol's unused answer to "return this to the
+user" — `annotations.audience`, `_meta`, and MCP Apps (`ui://`, stable
+2026-01-26) — and the rule that generalises it: **audience is a property
+of a content block, not of a tool call.**
+
 **[→ `agent-subagent-architectures.md`](./agent-subagent-architectures.md)**
 — a companion drill-down on one specific tool-surface capability: when
 and how a scaffold spawns another agent. Covers delegation triggers,

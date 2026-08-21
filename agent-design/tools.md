@@ -123,6 +123,26 @@ the split Claude Code makes with `outputSchema` +
 `mapToolResultToToolResultBlockParam`, Gemini CLI with
 `llmContent`/`returnDisplay`, and MCP with `content`/`structuredContent`.
 
+**The model result is exactly one text block, and nothing else.** Not one
+block per file, not a structured field alongside it, not an image, not an
+embedded resource. This looks like a transport detail and belongs here
+because it isn't one: a tool result crosses a process boundary and is
+*projected* into the conversation by client code the tool author does not
+own, and every client projects differently. Of the seven projections
+compared in [`../agent-tool-result-transport.md`](../agent-tool-result-transport.md)
+§3f, three serialise the whole result envelope into the model's context,
+two silently discard content types they don't handle, and one errors on
+anything that isn't text. A single text block is the only shape that
+survives all of them unchanged — the intersection, not a preference. Its
+corollaries: the multi-file `Read` result is *one* block containing
+several `<file>` sections (`formats.md` §8b), never several blocks;
+fact-shaped payloads are named fields **inside** that text, not a
+parallel structured channel; and the harness record travels out of band
+entirely (`adk.md` §3), because the obvious wire slot for it is the one
+clients disagree about most. The rule was derived on ADK (`adk.md` §2)
+and bites hardest there, but it is not a substrate workaround and should
+not be filed as one.
+
 **Output format policy.** Prose-shaped payloads — file contents, diffs,
 search matches, command output — are returned as **raw text**, never
 JSON-encoded. Fact-shaped payloads — exit codes, counts, truncation state,
@@ -158,6 +178,23 @@ to a file in the scratch directory (`{{SCRATCH_DIR}}`, `formats.md` §1a) and
 the model receives a preview plus that path. `Read` is the deliberate
 exception — spilling a read to a file the model then reads back is circular
 — so `Read` self-bounds via its own limits instead.
+
+Two constraints on the spilled file itself, both of which exist because a
+spill is a pointer into state with a lifetime of its own:
+
+- **The filename is derived from the invocation's tool-call id**, not
+  from a timestamp, a counter, or the command. A transport-level retry
+  re-executes the tool (`adk.md` §4), and a retry-safe spill has to
+  overwrite the previous attempt's file rather than leave two on disk
+  with the model holding a path to whichever one finished last. This is
+  the same identifier the idempotency key uses, and once that key is in
+  place the retry returns the first attempt's result and path and the
+  question stops arising — but the naming rule is what makes the two
+  mechanisms agree in the meantime.
+- **The preview is a stub, and a stub states shape**: how much exists,
+  not just how much was cut, and the exact call that retrieves the rest.
+  A path on its own defers the decision without informing it. `formats.md`
+  §8e specifies the wording for `Bash`, the only v1 tool that spills.
 
 **Some reads are refused before any I/O, by name *and* by type.** A cap can
 only bound a read that *finishes*, so anything unbounded has to be refused
@@ -196,6 +233,20 @@ suggestion. "File does not exist. Did you mean `src/parser/index.ts`?" beats
 `replace_all`" beats "ambiguous match". Nothing ever returns silent
 emptiness: an empty file, a start line past EOF, and a search with no hits
 each say so in words.
+
+**And they travel as tool-execution errors, never as protocol errors.**
+Where the transport distinguishes the two — MCP's `isError: true` result
+versus a JSON-RPC error — every error this design defines is the first
+kind. All of them are things the model can act on, which is the
+distinction the MCP specification itself draws: tool-execution errors are
+"actionable feedback that language models can use to self-correct" and
+clients **SHOULD** pass them to the model, while protocol errors are for
+malformed requests and unknown tools and clients only **MAY**. A rule
+about what an error *says* is worth nothing if the channel it travels on
+lets a client drop it. On the intended substrate there is a second,
+sharper reason — a protocol error is an exception, and an exception is
+what the client's retry policy keys off, so the design's most frequent
+errors would become its most retried ones (`adk.md` §4).
 
 **Advertise strict, accept tolerant.** The schemas below are the advertised
 contract and stay strict (`additionalProperties: false`) — a strict schema
