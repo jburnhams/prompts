@@ -103,6 +103,11 @@ Every block carries `path` and `rev`:
 <conventions path="src/api/AGENTS.md" rev="a1b2c3d">
 ```
 
+`rev` is the commit the *file content* was read at — `base_sha` in review
+mode (§5), the dispatched branch's head in coding mode. Not the file's
+last-modified commit: the question it has to answer is "which tree was
+this read from", and `git log -1 -- <path>` answers a different one.
+
 No loader in the field records a revision — provenance everywhere is a
 bare path (`Contents of /repo/CLAUDE.md`, `--- Context from: … ---`,
 `Instructions from: …`). For an interactive session that is fine: the
@@ -185,9 +190,17 @@ evaluating it. The diff shows the edit; the loader has already obeyed it.
 
 So, three rules for review mode:
 
-1. **Read conventions from the base SHA**, not the head SHA and not a
-   merge ref. The `rev` attribute makes this auditable — a reviewer can
-   check it against the PR's base.
+1. **Read conventions from `base_sha`** — the *merge-base* the design
+   already computes and records for the diff (`review.md` §2:
+   `base_sha = merge-base(base_branch_tip, head_sha)`), not the head SHA,
+   not a merge ref, and not the base branch tip. Using the same SHA for
+   both means the rules and the "before" side of every hunk come from one
+   tree, and it inherits §2's argument for merge-base unchanged: a
+   base-tip read would charge this PR with conventions changes that landed
+   on the base branch after it was opened, the same way a two-dot diff
+   charges it with unrelated drift. The `rev` attribute makes it auditable
+   — a reviewer can check it against `<pull_request>`'s `Base SHA` field,
+   which already carries the same value.
 2. **A diff touching a conventions file is a finding**, surfaced by the
    orchestrator to the `conventions` specialist as a normal changed file
    with its own hunks, never silently absorbed into the rules.
@@ -374,10 +387,75 @@ answer:
 | Per-file toggles / exclusion globs | a knob whose setting is invisible in the transcript | Cline (UI toggles), Claude Code (`claudeMdExcludes`) |
 | Mid-session reload | a run is short; Codex caches on environment selection and does not reload on edit either | nobody reloads on mtime |
 | Content transformation | §4 — cheaper not to than to track the divergence | Claude Code, Cline |
+| MCP servers, skills, hooks, plugins as instruction channels | §12 — each makes "what was in the prompt" depend on state outside the repository | Claude Code, Codex, Gemini CLI, OpenHands, Crush, Zed |
 
 ---
 
-## 12. Decisions this changes
+## 12. Programmatic context channels
+
+Not in v1, and the reason is worth writing down rather than leaving as an
+omission, because three of the four are things a deployment will
+eventually want.
+
+Forge has **no MCP client, no skills, no hooks, and no plugin system**.
+The one MCP appearance in this design is the other direction —
+[`adk.md`](./adk.md) exposes *Forge's own tools* over MCP, so Forge is the
+server, and a server's tools carry no instruction channel toward it.
+Everything in the prompt is therefore harness-authored or
+repository-authored, and both have an envelope, a provenance line and a
+scope statement.
+
+That is a real capability gap, and it is the right v1 default for the same
+reason the rest of this document keeps reaching: **a hands-off run's
+transcript is its only record**, and every one of these channels makes
+"what was in the prompt" depend on state that isn't in the repository.
+
+If any of them is added later, four rules, from
+[`../agent-context-file-loading.md`](../agent-context-file-loading.md)
+§12a:
+
+1. **Same envelope, same provenance, no higher a role.** Codex's
+   arrangement is the one to not copy: a plugin's own instruction text and
+   a hook's stdout arrive as `developer`-role messages with an **empty
+   marker pair** — undelimited, unrecognizable in the transcript, and a
+   rung *above* `AGENTS.md`, which does get a marker pair and the lower
+   `user` role. The more dynamic and less reviewed channel should not
+   outrank the one that shows up in diffs.
+2. **Mid-session additions are append-only conversation events, never
+   prefix rewrites.** Claude Code names the alternative in a constant:
+   `DANGEROUS_uncachedSystemPromptSection` — "rebuilt every turn;
+   cache-busts on late connect". Its delta mechanism diffs newly-connected
+   MCP servers against the conversation's own history and emits only the
+   difference; retraction is an appended "these no longer apply" note
+   rather than an edit, because rewriting history defeats the cache the
+   mechanism exists to protect. §7's reasoning applies identically.
+3. **An MCP server's `instructions` string is an unreviewed instruction
+   channel**, set at handshake, arriving from whatever the deployment
+   configured. It gets §4's nonce and §5's scope sentence, or it does not
+   go in the prompt.
+4. **Skills, if added, are progressive disclosure — not a second
+   conventions file.** The catalog description is the real interface, and
+   every implementation in the field spends prompt words stopping the
+   model treating the description as a substitute for the body (Crush:
+   "The `<description>` is only a trigger... Do NOT infer a skill's
+   behavior from its description"). Retrieval over the catalog is a
+   further step and should follow Codex's discipline rather than its
+   ambition: eleven competing selectors, all deterministic and side-effect
+   free, all running in **shadow mode** without changing what the model
+   sees, judged on metrics before any of them ships. `eval.md` is where
+   that would live.
+
+One thing the field does *not* do, which is worth not inventing: **nobody
+generates repository context programmatically.** No harness runs a hook, a
+server or a skill to produce `AGENTS.md`-equivalent text per run. Skills
+come closest and are still static files disclosed late. If Forge ever
+wants per-run conventions, the honest place is the orchestrator's
+`<focus>` block (`review.md` §4), which is already harness-authored,
+already logged, and already distinguishable from repository content.
+
+---
+
+## 13. Decisions this changes
 
 | Was | Now | Why |
 |---|---|---|
@@ -386,3 +464,4 @@ answer:
 | `formats.md` §8b: nearby conventions appended after `</files>` | Same, plus `rev`, nonce, realpath dedup, and a logged trigger | §9 |
 | `system-prompts.md` step 1: "read it before writing any code" | Unchanged for a file the envelope didn't carry; the root file now arrives inlined, so step 1 is a fallback rather than the primary path | §8 |
 | (new) | `Complete.conventions_loaded` | §10 |
+| (new) | `<conventions>` `rev` = `base_sha` in review mode, matching `<pull_request>`'s `Base SHA` | §3, §5 — same merge-base the diff already uses |

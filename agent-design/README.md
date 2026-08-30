@@ -226,8 +226,11 @@ does not need lifecycle folders or a format gate):
    and how truncation is announced, path+revision provenance, the
    nonce-bearing envelope, what the file is *scoped* to instruct, and
    the review-mode rule that conventions are read at the **base** SHA
-   and a diff touching them is a finding rather than an instruction.
-   Supersedes one decision in `review.md` §1.
+   (the same merge-base `review.md` §2 already computes for the diff) and
+   a diff touching them is a finding rather than an instruction. §12
+   covers the programmatic channels v1 does without — MCP server
+   `instructions`, skills, hooks, plugins — and the four rules if any of
+   them is added later. Supersedes one decision in `review.md` §1.
 5. `review.md` — the review entrypoint's payloads in full depth: the
    diff-construction algorithm, the comment-thread model (including
    stale threads' then/now rendering), the exact finder/validator
