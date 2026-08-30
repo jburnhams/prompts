@@ -443,12 +443,14 @@ change later rather than a schema change.
    claim. Adapted here: when a run's diff touches UI-classified paths,
    `Complete` requires `evidence`. Cline's prose version of the same loop is
    voluntary and nothing checks it.
-3. **Reviewer sight as a separate decision.** Codex's three-valued
-   `Disabled` / `TextOnly` / `Multimodal` mode governs whether a *reviewer*
-   receives screenshots as well as a transcript
-   (`../agent-vision-multimodal.md` §11). It maps directly onto `review.md`'s
-   fixed team, and the default should be text-only with at most one lens
-   granted sight — actor sight and reviewer sight are different budgets.
+3. **Reviewer sight** — **resolved and in v1, not a direction.** A fourth
+   specialist lens, `visual`, is the one review role with `InspectImage`
+   wired, fanned out conditionally when the PR carries an image or touches
+   UI paths (`review.md` §1c). The validator stays text-only deliberately:
+   granting it sight would dissolve §5's independence rule rather than serve
+   it — it would be checking the same pixels with the same eyes — so a
+   `visual` finding must anchor to the line of code producing what the image
+   shows, and the validator re-derives it the ordinary way.
 
 **Deferred with reasons:**
 

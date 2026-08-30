@@ -510,7 +510,7 @@ orchestrator's `Complete` report:
 ```json
 {
   "id": "string, orchestrator-assigned once a specialist returns it",
-  "role": "bugs | security | conventions",
+  "role": "bugs | security | conventions | visual",
   "file": "string",
   "line": 0,
   "line_end": 0,
@@ -523,6 +523,13 @@ orchestrator's `Complete` report:
   "validator_note": "string, the validator's one-sentence reason"
 }
 ```
+
+`visual` is the one role fanned out **conditionally** — only when the PR
+carries an image artifact or touches UI-classified paths (`review.md` §1c) —
+and the only one whose specialist has `InspectImage` wired. Its findings
+carry a code anchor like any other, because the validator is text-only and
+re-derives from code; a visual observation that cannot name the line
+producing it is not a finding at all.
 
 `validated: null` is the specialist's own output, before the validator
 pass runs; `true`/`false` is the validator's verdict. Only `true`

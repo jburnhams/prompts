@@ -82,7 +82,7 @@ because its model has no tools to go look.
 ---
 
 
-### 1c. Attachments on the PR and its threads
+### 1c. Attachments on the PR and its threads, and the `visual` lens
 
 A pull request's description and its review comments carry images —
 before/after screenshots, an annotated mockup, and on a re-review the
@@ -92,23 +92,55 @@ thread. These reach review mode exactly as they reach coding mode: as
 `<existing_comments>`, complete and unconditional, with bytes fetched only
 if something looks (`artifacts.md` §5.1).
 
-Two rules specific to review:
+**Sight is granted to exactly one role.** `InspectImage` is wired for a
+fourth specialist lens, `visual`, and for nobody else — not the
+orchestrator, not `bugs`/`security`/`conventions`, not the validator. That
+keeps the narrowed tool scope the other roles already have
+(`README.md`'s decision log) and concentrates the cost in the one place it
+buys something. Codex is the only source in the collection that models
+reviewer sight as its own decision — a three-valued
+`Disabled`/`TextOnly`/`Multimodal` mode governing whether a reviewer
+receives screenshots at all (`../agent-vision-multimodal.md` §11) — and
+this is the same decision resolved one notch further open.
 
-- **Reviewer sight is a separate decision from actor sight**, and defaults
-  to off. `InspectImage` is not wired for `reviewer` or `validator`
-  sub-agent types in v1 — consistent with the narrowed tool scope those
-  types already get (`README.md`'s decision log) — so images reach the
-  review pipeline as stubs the orchestrator may inspect, not as pixels every
-  specialist pays for. Codex is the only source in the collection that
-  models this explicitly, with a three-valued `Disabled`/`TextOnly`/
-  `Multimodal` mode governing whether a reviewer receives screenshots at all
-  (`../agent-vision-multimodal.md` §11); granting one lens sight is the
-  documented upgrade, in `vision.md` §8.
-- **An image in a comment thread is discussion, not a verdict**, under the
-  same rule §4–5 already applies to comment text: threads are never verdicts
-  nor a skip list. An author's screenshot showing a fix does not close a
-  finding; it is evidence to weigh.
+**The `visual` lens runs conditionally**, which no other lens does. It is
+fanned out only when the PR actually has something to look at: an image
+artifact on the description or a thread, **or** a diff touching
+UI-classified paths. On a backend-only PR it is not spawned at all. Every
+other lens always runs; making this one conditional is deliberate, because
+a specialist with nothing in scope still costs a full context and returns
+nothing but noise.
 
+**What it looks for**, in rough priority: an implementation that contradicts
+an attached mockup; a before/after pair that does not show what the
+description claims; a screenshot in a thread that contradicts — or
+confirms — an existing finding; and rendering problems visible in a
+supplied screenshot that the diff explains.
+
+**Its findings anchor to code like everyone else's, and that is a
+constraint rather than a formality.** The validator is text-only by
+design, and §5's independence rule is that a validator re-derives a
+finding *from the code*, not from the finder's argument. A visual finding
+with no code anchor cannot be re-derived that way, and granting the
+validator sight would dissolve the independence rather than preserve it —
+it would be checking the same pixels with the same eyes. So:
+
+- A `visual` finding must name the file and line whose behaviour produces
+  what the image shows — a spacing token, a breakpoint, a colour
+  constant. The validator then checks it the ordinary way, against code.
+- A visual observation with no code anchor is **not a finding**. It is
+  either dropped, or — when it matters enough — carried in the orchestrator's
+  `Complete` report summary for a human, never posted as an inline comment
+  asserting a defect.
+
+That constraint is doing real work, not just satisfying the schema: "this
+looks a bit off" is not a review comment anybody can act on, and a lens
+that cannot tie what it sees to a line of code is producing exactly that.
+
+**An image in a comment thread is discussion, not a verdict**, under the
+same rule §4–5 already applies to comment text: threads are never verdicts
+nor a skip list. An author's screenshot showing a fix does not close a
+finding; it is evidence to weigh.
 
 ## 2. Diff construction algorithm
 

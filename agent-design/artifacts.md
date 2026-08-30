@@ -44,6 +44,13 @@ rather than adding any:
 | `ReadSource(scope, path, offset, limit)` | `Read({path: "git://acme/payments@a1b2c3d/src/Bill.java", …})` |
 | `SearchSource(scope, pattern, glob, …)` | `Grep({pattern, path: "git://acme/payments@a1b2c3d"})` |
 
+The `Grep` half of that collapse depends on the backing service being able
+to *search*, not just fetch by path — confirmed 2026-08-30: a
+Sourcegraph-class code-search service backs `git://`. Had the backing been
+a platform API with weak code search, `Grep` over `git://` would have had
+to degrade visibly or wait for phase 2, and the two-tool collapse would
+have been one and a half.
+
 And it is what `tools.md`'s own granularity rule already required. That rule
 says split a primitive when the split changes a **harness** answer —
 permission class, destructiveness, concurrency safety, result shape.
@@ -81,7 +88,7 @@ tree, which stays the overwhelmingly common case and gets the shortest form.
 |---|---|---|---|
 | *(bare path)* | `src/parser/index.ts` | no | working tree |
 | `file://` | `file:///tmp/scratch/repro.py` | no | local filesystem, scratch dir included |
-| `git://` | `git://acme/payments@a1b2c3d/src/Bill.java` | **yes at a SHA**, no at a branch | code host / search index |
+| `git://` | `git://acme/payments@a1b2c3d/src/Bill.java` | **yes at a SHA**, no at a branch | a code-search service (Sourcegraph-class) — confirmed available, which is what makes `Grep` over `git://` a real indexed query rather than a degraded one |
 | `dep://` | `dep://com.acme:billing:4.2.1/com/acme/Bill.java` | yes | build manifest → source jar |
 | `artifact://` | `artifact://txt_04d1e8f2` | yes | run store |
 | `run://` | `run://2026-08-14T09-22Z-7f3a/transcript` | yes | run archive |
@@ -250,6 +257,16 @@ system forces. Answered in order.
 | **Ingest** | any attachment on a fetched issue, PR or comment | the harness, unconditionally, at fetch time |
 | **Spill** | any non-write result over threshold | the harness, automatically (§4) |
 | **Explicit** | a tool that knows it produced a durable payload | the tool |
+
+**Both ingest paths are built to the same standard** — images turn up on
+tickets and on pull requests about equally often (confirmed 2026-08-30), so
+neither side is the thin one. They are not equally *easy*: a Jira
+attachment is a first-class object in the issue API, while a PR-side image
+is as often embedded in comment or description **markdown** as it is a
+formal attachment, so the PR path additionally parses image references out
+of rendered bodies and mints an artifact per distinct target. Both then
+produce identical stubs, and nothing downstream knows which side a stub
+came from.
 
 **Ingest minting is unconditional and complete.** `FetchJira` and the PR
 fetch return **every** attachment as a stub — not a selection, not only the

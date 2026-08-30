@@ -294,6 +294,11 @@ day-to-day tickets against moving dependencies.
 > destructiveness, concurrency, result shape), only in where the bytes come
 > from, which is what a scheme encodes.
 >
+> The backing service this entry left deliberately unspecified is now
+> settled: a **Sourcegraph-class code-search service**, which is what makes
+> the `Grep`-over-`git://` half of the collapse a real indexed query rather
+> than a degraded fetch-and-scan.
+>
 > Everything below survives as **resolver requirements**, unchanged and
 > still load-bearing: the phasing, the rule that a dependency's version
 > comes from the build manifest and never from the model, the local-first
