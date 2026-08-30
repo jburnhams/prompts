@@ -68,9 +68,12 @@ reviewed PR is accepted and noted in `future.md`.)
 </plan>
 
 <repo_context>
-  {{ optional: contents of the root project-conventions file, if one
-     exists and is short enough to inline; otherwise its path only,
-     and the model reads it itself in step 1 of its workflow }}
+  {{ optional: the root project-conventions file as a nonce-bearing
+     <conventions path= rev= nonce=> block. Inlined up to 32 KiB;
+     beyond that the first 32 KiB with a `!` truncation note — never
+     path-only. Omitted entirely when no such file exists. Deeper files
+     arrive just-in-time (§8b). Full loader spec, including the
+     review-mode base-SHA rule, in `context-files.md` }}
 </repo_context>
 ```
 
@@ -922,7 +925,12 @@ Rules:
   never silently dropped: a block exists for every request.
 - **Nearby project conventions** discovered for any file in the batch are
   appended once, after `</files>`, inside a single `<system-reminder>`
-  block naming which paths they came from — not repeated per file.
+  block naming which paths they came from — not repeated per file. Each
+  arrives as the same nonce-bearing `<conventions path= rev=>` block the
+  envelope uses; the trigger is the **resolved path arguments of file
+  tools only** (never shell argv, never the user's prose), dedup is by
+  realpath in a per-run set, and every attachment is logged with the tool
+  call that caused it. See `context-files.md` §9.
 
 ### 8c. `List`
 

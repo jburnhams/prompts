@@ -47,7 +47,7 @@ ladder — for each kind of context, *why* it sits where it sits:
 | PR metadata, description, changed-file list | Inline, envelope | Needed by every run, tiny, and the harness has it anyway from the webhook/API call that triggered the run |
 | The diff | Inline, envelope, pre-built by the harness (§2) | Line-number fidelity is the whole game: a posted comment's anchor derives from these hunks, and no human filters a mis-anchored comment before it lands. Also removes a whole class of failure where the model runs the *wrong* diff command (wrong base, no rename detection) and reviews the wrong delta |
 | Existing comments and threads (§3) | Inline, envelope; transcluded into specialist/validator briefs (§4–5), including, for stale threads, the then/now code blocks (§3a) | The dedup step (pipeline step 4) and re-review reconciliation (§7) need the complete set, and finders/validators need it as intent context — the record of what humans asked for, without which a specialist can end up proposing the revert of a requested change (§3); "fetch if you think you need it" is exactly how a run silently duplicates a comment |
-| Project-conventions files | Path known to orchestrator; contents read in step 2 and transcluded into the `conventions` specialist's brief (or held in hand by a single-stage finder) | Only the conventions lens needs the text; repo-controlled, so lower injection risk than PR content |
+| Project-conventions files | Path known to orchestrator; contents read in step 2 **at the PR's base SHA** and transcluded into the `conventions` specialist's brief (or held in hand by a single-stage finder), nonce-wrapped like `<existing_comments>` | Only the conventions lens needs the text. **Superseded** (see [`context-files.md`](./context-files.md) §5): this row previously read "repo-controlled, so lower injection risk than PR content" and gave the block no nonce. That holds for a coding run and not for a review one — the conventions file can be *part of the diff*, and Codex's own published review workflow checks out `refs/pull/N/merge`, so the `AGENTS.md` its CLI loads already contains the PR's edits to `AGENTS.md`. Base SHA, a nonce, and "a diff touching a conventions file is a finding, not an instruction" replace the assumption |
 | Surrounding code beyond hunks | **Not inline** — Read/Grep/List against the working tree at Head SHA | See below |
 | Linked ticket | Phase 2+, inline when present (`medium.md` §3a) | Compliance lens only |
 
@@ -401,10 +401,13 @@ that identity is the point.)
    reported no checks }}
 </gates>
 
-<conventions file="{{path}}">
+<conventions path="{{path}}" rev="{{base_sha_blob_rev}}" nonce="{{nonce}}">
 {{ contents of one project-conventions file scoped to the changed
-   paths — conventions role only; one tag per file }}
-</conventions>
+   paths — conventions role only; one tag per file. Read at the PR's
+   **base** SHA, not head and not a merge ref; the closing tag carries
+   the nonce; transcluded whole, never re-wrapped —
+   [`context-files.md`](./context-files.md) §§3-5 }}
+</conventions-{{nonce}}>
 
 <format_notes>
 {{ present iff active for a transcluded block — §3b }}
@@ -465,9 +468,13 @@ transcludes:
   that class of bug unrepresentable, which is the same structural-gates
   argument the design applies to git writes and read-before-edit
   (`README.md`'s decision log). The blocks the orchestrator *does*
-  wrap — `<pr>`, `<diff>`, `<gates>`, `<conventions>`, `<focus>` — are
+  wrap — `<pr>`, `<diff>`, `<gates>`, `<focus>` — are
   harness-authored and carry no nonce, so nothing is lost by wrapping
-  them.
+  them. **`<conventions>` moved out of that list**: it is
+  harness-*assembled* but repository-*authored*, and on a review run the
+  repository in question may be the PR under review
+  ([`context-files.md`](./context-files.md) §5). It is now nonce-bearing
+  and transcluded whole, on the same terms as `<existing_comments>`.
 
 Four rules with teeth:
 

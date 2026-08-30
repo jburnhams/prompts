@@ -221,25 +221,32 @@ does not need lifecycle folders or a format gate):
    protocol, the run-bounding contract, and (§8) the byte-level shape
    of every tool result — including how a multi-file, multi-range
    `Read` delimits its blocks without escaping anything.
-4. `review.md` — the review entrypoint's payloads in full depth: the
+4. `context-files.md` — how a repository's own `AGENTS.md`/`CLAUDE.md`
+   becomes prompt bytes: discovery and collision rules, the byte budget
+   and how truncation is announced, path+revision provenance, the
+   nonce-bearing envelope, what the file is *scoped* to instruct, and
+   the review-mode rule that conventions are read at the **base** SHA
+   and a diff touching them is a finding rather than an instruction.
+   Supersedes one decision in `review.md` §1.
+5. `review.md` — the review entrypoint's payloads in full depth: the
    diff-construction algorithm, the comment-thread model (including
    stale threads' then/now rendering), the exact finder/validator
    brief formats, the two run shapes (single-stage and multi-stage),
    re-review sessions (state, interdiff, thread reconciliation),
    mid-run race policy, and the seam with comment-driven fix runs.
-5. `examples/` — worked, end-to-end instances of every review
+6. `examples/` — worked, end-to-end instances of every review
    payload, all on one fictional PR followed from first review
    through re-review to a responder run.
-6. `medium.md` — the medium-term roadmap: concrete post-v1 upgrades
+7. `medium.md` — the medium-term roadmap: concrete post-v1 upgrades
    with design sketches, plus the named escalation triggers.
-7. `future.md` — long-horizon and measurement-gated work, tracked
+8. `future.md` — long-horizon and measurement-gated work, tracked
    separately so it isn't silently re-litigated later.
-8. `adk.md` — implementation-substrate notes, not design: how this
+9. `adk.md` — implementation-substrate notes, not design: how this
    surface fits Java ADK with every tool exposed over MCP, what needs
    overriding (the MCP result envelope, the retry policy on mutating
    tools), what to accept, and what to verify against a running stack.
    Deliberately separate so the design itself stays substrate-neutral.
-9. `eval.md` — the measurement harness: the hostile-workspace fixtures,
+10. `eval.md` — the measurement harness: the hostile-workspace fixtures,
    the accuracy-*and*-cost metrics, the rules of engagement (reps, noise
    floor, two models, caveats recorded next to verdicts), and the
    ship/no-ship log. This is what turns `tools.md`'s configuration
