@@ -301,3 +301,22 @@ Cursor ("unless the user explicitly asks... DO NOT create").
 - **No retrospective stage**: nothing triages outcomes, distils failure
   shields, or runs over a finished transcript. Memory here is a
   context-preservation device, not a learning loop.
+
+## Vision and multimodal
+
+Windsurf ships the finest-grained browser split in the collection — seven
+single-purpose tools where Cline has one multi-mode tool:
+`browser_preview`, `list_browser_pages`, `open_browser_url`,
+`read_browser_page`, `get_dom_tree`, `capture_browser_screenshot`
+(*"Capture a screenshot of the current viewport of a browser page that is
+already open in Windsurf Browser"*, keyed by `page_id`), and
+`capture_browser_console_logs`.
+
+The split is the finding: DOM tree, screenshot and console logs are three
+separate calls, so the model pays only for the channel it needs — text
+structure, pixels, or runtime errors — rather than receiving all three
+whenever it acts. `browser_preview` is scoped to the app being built,
+putting Windsurf in the same small group as Claude Preview and Gemini CLI's
+`allowedDomains` browser (see
+[`agent-vision-multimodal.md`](../../agent-vision-multimodal.md) §9).
+Screenshots arrive only as tool results; there is no image-reading tool.

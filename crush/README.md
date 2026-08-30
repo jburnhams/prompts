@@ -409,3 +409,44 @@ here, at `1ea2714`.
 - **`initialize_as`** (default `AGENTS.md`) names which file `/init` writes,
   independently of which files are read — so a project can be initialized
   into `docs/LLMs.md` while still reading all seventeen defaults.
+
+## Vision and multimodal
+
+**Correction.** `agent-tool-surfaces.md` §5 listed Crush under "not
+addressed at all." The `view` tool reads images
+(`internal/agent/tools/view.go`, read 2026-08-30 @ `1ea2714`).
+
+**Capability travels to the tool through `context.Context`.**
+`internal/agent/tools/tools.go` defines `SupportsImagesContextKey` and
+`GetSupportsImagesFromContext(ctx)`; `internal/agent/agent.go:875` sets it
+per call from `largeModel.CatwalkCfg.SupportsImages`. Both `view.go` and
+`mcp-tools.go` consult it. This is a different placement from the other
+harnesses in this collection — Cline, Roo Code and Zed strip images at
+request-build time; Crush refuses at the tool, returning a text error that
+**names the model**:
+
+```
+This model (%s) does not support image data.
+```
+
+Cheaper and clearer for that call, at the cost that the image never enters
+history — switching to a sighted model mid-session does not recover the
+earlier look (contrast Cline's explicit note that it does).
+
+**MIME is sniffed from magic bytes, not the extension**, with the reason in
+a comment:
+
+> Some tools save files with a mismatched extension (e.g. pinchtab writes
+> JPEG bytes to a .png file). Providers like Anthropic strictly validate the
+> media type against the base64 magic bytes and 400 on mismatch, so prefer
+> the sniffed type whenever it identifies a supported image format.
+
+A screenshot pipeline produces exactly these files, so this is a rule worth
+copying rather than a curiosity. Images are also subject to the same
+`MaxViewSize` cap as text, refused with `Image file is too large (%d bytes).
+Maximum size is %d bytes` before any read.
+
+**No browser and no screenshot tool.** `internal/ui/image/image.go` is a
+terminal renderer, not a model-facing capability. The two-tier
+`fetch`/`agentic_fetch` split documented under Tool surface remains Crush's
+only web access.

@@ -438,3 +438,45 @@ by design rather than as a dedup side-effect.
   `# Rules from ...` heading of its own.
 - **`useAgentRules: false`** disables the `AGENTS.md` family only; the
   `.roo`/`.cline` families have no equivalent switch.
+
+## Vision and multimodal
+
+Read from source on 2026-08-30 (`RooCodeInc/Roo-Code` @ `b867ec9`).
+Cross-harness comparison in
+[`agent-vision-multimodal.md`](../agent-vision-multimodal.md).
+
+**Input is attachment-only.** No `view_image`-style tool, and `read_file`
+does not handle images. What exists is the plumbing around user-supplied
+images: `src/core/mentions/resolveImageMentions.ts`,
+`src/integrations/misc/process-images.ts` and `image-handler.ts`, plus
+`imageHelpers.ts` for tool results.
+
+**`maybeRemoveImageBlocks` is the field's least informative degradation.**
+`src/api/transform/image-cleaning.ts` checks
+`apiHandler.getModel().info.supportsImages` **once per request** rather than
+per message ("Check model capability ONCE instead of for every message"),
+then rewrites every image block to:
+
+```
+[Referenced image in conversation]
+```
+
+with a comment conceding the limit — *"We can't access the actual image
+content/url due to API limitations, but we can indicate that an image was
+present."* Compare Cline's `[Image attached — this model cannot view
+images]` and Crush's model-naming error: Roo Code's text tells the model
+nothing it can act on, so the next turn is a guess rather than a question.
+Like Cline and Zed, the substitution is at request build, so history keeps
+the real image.
+
+**`generate_image` is output, not sight.** `src/core/tools/
+GenerateImageTool.ts` + `src/core/prompts/tools/native-tools/
+generate_image.ts` call OpenRouter image models (text-to-image and
+image-to-image) and write the result to a workspace file, with
+`src/api/providers/utils/image-generation.ts` and a dedicated settings panel
+(`webview-ui/src/components/settings/ImageGenerationSettings.tsx`).
+
+**The browser is still gone.** `packages/core/src/browser.ts` remains, but
+the Puppeteer-based `browser_action` tool was removed in v3.48.0 (Feb 2026)
+as previously recorded under Tool surface; the orphaned `puppeteer-core`
+dependencies have no importing tool.

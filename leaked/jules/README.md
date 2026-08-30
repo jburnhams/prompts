@@ -253,3 +253,41 @@ cross-task memory mechanism represented by one line of tool schema.
   — Jules checks its work exhaustively *within* a task and carries
   nothing forward from it except whatever `initiate_memory_recording`
   does.
+
+## Vision and multimodal
+
+Jules has the strongest **verification** story in the collection, and the
+most entry points.
+
+**Three image doors.** `read_image_file(filepath)` — *"Reads the image file
+at the filepath into your context. Use this if you need to see image files
+on the machine, like screenshots"* — and `view_image(url)` — *"You should
+use this tool anytime the user provides you a URL that appears to point to
+an image based on context (e.g. ends in .jpg, .png, .webp). You may also use
+this tool to view image URLs you come across in other places, such as output
+from `view_text_website`."* No other source splits local and remote into two
+named tools; the URL one even tells the model to look for image links inside
+the text of pages it fetched.
+
+**Frontend verification is a gated completion protocol, not a habit.** Two
+tools:
+
+- `frontend_verification_instructions` — *"Returns instructions on how to
+  write a Playwright script to verify frontend web applications and generate
+  screenshots of your changes."* The instructions are fetched from a tool
+  rather than carried in the system prompt: just-in-time, like this
+  collection's other conventions-loading patterns.
+- `frontend_verification_complete(screenshot_path)` — whose **only
+  parameter is a screenshot path**. Completion is not a claim, it is a file.
+
+That is the distinguishing move. Cline's prompt describes the same
+verify-fix-verify loop in prose ("verify the component renders & functions
+correctly before closing the browser") and nothing checks it happened;
+Jules puts a screenshot path in the exit signature. Nothing inspects the
+screenshot's *contents* — the gate proves an artefact exists, not that it is
+correct — but that is still one more gate than anyone else has
+(`agent-vision-multimodal.md` §11).
+
+There is no interactive browser tool: the browser is reached by writing and
+running a Playwright script under `run_in_bash_session`, which keeps the
+whole capability inside the existing shell surface.

@@ -482,3 +482,28 @@ Three properties worth pulling out, all of which distinguish this from
   excludes "investigatory," "trivially simple and one-off," and "minor
   follow-up" work. The same don't-narrate-trivia exclusion Gemini CLI's
   `update_topic` states as a rate limit.
+
+## Vision and multimodal
+
+Antigravity takes the delegation pattern further than anyone: the browser is
+not a tool set but **an agent**, and its output is an artifact rather than a
+turn.
+
+`browser_subagent` (in `Fast Prompt.txt` only) is given a free-text
+instruction and owns the browser entirely; the parent holds no browser state
+and, per the captured prompt, must *ask* the subagent to read the DOM or
+capture a screenshot to learn what it did. Every interaction is
+"automatically recorded and saved as WebP videos to the artifacts
+directory," described as "the ONLY way you can record a browser session
+video/animation" — the only video-as-evidence mechanism found in this
+collection (Grok Build's `video_gen` is generation, not evidence).
+
+The **Walkthrough** artifact is the other half: screenshots and recordings
+embedded as verification evidence in a durable file that is *updated* rather
+than appended across the task, alongside a plan template that separates
+"Automated Tests — exact commands you'll run, browser tests using the
+browser tool" from "Manual Verification." Compare Jules, which gates task
+completion on handing over a screenshot path, and Codex, which retains
+screenshots as reviewer-visible evidence under a configurable mode — three
+different placements of the same idea, compared in
+[`agent-vision-multimodal.md`](../../agent-vision-multimodal.md) §11.

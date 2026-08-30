@@ -153,7 +153,7 @@ browser automation.
 
 | Tier | Sources |
 |---|---|
-| No web/browser tool at all | OpenHands (`EXTERNAL_SERVICES` prefers API access over browsing), Aider, mini-swe-agent, Live-SWE-agent, Augment SWE-bench Agent (explicitly no internet access), Pi, Gemini CLI's captured snippet (no web-fetch constant imported here), Codex CLI (confirmed against the live `codex-rs/core/src/tools/` registry, not just the prompt text — no dedicated web-fetch/search tool handler exists; see `codex/README.md`'s Tool surface section). A leaked, differently-provenanced capture (`leaked/codex-supplement/control-chrome.md`, mirrored from asgeirtj's aggregator) describes a `@chrome`-triggered, Playwright-backed browser-control skill referencing a "Codex Chrome Extension" — but this is very likely a *different Codex-branded product surface* (a ChatGPT/web-hosted agent with MCP tools, Node-REPL execution, and a skills system) than the open-source `codex-rs` terminal CLI this row documents, and is deliberately not folded into it here; see `leaked/codex-supplement/README.md` for the full distinction. |
+| No web/browser tool at all | OpenHands (`EXTERNAL_SERVICES` prefers API access over browsing), Aider, mini-swe-agent, Live-SWE-agent, Augment SWE-bench Agent (explicitly no internet access), Pi, Gemini CLI's captured snippet (no web-fetch constant imported here — but **correction**: the repo ships a full browser *sub-agent* built on chrome-devtools-mcp, which no captured prompt mentions because the sub-agent builds its own; see [`agent-vision-multimodal.md`](./agent-vision-multimodal.md) §10), Codex CLI (confirmed against the live `codex-rs/core/src/tools/` registry, not just the prompt text — no dedicated web-fetch/search tool handler exists; see `codex/README.md`'s Tool surface section). A leaked, differently-provenanced capture (`leaked/codex-supplement/control-chrome.md`, mirrored from asgeirtj's aggregator) describes a `@chrome`-triggered, Playwright-backed browser-control skill referencing a "Codex Chrome Extension" — but this is very likely a *different Codex-branded product surface* (a ChatGPT/web-hosted agent with MCP tools, Node-REPL execution, and a skills system) than the open-source `codex-rs` terminal CLI this row documents, and is deliberately not folded into it here; see `leaked/codex-supplement/README.md` for the full distinction. |
 | **Correction**: had a browser tool, removed it before this collection's snapshot | Roo Code — shipped a Puppeteer-based `browser_action`-style tool ("Browser Use 2.0," Nov 2025) and then removed it entirely three months before archival (v3.48.0, Feb 2026, per `CHANGELOG.md`); orphaned `puppeteer-core`/`puppeteer-chromium-resolver` dependencies remain with no importing code. "No browser tool" is accurate for the final snapshot but was originally stated as an inherent architectural divergence from Cline rather than a removed feature — see `roocode/README.md`. |
 | **Correction**: has a real (if unwired-by-default) browser-automation bundle | SWE-agent — `tools/web_browser` (`open_site`/`click_mouse`/`type_text`/`screenshot_site`/`execute_script_on_page`) exists as a named bundle, just not part of the `default.yaml` configuration this collection documents; originally marked "not addressed" without checking. |
 | Scoped to fetching the product's **own documentation only**, not general browsing | OpenCode (`WebFetch` restricted to `opencode.ai`) |
@@ -177,9 +177,24 @@ consistent with running in network-isolated sandboxes.
 The thinnest capability in the whole survey — almost nobody addresses it
 directly as a named tool concern.
 
+> **Superseded in large part.** A later pass read the *source* of the
+> harnesses this section had judged from prompt text, and the "not
+> addressed" verdict does not survive: Goose (`read_image`, with a `crop`
+> rectangle), Crush (`view` returns images), Zed (`read_file` returns
+> images), OpenHands (`inspect_image_with_vision`, plus a full
+> `browser_use` toolset) and Gemini CLI (an entire browser sub-agent with a
+> delegated computer-use model) all handle images, mostly through tools no
+> captured prompt names. SWE-agent's `image_tools` bundle is confirmed to
+> exist and contain `view_image`. The rows below are left as written, with
+> the corrections and the full analysis — transport, capability gating,
+> resize budgets, coordinate fidelity, image lifetime under compaction,
+> browser postures, delegated vision, screenshots as verification evidence
+> — in
+> **[`agent-vision-multimodal.md`](./agent-vision-multimodal.md)**.
+
 | Approach | Sources |
 |---|---|
-| Not addressed at all in what's captured | The large majority — OpenHands, OpenCode, Aider, Augment SWE-bench Agent, mini/Live-SWE-agent, Composio SWE-Kit, Goose, Bolt.new, Gemini CLI, Claude Code's extracted tool list, Cursor's extracted tool list, Pi |
+| Not addressed at all in what's captured | ~~The large majority — OpenHands, OpenCode, Aider, Augment SWE-bench Agent, mini/Live-SWE-agent, Composio SWE-Kit, Goose, Bolt.new, Gemini CLI, Claude Code's extracted tool list, Cursor's extracted tool list, Pi~~ — **five of these were wrong**: OpenHands, Goose, Gemini CLI and (from the full `Tools.json`) Claude Code all ship image handling, and Crush and Zed — not even listed here — do too. Genuinely absent after a source read: Aider (deliberate null), OpenCode (attachment path only, no tool), Augment SWE-bench Agent, mini/Live-SWE-agent, Composio SWE-Kit, Bolt.new, Pi. See [`agent-vision-multimodal.md`](./agent-vision-multimodal.md) §16 |
 | A dedicated **image-generation** tool (output, not input) | **Correction**: Roo Code — `GenerateImageTool.ts` (`generate_image`) calls OpenRouter's image-generation models for real text-to-image/image-to-image generation, writing results to a workspace file; `UseMcpToolTool.ts`/`accessMcpResourceTool.ts` also extract image content from MCP responses. Originally marked "not addressed" without checking the actual tool registry — see `roocode/README.md`. A second, one-line-only instance: Cursor's `Agent Prompt (asgeirtj capture).md` — a sixth, differently-provenanced capture not present in `Agent Tools v1.0.json` — names a bare `GenerateImage` tool ("Generate an image file from a text description. Only use when the user explicitly asks for an image"), with no further detail on backend/model; see `leaked/cursor/README.md`. |
 | Named but unconfirmed — flagged rather than asserted either way | SWE-agent's `tools/image_tools` bundle exists (name confirmed, contents not read) — given how wrong the "not addressed" calls turned out for this same source's browser capability (row above), this is left unresolved rather than assumed empty |
 | Screenshots as the closest analog — captured for visual inspection as a side effect of browser automation, not a standalone "look at this image" tool | Cline (`browser_action`'s implicit screenshot feedback loop), Windsurf (`capture_browser_screenshot`) |
@@ -188,9 +203,16 @@ directly as a named tool concern.
 | A dedicated **view an image file** tool, model-gated on actual vision support | **Correction**: Codex CLI — `view_image` (base64-encodes a file into a data URL, returned as an `InputImage` content item; errors explicitly if "you do not support image inputs") — wrongly marked absent in an earlier prompt-text-only pass; found only by checking the live tool registry. See `codex/README.md`. |
 | A dedicated **video-generation** tool (output, not input) — not matched by any other source in this collection | Grok Build (leaked) — `video_gen` ("Generate a video from a text description using the xAI Video Generation API... Duration 1-15 seconds (default 8s). Resolution '480p' or '720p'"), alongside `image_gen`/`image_edit` (xAI's Imagine API, ten supported aspect ratios) and `read_file`'s built-in image/PDF-page/`.pptx`/`.ipynb` handling |
 
-**Takeaway**: despite most underlying models being vision-capable, almost
-none of these scaffolds give the model a dedicated "attach/view an image"
-tool independent of a browser-screenshot side effect — multimodal input
+**Takeaway** (**revised after the source read** — the original claim, that
+almost nobody has a dedicated view-an-image tool, was an artefact of reading
+prompts rather than code): dedicated image tools are common —
+`view_image` (Codex, SWE-agent, Jules), `read_image` (Goose),
+`inspect_image` (OMP), `inspect_image_with_vision` (OpenHands) — and where
+there is no separate tool the *read* tool usually handles images (Claude
+Code, Zed, Crush, Devin, Grok Build). What is genuinely rare is any answer to
+what happens to an image *after* it arrives: only Codex prices and atomically
+retains images through compaction, and only Gemini CLI evicts a stale visual
+observation. Original text retained for the record: multimodal input
 handling here is overwhelmingly implicit (whatever the chat UI passes
 through) rather than a named, described tool capability. Generative
 *output* tooling is rarer still and, until Grok Build, entirely

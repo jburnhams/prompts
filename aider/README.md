@@ -216,3 +216,18 @@ this collection that **has no context-file loader at all**. Read
   Aider pushes the sharing problem to a separate place instead: a
   community [conventions repository](https://github.com/Aider-AI/conventions)
   of files you fetch and point `--read` at.
+
+## Vision and multimodal
+
+The deliberate null case, and worth recording as one. Aider has no browser,
+no screenshot tool, no image-reading tool and no vision-related prompt text
+of any kind: images enter only by the user `/add`-ing a file, and whether
+that works is a property of the configured model, not of the harness.
+Nothing in the prompts stored here mentions images, screenshots or visual
+verification.
+
+Set against `agent-vision-multimodal.md`'s four questions — entry,
+transport, admission, lifetime — Aider answers only the first, and by
+delegation. That is consistent with its architecture elsewhere (no context
+files, no memory tool, edit formats over tool schemas): capability is the
+model's business, the harness handles diffs.

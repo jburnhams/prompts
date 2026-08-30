@@ -332,3 +332,46 @@ careful.
   → `Rope`), not `fs::read`, so an open, unsaved editor buffer is what the
   model sees — the only loader in the collection that reads editor state
   rather than disk.
+
+## Vision and multimodal
+
+**Correction.** `agent-tool-surfaces.md` §5 listed Zed under "not addressed
+at all." `read_file` returns images as visual content
+(`crates/agent/src/tools/read_file_tool.rs`, read 2026-08-30 @ `399258f`).
+
+Its doc comment — which *is* the tool description, per the
+`AgentTool`-derives-schema-from-doc-comment pattern noted under Tool
+surface — says: *"This tool supports reading image files. Supported formats:
+PNG, JPEG, WebP, GIF, BMP, TIFF. Image files are returned as visual content
+that you can analyze directly."* The path runs `image_store::is_image_file`
+→ `project.open_image` → `LanguageModelImage::from_image`, emits an
+`acp::ContentBlock::Image` to the client for display, and returns a
+`LanguageModelToolResultContent::Image` to the model. Everything is
+normalised to `image/png` on the ACP side. MCP tool results carrying
+`ToolResponseContent::Image` take the same route through
+`context_server_registry.rs`.
+
+**Degradation happens at the tool-result boundary** (`thread.rs:3640`).
+When `!model.supports_images()`, each image part is replaced with
+
+```
+[Tool responded with an image, but this model doesn't support images]
+```
+
+and — the part worth copying — the surrounding *text* parts of a multi-part
+result are preserved, with an error surfaced only when the result was
+image-only ("to match the pre-multi-part behavior"). A tool that returns a
+description plus a picture still delivers the description.
+
+**Zed is the only source here that publishes image capability outward.**
+`Thread::prompt_capabilities()` builds
+`acp::PromptCapabilities::new().image(model.supports_images())`
+(`thread.rs:1325`), so the client stops offering image attachment for a
+text-only model rather than accepting one and silently dropping it.
+Capability detection that faces only the provider leaves the user's
+paperclip button lying.
+
+**No browser, no screenshot tool.** `crates/image_viewer/` and
+`crates/repl/src/outputs/image.rs` are editor surfaces, not agent
+capabilities — though the REPL one means a notebook-style cell that plots a
+chart produces an image nobody had to screenshot.
