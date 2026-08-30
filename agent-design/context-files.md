@@ -23,7 +23,18 @@ decision made in `review.md` §1** — see §5.
 
 ---
 
-## 1. Discovery
+## 1. Discovery (a specification for the service, not the harness)
+
+Forge does not walk the filesystem for conventions. **The context service
+resolves all three tiers**, repo included (§1a), so what follows is the
+discovery contract *it* implements.
+
+It is specified here, in Forge's design, rather than left to the service's
+own documentation, for two reasons. Forge's behaviour depends on the
+answers — which file won a collision decides which rules the run followed
+— and §10's run record has to be able to *explain* the resolution, which
+means both sides have to agree on what the rules were. A discovery rule
+that lives only in the service is a rule nobody reading a run can check.
 
 **Filenames**, tried in this order, per directory:
 
@@ -33,8 +44,8 @@ AGENTS.md   CLAUDE.md   AGENT.md
 
 **First match per directory wins, and the shadowed file is named in the
 run record.** A directory containing both `AGENTS.md` and `CLAUDE.md`
-contributes only `AGENTS.md` — and §10's `conventions_loaded`, which the
-*harness* writes, carries a `shadowed` entry naming the `CLAUDE.md` that
+contributes only `AGENTS.md` — and the service reports the loss, so §10's
+`conventions_loaded` carries a `shadowed` entry naming the `CLAUDE.md` that
 lost, so "my `CLAUDE.md` is being ignored" is a visible fact rather than a
 mystery. The model is never told, and could not be: it has no way to know
 a file it was not shown exists. The rule without
@@ -77,20 +88,34 @@ setting is invisible in the transcript.
 
 ---
 
-## 1a. Three tiers, two sources
+## 1a. Three tiers, one source
 
-| Tier | Scope | Source | Discovered how |
+| Tier | Scope | Authored where | Resolved how |
 |---|---|---|---|
-| **org** | every run, every repo | the context service | supplied at task start |
-| **team** | every run dispatched by one team or service | the context service | supplied at task start |
-| **repo** | this repository (root → deeper, §1) | the working tree | filesystem walk |
+| **org** | every run, every repo | the org's standards system | context service |
+| **team** | every run dispatched by one team or service | the team's standards system | context service |
+| **repo** | this repository (root → deeper, §1) | the repository, at a ref | context service, reading the repo at that ref |
 
-The split is the design. **The harness discovers only the repo tier**,
-because a repository is the one context whose bytes are already versioned,
-reviewable and present. Everything above the repository is **handed to the
-run**, by a service that resolves which standards apply to this repo and
-this team and returns them structured (§1b). Nothing above the git root is
-read off disk.
+**All three tiers arrive from the context service, resolved at task
+start.** Forge reads no conventions off any filesystem — not the runner's,
+and not the checkout's. That is a separation of concerns rather than a
+distrust of the working tree: discovery, collision, normalisation, caching
+and versioning are one problem, and they belong to one component that can
+be specified, tested and cached independently of any run.
+
+The gain is that **one contract covers all three tiers**. Precedence,
+budgeting, provenance, the run record and the write-protection set (§10a)
+each need per-section metadata, and once the service is producing that for
+org and team standards, having the repo tier arrive by a second, differently
+shaped path would mean maintaining two of everything. Repo conventions also
+change rarely, so the same cache that makes org standards cheap makes repo
+standards cheap.
+
+The consequence to be clear-eyed about: **the service is a hard
+dependency.** A run that cannot get a resolution does not start (§1b). That
+is a deliberate trade — see the failure taxonomy — and it is the price of
+the invariant that every run's conventions are resolved, versioned and
+recorded, with no path by which one silently operates under none.
 
 This is deliberately unlike the field, where the org and user tiers are
 paths on the machine running the agent — `~/.claude/CLAUDE.md`,
@@ -98,7 +123,13 @@ paths on the machine running the agent — `~/.claude/CLAUDE.md`,
 policy at `/etc/claude-code/CLAUDE.md`. Those work for a person at a
 terminal who put the file there. For a dispatched run they are the worst
 of both worlds: authoritative enough to change the output, invisible
-enough that nobody can tell they did.
+enough that nobody can tell they did. Every harness in the collection
+also reads the repo tier straight off the checkout, which is fine for an
+interactive session — the working tree is the answer to every question —
+and is exactly what produces the CI ambiguity
+[`../agent-context-file-loading.md`](../agent-context-file-loading.md) §15
+documents, where the tree the rules came from and the tree the diff came
+from are set by different steps and nothing records either.
 
 **No user tier.** A run is dispatched by a system, and the design's
 archetype-2 posture (`README.md`) means there is no person in the loop
@@ -168,18 +199,38 @@ along a line nobody writes documents along. Making the *section* the unit
 lets the authored file keep its shape while §1a's precedence still works.
 
 So the service returns **sections**, each carrying its resolved binding and
-a pointer back to the document and heading it came from:
+a pointer back to the document and heading it came from. Repo-tier sections
+come back in the same shape, with `source` naming a path and a commit
+instead of a standards-system record.
+
+The request carries what the dispatcher knows, and — critically — **the ref
+to resolve the repo tier at**:
+
+```
+{ "repo": "...", "ref": "<merge-base for review, branch head for coding>",
+  "team": "...", "task_id": "..." }
+```
+
+`ref` is not optional and not defaulted. §5's whole finding depends on a
+review run reading conventions at the merge-base rather than at the PR
+head; a service that serves "the current version" of a repo's conventions
+reintroduces it, either as the Codex failure (rules from the merge ref,
+so a PR edits the rules that review it) or the Gemini one (rules from the
+default branch, diff from the PR, differing whenever the base has moved).
+
+The response:
 
 ```
 {
-  "resolved_for": { "repo": "...", "team": "...", "task_id": "..." },
+  "resolved_for": { "repo": "...", "ref": "...", "team": "...",
+                    "task_id": "..." },
   "version": "<the cache's version for this resolution>",
   "generated_at": "<ISO-8601>",
   "stale": false,
   "sections": [
     {
       "id": "org/engineering-standards#data-handling",
-      "tier": "org" | "team",
+      "tier": "org" | "team" | "repo",
       "binding": "policy" | "default",
       "title": "Data handling",
       "body": "<Markdown, inert>",
@@ -190,7 +241,9 @@ a pointer back to the document and heading it came from:
         "document": "org/engineering-standards",
         "section_path": ["Security", "Data handling"],
         "system": "...",
-        "ref": "<commit, version, or record id of the authored document>"
+        "ref": "<commit, version, or record id of the authored document>",
+        "path": "<repo tier only: path within the repository>",
+        "shadowed": ["<repo tier only: candidates that lost §1's collision>"]
       },
       "derivation": {
         "method": "verbatim" | "normalised",
@@ -226,6 +279,10 @@ unmarked section inherits the document; an unmarked document is `default`
   something upstream changes. Because the service caches, determinism is a
   property of its architecture rather than a promise it has to keep by
   discipline.
+- **`source.path` and `source.shadowed`** — repo tier only. The path is
+  what §10a's write-protection set is keyed on and what §9's just-in-time
+  reveal walks against; `shadowed` carries §1's collision losers so the run
+  record can name them.
 - **`stale` + `generated_at`** — see availability below.
 - **`bytes`** — so the harness can budget (§2) before deciding what to
   inline, rather than measuring after.
@@ -285,6 +342,28 @@ Splitting and tagging are the safe end of that spectrum; rewriting and
 merging are the sharp end. The contract does not forbid the sharp end, it
 requires that it be labelled.
 
+### Caching, and the repo tier
+
+**The cache key is `(repo, ref, team)`.** Repo conventions change rarely,
+which is what makes caching them worthwhile — but "rarely" is a statement
+about *how often the content changes*, not about how many refs exist. A
+service keyed on repo alone cannot answer the question §5 requires.
+
+**On a miss, the service fetches.** It reads the repository at that ref,
+runs §1's discovery, and caches the result. The cold path is a synchronous
+git read, and it is cheap in practice because the *content* is what
+matters: most refs on a repository share the same conventions blobs, so
+keying the resolved output on a content hash of the discovered files makes
+nearly every miss a hash comparison rather than a re-normalisation. Serving
+the nearest cached ref instead would be faster and would reintroduce a
+visible-but-real version of the failure this exists to prevent.
+
+**Repo sections are resolved, not just fetched.** The service applies §1's
+filenames, collision rule and walk bounds, and returns the outcome —
+including what was shadowed. This is why §1 is specified in this document
+rather than left to the service: two components have to agree on it, and a
+run record has to be able to explain it.
+
 ### Behaviour
 
 - **Ordering is stable** and the harness preserves it. Not for
@@ -292,18 +371,52 @@ requires that it be labelled.
   position — but so the assembled envelope is byte-identical between runs,
   which §7's cache reasoning depends on.
 - **Empty is a valid answer**, returned as `sections: []` with a
-  `version`, never as an error and never as a 404.
-- **Degradation is graded, and never silent.** Because the service caches,
-  an upstream failure does not have to mean no standards: it serves the
-  last good resolution with `stale: true` and a `generated_at` the harness
-  reports. Only when the service itself is unreachable does the run
-  proceed **without** the org and team tiers — and then the harness records
-  the failure prominently (§10) and, in review mode, states it in the
-  posted review. Blocking the run instead is the tempting answer and the
-  wrong one: it converts an availability problem into a delivery problem
-  for every repo at once. But a review that silently ran without org
-  policy, and reads exactly like one that ran with it, is the failure this
-  design cannot tolerate.
+  `version`, never as an error and never as a 404. "This org has no
+  policies that apply to a Go file in this repo" is a real and common
+  answer, and it is not a failure.
+
+### The failure taxonomy
+
+Four outcomes, and they are deliberately not all the same:
+
+| Outcome | Run | Recorded as |
+|---|---|---|
+| Resolution returned | proceeds | normal, with `version` and `resolved_for` |
+| Resolution returned, `sections: []` | proceeds | normal — the service answered |
+| Served from cache, `stale: true` | proceeds | stale, with `generated_at` |
+| No resolution — repo unknown, or service unreachable | **does not start** | a dispatch failure naming the repo and the ref |
+
+**A run that cannot get a resolution does not start.** Not "proceeds
+without conventions and records it loudly" — that was this document's
+earlier position, and it does not survive the repo tier moving behind the
+same service. An unresolvable org tier is a partial answer; an
+unresolvable *repo* tier means the run has no conventions at all, and a
+hands-off agent producing a PR under conventions it never saw is not a
+degraded run, it is a wrong one.
+
+That gives a single invariant worth more than the flexibility it costs:
+**every run that starts has a resolved, versioned, recorded context, or
+there is no run.** Nothing downstream has to handle the "what if there
+were no conventions" case — §10a's write-protection set is always
+well-defined, §10's record is never partially empty, and no reviewer ever
+has to work out whether a finding's absence meant a rule didn't exist or a
+service was down.
+
+The cost is real and should be stated rather than argued away: a
+service-coverage gap becomes a delivery outage, and it lands on exactly
+the repositories least equipped to diagnose it — a new repo's first PR,
+where nobody yet knows the service needs to ingest it. Two things make
+that acceptable. The failure is **loud, immediate and specific** (a
+dispatch error naming the repo and the ref, not a review that silently
+skipped a policy), so it gets fixed rather than tolerated. And the
+alternative failure is silent by construction: a review that ran without
+org policy reads exactly like one that ran with it, and nobody finds out.
+
+**Staleness is not this case.** A cached resolution served with
+`stale: true` is an *answer* — the run proceeds on conventions that are
+merely old, which for files that change rarely is usually no difference at
+all. The harness records it, and in review mode states it in the posted
+review.
 - **Authenticated transport, and tier is not self-asserted.** The response
   is an instruction channel — it changes what the agent does. The harness
   accepts `tier: "org"` only from the configured, authenticated service
@@ -317,6 +430,39 @@ requires that it be labelled.
   org-authored, or model-normalised earns it a higher *binding*, not a
   higher *role*, and not an exemption from containment — §12's first rule,
   applied to the channel it was written for.
+
+### Selection is the harness's job, and it is deterministic
+
+The service returns everything that applies to `(repo, ref, team)`. The
+harness then selects **which of those sections this run gets**, by three
+deterministic filters, in order:
+
+1. **`applies_to`** — evaluated against the changed-file set (review) or
+   the working tree (coding), with the same glob semantics as everything
+   else here.
+2. **`scope`** — matched against the run mode, and in a multi-stage review
+   against each specialist's lens (`review.md` §4), so a security-scoped
+   section reaches the specialist that can act on it rather than all five.
+3. **Budget** — the fill order below.
+
+Then it concatenates, in precedence order (§1a), into the envelope.
+
+**No model-side selection.** The alternative — advertise a catalogue of
+section titles and let the model pull the bodies it wants, the skills
+pattern from
+[`../agent-context-file-loading.md`](../agent-context-file-loading.md)
+§12a — scales better to a large corpus and is wrong here for two reasons.
+A `policy` section the model declined to open is a policy that did not
+apply, which defeats the point of a binding. And every skills
+implementation in the field spends prompt words fighting the same failure
+(Crush: "The `<description>` is only a trigger... Do NOT infer a skill's
+behavior from its description or skip loading it because you think you
+already know how to do the task") — a fight worth having for optional
+procedural knowledge, not for the rules the run is meant to be held to.
+
+Determinism is the other half: the same task resolves to the same sections
+every time, and §10's record can say *why* each one was included. A model
+choosing would make that unanswerable.
 
 ### Budget interaction
 
@@ -404,8 +550,9 @@ bare path (`Contents of /repo/CLAUDE.md`, `--- Context from: … ---`,
 `Instructions from: …`). For an interactive session that is fine: the
 working tree answers every question. For a hands-off run whose transcript
 is the only record, it means nobody reading the transcript afterwards can
-say which version of the rules applied. It is one `git rev-parse` per
-file.
+say which version of the rules applied. Under §1b it costs nothing at all:
+the service resolves at a ref it was given, so the revision is an input to
+the resolution rather than something anyone has to remember to capture.
 
 This is also what makes §5 checkable rather than a matter of trust.
 
@@ -502,10 +649,11 @@ evaluating it. The diff shows the edit; the loader has already obeyed it.
 
 So, three rules for review mode:
 
-1. **Read conventions from `base_sha`** — the *merge-base* the design
-   already computes and records for the diff (`review.md` §2:
-   `base_sha = merge-base(base_branch_tip, head_sha)`), not the head SHA,
-   not a merge ref, and not the base branch tip. Using the same SHA for
+1. **Resolve at `base_sha`** — the *merge-base* the design already
+   computes and records for the diff (`review.md` §2:
+   `base_sha = merge-base(base_branch_tip, head_sha)`) is what the
+   dispatcher passes as §1b's `ref`, not the head SHA, not a merge ref,
+   and not the base branch tip. Using the same SHA for
    both means the rules and the "before" side of every hunk come from one
    tree, and it inherits §2's argument for merge-base unchanged: a
    base-tip read would charge this PR with conventions changes that landed
@@ -519,16 +667,19 @@ So, three rules for review mode:
 3. **`<conventions>` carries a nonce** (§4), like `<existing_comments>`.
    The §1 table row that says it doesn't is superseded.
 
-**Which files a review run loads.** §1's walk is "cwd up to the repository
-root", and a review run has no cwd — it has a set of changed files spread
-across the tree. So the review-mode walk is the same rule with the changed
-set standing in for cwd: **the root file, plus every conventions file on a
-path from the root down to each changed file's directory**, deduped by
-realpath and ordered root-first as everywhere else. A PR touching
+**Which sections a review run gets.** §1's walk is "cwd up to the
+repository root", and a review run has no cwd — it has a set of changed
+files spread across the tree. The service resolves the whole repository at
+`base_sha` regardless; the *harness* then selects (§1b), applying the same
+rule with the changed set standing in for cwd: **the root sections, plus
+every repo section whose `source.path` sits on a path from the root down
+to a changed file's directory**, ordered root-first as everywhere else. A
+PR touching
 `src/api/handler.ts` and `docs/guide.md` loads the root `AGENTS.md`,
 `src/api/AGENTS.md` and `docs/AGENTS.md` — and nothing from `src/worker/`,
-which the PR does not touch. This is what `review.md` §4's "scoped to the
-changed paths" means, made checkable.
+which the PR does not touch, even though the resolution contains it. This
+is what `review.md` §4's "scoped to the changed paths" means, made
+checkable.
 
 The alternative of loading only the root file is cheaper and more
 predictable, and it is wrong for exactly the repositories that most need
@@ -637,7 +788,10 @@ the model reads it itself". Made concrete:
 - **Absent**: the tag is omitted entirely, not emitted empty. An empty tag
   invites the model to remark on the absence.
 
-Only the root file is inlined at dispatch. Deeper files arrive by §9.
+Only root-level repo sections, plus the org and team sections §1b's
+filters selected, are inlined at dispatch. Deeper repo sections are in the
+harness's hand from the same resolution but held back until §9's trigger
+fires — they are *revealed*, not fetched.
 
 ---
 
@@ -670,9 +824,12 @@ built on.
 
 ## 9. Just-in-time loading for deeper files
 
-When a tool touches a path below the working directory, the harness walks
-up from that path to the working directory and attaches any `AGENTS.md`
-in between that has not already been sent,
+The harness already holds every repo section for this ref — §1b resolves
+the whole repository in one call, not just the root. So just-in-time
+loading is a **reveal**, not a read: when a tool touches a path below the
+working directory, the harness walks up from that path through the
+sections it is already holding and attaches any whose `source.path` sits
+on the way and that has not already been sent,
 appended once after `</files>` in a `<system-reminder>` block — the
 mechanism `formats.md` §8b already specifies, now with §4's envelope and
 §3's `rev`.
@@ -707,11 +864,19 @@ reproducibility problem before it is anything else. Goose's underlying
 instinct — shell work needs local conventions too — is right; its
 implementation is what to avoid.
 
-**Dedup is by realpath**, in a per-run set. Gemini CLI's `dev:ino` keying
-is the only fully correct dedup in the field and it exists for a case
-Forge doesn't have (a developer laptop with a case-insensitive filesystem
-and mixed-case filenames); realpath handles symlinks, which is the case
-that survives into CI.
+**Dedup is by section `id`**, in a per-run set — trivially correct, since
+the service already resolved the collisions, symlinks and casing that make
+dedup hard for a filesystem walker (§1b, and
+[`../agent-context-file-loading.md`](../agent-context-file-loading.md) §5
+on the five different dedup keys the field uses and the one that is
+actually right). Moving discovery into the service is what makes this the
+easy part rather than the subtle one.
+
+**Nothing is read from disk at attach time**, which removes a failure the
+field has and this design would otherwise inherit: a file that changed, or
+appeared, between dispatch and the tool call. Every section a run sees
+comes from one resolution at one ref, so the run's conventions are fixed
+for its whole duration and the record can name them once.
 
 **Every JIT attachment is logged with the same fields as an eager one** —
 path, rev, and the tool call that triggered it. Conditional loading is
@@ -820,11 +985,13 @@ permission belongs. A run without the flag that concludes it needs a
 conventions change has `AskUser` and `Complete`'s report; it does not have
 `Write`.
 
-One consequence worth stating: the refusal is scoped to the paths **this
-run actually loaded**, which is why §10's harness-side record is a
-prerequisite rather than an optional extra. A run that loaded no
-conventions file blocks nothing, and a file the loader shadowed (§1) is not
-protected — it was never instruction to this run.
+The protected set is **every repo section's `source.path` in the
+resolution**, not just the ones inlined so far. A section held back for
+§9's reveal is still instruction to this run; a file the resolution
+shadowed (§1) is not, and is not protected. Note this is well-defined for
+every run by construction, because a run with no resolution does not start
+(§1b) — one of the quieter benefits of making the service a hard
+dependency.
 
 ---
 
@@ -834,7 +1001,7 @@ protected — it was never instruction to this run.
 |---|---|---|
 | `@path` imports | §6 — every implementation is a security project; the ancestor walk covers the main case | Claude Code, Gemini CLI, Goose |
 | User tier | §1a — a dispatched run has no person whose preferences should shape the result | almost all |
-| Reading *any* tier off the runner's filesystem | §1a — org and team arrive from the context service (§1b); the harness reads only the working tree | all of them (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `/etc/claude-code/CLAUDE.md`) |
+| Reading conventions off *any* filesystem, the checkout included | §1a — all three tiers arrive resolved from the context service (§1b) | all of them, for every tier |
 | Fetching instructions over HTTP | unpinned, uncached, unverified bytes steering a run | OpenCode (`config.instructions` accepts `https://`, 5s timeout, no integrity check) |
 | Cross-repo / marketplace rule sources fetched by the *agent* | same, plus they change with no commit in the repo under review. The context service is the sanctioned version of this: resolved once at dispatch, versioned, recorded (§1b) | OpenHands (`load_public_skills`), Cline (`remote` tier), Claude Code (managed policy, team memory) |
 | `paths:` frontmatter conditionals | §9's ancestor walk is the coarse version and needs no DSL; the fail-open/fail-closed matrix is four decisions to get right | Claude Code, Cline |
@@ -927,5 +1094,10 @@ already logged, and already distinguishable from repository content.
 | Earlier draft of this document: no tier above the repository, org rules routed to `review.md`'s `<focus>` | **Three tiers** — org, team, repo — with org and team supplied by a context service at task start | §1a, §1b. The original argument ("a dispatched run has no user") only ever applied to the *user* tier; `<focus>` is a few sentences of per-run direction and review-only, so an org coding standard had nowhere to go at all |
 | (new) | Precedence is two axes: `policy` from above beats the repo, `default` from above loses to it | §1a — collapsing them forces a choice between a repo that can opt out of security policy and an org that dictates naming to a vendored fork |
 | (new) | Context-service contract: a normalising cache, not a lookup. **Sections** are the atomic unit; `binding` resolves document-level then section-level, defaulting to `default`; `source` pins the *authored* document and heading path; `derivation` labels model-normalised text; contradictions are surfaced in `conflicts`, never silently resolved; degradation is graded (stale cache, then proceed-without, always recorded) | §1b |
-| (new) | Dispatcher asserts `repo`/`team`/`task_id`; the service resolves what they imply, and echoes them back | §1b — Forge never guesses at team membership, and a wrong team is visible in the record instead of silently producing the wrong standards |
+| (new) | Dispatcher asserts `repo`/`ref`/`team`/`task_id`; the service resolves what they imply, and echoes them back | §1b — Forge never guesses at team membership, and a wrong team is visible in the record instead of silently producing the wrong standards |
+| §1a as first written: harness walks the working tree for the repo tier, service supplies org and team | **All three tiers from the service**, resolved at one ref; Forge reads no conventions off any filesystem | §1a, §1b. Separation of concerns: discovery, collision, normalisation, caching and versioning are one problem and belong to one component. One contract then covers all three tiers instead of two differently-shaped paths |
+| §1b as first written: on service failure, proceed without the org and team tiers and record it loudly | **A run that cannot get a resolution does not start** | §1b's failure taxonomy. Superseded by the repo tier moving behind the same service: an unresolvable org tier is a partial answer, an unresolvable repo tier means no conventions at all, and "proceeds without" stops being coherent. Buys the invariant that every run that starts has a resolved, versioned, recorded context. Costs a delivery outage on a coverage gap, accepted because that failure is loud and specific where the alternative is silent by construction |
+| (new) | Service request carries a **`ref`**; cache key is `(repo, ref, team)`; a miss fetches and resolves | §1b — a service serving "the current version" reintroduces §5's finding, as either the Codex failure (a PR edits the rules that review it) or the Gemini one (rules from the default branch, diff from the PR) |
+| (new) | Section selection is **harness-side and deterministic** — `applies_to`, then `scope`, then budget | §1b — a `policy` section the model declined to open is a policy that did not apply, and a model choosing makes "why was this rule in context" unanswerable |
+| §9 as first written: JIT walks the filesystem and reads nearby files | JIT **reveals** sections the harness already holds from the one resolution | §9 — nothing is read from disk at attach time, so a run's conventions are fixed at one ref for its whole duration |
 | (new) | `Bash` working directory is a JIT trigger alongside file-tool paths | §9 — closes the package-scoped build/test-conventions case without argv parsing |

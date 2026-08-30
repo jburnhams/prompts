@@ -68,15 +68,16 @@ reviewed PR is accepted and noted in `future.md`.)
 </plan>
 
 <repo_context>
-  {{ optional: nonce-bearing <conventions tier= binding= nonce= ...>
-     blocks, in precedence order — org and team documents resolved by the
-     context service at dispatch (`context-files.md` §1b), then the root
-     project-conventions file read from the working tree. Each inlined up
-     to 32 KiB, truncated at a heading boundary with a `!` note beyond
-     that — never path-only. Omitted entirely when there is nothing to
-     carry. Deeper repo files arrive just-in-time (§8b). Full loader
-     spec, including the tier precedence and the review-mode base-SHA
-     rule, in `context-files.md` }}
+  {{ nonce-bearing <conventions tier= binding= nonce= ...> blocks, in
+     precedence order. All three tiers — org, team and repo — come from
+     one context-service resolution at dispatch, keyed on the run's ref
+     (`context-files.md` §1b); the harness selects which sections apply
+     and concatenates. Each inlined up to 32 KiB, truncated at a heading
+     boundary with a `!` note beyond that — never path-only. Deeper repo
+     sections are held back and revealed just-in-time (§8b). A run whose
+     resolution failed does not start, so this block is never absent for
+     want of one. Full spec, including tier precedence and the
+     review-mode base-SHA rule, in `context-files.md` }}
 </repo_context>
 ```
 
