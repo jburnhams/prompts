@@ -90,6 +90,31 @@ The parts that make it more than "feed comments to a model":
   items considered, **0 candidates surfaced**. "Days without a skill
   update are the workflow behaving correctly, not a stall."
 
+**Re-read 2026-08-30 at `cd5ef81`** (the stored copies remain the
+`47f9438` snapshot). Two weeks on, `dsh-code-review/SKILL.md` has gained
+exactly one rule — item 7, "Client UI copy is locale-owned" — and
+`git log` says where it came from: `3c10f5d2d fix(client): route UI copy
+through locale`, **the implementation PR that established the
+convention**, which in one commit routes ~40 files' strings through the
+locale dictionaries, adds the `verify-client-ui-i18n` gate, writes a new
+Agent Note, and appends the review rule that will catch the next
+violation. The maintenance loop did not produce it. The same shape holds
+for the file's other recent history: `61703d224` adds the `change-scope`
+tool *and* rewrites the skill's opening paragraph to tell reviewers to run
+it; `a4be4b5e5` replaces item 5 wholesale rather than appending a sixth.
+So over the window observed here, mining produced zero rules and ordinary
+convention-setting PRs produced all of them — not an argument against the
+loop (its authors call silence correct), but a sharp one about order of
+investment. Recorded in full in
+[`../agent-memory-learning.md`](../agent-memory-learning.md) §8, alongside
+the protocol detail from the Agent Note that the first pass summarised:
+merge-commit ancestry as the sole eligibility check, why PR conversation
+comments are excluded outright (a force-push makes "which commit preceded
+this comment" unprovable), batch-level fail-closed on a hallucinated id,
+and the rule that most sharply separates this loop from the
+self-mining ones — **"a singleton may qualify; recurrence is not
+required."**
+
 ### 2. The review skill's own content: manual checks, not a checklist
 
 It opens by disclaiming itself — "**This skill is guidance, not a

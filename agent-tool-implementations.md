@@ -48,6 +48,17 @@ findings below separate the two — the failure modes it describes are
 reproducible reasoning about a tool anyone can build; the scorecard is
 treated as a claim, not a finding.
 
+A 2026-08-30 pass added §12, on a family the four questions above don't
+quite reach: **memory tools**. Nobody built the database it sounds like —
+every implementation is either the ordinary file tools pointed at a
+different directory or a duplicate read/list/search family scoped to one
+root, so the engineering lands in the path predicate, the single write the
+schema permits, and the guards that run before the bytes do. Sources read
+for it: Codex CLI's `memories` extension and its two-phase write crates,
+Goose's memory MCP server, Gemini CLI's background extraction agent, Claude
+Code's `memdir` / team-sync / per-sub-agent stores, and Cline's tool set,
+where the rule-writing tool has become a button.
+
 ---
 
 ## 1. A tool has three consumers, and the good implementations give each its own channel
@@ -1914,7 +1925,275 @@ MCP is where "someone else's tools" arrive, and it inverts several defaults:
 
 ---
 
-## 12. The checklist
+## 12. Memory tools: a second, confined file family
+
+Read 2026-08-30 from live clones: Codex CLI `codex-rs/ext/memories/` +
+`codex-rs/memories/` (`2832735`), Goose `crates/goose-mcp/src/memory/mod.rs`
+(`8ae4e4b`), Gemini CLI `packages/core/src/agents/skill-extraction-agent.ts`
++ `services/memoryService.ts` + `services/sessionSummaryUtils.ts` (`0bd1d43`),
+Claude Code `src/memdir/` + `src/services/teamMemorySync/` +
+`src/tools/AgentTool/agentMemory*.ts` (`6f6f12b`, leaked-source caveats in
+`sources.md` apply), Cline `sdk/packages/core/src/extensions/tools/`
+(`48d6385`). What each store *contains* and who writes it is
+[`agent-memory-learning.md`](./agent-memory-learning.md); this section is
+the tool layer only.
+
+The headline: **nobody built a memory database with a query language.**
+Every implementation here is either the ordinary file tools pointed at a
+different directory, or a duplicate read/list/search family scoped to one
+root. The engineering is not in the tools — it is in the path predicate
+underneath them, the one write that is allowed, and the guards that run
+before the bytes land.
+
+### 12a. Four shapes, and three deletions
+
+| Source | Tool surface | Where the confinement lives |
+|---|---|---|
+| **Codex CLI** | Four namespaced tools — `memories.search`, `memories.read`, `memories.list`, `memories.add_ad_hoc_note` | `MemoriesBackend`, a trait whose every path error is a model-visible message |
+| **Goose** | Four MCP tools — `remember_memory`, `retrieve_memories`, `remove_memory_category`, `remove_specific_memory` | `get_memory_file`, which rejects the category name before any I/O |
+| **Claude Code** | **None.** `Read`/`Edit`/`Write` against `~/.claude/…/memory/`, `.claude/agent-memory/<agentType>/`, and the team directory | Path predicates (`isAgentMemoryPath`, `isTeamMemPath`) consulted *inside* the ordinary tools' `validateInput` |
+| **Gemini CLI** | **None** for the working agent. The writer is a separate background agent given `read_file`/`write_file`/`edit`/`ls`/`glob`/`grep` and a patch-only output contract | Prompt-stated write root, plus harness-side patch header allowlisting and silent discard |
+
+Three sources deleted a memory-writing tool they once shipped, which is a
+stronger signal than the four that never had one:
+
+- **Gemini CLI** removed `save_memory` and says so in the prompt ("There is
+  no `save_memory` tool"), replacing it with tier-routing prose that
+  interpolates the real absolute paths.
+- **Cline** shipped a `new_rule` tool; at `48d6385` the SDK tool set is nine
+  tools (`read_files`, `search_codebase`, `editor`, `apply_patch`,
+  `run_commands`, `fetch_web_content`, `skills`, `ask_question`,
+  `submit_and_exit`) with no rule or memory tool in it. What survives is
+  `NewRuleRow.tsx` — a **"+ New rule" button in the settings UI**. The
+  capability moved from the model to the human, and from a tool to a form.
+- **Cursor**'s `update_memory` is absent from current docs (§11 of
+  `agent-memory-learning.md`).
+
+The pattern behind all three: once the agent has file tools and knows the
+absolute path, a memory tool is a second way to do something it can already
+do — and the second way has to be kept in sync with the first.
+
+### 12b. Confinement is a path predicate, not a tool
+
+The interesting code in every one of these is the function that decides
+whether a path is inside the store, and all three implemented versions run
+it **before any I/O** — §6d's rule, applied to a name the model chose.
+
+- **Goose** validates the `category` argument as a single filename
+  component: empty, `*`, `.`, `..`, or containing `/`, `\`, or `:` is
+  rejected, plus a Windows reserved-device check (`CON`, `PRN`, `AUX`,
+  `NUL`, `CLOCK$`, `COM1`–`COM9`, `LPT1`–`LPT9`) that strips the extension
+  and trailing dots/spaces first — the same normalisation Windows itself
+  does, reimplemented because `<category>.txt` is a path the model wrote.
+  The error is typed `InvalidInput`, which the MCP layer maps to
+  `INVALID_PARAMS` rather than an internal error, so the model gets a
+  parameter complaint and not a stack trace.
+- **Codex** routes every `MemoriesBackendError` through one match:
+  `InvalidPath`, `InvalidCursor`, `InvalidFilename`, `NotFound`,
+  `InvalidLineOffset`, `InvalidMaxLines`, `LineOffsetExceedsFileLength`,
+  `NotFile`, `EmptyQuery`, `EmptyAdHocNote`, `AdHocNoteAlreadyExists` and
+  `InvalidMatchWindow` all become `RespondToModel`; only `Io` becomes
+  `Fatal`. That is §7's "errors are prompts" as a two-line policy —
+  everything the model could have caused is told to the model, and only a
+  disk failure kills the call.
+- **Claude Code** normalises before prefix-matching (`normalize(path)` then
+  `startsWith(dir + sep)`, with a comment naming `..`-segment bypass as the
+  reason), and does it for three separate roots because agent memory has
+  three scopes.
+
+### 12c. The one write, and what its schema refuses
+
+Codex's single write tool is the most constrained tool schema in this
+collection, and every constraint is doing work:
+
+```rust
+struct AddAdHocNoteArgs {
+    #[schemars(length(min = 24, max = 128),
+        regex(pattern = r"^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-[a-z0-9][a-z0-9-]{0,79}\.md$"))]
+    filename: String,
+    #[schemars(length(min = 1))]
+    note: String,
+}
+```
+with `#[serde(deny_unknown_fields)]` and the description *"Create one
+append-only ad-hoc memory note after the user explicitly asks Codex to
+remember, forget, or update something."*
+
+- The **model supplies the timestamp**, in the filename, in a fixed format
+  the schema enforces. There is no `id`, no `action`, no `update` — a
+  correction is a new note, and the consolidator reconciles later.
+- `AdHocNoteAlreadyExists` makes the write **create-only**: name collision
+  is the concurrency control. Retrying the same call is a visible error
+  rather than a silent double-append.
+- `deny_unknown_fields` means a model that invents `scope:` or `tags:` gets
+  a parse error naming the field, not a silently dropped argument — the
+  opposite of §3e's advertise-strict/accept-tolerant default, chosen here
+  because a dropped field in a memory write is invisible forever after.
+
+Goose is the other extreme. `remember` is
+`OpenOptions::new().append(true).create(true)`, writing `# tag1 tag2` then
+the data then a blank line. No id, no timestamp, no dedup check, no
+provenance — the file *is* the record format, and "update" is not
+expressible.
+
+### 12d. The numbers
+
+| Limit | Codex | Claude Code | Gemini CLI |
+|---|---|---|---|
+| Always-injected index | `memory_summary.md` truncated to **2,500 tokens**; `None` when empty | `MEMORY.md` at **200 lines / 25,000 bytes**, index lines ~150 chars | private index + `GEMINI.md` tiers |
+| List / search / read caps | list **2,000** (default = max), search **200** (default = max), read default **20,000 tokens** | n/a (ordinary `Read` limits) | n/a |
+| Recall per turn | unbounded (model searches) | **≤5** memories, selected by a side model call | n/a |
+| Per-run write budget | pipeline-side | n/a | **0–5** memory patches, **0–2** skills |
+| Eligibility | idle-window + startup claim limits | n/a | **≥10** user messages, **≥3 h** idle, **50** sessions indexed, **10** new per run |
+| Concurrency | per-job DB lease + one global phase-2 lock | ETag + **2** conflict retries, **3** transport retries, 2 s debounce | lockfile stale at **35 min** (agent limit is 30) |
+| Store item cap | — | team memory **250,000 bytes/file**, **200,000 bytes/PUT** batch | — |
+
+Two of these are worth copying on their own. Codex's summary injection
+returns `None` — not an empty block — when `memory_summary.md` is missing or
+empty, so **a cold store costs zero tokens and leaves no orphaned "you have
+a memory system" instructions**. And its list/search defaults *equal* their
+maxima (2,000 and 200), which is a deliberate refusal to make the model
+guess a page size: the only reason to pass `max_results` is to ask for
+less.
+
+### 12e. Memory is where Codex actually uses output schemas and namespaces
+
+Every memory tool is built by one helper,
+`memory_function_tool::<I, O>(name, description)`, which sets
+`strict: false`, generates `parameters` from the args type, sets
+`output_schema: Some(schema_for::<O>())`, and wraps the result in
+`ToolSpec::Namespace(ResponsesApiNamespace { name: "memories", … })`. So
+the memory family is simultaneously this codebase's clearest use of a
+**declared output schema** (§5c's dual channel, typed) and of **tool
+namespacing** — the model sees `memories.search`, not `search_memories`.
+Where §2b found command-enum consolidation elsewhere, memory went the other
+way: four small tools under one namespace prefix, which reads in the
+transcript like a module and keeps `read`/`list`/`search` from colliding
+with the workspace tools of the same name.
+
+### 12f. The bug class this family invites
+
+Goose's `retrieve` parses a category file by splitting on `\n\n` and keying
+the result map on the entry's tags:
+
+```rust
+memories.insert(tags.join(" "), lines.map(String::from).collect());
+```
+
+Two tagged entries with the same tag set therefore **overwrite each other at
+read time** — the file still holds both, the model is shown one. Untagged
+entries take the other branch (`.entry(…).or_insert_with(Vec::new).extend`)
+and accumulate correctly. This is §8b's relational-invariant family: nothing
+about the write path is wrong, nothing about the read path is wrong in
+isolation, and the store silently loses entries in exactly the case the
+prompt encourages (tags are the feature; reusing a tag set is the natural
+way to use it).
+
+A second, milder one in the same file: the server's MCP `instructions`
+string is built once in `MemoryServer::new()` from
+`retrieve_all(/* is_global */ true, None)` — **global memories only**. The
+vendor docs' "loads all saved memories at the start of a session and
+includes them in every prompt" is true of `~/.config/goose/memory` and not
+of the project-local `.goose/memory`, which is write-mostly unless the model
+calls `retrieve_memories` itself. The prompt then tells the model to keep
+that injected list in sync by hand: *"if the user removes a memory that was
+previously loaded into the system, please remove it from the system
+instructions."*
+
+### 12g. Content guards in `validateInput`
+
+Claude Code's team memory is the only store in this collection that a
+machine writes and a *team* reads, and the guard for that is not in a
+prompt. `checkTeamMemSecrets(filePath, content)` is called from
+`FileWriteTool` and `FileEditTool`'s `validateInput`; if the path is a team
+memory path and the content matches a secret rule, the write is refused with
+a message naming the matched rule labels and why ("Team memory is shared
+with all repository collaborators"). The scanner is a **curated subset of
+gitleaks** — explicitly "only rules with distinctive prefixes that have
+near-zero false-positive rates… generic keyword-context rules are omitted" —
+with Go-regex constructs rewritten for JS, and the Anthropic key prefix
+assembled at runtime (`['sk','ant','api'].join('-')`) so the literal byte
+sequence is absent from the shipped bundle.
+
+Two transferable shapes: a write guard belongs in the *existing* tool's
+validation rather than in a new "safe write" tool, and a guard whose false
+positives would block real work is worth trimming to the rules that
+cannot false-positive.
+
+### 12h. Retrieval as a second model call
+
+`findRelevantMemories` is the only *implemented* semantic retrieval in this
+collection, and it is not embeddings: it scans memory files for
+frontmatter headers, formats a manifest of filename + description, and
+issues a `sideQuery` to Sonnet with a JSON-schema output
+(`{selected_memories: string[]}`, `max_tokens: 256`) asking for up to five.
+The engineering around the call is the interesting part:
+
+- The returned names are **filtered against the set of real filenames**
+  before use — a hallucinated filename is dropped, not read.
+- An `alreadySurfaced` set removes files shown in earlier turns *before* the
+  call, "so the selector spends its 5-slot budget on fresh candidates
+  instead of re-picking files the caller will discard."
+- A **negative filter on recently-used tools**: if the conversation is
+  already exercising a tool, its usage/reference memories are suppressed as
+  noise — "DO still select memories containing warnings, gotchas, or known
+  issues about those tools — active use is exactly when those matter." The
+  stated failure mode is keyword overlap between the query and a
+  description.
+- Failure is silent and empty: an abort or an error returns `[]`, so a
+  memory-service outage degrades to no memory rather than a broken turn.
+- Telemetry fires even on an empty selection, because "selection-rate needs
+  the denominator."
+
+The cost model is explicit: one extra (cheaper-model) round trip per turn
+where memory might be relevant, in exchange for never pasting the corpus.
+Compare Codex, which spends model *turns* instead — a 4–6-step search budget
+inside the main agent — and Goose, which spends context by pasting the
+global store into the server's instructions.
+
+### 12i. Staleness is rendered in words, at read time
+
+The same codebase attaches a per-memory staleness note when a recalled file
+is more than one day old, and the reasoning is written down:
+
+> Models are poor at date arithmetic — a raw ISO timestamp doesn't trigger
+> staleness reasoning the way "47 days ago" does.
+
+`memoryFreshnessNote` returns `''` for anything ≤1 day (a warning there is
+noise) and otherwise a `<system-reminder>`-wrapped sentence: *"This memory is
+N days old. Memories are point-in-time observations, not live state — claims
+about code behavior or file:line citations may be outdated."* The motivating
+report is recorded in the comment: stale `file:line` citations asserted as
+fact, where **the citation made the stale claim sound more authoritative,
+not less**. Contrast §8a's other side channels, which annotate a *tool
+result*; this one annotates a piece of injected context, and it is computed
+from `mtime` rather than from anything the writer remembered to stamp.
+
+### 12j. Memory scoped to a sub-agent, not just to a project
+
+Claude Code stores memory per agent *type*:
+`~/.claude/agent-memory/<agentType>/`, `.claude/agent-memory/<agentType>/`,
+or `.claude/agent-memory-local/<agentType>/`, chosen by a per-agent
+`memory: 'user' | 'project' | 'local'` setting, each with its own
+`MEMORY.md`. The scope note is rendered into the sub-agent's prompt as a
+consequence rather than a label — *"Since this memory is project-scope and
+shared with your team via version control, tailor your memories to this
+project"* — and agent-type names are sanitised for the filesystem (`:` →
+`-`, since plugin-namespaced types look like `my-plugin:my-agent`).
+
+`agentMemorySnapshot.ts` adds the distribution half: a
+`.claude/agent-memory-snapshots/<agentType>/` directory ships a starting
+memory with the agent definition and is copied into the live memory
+directory on first use, with a `.snapshot-synced.json` marker recording
+which snapshot it came from. A sub-agent can therefore be published with
+prior experience attached — the only mechanism in this collection, besides
+Command Code's Taste profiles, that treats a memory store as a
+*distributable artifact* rather than as something that only accretes where
+it was written.
+
+---
+
+## 13. The checklist
 
 What the evidence supports, stated as rules. Each is backed by at least two
 independent implementations (sources in brackets).
@@ -2033,9 +2312,32 @@ source, so marked)
     benchmark — and expect to keep the old format for the models that
     regress. [OMP: 4 edit modes + an exclusion list; Codex `apply_patch.lark`]
 
+**Memory tools** (§12)
+35. Don't build a memory database. Point the file tools at a directory, or
+    duplicate read/list/search scoped to one root — and put the confinement
+    in a path predicate that runs before any I/O, not in the tool's prose.
+    [Claude Code, Gemini CLI (no tool); Codex, Goose (a scoped family)]
+36. Give the model one write, and make its schema refuse everything the
+    store cannot reconcile: a create-only name it must construct, unknown
+    fields rejected, no update verb. A correction is a new record.
+    [Codex `add_ad_hoc_note`; Goose's append-only file is the same shape
+    without the guards, and loses entries for it]
+37. Inject nothing when the store is empty — not an empty block, not a
+    heading. A cold store should cost zero tokens and leave no orphaned
+    "you have a memory system" instructions. [Codex returns `None`;
+    Claude Code's index section is absent until `MEMORY.md` exists]
+38. Put content guards in the existing write tool's `validateInput`, not in
+    a new "safe write" tool, and trim the ruleset to patterns that cannot
+    false-positive. [Claude Code's team-memory secret scanner: a curated
+    gitleaks subset]
+39. Render staleness as elapsed words at read time (`47 days ago`), not as
+    a stored timestamp — and suppress the note when the memory is fresh.
+    [Claude Code `memoryAge`; Codex's prompt-side drift rule is the
+    non-computed version]
+
 ---
 
-## 13. What this changes for the design in `agent-design/`
+## 14. What this changes for the design in `agent-design/`
 
 Applied in [`agent-design/tools.md`](./agent-design/tools.md) — see that
 file's "Implementation contract" section and the per-tool notes. The design

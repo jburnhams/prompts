@@ -225,23 +225,55 @@ background (`WaitMsBeforeAsync`).
 ## 7. Persistent memory & deployment as tools
 
 Two capabilities that only a couple of sources in this collection expose
-as callable tools rather than passive conventions.
+as callable tools rather than passive conventions. Memory is the larger
+half and has moved a lot: what the stores *contain* is
+[`agent-memory-learning.md`](./agent-memory-learning.md), and how the tools
+are built is `agent-tool-implementations.md` §12; this table is the surface
+question only — **does the model get a tool at all, and what may it do with
+it?**
 
-| Capability | Sources |
+| Shape | Sources |
 |---|---|
-| Cross-session memory as a **callable tool** (create/update/delete entries in a memory database, tagged and workspace-scoped, with an explicit dedup-check instruction) | Windsurf (`create_memory`) — the only source with a dedicated, bespoke memory-entry tool; everyone else relies on a passive file convention instead (`CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`CRUSH.md` — see `coding-agent-approaches.md` §8) |
-| Searching the agent's **own past session history** | Windsurf (`trajectory_search`) — a dedicated semantic-search tool. **A second, structurally different variant**: GitHub Copilot CLI (leaked) hands the model **raw SQL access** to a read-only, cross-session `session_store` database (`sessions`/`turns`/`checkpoints`/`session_files`/`session_refs`, plus an FTS5 full-text index over all of them) rather than a purpose-built search tool — retrieval quality depends entirely on the model's own query-crafting, and the prompt explicitly instructs it to "act as your own 'embedder' by expanding conceptual queries into multiple keyword variants" since the index is keyword-based (FTS5 + LIKE), not semantic. A separate, *writable* per-session SQL database also holds `todos`/`todo_deps` tables the model creates and queries directly — "the database is yours to use for any purpose." |
-| Shipping the app it built, not just building it — deploy + status-check + read-config as named tools | Windsurf (`deploy_web_app`, `check_deploy_status`, `read_deployment_config`) — unique in this collection |
-| A **third route to the same destination**: file-based memory (the passive `CLAUDE.md`/`AGENTS.md` convention used everywhere else) with a dedicated tool pair layered on top for reading/searching it, plus a separate explicit-flush command that writes a richer LLM-generated record | Grok Build (leaked) — `MEMORY.md` at both workspace (`~/.grok/memory/<workspace-slug>/MEMORY.md`) and global (`~/.grok/memory/MEMORY.md`) scope, read via `memory_get`/searched via `memory_search` (both referenced in prose but absent from the 26 captured JSON Schemas — "handled internally by the runtime"), with an automatic terse metadata save every session end and an explicit `/flush` command for "a detailed LLM-generated summary... written to the searchable session log." Neither a bespoke tagged-database tool (Windsurf) nor raw SQL access (GitHub Copilot CLI) — the underlying store is still a plain file, just with tool-mediated read/search access layered on top rather than ordinary file edits. |
+| **A scoped read/search family plus one restricted write** | Codex CLI — `memories.search`, `memories.read`, `memories.list` and `memories.add_ad_hoc_note`, namespaced under `memories` so they don't collide with the workspace tools of the same names. Three reads, and the only write creates one append-only note the background consolidator later folds in; the read-path prompt says it outright: *"Do not try to edit the memory files yourself, only add one update note."* The agent with the most elaborate memory here is allowed to touch the least of it |
+| **Full CRUD over a tagged store** | Windsurf (`create_memory` with `Action: create/update/delete`, `Tags[]`, `CorpusNames[]`) and Goose's memory extension (`remember_memory`/`retrieve_memories`/`remove_memory_category`/`remove_specific_memory`, with `category` and `is_global` mandatory on every call). Qoder's `update_memory`/`search_memory` is the same shape with vendor-side semantic read |
+| **Write-only** | Cursor's `update_memory` (historically) and Augment's `remember(memory)` — no read tool, because memories arrive pre-selected in the prompt, so there is nothing left to fetch. Jules's `initiate_memory_recording()` is the degenerate case: one line of schema, no parameters, no documented store |
+| **Searching the agent's own past sessions** | Windsurf (`trajectory_search`, semantic). **A structurally different variant**: GitHub Copilot CLI hands the model **raw SQL** over a read-only cross-session `session_store` (`sessions`/`turns`/`checkpoints`/`session_files`/`session_refs` + an FTS5 index), and tells it to compensate — *"You must act as your own 'embedder' by expanding conceptual queries into multiple keyword variants"* — since the index is keyword-based, not semantic. A separate *writable* per-session SQL database holds `todos`/`todo_deps`: "the database is yours to use for any purpose" |
+| **Tool-mediated access to what is still a file** | Grok Build — `MEMORY.md` at workspace (`~/.grok/memory/<workspace-slug>/`) and global (`~/.grok/memory/`) scope, read via `memory_get` / searched via `memory_search` (both referenced in prose but absent from the 26 captured JSON Schemas — "handled internally by the runtime"), plus an automatic terse save at session end and an explicit `/flush` writing "a detailed LLM-generated summary" to the searchable session log |
+| **No tool: the ordinary file tools, pointed somewhere** | Claude Code (`Read`/`Edit`/`Write` against the memory directories; `/memory` is a human-facing command) and Gemini CLI, which deleted `save_memory` and says so in the prompt — *"You persist long-lived project context by editing markdown files directly with `replace` or `write_file`. There is no `save_memory` tool."* Both interpolate the real absolute paths into the prompt so generic file tools suffice |
+| **No tool, because the writer is a different agent** | Gemini CLI's background extractor, Copilot CLI's `rem-agent` (scoped to exactly one tool, `context_board`), Antigravity's Knowledge Subagent (not model-invocable at all), and Codex's Phase 1/Phase 2 pipeline. The working agent's surface shrinks precisely because something else owns the store |
+| **No tool at all** | Devin, Manus, CodeRabbit, Kiro, OpenHands, Cline, Roo Code, Crush, Amp, OpenCode, Aider, Zed, and the whole SWE-bench lineage. Retrieval happens upstream, or memory is a human-written file, or there is none |
 
-**Takeaway**: deployment-as-a-tool remains a Windsurf exclusive, but
-memory-as-a-tool is now a three-way split — Windsurf's bespoke
-tagged-database tool, GitHub Copilot CLI's raw SQL interface over a
-persistent store, and Grok Build's tool-mediated access to what's still,
-underneath, the same `CLAUDE.md`/`AGENTS.md`-style file convention
-everyone else uses passively. Everywhere else in this collection,
-"remember this for next time" still means "write it to a file the next
-session might read," with no dedicated tool at all.
+**Takeaway**: memory-as-a-tool peaked and is receding. Three products
+removed a memory-writing tool during the period this collection covers —
+Gemini CLI (`save_memory`), Cursor (`update_memory`), and Cline, whose
+`new_rule` tool is gone from a nine-tool SDK surface and survives as a
+**"+ New rule" button** in the settings UI. What replaced them is larger,
+not smaller: tier-routing prose with absolute paths, background
+consolidators, and approval inboxes. The reasoning is the same each time —
+an agent that already has file tools and knows the path doesn't need a
+second way to write a file, and a second way has to be kept in sync with
+the first. Where a tool *does* survive, it survives for a reason the file
+tools can't serve: Codex's namespaced family exists to keep memory reads out
+of the workspace's read/list/search, and its single write exists so that a
+user's "remember this" lands somewhere the consolidator will see without
+letting the model edit the store.
+
+Deployment-as-a-tool, meanwhile, remains a Windsurf exclusive
+(`deploy_web_app`, `check_deploy_status`, `read_deployment_config`).
+
+**A separate surface worth naming**: the tool through which an agent
+reports something *it cannot fix* to the humans who can. Devin's
+`report_environment_issue` is the only first-class example — "report issues
+with your dev environment as a reminder to the user so that they can fix
+it… It is critical that you use this command whenever you encounter an
+environment issue" — paired with the instruction to then *continue working
+around it* rather than fixing it. It is not memory (nothing is retrieved
+later) and not a question (nothing blocks), which is exactly why nothing
+else in the collection has one: OpenCode and Amp cover the same ground by
+asking the user to write it into `AGENTS.md`, and DeepSeek Harness routes
+human dissatisfaction the other way entirely — its `/feedback` command and
+per-message ratings are stored with the session and, by design, *"never
+reach the model"*.
 
 ## 8. Editing tool families
 
@@ -336,7 +368,18 @@ whether any are redundant/competing.
   *implementation* (a bespoke tagged database, raw SQL, and a
   file-plus-tool hybrid), worth reading alongside this doc's other
   independent-convergence findings even though none of the three
-  mechanisms look alike.
+  mechanisms look alike. A later pass, with three more sources read as
+  code, sharpens that: the convergence is on the *goal* and the
+  **divergence has since resolved toward having no tool at all**. Gemini
+  CLI deleted `save_memory`, Cursor's `update_memory` is gone from the
+  docs, and Cline's `new_rule` is now a settings-UI button rather than a
+  tool — while Claude Code, which never had one, grew the collection's
+  most developed memory system out of `Read`/`Edit`/`Write` and a path
+  predicate. Where a memory tool survives it is doing something the file
+  tools cannot: Codex's four tools are namespaced (`memories.read`) to keep
+  memory reads out of the workspace read/list/search, and its single write
+  is create-only precisely so the model *cannot* edit the store it reads
+  from.
 - **Grok Build's tool descriptions are, in several places, a near-verbatim
   copy of Claude Code's own leaked tool text — not just a shared idea
   restated, but the same sentences.** Its `write`/`search_replace`/
