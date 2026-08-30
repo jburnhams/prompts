@@ -230,7 +230,9 @@ does not need lifecycle folders or a format gate):
    a diff touching them is a finding rather than an instruction. §12
    covers the programmatic channels v1 does without — MCP server
    `instructions`, skills, hooks, plugins — and the four rules if any of
-   them is added later. Supersedes one decision in `review.md` §1.
+   them is added later. Supersedes one decision in `review.md` §1 and
+   promotes one `medium.md` deferral (structural write protection for the
+   conventions file) into v1.
 5. `review.md` — the review entrypoint's payloads in full depth: the
    diff-construction algorithm, the comment-thread model (including
    stale threads' then/now rendering), the exact finder/validator

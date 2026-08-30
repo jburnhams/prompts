@@ -236,6 +236,22 @@ So, three rules for review mode:
 3. **`<conventions>` carries a nonce** (§4), like `<existing_comments>`.
    The §1 table row that says it doesn't is superseded.
 
+**Which files a review run loads.** §1's walk is "cwd up to the repository
+root", and a review run has no cwd — it has a set of changed files spread
+across the tree. So the review-mode walk is the same rule with the changed
+set standing in for cwd: **the root file, plus every conventions file on a
+path from the root down to each changed file's directory**, deduped by
+realpath and ordered root-first as everywhere else. A PR touching
+`src/api/handler.ts` and `docs/guide.md` loads the root `AGENTS.md`,
+`src/api/AGENTS.md` and `docs/AGENTS.md` — and nothing from `src/worker/`,
+which the PR does not touch. This is what `review.md` §4's "scoped to the
+changed paths" means, made checkable.
+
+The alternative of loading only the root file is cheaper and more
+predictable, and it is wrong for exactly the repositories that most need
+review: in a monorepo, the package-level rules *are* what a reviewer of
+that package should be checking against.
+
 The scope sentence in both modes is taken from OpenHands, the only harness
 in the field that limits what a repository file is *allowed to instruct*
 rather than only where it sits in a precedence ladder ("You may use these
@@ -342,6 +358,33 @@ Only the root file is inlined at dispatch. Deeper files arrive by §9.
 
 ---
 
+## 8a. Sub-agents
+
+**A coding sub-agent inherits the orchestrator's conventions blocks
+verbatim** — transcluded whole, nonce intact, never re-wrapped (`review.md`
+§4's rule, which exists because an assembler that re-emits a tag is an
+assembler that can emit it bare). A sub-agent dispatched by `Task` is doing
+the same work in the same repository as its parent; giving it the codebase
+and withholding the codebase's rules is how a delegated edit comes back in
+the wrong style, and in a hands-off run nobody catches that before it
+lands. The alternative — let the sub-agent read the file itself — depends
+on it thinking to, which is the same "sometimes it won't" the design
+rejects in §8 for path-only inlining.
+
+**A review specialist does not**, and that stays as `review.md` §1 has it:
+only the `conventions` lens gets the text, because it is the only lens that
+reviews against it. The reason is the fan-out — the root file transcluded
+into every specialist's brief is the same bytes multiplied by the team
+size, for four lenses that have no use for them. A `bugs` specialist does
+not need the house import ordering.
+
+So the rule is not "sub-agents inherit" or "sub-agents don't", it is
+**inherit when the sub-agent does the same job, scope when it does a
+different one** — which is the same distinction the two entrypoints are
+built on.
+
+---
+
 ## 9. Just-in-time loading for deeper files
 
 When a tool touches a path below the working directory, the harness walks
@@ -444,6 +487,50 @@ answer:
 
 ---
 
+## 10a. The write side
+
+Everything above is about reading the file. The counterpart is that
+**`Edit` and `Write` refuse against a path this run loaded as
+conventions**, unless the run was dispatched with an explicit
+this-ticket-may-edit-conventions flag.
+
+The design already had two weaker layers here: the coding prompt forbids
+touching the conventions file except when the ticket is explicitly about
+it, and `formats.md` §3a's post-run cross-check flags any diff that
+touches one. Both stay. What changes is that the first line of defence
+becomes structural rather than textual, which is the same argument the
+design already makes for git writes (a harness-side blocklist, not prompt
+text) and for read-before-edit (`Edit` requires bytes the model has
+actually seen). `medium.md` sketched this as a possible upgrade
+conditional on the post-run flag ever firing; §5 is the reason not to
+wait for that evidence.
+
+The reason is specific to this file rather than general tidiness. A
+conventions file is **instruction to every future run**, so an edit to it
+is not an ordinary code change — it is a change to the prompt of every
+later agent that touches this repository, made by an agent, unsupervised.
+That is the self-instruction-poisoning surface `future.md` already names,
+and the reason `medium.md` §6 keeps the machine-written learning store out
+of `AGENTS.md` entirely. A working tree is the coding entrypoint's
+deliverable, so a forbidden edit that gets written *lands*; catching it
+downstream means catching it after it is already in the artifact someone
+is about to commit.
+
+The dispatch override is what keeps a legitimate ticket actionable — "add
+a section on error handling to AGENTS.md" is a normal request, and it
+arrives through the dispatcher, which is exactly where an explicit
+permission belongs. A run without the flag that concludes it needs a
+conventions change has `AskUser` and `Complete`'s report; it does not have
+`Write`.
+
+One consequence worth stating: the refusal is scoped to the paths **this
+run actually loaded**, which is why §10's harness-side record is a
+prerequisite rather than an optional extra. A run that loaded no
+conventions file blocks nothing, and a file the loader shadowed (§1) is not
+protected — it was never instruction to this run.
+
+---
+
 ## 11. Deliberately not in v1
 
 | Not doing | Why | Where the field does it |
@@ -536,4 +623,7 @@ already logged, and already distinguishable from repository content.
 | (new) | `<conventions>` `rev` = `base_sha` in review mode, matching `<pull_request>`'s `Base SHA` | §3, §5 — same merge-base the diff already uses |
 | (new) | First-match collision **reports the shadowed file** | §1, §10 — the rule without the reporting is the invisibility this document faults the field for |
 | (new) | Oversize files cut at a **heading** boundary, dropped section names listed | §2 — a line cut can strip a rule's qualifier and leave the rule; the model cannot tell |
+| `review.md` §4: conventions "scoped to the changed paths" (undefined) | Root file + every conventions file on a path down to each changed file's directory, deduped | §5 — §1's walk with the changed set standing in for cwd |
+| (new) | Coding sub-agents inherit conventions verbatim; review specialists stay scoped to the `conventions` lens | §8a — inherit when the sub-agent does the same job, scope when it does a different one |
+| `medium.md`: structural write protection as a conditional upgrade | Shipped in v1 — `Edit`/`Write` refuse against a loaded conventions path absent a dispatch override | §10a — §5 supplies the reason not to wait for the post-run flag to fire first |
 | (new) | `Bash` working directory is a JIT trigger alongside file-tool paths | §9 — closes the package-scoped build/test-conventions case without argv parsing |
