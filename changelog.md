@@ -2,6 +2,25 @@
 
 All notable changes to this repository, grouped by day, newest first. Generated from git history.
 
+## 2026-08-30
+
+Added the context-file-loading research (how each harness discovers, orders and injects `AGENTS.md`/`CLAUDE.md`-style files) and turned it into a design document: standing instructions resolved by a context service at dispatch, in three tiers, with sections as the atomic unit.
+
+- `agent-context-file-loading.md` — new: discovery and the ancestor walk, precedence and collision, the `@path` import implementations and why each is a security project, per-turn re-reads and JIT subdirectory loading, the untrusted-content banners, and the CI ambiguity where the tree the rules came from and the tree the diff came from are set by different steps with nothing recording either
+- `agent-design/context-files.md` — new: three tiers from one service, the response contract (sections carrying `binding`, `scope`, `applies_to`, provenance and derivation), the byte budget and how truncation is announced, the nonce-bearing envelope, the review-mode rule that conventions are read at the **base** SHA, structural write protection for the conventions file, and §12 on the programmatic channels v1 does without
+- `agent-design/` — README.md (reading order + decision rows), formats.md, future.md, medium.md, review.md, system-prompts.md
+- Source folders: per-harness context-loading sections in `aider/`, `cline/`, `codex/`, `crush/`, `gemini-cli/`, `github-pr-bots/`, `goose/`, `leaked/claude-code/`, `opencode/`, `openhands/`, `roocode/`, `zed/`
+- Root docs: `README.md` (index entry), `sources.md` (eleven targeted repo reads)
+
+Second pass the same day: re-read five memory systems as **source** rather than prompt text, which changed several standing conclusions, then specified cross-run learning against the context service.
+
+- `agent-memory-learning.md` — the leaked Claude Code source's `memdir` read for the first time: a four-type taxonomy whose `<scope>` routes per type, a rule to record validated *successes* as well as corrections, staleness computed from `mtime` and rendered in words, retrieval by a cheap model acting as selector, memory scoped per sub-agent type, and paragraphs carrying eval results in code comments. Its **team-shared** machine-written store contradicts what the doc had recorded as the field's cleanest rule. Plus: Gemini CLI's model-free session digest, Codex consolidating on git dirtiness rather than a DB watermark, three Goose corrections from source (incl. same-tagged entries silently collapsing at read time), Cline's `new_rule` retreat, and the DeepSeek finding that its review-criteria mining loop has produced zero rules while every actual rule change arrived in the PR that established the convention. New sections: library- and harness-scoped memory as named absences, and improvement requests as a channel distinct from memory
+- `agent-tool-implementations.md` — new §12: memory tools as a confined second file family (nobody built the database the name implies), the path predicate before any I/O, the create-only write, content guards in `validateInput`, and a shipped bug class this family invites; five new checklist rules
+- `agent-tool-surfaces.md` — §7 rewritten: memory-as-a-tool has peaked and is receding, three products having removed one and none added
+- `agent-design/memory.md` — new: learnings as a `tier: "learned"` of the context service (which is the code/git/artifact proxy, so knowledge is keyed by ref — including **dependency coordinates**), capture-in-session / promote-on-outcome, the record schema and per-category promotion gates, mechanically-computed staleness from the evidence SHA, and `ReportProblem` with a `blocker` priority that suspends the task. Supersedes `medium.md` §6 on three points
+- `agent-design/` — README.md (reading order + three decision rows), context-files.md, medium.md, future.md
+- Root docs: `README.md`, `sources.md` (six repo reads), `deepseek-harness/README.md` (the re-read and what it found)
+
 ## 2026-08-21
 
 Added a new layer to the tool docs — MCP as a **result transport** rather than an extensibility checkbox — grounded in a targeted source read of three clients' MCP projections, and carried the findings into the agent design.
