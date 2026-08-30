@@ -27,7 +27,8 @@ answer them independently:
 
 1. **Entry** — how does an image become available at all? A user
    attachment, a file the model reads, a screenshot a tool takes, a
-   generated artifact.
+   generated artifact — or, in the case no harness here handles, an
+   attachment on the work item the agent was dispatched against (§2a).
 2. **Transport** — how does it physically reach the model: as a content
    block in a user message, inside a tool result, or as base64 text that
    something later promotes to a real image block.
@@ -52,13 +53,16 @@ The interesting harnesses run both and route between them (§9, §10).
 
 ---
 
-## 2. Four entry points
+## 2. Four entry points — and the fifth nobody built
 
-Every image in every harness here arrives through one of four doors.
+Every image in every harness here arrives through one of four doors. All
+four presume one of two things: **a human present to hand the image over**,
+or **a browser the agent itself drove**. Neither holds for an agent whose
+input is a work item, which is why §2a below exists.
 
 | Door | Mechanism | Who has it |
 |---|---|---|
-| **A. User attachment** | Paste/drag in the client; the harness puts an image content block in the user message | Everyone with a GUI or TUI; Claude Code (`imagePaste.ts`, `screenshotClipboard.ts`), Cline, Roo Code, OpenCode, OpenHands, Codex (`<image name="[Image #1]" path="…">` sentinel wrapping, §4) |
+| **A. User attachment** | Paste/drag in the client; the harness puts an image content block in the user message. *Presumes an interactive session* | Everyone with a GUI or TUI; Claude Code (`imagePaste.ts`, `screenshotClipboard.ts`), Cline, Roo Code, OpenCode, OpenHands, Codex (`<image name="[Image #1]" path="…">` sentinel wrapping, §4) |
 | **B. The read tool grew eyes** | The existing file-read tool detects an image and returns visual content instead of text | Claude Code (`Read`), Zed (`read_file`), Crush (`view`), Devin (`open_file` — "You can also use this command open and view .png, .jpg, or .gif images"), Grok Build (`read_file`), OMP (`read`, unless `inspect_image` is enabled — §10) |
 | **C. A dedicated view-image tool** | A separate named tool whose only job is to load an image | Codex (`view_image`), Goose (`read_image`), Jules (`read_image_file` for paths + `view_image` for URLs — *two* tools), SWE-agent (`view_image`), OMP (`inspect_image`, feature-flagged) |
 | **D. A tool result that happens to contain an image** | Screenshot from a browser tool, image from an MCP server, generated image | Cline (`browser_action`), OpenHands (`BrowserObservation.screenshot_data`), Windsurf (`capture_browser_screenshot`), Gemini CLI (chrome-devtools-mcp `take_screenshot`), Playwright MCP, every MCP client with `ImageContent` handling (Zed, Crush, Roo Code, Codex) |
@@ -85,8 +89,46 @@ reason is context cost, and the mechanism is the right one — the tool set
 and the prose that describes it move together, so the model is never told
 about a door that isn't there.
 
----
+### 2a. The fifth door: ingest
 
+**Nobody in this collection opens it.** No harness surveyed fetches an image
+because it arrived attached to a tracker issue, a pull request description
+or a review comment — the places images actually live in a software team's
+workflow.
+
+The negative is clean and worth stating as a finding rather than an
+omission, because it is not that these harnesses ingest attachments badly:
+
+- **No PR-review bot in the collection handles images at all.** Checked
+  across `github-pr-bots/` and `pr-agent/`: zero references to attachments,
+  `user-attachments` URLs, `githubusercontent` image links, or markdown
+  image syntax in a PR body. A PR description containing a before/after
+  screenshot is, to every review bot here, a description with a broken bit
+  of markdown in it.
+- **No coding agent reads a ticket's attachments.** Jules, Devin and
+  Antigravity all take issue-shaped input and all three read images only
+  from a local path, a URL the model itself noticed, or a browser they
+  drove.
+
+Two structural reasons, both of which stop applying for a hands-off agent:
+
+1. **Doors A–D are all reachable without credentials.** A paste is already
+   in the client, a file is already on disk, a screenshot is produced by a
+   browser the harness owns. An attachment is behind an authenticated API,
+   which makes ingest the only door that needs a credentialed fetcher — and
+   a credentialed fetch of a third-party-influenced URL is an SSRF
+   escalation, so it is genuinely more work than the other four.
+2. **An interactive agent doesn't need it.** If a human is present and an
+   image matters, they paste it. Door A *is* the ingest path when someone is
+   watching. It stops being one the moment nobody is.
+
+The consequence for anyone designing an unattended agent: the entry point
+your users' images will actually arrive through is the one with no prior art
+in this collection, and the design work is mostly in the fetcher rather than
+in the model-facing tool. `agent-design/artifacts.md` §6 is this
+collection's own attempt at it.
+
+---
 ## 3. Tools or prompts? Both, and the coupling is the finding
 
 The question in the brief was whether vision is done "through tools or
@@ -775,6 +817,22 @@ inheriting:
   re-encodes and re-sends it. OpenHands caches downloads of remote image
   URLs in-process (64 MB LRU); nobody caches the prepared, resized,
   provider-ready block.
+- **Nobody ingests an attachment.** Not one harness fetches an image
+  because it arrived on a tracker issue, a PR description or a review
+  comment (§2a). Every entry point in the field assumes a human pasted it
+  or a browser produced it, which makes the door an unattended agent
+  actually needs the one with no prior art at all.
+- **Nobody treats a mockup as a specification.** Every image use case in
+  the collection is either *diagnosis* (what is on this screen) or
+  *evidence* (does this look right). No harness has a notion of an image
+  that is the thing to be built — which matters because that role wants the
+  opposite handling from the other two: maximum fidelity, retained for the
+  whole task, and unsuitable for the delegated-vision pattern §10 otherwise
+  recommends.
+- **No source states what an image costs it.** Not one tool description or
+  prompt tells the model that looking is expensive, though several imply it.
+  OMP's "prefer `inspect_image` over `read` to spare session context" is the
+  closest, and it is about *which tool*, not about the price.
 - **Aider is the deliberate null** — no browser, no screenshot tool, image
   support only via `/add` of a file, and no prompt text about vision at all.
 
