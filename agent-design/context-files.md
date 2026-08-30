@@ -145,114 +145,194 @@ Three rules that make the split behave:
 
 ---
 
-## 1b. What the context service must return
+## 1b. The context service
 
-The org and team tiers come from a separate system that resolves which
-standards apply and returns them structured. These are the requirements
-Forge places on that response — written from the loader's side, so the
-service can be built against them.
+The org and team tiers come from a separate service. It is **not a
+lookup** — it is a normalising cache: it ingests standards as their owners
+actually write them, resolves them into a canonical structure, caches that,
+and exposes a current version. Forge consumes the normalised form.
 
-### Shape
+That division is what makes the rest of this document work. Standards get
+authored the way people author standards — one "Engineering Standards"
+document with a security section, a licensing section and a style section,
+all in one file — and Forge never has to parse that, because the service
+has already turned it into structure. Requirements below are written from
+the loader's side, so the service can be built against them.
 
-Per-document, per-tier. **Not one concatenated blob.**
+### The atomic unit is a section, not a document
+
+A single authored document mixes bindings: its security section is
+non-negotiable, its formatting section is a preference. Making the
+*document* the unit would force organisations to split every document
+along a line nobody writes documents along. Making the *section* the unit
+lets the authored file keep its shape while §1a's precedence still works.
+
+So the service returns **sections**, each carrying its resolved binding and
+a pointer back to the document and heading it came from:
 
 ```
 {
   "resolved_for": { "repo": "...", "team": "...", "task_id": "..." },
-  "version": "<opaque, stable for identical inputs>",
-  "retrieved_at": "<ISO-8601>",
-  "documents": [
+  "version": "<the cache's version for this resolution>",
+  "generated_at": "<ISO-8601>",
+  "stale": false,
+  "sections": [
     {
-      "id": "org/security-baseline",
+      "id": "org/engineering-standards#data-handling",
       "tier": "org" | "team",
       "binding": "policy" | "default",
-      "title": "...",
+      "title": "Data handling",
       "body": "<Markdown, inert>",
-      "bytes": 4211,
-      "source": { "system": "...", "ref": "<commit, version, or record id>" },
-      "scope": ["security", "licensing"],
-      "applies_to": ["**/*.py"]
+      "bytes": 1840,
+      "scope": ["security", "privacy"],
+      "applies_to": ["**/*.py"],
+      "source": {
+        "document": "org/engineering-standards",
+        "section_path": ["Security", "Data handling"],
+        "system": "...",
+        "ref": "<commit, version, or record id of the authored document>"
+      },
+      "derivation": {
+        "method": "verbatim" | "normalised",
+        "pipeline_version": "...",
+        "reviewed_by_human": true | false
+      }
     }
-  ]
+  ],
+  "conflicts": [ { "sections": ["...", "..."], "note": "..." } ]
 }
 ```
 
-Every field earns its place against something in this document:
+**Binding resolves document-level first, section-level second.** A
+document declares a default binding; a section may override it. An
+unmarked section inherits the document; an unmarked document is `default`
+(§1a). Absent metadata never produces `policy` at any level.
 
-- **`documents[]`, not a blob** — precedence (§1a), budgeting (§2), the
+### Every field, and what it is for
+
+- **`sections[]`, not one blob** — precedence (§1a), budgeting (§2), the
   run record (§10) and the write-protection set (§10a) all need
-  per-document granularity. A blob makes "which rule applied" unanswerable,
+  per-unit granularity. A blob makes "which rule applied" unanswerable,
   which is the failure this whole document exists to avoid.
-- **`binding`** — the load-bearing field. See §1a. Absent ⇒ `default`.
-- **`source.ref`** — the org tier's equivalent of §3's `rev`. It must
-  identify a specific version of that document in the system that owns it,
-  so the run record can name it and two runs can be compared. A document
-  with no `ref` is loadable but is recorded as unpinned, and that shows up
-  in the record.
-- **`version`** — one opaque token for the whole response, stable across
-  identical inputs. Lets a run be reproduced and lets the harness state
-  "these are the same standards as last time" without diffing bodies.
+- **`source.document` + `source.section_path` + `source.ref`** — the org
+  tier's equivalent of §3's `rev`, and the thing that makes normalisation
+  auditable. `ref` identifies a version of the **authored** artifact, not
+  of the normalised output, so a human reading the run record can go
+  straight to the file someone wrote. A section with no `ref` is loadable
+  but recorded as unpinned.
+- **`derivation`** — see below. Present on every section, including
+  verbatim ones.
+- **`version`** — the cache's version for this resolution, stable until
+  something upstream changes. Because the service caches, determinism is a
+  property of its architecture rather than a promise it has to keep by
+  discipline.
+- **`stale` + `generated_at`** — see availability below.
 - **`bytes`** — so the harness can budget (§2) before deciding what to
   inline, rather than measuring after.
-- **`scope`** — the machine-readable form of §5's scope sentence. It says
-  what area a document speaks to, and lets a review run hand a
-  security-scoped org document to the specialist that can act on it rather
-  than to all of them.
+- **`scope`** — the machine-readable form of §5's scope sentence. Lets a
+  review run hand a security-scoped section to the specialist that can act
+  on it rather than to all of them.
 - **`applies_to`** — optional path or language predicates, so a
   Python-only standard does not load for a Go PR. Evaluated by the
   **harness**, against the changed-file set (review) or the working tree
   (coding), using the same glob semantics as everything else here.
-- **`resolved_for`** — echoes what the service was asked, so an empty
-  `documents` array is distinguishable from a question never asked. That
-  distinction is the difference between "this org has no policies" and
-  "the integration is broken", and only one of those is fine.
+- **`resolved_for`** — echoes what the service was asked. The dispatcher
+  asserts `repo`, `team` and `task_id`; the service decides what that
+  combination implies. Forge sends what it knows and never guesses at team
+  membership — and the echo means a *wrong* team is visible in the run
+  record rather than silently producing the wrong standards. An empty
+  `sections` array is then distinguishable from a question never asked,
+  which is the difference between "this org has no policies here" and "the
+  integration is broken".
+
+### Normalisation is a governance surface, not just a transform
+
+If the service uses a model to split documents into sections, resolve
+duplicates and reconcile contradictions, then **some of what reaches the
+agent as policy was written by a model**. That is a different thing from
+caching, and it needs the discipline this collection's research already
+established for machine-written instruction stores
+([`../agent-memory-learning.md`](../agent-memory-learning.md) §9, and the
+DeepSeek Harness acceptance run in
+[`../deepseek-harness/`](../deepseek-harness)).
+
+Three requirements:
+
+- **`derivation.method` distinguishes verbatim from normalised**, and the
+  run record carries it (§10). "This rule was rephrased by a pipeline"
+  should never be something a reader has to infer.
+- **Contradictions are surfaced, not resolved.** When two sections
+  conflict, the service returns both and reports the pair in `conflicts`;
+  it does not pick a winner. A model silently reconciling two
+  contradictory policies is making an editorial decision that then has the
+  force of policy, with nobody having approved it. Forge surfaces
+  `conflicts` in the run record, and in review mode as a finding — the
+  same treatment §1a gives a repo file that contradicts org policy.
+  Precedence (§1a) resolves *tier* conflicts, which are structural; it
+  does not resolve two org policies that disagree, which is a drafting
+  problem someone has to fix.
+- **A normalisation that changes meaning needs a human.**
+  `derivation.reviewed_by_human` records whether one saw it. The
+  collection's one measured instance of this workflow is the relevant
+  evidence: DeepSeek Harness's acceptance run put 426 human review
+  comments through a rule-extraction pipeline and produced **zero** rule
+  changes, and its operator documentation frames that as the workflow
+  working — the hard part of deriving rules automatically is refusing to
+  derive them. A normaliser that reliably outputs "no change" is
+  succeeding.
+
+Splitting and tagging are the safe end of that spectrum; rewriting and
+merging are the sharp end. The contract does not forbid the sharp end, it
+requires that it be labelled.
 
 ### Behaviour
 
-- **Determinism.** The same `resolved_for` inputs return the same
-  `documents` and the same `version` until someone changes a standard.
-  Nondeterminism here means a PR reviewed twice gets two answers with
-  nothing in the record explaining why.
 - **Ordering is stable** and the harness preserves it. Not for
-  correctness — precedence comes from `tier` and `binding`, not position —
-  but so the assembled envelope is byte-identical between runs, which §7's
-  cache reasoning depends on.
-- **Empty is a valid answer**, returned as `documents: []` with a
+  correctness — precedence comes from `tier` and `binding`, not
+  position — but so the assembled envelope is byte-identical between runs,
+  which §7's cache reasoning depends on.
+- **Empty is a valid answer**, returned as `sections: []` with a
   `version`, never as an error and never as a 404.
-- **Availability is a decided policy, not a discovered one.** If the
-  service is unreachable or slow, the run **proceeds without the org and
-  team tiers and records the failure prominently** in the harness report
-  (§10) — and, in review mode, states it in the posted review. Blocking the
-  run is the tempting answer and the wrong one: it converts an
-  availability problem into a delivery problem for every repo at once. But
-  a review that silently ran without org policy, and reads exactly like one
-  that ran with it, is the failure this design cannot tolerate. Loud
-  degradation, not silent.
+- **Degradation is graded, and never silent.** Because the service caches,
+  an upstream failure does not have to mean no standards: it serves the
+  last good resolution with `stale: true` and a `generated_at` the harness
+  reports. Only when the service itself is unreachable does the run
+  proceed **without** the org and team tiers — and then the harness records
+  the failure prominently (§10) and, in review mode, states it in the
+  posted review. Blocking the run instead is the tempting answer and the
+  wrong one: it converts an availability problem into a delivery problem
+  for every repo at once. But a review that silently ran without org
+  policy, and reads exactly like one that ran with it, is the failure this
+  design cannot tolerate.
 - **Authenticated transport, and tier is not self-asserted.** The response
   is an instruction channel — it changes what the agent does. The harness
   accepts `tier: "org"` only from the configured, authenticated service
   endpoint. Anything reaching the loader by another route is not an org
-  document however it labels itself.
+  section however it labels itself.
 - **Bodies are inert Markdown** (§6). The service may template, assemble
   or generate them however it likes on its side; what arrives is text with
   no expansion, no `@` imports and no interpolation performed by Forge.
 - **A `body` is subject to the same scope statement as a repo file**
-  (§5) and arrives in the same nonce-bearing envelope (§4). Being remote
-  and org-authored earns it a higher *binding*, not a higher *role*, and
-  not an exemption from containment — §12's first rule, applied to the
-  channel it was written for.
+  (§5) and arrives in the same nonce-bearing envelope (§4). Being remote,
+  org-authored, or model-normalised earns it a higher *binding*, not a
+  higher *role*, and not an exemption from containment — §12's first rule,
+  applied to the channel it was written for.
 
 ### Budget interaction
 
-Org and team documents share the §2 total with repo files, and they are
-**not** first in line. A run that truncates an org security policy to fit
-a verbose `AGENTS.md` has failed at the thing it was most supposed to get
-right, so the fill order is: **all `policy` documents, then repo files,
-then `default` documents**, each truncated at a heading boundary and
-announced (§2). If `policy` documents alone exceed the total budget, that
-is a configuration error the harness reports rather than papers over —
-it means the organisation has written more non-negotiable rules than an
-agent can hold, and silently dropping some is the worst available answer.
+Org and team sections share the §2 total with repo files, and they are
+**not** first in line by tier. A run that truncates an org security policy
+to fit a verbose `AGENTS.md` has failed at the thing it was most supposed
+to get right, so the fill order is: **all `policy` sections, then repo
+files, then `default` sections**, each truncated at a heading boundary and
+announced (§2). Sections are a better unit to budget in than documents
+here too — a long standards document contributes only the sections that
+`applies_to` selected, rather than all of it or none.
+
+If `policy` sections alone exceed the total budget, that is a
+configuration error the harness reports rather than papers over — it means
+the organisation has written more non-negotiable rules than an agent can
+hold, and silently dropping some is the worst available answer.
 
 ---
 
@@ -339,16 +419,17 @@ This is also what makes §5 checkable rather than a matter of trust.
 </conventions-{{nonce}}>
 
 <conventions tier="org" binding="policy" id="{{id}}" ref="{{source.ref}}"
-             nonce="{{nonce}}">
-{{ document body, verbatim }}
+             derived="{{derivation.method}}" nonce="{{nonce}}">
+{{ section body, verbatim }}
 </conventions-{{nonce}}>
 ```
 
 One tag for all three tiers, distinguished by attributes — so the model
 has one thing to understand and the orchestrator has one transclusion rule.
-`tier` is `org`, `team` or `repo`; `binding` is present on the first two
-only (§1a); `path`+`rev` identify a repo file, `id`+`ref` a service
-document (§1b).
+`tier` is `org`, `team` or `repo`; `binding` and `derived` are present on
+the first two only; `path`+`rev` identify a repo file, `id`+`ref` a service
+section (§1b). One block per section, not per document, since sections are
+what carry a binding.
 
 Two rules.
 
@@ -661,7 +742,8 @@ component that made each decision is the component that records it.
 One entry per document, across all three tiers:
 
 ```
-{ tier, binding, path|id, rev|ref, bytes, truncated, trigger, shadowed }
+{ tier, binding, path|id, rev|ref, derived, bytes, truncated, trigger,
+  shadowed }
 ```
 
 where `trigger` is `envelope` or the tool call that caused the JIT load,
@@ -669,10 +751,10 @@ where `trigger` is `envelope` or the tool call that caused the JIT load,
 lists any same-directory candidates that lost the first-match collision
 (§1).
 
-Alongside it, the context service's own outcome: the `version` and
-`resolved_for` it returned (§1b), or — when it was unreachable — the
-failure, recorded prominently enough that nobody mistakes a degraded run
-for a normal one.
+Alongside it, the context service's own outcome: the `version`,
+`resolved_for`, `stale` flag and any `conflicts` it returned (§1b), or —
+when it was unreachable — the failure, recorded prominently enough that
+nobody mistakes a degraded run for a normal one.
 
 Six things this buys, each of them something the field currently cannot
 answer:
@@ -684,9 +766,14 @@ answer:
   for a review run.
 - **Whether the budget bit** (§2), independently of the model noticing the
   `!` note.
-- **Whether the org and team tiers were actually present.** A run that
-  proceeded without them (§1b) is recorded as such, so a review is never
-  read as having applied policy it never saw.
+- **Whether the org and team tiers were actually present, and how fresh.**
+  A run that proceeded without them, or on a `stale` cached resolution
+  (§1b), is recorded as such, so a review is never read as having applied
+  policy it never saw.
+- **Which rules a model rewrote.** `derived` distinguishes a section
+  reproduced verbatim from one a normalisation pipeline produced (§1b), so
+  "this policy was rephrased by a model" is never something a reader has
+  to infer.
 - **Whether a rule that should have loaded didn't.** The most common
   real-world failure is a conventions file that quietly stops taking
   effect: a name the loader doesn't match, a BOM that breaks frontmatter
@@ -839,5 +926,6 @@ already logged, and already distinguishable from repository content.
 | `medium.md`: structural write protection as a conditional upgrade | Shipped in v1 — `Edit`/`Write` refuse against a loaded conventions path absent a dispatch override | §10a — §5 supplies the reason not to wait for the post-run flag to fire first |
 | Earlier draft of this document: no tier above the repository, org rules routed to `review.md`'s `<focus>` | **Three tiers** — org, team, repo — with org and team supplied by a context service at task start | §1a, §1b. The original argument ("a dispatched run has no user") only ever applied to the *user* tier; `<focus>` is a few sentences of per-run direction and review-only, so an org coding standard had nowhere to go at all |
 | (new) | Precedence is two axes: `policy` from above beats the repo, `default` from above loses to it | §1a — collapsing them forces a choice between a repo that can opt out of security policy and an org that dictates naming to a vendored fork |
-| (new) | Context-service response contract: per-document, `binding` defaulting to `default`, `source.ref` pinning, stable `version`, `resolved_for` echo, loud degradation on unavailability | §1b |
+| (new) | Context-service contract: a normalising cache, not a lookup. **Sections** are the atomic unit; `binding` resolves document-level then section-level, defaulting to `default`; `source` pins the *authored* document and heading path; `derivation` labels model-normalised text; contradictions are surfaced in `conflicts`, never silently resolved; degradation is graded (stale cache, then proceed-without, always recorded) | §1b |
+| (new) | Dispatcher asserts `repo`/`team`/`task_id`; the service resolves what they imply, and echoes them back | §1b — Forge never guesses at team membership, and a wrong team is visible in the record instead of silently producing the wrong standards |
 | (new) | `Bash` working directory is a JIT trigger alongside file-tool paths | §9 — closes the package-scoped build/test-conventions case without argv parsing |
