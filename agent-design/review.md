@@ -101,12 +101,16 @@ thing no other lens changes: **it is wired with `InspectImage`**, where
 orchestrator and the validator are not.
 
 That one difference means **tool scope is keyed on the
-`(subagent_type, role)` pair rather than on the type alone** — an amendment
-to `tools.md`'s availability table, recorded there. Both fields are
-model-supplied enums the harness validates and maps to a tool set, so the
-pair is exactly as structural a gate as the type; widening the key rather
-than minting a fourth sub-agent type is what keeps one reviewer core
-parameterised by lens instead of fracturing it. Codex is the only source in the collection that models
+`(subagent_type, kinds)` pair rather than on the type alone** — an
+amendment to `tools.md`'s availability table, recorded there. A reviewer's
+kind is its `role`; `role`, "lens" and the context service's `kinds` are
+one vocabulary under three spellings, and a kind resolves to prompt scope,
+tool grants and (reserved) context sections alike
+(`context-files.md`, "Kinds: one vocabulary, three resolutions"). Widening
+the key rather than minting a fourth sub-agent type is what keeps one
+reviewer core parameterised by lens instead of fracturing it — and the
+kind→tools mapping lives in harness config, never in a repository's corpus,
+so no amount of editing a conventions file can grant a specialist a tool. Codex is the only source in the collection that models
 reviewer sight as its own decision — a three-valued
 `Disabled`/`TextOnly`/`Multimodal` mode governing whether a reviewer
 receives screenshots at all (`../agent-vision-multimodal.md` §11) — and

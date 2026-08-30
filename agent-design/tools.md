@@ -34,8 +34,21 @@ Availability by role:
 | InspectImage | yes | yes | yes | **no** | **yes** | **no** |
 | Complete | yes | yes | no | no | no | no |
 
-**Tool scope is keyed on the `(subagent_type, role)` pair, not on
-`subagent_type` alone.** This supersedes the earlier phrasing that
+**Tool scope is keyed on the `(subagent_type, kinds)` pair, not on
+`subagent_type` alone** — where a reviewer's kind is the `role` it was
+spawned with. `role`, "lens" and the context service's `kinds` are one
+open vocabulary under three spellings, and a kind resolves to three
+payloads: prompt scope, tool grants, and (reserved) context sections.
+[`context-files.md`](./context-files.md)'s "Kinds: one vocabulary, three
+resolutions" is the general statement; this table is its tool half.
+
+Two rules from there apply directly and are the reason this is safe:
+a kind **selects from** a harness-defined capability set and never defines
+one — the mapping below lives in harness config, never in a repository's
+corpus — and kinds are **declared at spawn by the spawner**, never by an
+agent about itself mid-run.
+
+The concrete consequence: This supersedes the earlier phrasing that
 "`reviewer` and `validator` sub-agent types get `Read`/`Grep`/`List` only":
 true for three of the four reviewer lenses, and not for `visual`, which is
 the one lens that needs `InspectImage` (`review.md` §1c). Both fields are
