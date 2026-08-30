@@ -506,7 +506,27 @@ all, and Claude's action runs a bidi-override-stripping sanitizer over
 every PR comment while applying none of it to the `CLAUDE.md` the same
 prompt tells the model to follow. Aider is included as the deliberate
 null case — no loader at all, conventions passed by `--read`, which buys
-edit-protection and cache-stability for free.
+edit-protection and cache-stability for free. A later section (§12a)
+covers the **programmatic** channels the file loaders can't answer for —
+MCP server `instructions`, skills, hooks and plugins — and finds the
+governance running backwards: Claude Code diffs newly-connected MCP
+servers against prior attachments in the conversation's own history and
+announces only the delta, because the alternative is a constant literally
+named `DANGEROUS_uncachedSystemPromptSection` ("rebuilt every turn;
+cache-busts on late connect"); Codex assembles its prompt from 45 typed
+fragments and assigns third-party *content* the `user` role while
+harness-authored framing gets `developer` — but gives a plugin's own text
+and a hook's stdout a `developer` message with an **empty marker pair**,
+i.e. higher in the instruction hierarchy than `AGENTS.md` and with no
+envelope at all; and Codex's `dynamic_skill_selector/` holds **eleven**
+competing retrieval implementations (fielded BM25, character n-grams,
+routing cards, LRU hybrids, RRF fusion) behind a trait documented as
+running "in shadow mode on every turn... without changing the
+model-visible catalog" — the most developed retrieval-over-instructions
+machinery in the collection, deliberately not shipped, by the same vendor
+whose *memory* search is a grep. Across all eleven, **nobody generates
+repository context programmatically**: skills are progressive disclosure
+of static files, not construction.
 
 ## Sources so far
 

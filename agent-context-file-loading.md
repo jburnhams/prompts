@@ -20,7 +20,13 @@ the same nine questions, and none of them answers all nine the same way:
    attachment — and what does that do to the prompt cache and to the
    model's sense of the text's authority?
 
-This document answers those nine across eleven harnesses, from the loader
+And a tenth, which the file loaders cannot answer at all: **can the
+context change once the session is running?** §12a covers the four
+programmatic channels — MCP server `instructions`, skills, hooks, and
+plugins — that amend the prompt mid-session, and how differently they are
+governed from the files.
+
+This document answers those across eleven harnesses, from the loader
 source rather than from documentation. The per-harness detail (exact
 constants, exact strings, file and line references, fetch commits) lives
 in each source's own README under a `## Context-file loading` heading:
@@ -468,6 +474,213 @@ unknown frontmatter key is ignored for forward compatibility.
 
 ---
 
+## 12a. Beyond files: MCP, skills, hooks and plugins
+
+Everything above is about *files on disk, read at session start*. Four
+other channels put instruction text into the same prompts, and three of
+them can do it **mid-session**. They are worth separating out, because
+they answer a question the file loaders cannot: how does context get
+constructed, or amended, once the session is already running?
+
+### The four channels
+
+| Channel | Who authors it | When it lands | Model-visible shape |
+|---|---|---|---|
+| **MCP server `instructions`** | the server, at handshake (`InitializeResult.instructions`) | on connect — which can be **mid-session** | a prose block, usually merged into the system prompt |
+| **Skills** (`SKILL.md`) | repo, user, org, or a marketplace | catalog at start; **body on demand** | a catalog of names + descriptions, then one skill's body when invoked |
+| **Hooks** | the operator, in settings | at a lifecycle event (session start, tool call, instructions loaded) | whatever the hook prints |
+| **Plugins / extensions / apps** | a bundle author | at start, or on install | assembled sections |
+
+### MCP instructions, and the cache problem that shaped them
+
+The MCP protocol lets a server return an `instructions` string at
+handshake, and harnesses splice it into the prompt. That is
+straightforward when every server is connected before the first request.
+It stops being straightforward when a server connects *later*, because the
+system prompt is the cacheable prefix.
+
+Claude Code's `src/utils/mcpInstructionsDelta.ts` is the clearest
+treatment of this anywhere in the collection, and the fallback path it
+replaces is named in its own comment:
+
+> True → announce MCP server instructions via persisted delta
+> attachments. False → prompts.ts keeps its
+> `DANGEROUS_uncachedSystemPromptSection` (**rebuilt every turn;
+> cache-busts on late connect**).
+
+The delta version diffs the currently-connected servers that have
+instructions against what has already been announced *in the conversation
+itself* — by scanning the message history for prior
+`mcp_instructions_delta` attachments — and emits only the difference, as a
+`<system-reminder>`-wrapped user message:
+
+```
+# MCP Server Instructions
+
+The following MCP servers have provided instructions for how to use their
+tools and resources:
+
+## <server name>
+<instructions>
+```
+
+and, on disconnect:
+
+```
+The following MCP servers have disconnected. Their instructions above no
+longer apply:
+<name>
+```
+
+Three details worth having. **The diff key is the server *name*, not the
+content**, and the comment gives the reason: "Instructions are immutable
+for the life of a connection (set once at handshake)" — so there is no
+"same server, changed instructions" case to handle. **Retraction is
+additive, not retroactive**: a disconnect appends a note saying the
+earlier block no longer applies rather than removing it, because the
+history is history and rewriting it would break the cache it exists to
+protect. And there is a `ClientSideInstruction` escape hatch — the client
+can author a block *on behalf of* a server, to "carry client-side context
+the server itself doesn't know about", which is how a first-party server
+gets harness-specific framing without the server having to know about the
+harness.
+
+The same file notes that `deferred_tools_delta` — the mechanism behind
+tool-search-style lazy tool loading (`agent-tool-implementations.md`) —
+"has the same property" and shares the same attachment-persistence path.
+So in this design, *both* the tool set and the instruction set are
+append-only conversation events rather than parts of a rebuilt prefix.
+
+### Skills: a catalog in the prompt, a body on demand
+
+Skills are the field's answer to "this instruction text is only relevant
+sometimes". The shape is the same in every implementation: a **catalog**
+of names and one-line descriptions is always in the prompt, and the body
+of `SKILL.md` enters context only when the model asks for it.
+
+- **Codex** splits the two into different roles. The catalog is
+  `AvailableSkillsInstructions`, role **`developer`**, content kind
+  `skills.catalog`, wrapped in `SKILLS_INSTRUCTIONS_*` tags. An
+  individual invoked skill is `SkillInstructions`, role **`user`**,
+  content kind `skills.selected_skill_instructions`, rendered as
+  `<skill><name>…</name><path>…</path><resource_access>{json}</resource_access>…</skill>`.
+- **Gemini CLI** returns an invoked skill wrapped in `<activated_skill>`
+  with an `<instructions>` sub-block, and the system prompt tells the
+  model to treat that content as "expert procedural guidance, prioritizing
+  these specialized rules and workflows over your general defaults for the
+  duration of the task" — while "continuing to uphold your core safety and
+  security standards", the same ceiling it applies to `GEMINI.md`.
+- **OpenHands** advertises skills in `<SKILLS>` with the invocation
+  contract stated inline ("call the `invoke_skill(name=...)` tool with the
+  `<name>` shown below. This is the only supported way to invoke a
+  skill"), and renders keyword-triggered ones in `<EXTRA_INFO>` blocks
+  carrying a relevance hedge.
+- **Crush** doesn't have a skill tool at all: skills are loaded with the
+  ordinary `View` tool against a `<location>`, including a virtual
+  `crush://skills/...` scheme, with the prompt insisting "The
+  `<description>` is only a trigger — the actual procedure, scripts, and
+  references live in SKILL.md. Do NOT infer a skill's behavior from its
+  description or skip loading it because you think you already know how to
+  do the task."
+
+The load-bearing difference from a context file is **who decides**. An
+`AGENTS.md` is loaded because it exists; a skill body is loaded because
+the model asked, or because a trigger fired. That makes the catalog
+description the real interface, and every implementation above spends its
+prompt words defending against the model treating the description as a
+substitute for the body.
+
+### Codex is building retrieval over the catalog — in shadow
+
+`codex-rs/ext/skills/src/dynamic_skill_selector/` contains **eleven
+competing selector implementations** — fielded BM25, character n-grams,
+routing cards, LRU, LRU+lexical, LRU+character-routing, multi-query
+lexical, weighted lexical, and reciprocal-rank fusion over lexical and
+character signals — behind one trait whose doc comment sets the terms:
+
+> Selects likely-relevant skills **without changing the model-visible
+> catalog**. Implementations must be deterministic, side-effect free, and
+> cheap enough to run in **shadow mode on every turn**.
+
+This is the most developed piece of retrieval-over-instructions machinery
+in the collection, and it is deliberately not live: it runs alongside the
+real catalog, emits metrics keyed by a low-cardinality `method()`
+identifier, and changes nothing the model sees. It sits interestingly
+against `agent-memory-learning.md`'s finding that **no first-party
+implementation does RAG over its own memory** — the same vendor that
+answers memory retrieval with a grep is running an eleven-way bake-off for
+*skill* retrieval, without shipping any of it.
+
+### Hooks and plugins: assembled context, with weaker framing than files
+
+Codex's context module is the clearest case of prompt-as-assembly rather
+than prompt-as-document — 45 fragment types, each a
+`ContextualUserFragment` with its own role, content kind and marker pair.
+The ones relevant here:
+
+| Fragment | Role | Markers |
+|---|---|---|
+| `UserInstructions` (`AGENTS.md`) | `user` | `("# AGENTS.md instructions", "</INSTRUCTIONS>")` |
+| `AvailableSkillsInstructions` | `developer` | `SKILLS_INSTRUCTIONS_*` |
+| `SkillInstructions` (an invoked skill's body) | `user` | `<skill>` … `</skill>` |
+| `AppsInstructions` | `developer` | `APPS_INSTRUCTIONS_*` |
+| `AvailablePluginsInstructions` | `developer` | `PLUGINS_INSTRUCTIONS_*` |
+| `RecommendedPluginsInstructions` | `user` | `<recommended_plugins>` |
+| `PluginInstructions` (a plugin's own text) | `developer` | **`("", "")`** |
+| `HookAdditionalContext` (a hook's output) | `developer` | **`("", "")`** |
+
+Two patterns fall out, and they run in opposite directions.
+
+**The role assignment is consistent and sensible**: harness-authored
+framing ("here is how plugins work") is a `developer` message; third-party
+*content* — the repo's `AGENTS.md`, an invoked skill's body — is a `user`
+message, one rung down the instruction hierarchy. Codex is the only
+harness in the collection that makes this distinction structurally rather
+than in prose.
+
+**The marker assignment runs the other way, and is the concerning half.**
+Per `fragment.rs`, an empty marker pair means `render()` emits the bare
+body and `matches_marked_text` "never match[es] arbitrary text" — so
+`PluginInstructions` and `HookAdditionalContext` arrive **undelimited and
+unrecognizable**. A `developer`-role message, above user text in the
+instruction hierarchy, with no envelope, whose content came from a plugin
+bundle or from whatever a hook printed to stdout. The repository's
+`AGENTS.md` — arguably the *more* reviewed of the two, since it is in the
+repo and shows up in diffs — is the one that gets both a lower role and a
+recognition marker.
+
+Claude Code's `InstructionsLoaded` hook is the inverse arrangement and the
+safer one: the hook is fired **about** the loading (path, tier, globs,
+parent file, load reason), fire-and-forget, explicitly "audit/observability
+only" — it observes the context being built rather than contributing to
+it.
+
+### What this changes about the file-based picture
+
+- **The context is not fixed at session start** in Claude Code (MCP
+  instruction deltas, JIT memory attachments, dynamic skills), Codex
+  (skill invocation, hook context), Gemini CLI (`activate_skill`, JIT
+  subdirectory memory), OpenHands (`invoke_skill`, keyword triggers),
+  Crush and Zed (skill loading via a read tool). It *is* fixed at start in
+  Cline, Roo Code and Aider.
+- **Mid-session additions are append-only conversation events, never
+  prefix rewrites**, wherever anyone has thought about it. Claude Code
+  says why in a constant name; nobody else states it, but nobody else
+  rebuilds the prefix either.
+- **Programmatic channels are held to a lower standard than files.** The
+  file loaders got envelopes, provenance lines, precedence prose and (in
+  one case) an untrusted-content banner. Hook and plugin output — which is
+  strictly more dynamic and no better reviewed — gets a bare
+  `developer`-role message in the one harness where you can check.
+- **Nobody constructs the *repository* context programmatically.** No
+  harness here runs a hook, a server, or a skill to *generate*
+  `AGENTS.md`-equivalent content per run. Skills come closest, but a skill
+  is still a file on disk whose body is disclosed late — progressive
+  disclosure of static text, not construction. The only generation
+  anywhere is the shadow-mode selection above, and it selects among
+  existing files rather than producing new text.
+
+
 ## 13. Three postures on authority
 
 The same class of file — a Markdown document any contributor can commit —
@@ -677,6 +890,16 @@ gets to fill cheaply:
 - **Only Claude Code tracks that what the model saw differs from disk.**
 - **Only Cline explains its own conditional activations** back to the
   user.
+- **Nobody generates repository context programmatically.** Skills are
+  progressive disclosure of static files, not construction; Codex's
+  eleven-way skill-retrieval bake-off selects among existing files and
+  runs in shadow (§12a). No hook, server or plugin anywhere produces
+  `AGENTS.md`-equivalent content per run.
+- **Nobody applies the file-side discipline to the programmatic
+  channels.** Codex gives a plugin's own instruction text and a hook's
+  stdout a `developer`-role message with **empty markers** — higher in the
+  instruction hierarchy than `AGENTS.md`, and with no envelope at all
+  (§12a).
 
 ---
 
@@ -743,3 +966,15 @@ write-up lives in [`agent-design/`](./agent-design).
 8. **Don't template it.** §8 is a clean negative result across eleven
    implementations; inheriting it is free, and diverging from it opens a
    code-execution surface in a contributor-writable file.
+9. **Hold the programmatic channels to the file standard, not below it.**
+   If a hook, plugin or MCP server can contribute instruction text, it
+   gets the same envelope, the same provenance line and the same scope
+   statement as a repository file — and no higher a role. Codex's
+   inversion (§12a) is the thing to not copy.
+10. **Make mid-session additions append-only conversation events.** Both
+    harnesses that thought about late-arriving context reached the same
+    answer, and Claude Code encodes the alternative in a constant name:
+    `DANGEROUS_uncachedSystemPromptSection` — "rebuilt every turn;
+    cache-busts on late connect". A delta attachment diffed against the
+    conversation's own history costs one scan and never touches the
+    prefix.
