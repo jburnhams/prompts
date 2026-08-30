@@ -92,24 +92,38 @@ thread. These reach review mode exactly as they reach coding mode: as
 `<existing_comments>`, complete and unconditional, with bytes fetched only
 if something looks (`artifacts.md` §5.1).
 
-**Sight is granted to exactly one role.** `InspectImage` is wired for a
-fourth specialist lens, `visual`, and for nobody else — not the
-orchestrator, not `bugs`/`security`/`conventions`, not the validator. That
-keeps the narrowed tool scope the other roles already have
-(`README.md`'s decision log) and concentrates the cost in the one place it
-buys something. Codex is the only source in the collection that models
+**Sight is granted to exactly one lens.** `visual` is a fourth `role` on the
+existing `reviewer` sub-agent type — not a new type, and not a tool of its
+own. It runs the same reviewer core as every other lens
+(`system-prompts.md` §4), differing in its scope paragraph and in one
+thing no other lens changes: **it is wired with `InspectImage`**, where
+`bugs`, `security`, `conventions`, the single-stage `all` finder, the
+orchestrator and the validator are not.
+
+That one difference means **tool scope is keyed on the
+`(subagent_type, role)` pair rather than on the type alone** — an amendment
+to `tools.md`'s availability table, recorded there. Both fields are
+model-supplied enums the harness validates and maps to a tool set, so the
+pair is exactly as structural a gate as the type; widening the key rather
+than minting a fourth sub-agent type is what keeps one reviewer core
+parameterised by lens instead of fracturing it. Codex is the only source in the collection that models
 reviewer sight as its own decision — a three-valued
 `Disabled`/`TextOnly`/`Multimodal` mode governing whether a reviewer
 receives screenshots at all (`../agent-vision-multimodal.md` §11) — and
 this is the same decision resolved one notch further open.
 
-**The `visual` lens runs conditionally**, which no other lens does. It is
-fanned out only when the PR actually has something to look at: an image
-artifact on the description or a thread, **or** a diff touching
-UI-classified paths. On a backend-only PR it is not spawned at all. Every
-other lens always runs; making this one conditional is deliberate, because
-a specialist with nothing in scope still costs a full context and returns
-nothing but noise.
+**The `visual` lens runs conditionally** — fanned out only when the PR has
+something to look at: an image artifact on the description or a thread,
+**or** a diff touching UI-classified paths. On a backend-only PR it is not
+spawned at all.
+
+This is the *second* conditional lens, not the first: `conventions` is
+already skipped when step 2 finds no project-conventions file scoped to the
+changed paths, on identical reasoning — "its whole lens is quoting
+documented rules, so with nothing to quote it can only return an empty list
+at the cost of a full sub-agent run" (`system-prompts.md` §2a). `visual`
+inherits an established pattern rather than introducing one, which is the
+better argument for it.
 
 **What it looks for**, in rough priority: an implementation that contradicts
 an attached mockup; a before/after pair that does not show what the

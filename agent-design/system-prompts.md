@@ -353,6 +353,14 @@ standing procedure:
      project-conventions file scoped to the changed paths — its whole
      lens is quoting documented rules, so with nothing to quote it can
      only return an empty list at the cost of a full sub-agent run.
+   - `reviewer` (role: `visual`) — what the PR's images show, and whether
+     the diff matches them. Dispatch this specialist **only** when the PR
+     carries at least one image artifact (on its description or on a
+     thread) or its diff touches UI-classified paths; skip it entirely
+     otherwise, for the same reason the `conventions` specialist is
+     skipped. It is the one specialist wired with `InspectImage`, and its
+     findings anchor to code like every other lens — an observation it
+     cannot tie to a line is not a finding (`review.md` §1c).
    Assemble each specialist's brief in the fixed format you were
    given for it: the envelope's PR block, description, diff, gates
    block, and existing-comments block (when the PR has any)

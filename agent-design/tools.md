@@ -19,19 +19,36 @@ with it.
 
 Availability by role:
 
-| Tool | Coding orchestrator | Review orchestrator | `general-purpose` sub-agent | `reviewer` / `validator` sub-agent |
-|---|---|---|---|---|
-| Read | yes | yes | yes | yes |
-| Edit | yes | no | yes | no |
-| Write | yes | no | yes | no |
-| Bash | yes | no | yes | no |
-| Grep | yes | yes | yes | yes |
-| List | yes | yes | yes | yes |
-| Task | yes | yes | yes | no |
-| AskUser | yes | no | no | no |
-| FetchJira | yes | no | no | no |
-| AddComment | `plan` runs only | yes | no | no |
-| Complete | yes | yes | no | no |
+| Tool | Coding orchestrator | Review orchestrator | `general-purpose` sub-agent | `reviewer` (`bugs`/`security`/ `conventions`/`all`) | `reviewer` (`visual`) | `validator` |
+|---|---|---|---|---|---|---|
+| Read | yes | yes | yes | yes | yes | yes |
+| Edit | yes | no | yes | no | no | no |
+| Write | yes | no | yes | no | no | no |
+| Bash | yes | no | yes | no | no | no |
+| Grep | yes | yes | yes | yes | yes | yes |
+| List | yes | yes | yes | yes | yes | yes |
+| Task | yes | yes | yes | no | no | no |
+| AskUser | yes | no | no | no | no | no |
+| FetchJira | yes | no | no | no | no | no |
+| AddComment | `plan` runs only | yes | no | no | no | no |
+| InspectImage | yes | yes | yes | **no** | **yes** | **no** |
+| Complete | yes | yes | no | no | no | no |
+
+**Tool scope is keyed on the `(subagent_type, role)` pair, not on
+`subagent_type` alone.** This supersedes the earlier phrasing that
+"`reviewer` and `validator` sub-agent types get `Read`/`Grep`/`List` only":
+true for three of the four reviewer lenses, and not for `visual`, which is
+the one lens that needs `InspectImage` (`review.md` §1c). Both fields are
+model-supplied enums the harness validates and maps to a tool set, so
+keying on the pair is exactly as structural as keying on the type — the
+gate is the harness's mapping table either way, not the argument. Widening
+the key rather than minting a fourth sub-agent type keeps one reviewer core
+parameterised by lens, which is the property `system-prompts.md` §4 exists
+to preserve.
+
+The validator is deliberately *not* given sight even for validating a
+`visual` finding — see `review.md` §1c for why granting it would dissolve
+the independence rule rather than serve it.
 
 The "Review orchestrator" column covers both review run shapes
 (`review.md` §6): the single-stage reviewer (`system-prompts.md` §2b)
@@ -1043,7 +1060,7 @@ Code's own tool contract carries an `aliases` field for.
       "subagent_type": { "type": "string", "enum": ["general-purpose", "reviewer", "validator"] },
       "description": { "type": "string", "description": "A short (3-5 word) label for this call." },
       "prompt": { "type": "string", "description": "The complete, self-contained task for the sub-agent, including exactly what it should return." },
-      "role": { "type": "string", "enum": ["bugs", "security", "conventions"], "description": "Required when subagent_type is \"reviewer\": the lens that specialist reviews through." },
+      "role": { "type": "string", "enum": ["bugs", "security", "conventions", "visual"], "description": "Required when subagent_type is \"reviewer\": the lens that specialist reviews through. \"visual\" is spawned only when the PR carries an image artifact or touches UI-classified paths, and is the one lens whose specialist is wired with InspectImage." },
       "finding": { "type": "object", "description": "Required when subagent_type is \"validator\": the single candidate finding to check, in the review-finding schema (see formats.md)." }
     },
     "required": ["subagent_type", "description", "prompt"],
