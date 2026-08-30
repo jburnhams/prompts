@@ -524,3 +524,85 @@ as a `trigger=None` repo skill.
 - **`memory_context` is excluded from serialization** and re-resolved from
   disk each session, so persisted conversation state never carries a stale
   copy of the memory index.
+
+## Vision and multimodal
+
+**Correction and relocation.** `agent-tool-surfaces.md` listed OpenHands
+under "no web/browser tool" and "multimodal not addressed," from the prompt
+templates stored here. Both are now wrong, and the code has moved: the
+agent lives in **`All-Hands-AI/agent-sdk`** (`openhands-sdk/` +
+`openhands-tools/`), while `All-Hands-AI/OpenHands` is the app/frontend.
+Read 2026-08-30 @ `9d143aa`. Cross-harness comparison in
+[`agent-vision-multimodal.md`](../agent-vision-multimodal.md).
+
+**`inspect_image_with_vision` — a builtin that delegates sight.**
+`openhands-sdk/openhands/sdk/tool/builtins/vision_inspect.py`. Its
+description states the motivation without hedging: *"Use this when **the
+current model cannot understand images**, the latest user message includes
+an image, and visual details are needed to answer."* The action is
+`(image_index, question, profile_name?)`; the executor finds the image by
+index in the most recent user `MessageEvent`, loads a saved LLM profile that
+`vision_is_active()` confirms is sighted, asks it the question under a
+one-line system prompt (*"Answer the user's question about the attached
+image. Return concise text only."*) and returns the text.
+
+Two details worth copying. The tool **declines to register itself** when no
+vision-capable profile exists — `create()` returns `[]` — so a blind
+deployment never advertises it. And the available profile names are
+interpolated into the tool's own description, so the model is told what it
+may pass. Cost is charged to the same conversation stats via a
+`vision-profile:<name>` usage id.
+
+This is one of three independent implementations of the delegated-vision
+pattern (with Gemini CLI and OMP) — see `agent-vision-multimodal.md` §10.
+
+**Browser: `browser_use`, index-based, screenshots opt-in.**
+`openhands-tools/openhands/tools/browser_use/definition.py` splits the
+capability into ~10 single-purpose tools (`browser_navigate`,
+`browser_click`, `browser_type`, `browser_get_state`, `browser_get_content`,
+`browser_scroll`, `browser_go_back`, `browser_list_tabs`, …). Elements are
+addressed by **index from `browser_get_state`**, not coordinates, and
+`BrowserGetStateAction.include_screenshot` **defaults to `False`** — pixels
+are an explicit request, not a side effect of looking.
+
+`BrowserObservation.to_llm_content()` writes the screenshot to
+`full_output_save_dir` first and emits `Screenshot saved to: <path>` as text
+*alongside* the `ImageContent`, so a durable handle survives after the image
+itself scrolls out of context. Text is truncated by the shared
+`maybe_truncate` with the same save-to-disk spill. Browser sessions can be
+recorded with rrweb (`browser_use/js/start-recording.js`, `recording.py`).
+
+**Vision gating is a first-class LLM property.**
+`llm.vision_is_active() == not disable_vision and
+model_features.supports_vision`, checked at request build, at resize, and by
+the tool registry. `disable_vision` is an explicit config override, so a
+sighted model can be run blind deliberately — and
+`tests/sdk/agent/test_non_multimodal_image_input.py` covers the path.
+
+**Count-aware resizing.** `llm/utils/image_resize.py`:
+
+```python
+ANTHROPIC_MANY_IMAGE_THRESHOLD      = 20
+ANTHROPIC_STANDARD_IMAGE_MAX_DIMENSION = 8000
+ANTHROPIC_MANY_IMAGE_MAX_DIMENSION     = 2000
+```
+
+Up to 20 images in a request, each may be 8000px; past 20, everything drops
+to 2000px. This is the only image-count-aware resize policy found in any
+harness here, and it is the policy a screenshot loop wants — the twenty-first
+screenshot is worth a quarter of the first. It is also provider-conditional
+(`provider != "anthropic"` → no resize at all).
+
+**Remote-image inlining with an SSRF guard.**
+`llm/utils/image_inline.py` rewrites `http(s)` image URLs to base64 data
+URLs for endpoints that reject URLs (the docstring names Moonshot's Kimi),
+behind a block-list of loopback/private/link-local/multicast/reserved IP
+ranges, **following redirects manually so each hop is revalidated**, with a
+20 MB per-image download cap, a 64 MB LRU cache and a dev-only opt-out
+(`OH_INLINE_IMAGE_ALLOW_PRIVATE_HOSTS`). Failures are non-fatal: the
+original URL is preserved and upstream produces its own error.
+
+**Prompt snapshots are gated on the browser.** `tests/sdk/context/prompts/
+snapshots/anthropic__browser-{on,off}__…txt` — the browser's presence is a
+prompt-text variant under test, matching the DeepSeek-style discipline of
+treating prompt wording as behaviour with expectations checked in.

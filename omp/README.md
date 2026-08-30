@@ -134,3 +134,38 @@ Ordered by how much it changes conclusions already in this collection.
   the vendor's own blog post, not from an independent run — see
   `sources.md` for the caveats, including the two models where hashline
   *lost*.
+
+## Vision and multimodal
+
+OMP is the only source in this collection that ships **both** image entry
+points and switches between them with a flag, and the only one whose prompt
+text is templated on which one is live.
+
+`omp/tools/read.md`:
+
+> Documents → extracted text. Notebooks → editable cells. Images →
+> `{{#if INSPECT_IMAGE_ENABLED}}`metadata; call `inspect_image`
+> `{{else}}`decoded inline`{{/if}}`. `:raw` bypasses converters.
+
+`omp/system-prompt.md`:
+
+> `{{#has tools "inspect_image"}}`- Image tasks: prefer
+> `{{toolRefs.inspect_image}}` over `{{toolRefs.read}}` to spare session
+> context.`{{/has}}`
+
+Three things follow. The stated reason for the second hop is **context
+cost**, not model blindness — which distinguishes it from OpenHands's
+`inspect_image_with_vision` and Gemini CLI's `analyze_screenshot`, the two
+other delegated-vision implementations (`agent-vision-multimodal.md` §10),
+while landing on the same shape. The read tool's *behaviour* changes with
+the flag: with `inspect_image` live, `read` returns metadata and a pointer
+rather than pixels, so there is exactly one door open at a time. And both
+the tool description and the system-prompt guidance are conditional on the
+tool actually existing — the tool set and the prose that describes it move
+together, which is the discipline `agent-vision-multimodal.md` §3 finds
+missing almost everywhere else.
+
+Browser access is deprioritised by prose rather than absent: *"SHOULD use
+`read` (not browser) for web content; browser only when `read` can't
+deliver"* — with `read` handling URLs itself (reader-mode clean text, `:raw`
+for untouched HTML).

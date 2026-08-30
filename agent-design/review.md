@@ -81,6 +81,85 @@ because its model has no tools to go look.
 
 ---
 
+
+### 1c. Attachments on the PR and its threads, and the `visual` lens
+
+A pull request's description and its review comments carry images —
+before/after screenshots, an annotated mockup, and on a re-review the
+"here's what it looks like now" reply that is the whole point of the
+thread. These reach review mode exactly as they reach coding mode: as
+`<artifact>` stubs (`formats.md` §8g) inside `<pull_request>` and inside
+`<existing_comments>`, complete and unconditional, with bytes fetched only
+if something looks (`artifacts.md` §5.1).
+
+**Sight is granted to exactly one lens.** `visual` is a fourth `role` on the
+existing `reviewer` sub-agent type — not a new type, and not a tool of its
+own. It runs the same reviewer core as every other lens
+(`system-prompts.md` §4), differing in its scope paragraph and in one
+thing no other lens changes: **it is wired with `InspectImage`**, where
+`bugs`, `security`, `conventions`, the single-stage `all` finder, the
+orchestrator and the validator are not.
+
+That one difference means **tool scope is keyed on the
+`(subagent_type, kinds)` pair rather than on the type alone** — an
+amendment to `tools.md`'s availability table, recorded there. A reviewer's
+kind is its `role`; `role`, "lens" and the context service's `kinds` are
+one vocabulary under three spellings, and a kind resolves to prompt scope,
+tool grants and (reserved) context sections alike
+(`context-files.md`, "Kinds: one vocabulary, three resolutions"). Widening
+the key rather than minting a fourth sub-agent type is what keeps one
+reviewer core parameterised by lens instead of fracturing it — and the
+kind→tools mapping lives in harness config, never in a repository's corpus,
+so no amount of editing a conventions file can grant a specialist a tool. Codex is the only source in the collection that models
+reviewer sight as its own decision — a three-valued
+`Disabled`/`TextOnly`/`Multimodal` mode governing whether a reviewer
+receives screenshots at all (`../agent-vision-multimodal.md` §11) — and
+this is the same decision resolved one notch further open.
+
+**The `visual` lens runs conditionally** — fanned out only when the PR has
+something to look at: an image artifact on the description or a thread,
+**or** a diff touching UI-classified paths. On a backend-only PR it is not
+spawned at all.
+
+This is the *second* conditional lens, not the first: `conventions` is
+already skipped when step 2 finds no project-conventions file scoped to the
+changed paths, on identical reasoning — "its whole lens is quoting
+documented rules, so with nothing to quote it can only return an empty list
+at the cost of a full sub-agent run" (`system-prompts.md` §2a). `visual`
+inherits an established pattern rather than introducing one, which is the
+better argument for it.
+
+**What it looks for**, in rough priority: an implementation that contradicts
+an attached mockup; a before/after pair that does not show what the
+description claims; a screenshot in a thread that contradicts — or
+confirms — an existing finding; and rendering problems visible in a
+supplied screenshot that the diff explains.
+
+**Its findings anchor to code like everyone else's, and that is a
+constraint rather than a formality.** The validator is text-only by
+design, and §5's independence rule is that a validator re-derives a
+finding *from the code*, not from the finder's argument. A visual finding
+with no code anchor cannot be re-derived that way, and granting the
+validator sight would dissolve the independence rather than preserve it —
+it would be checking the same pixels with the same eyes. So:
+
+- A `visual` finding must name the file and line whose behaviour produces
+  what the image shows — a spacing token, a breakpoint, a colour
+  constant. The validator then checks it the ordinary way, against code.
+- A visual observation with no code anchor is **not a finding**. It is
+  either dropped, or — when it matters enough — carried in the orchestrator's
+  `Complete` report summary for a human, never posted as an inline comment
+  asserting a defect.
+
+That constraint is doing real work, not just satisfying the schema: "this
+looks a bit off" is not a review comment anybody can act on, and a lens
+that cannot tie what it sees to a line of code is producing exactly that.
+
+**An image in a comment thread is discussion, not a verdict**, under the
+same rule §4–5 already applies to comment text: threads are never verdicts
+nor a skip list. An author's screenshot showing a fix does not close a
+finding; it is evidence to weigh.
+
 ## 2. Diff construction algorithm
 
 The harness builds `<diff>` — Forge never runs `git diff` in review

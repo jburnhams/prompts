@@ -79,6 +79,35 @@ so a future pass can diff rather than re-read.
 | ↳ same pass | `github.com/cline/cline` | `sdk/packages/core/src/extensions/tools/definitions.ts` — the nine-tool surface, confirming **no `new_rule` and no memory tool**; `apps/vscode/webview-ui/src/components/cline-rules/NewRuleRow.tsx` — what the capability became | `48d6385` |
 | **DeepSeek Harness — the review-skill learning loop, re-read** (read 2026-08-30 — *targeted*, two weeks after the first pass at `47f9438`) | `github.com/deepseek-ai/deepseek-harness` | `.agents/notes/proposed/process/2026-07-13-human-review-skill-maintenance.md` (85 lines) — the full protocol: merge-commit-ancestry eligibility, why PR conversation comments are excluded, the `merge-base(B,T)→B` / `T→M` snapshot pair, batch-level fail-closed, CAS writes with unstaging rollback, the promote helper's blob-ID staleness check, and **"a singleton may qualify; recurrence is not required"**. `.agents/skills/dsh-code-review/SKILL.md` + `git log` on it — the one rule added since the first pass (item 7, locale-owned UI copy) arrived in `3c10f5d2d fix(client): route UI copy through locale`, i.e. **the implementation PR that established the convention**, not from the mining loop; `61703d224` and `a4be4b5e5` are the same shape. `packages/feedback/README.md` — the `/feedback` + per-message-rating group, and its contract that feedback is "a signal about the output, never input to it" | `cd5ef81` |
 
+### Vision and multimodal pass (read 2026-08-30)
+
+Twelve targeted reads behind [`agent-vision-multimodal.md`](./agent-vision-multimodal.md).
+Sparse-checkout recipe as above; the paths below are the ones that matter.
+
+| Source | Repo | Paths that matter | SHA read |
+|---|---|---|---|
+| **Codex CLI** | `github.com/openai/codex` | `codex-rs/core/src/tools/handlers/view_image{,_spec}.rs`; `codex-rs/core/src/image_preparation.rs` (resize limits, placeholders, `ImageResizeNotice`); `codex-rs/core/src/compact_remote_v2_images.rs` + `compact_remote_v2_image_budget_tests.rs` (atomic image truncation); `codex-rs/core/src/context_manager/history.rs` (`estimate_image_bytes`, `RESIZED_IMAGE_BYTES_ESTIMATE`); `codex-rs/core/src/context/node_repl_review_evidence.rs` (screenshots as reviewer evidence); `codex-rs/protocol/src/models.rs` ~1610–1830 (`<image name=… path=…>` sentinels, audio) | `88f7765` |
+| **Cline** | `github.com/cline/cline` | **now a monorepo** — `sdk/packages/llms/src/providers/middleware/split-tool-images.ts` (the image-in-tool-result rewrite and the bug it fixes), `sdk/packages/shared/src/llms/media.ts` (budgets, placeholders, `GeneratedMedia`), `sdk/packages/shared/src/llms/ai-sdk-format.ts`, `apps/vscode/src/services/browser/BrowserSession.ts` | `48d6385` |
+| **Gemini CLI** | `github.com/google-gemini/gemini-cli` | `packages/core/src/agents/browser/` in full — `browserAgentDefinition.ts` (the sub-agent prompt), `analyzeScreenshot.ts` (delegated computer-use model), `snapshotSuperseder.ts`, `automationOverlay.ts`, `inputBlocker.ts`, `modelAvailability.ts`, `browser-tools-manifest.json` | `0bd1d43` |
+| **OpenHands** | `github.com/All-Hands-AI/agent-sdk` (**moved** — `All-Hands-AI/OpenHands` is now the app/frontend, and the agent is here) | `openhands-sdk/openhands/sdk/tool/builtins/vision_inspect.py`; `openhands-sdk/openhands/sdk/llm/utils/{image_resize,image_inline}.py`; `openhands-tools/openhands/tools/browser_use/definition.py`; `tests/sdk/context/prompts/snapshots/*browser-{on,off}*` | `9d143aa` |
+| **Goose** | `github.com/block/goose` | `crates/goose/src/agents/platform_extensions/developer/image.rs` (the `read_image` tool with its `crop` rectangle) and `mod.rs` (tool registration) | `HEAD` @ read |
+| **Crush** | `github.com/charmbracelet/crush` | `internal/agent/tools/view.go` (image branch, MIME sniffing), `internal/agent/tools/tools.go` (`SupportsImagesContextKey`), `internal/agent/agent.go` ~875 | `1ea2714` |
+| **Zed** | `github.com/zed-industries/zed` | `crates/agent/src/tools/read_file_tool.rs` (image branch), `crates/agent/src/tools/context_server_registry.rs` (MCP image results), `crates/agent/src/thread.rs` ~1325 (ACP `PromptCapabilities.image`) and ~3640 (placeholder substitution) | `399258f` |
+| **Roo Code** | `github.com/RooCodeInc/Roo-Code` | `src/api/transform/image-cleaning.ts`, `src/core/tools/GenerateImageTool.ts`, `src/core/mentions/resolveImageMentions.ts` | `b867ec9` |
+| **OpenCode** | `github.com/sst/opencode` | `packages/opencode/src/mcp/browser.ts` (the negative result — it only opens a URL for OAuth), `packages/opencode/src/image/image.ts`, `packages/core/src/image/photon.ts` | `10765ff` |
+| **SWE-agent** | `github.com/SWE-agent/SWE-agent` | `tools/image_tools/{config.yaml,bin/view_image}`, `tools/web_browser/config.yaml`, `sweagent/agent/history_processors.py` (`ImageParsingHistoryProcessor`), `config/default_mm_{with,no}_images.yaml` | `3ea751c` |
+| **Claude Code** (leaked source — see caveat below) | `github.com/tanbiralam/claude-code` | `src/utils/imageResizer.ts` (880 lines: compression strategies, `createImageMetadataText`'s coordinate scale factor), `src/constants/apiLimits.ts`, `src/tools/FileReadTool/{imageProcessor,limits}.ts` | `6f6f12b` |
+| **Playwright MCP** | `github.com/microsoft/playwright-mcp` | `README.md` (generated from the tool definitions by `update-readme.js`, so it is the authoritative tool list): `browser_snapshot` vs `browser_take_screenshot` wording, `--caps=vision`, `--snapshot-boxes` | `d0c29a5` |
+
+Prompt-side material for the same doc came from already-stored captures:
+`leaked/jules/DETAILS2.md` (the full tool JSON, incl.
+`frontend_verification_complete`), `leaked/claude-code/claude-desktop-code.md`
+(Claude-in-Chrome / Claude Preview / Playwright MCP tool lists and the
+browser-safety block), `leaked/google-antigravity/`, `leaked/devin/Prompt.txt`,
+`leaked/windsurf/tools-wave-11.txt`, `leaked/manus/tools.json`,
+`leaked/same-dev/Prompt.txt`, `cline/system.ts`, `omp/tools/read.md` +
+`omp/system-prompt.md`.
+
 Already-stored captures used alongside the code (no fetch needed):
 `leaked/claude-code/Tools.json` (16 tools, full JSON Schemas),
 `leaked/claude-code/deferred-tools.md`, `leaked/manus/tools.json` (29 tools),

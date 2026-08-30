@@ -872,3 +872,93 @@ discovery contract is written as a doc-comment at the top of
   (`MAX_CONCURRENT_ANCESTOR_PROBES`) through the exec-server filesystem
   abstraction, so the walk works against remote/sandboxed environments,
   not just local disk. Symlinks are explicitly allowed.
+
+## Vision and multimodal
+
+Read from source on 2026-08-30 (`codex-rs` @ `88f7765`); see
+[`agent-vision-multimodal.md`](../agent-vision-multimodal.md) for the
+cross-harness comparison.
+
+**`view_image` is a real tool, gated on model modality.**
+`codex-rs/core/src/tools/handlers/view_image.rs` refuses before any I/O when
+`turn.model_info().input_modalities` does not contain `InputModality::Image`,
+with the message `view_image is not allowed because you do not support image
+inputs`. It resolves the path against the environment cwd, reads through the
+sandboxed filesystem, and *decodes the bytes to validate them* before
+returning — `unable to process image: invalid or unsupported image data` —
+specifically so non-image bytes cannot reach Code Mode. The result travels as
+`FunctionCallOutputContentItem::InputImage` (a Responses-API tool result that
+carries an image natively — see `agent-vision-multimodal.md` §4b for why that
+is unusual). `log_output()` prints `<image data URL omitted: N bytes>` so the
+transcript never carries base64.
+
+**Detail levels are a capability, not a parameter.** The `detail` property
+(`high` | `original`) appears in the schema only when
+`can_request_original_image_detail(model_info)` and the unified-budget
+feature is off; the handler still *accepts* previously-valid values after
+they leave the schema ("Keep accepting previously supported detail hints
+after they disappear from the schema") — the advertise-strict/accept-tolerant
+pattern from `agent-tool-implementations.md` §4.
+
+**Two resize budgets, priced in patches.** `image_preparation.rs`:
+
+```
+HIGH_DETAIL_LIMITS    { max_dimension: 2048, max_patches:  2_500 }
+UNIFIED_IMAGE_LIMITS  { max_dimension: 6000, max_patches: 10_000 }
+```
+
+Failures become in-message placeholders rather than errors — `image content
+omitted because it exceeded the supported size limit; use a smaller image`,
+`…because remote image URLs are not supported`, `…because detail 'low' is
+not supported; use 'high', 'original', or 'auto'` — and a resize that did
+happen is announced to the model through `ImageResizeNotice`
+(`ImageResizeNoticeSource::{ToolOutput, …}`).
+
+**Sentinel labels.** Attached media is wrapped in text content items
+(`codex-rs/protocol/src/models.rs`):
+`<image name="[Image #1]" path="/abs/path.png">` … `</image>`, with bare
+`<image>`/`</image>` when there is no path. Labels share one numbering
+sequence across local and remote images (test:
+`mixed_remote_and_local_images_share_label_sequence`), so "the second image"
+resolves. The path is interpolated unescaped.
+
+**Audio, uniquely.** `ContentItem::InputAudio { audio_url }` with
+`<audio name=… path=…>` sentinels and a named format list in the error text
+(*"unsupported audio format; use wav, mp3, m4a, webm, or ogg"*). No other
+source in this collection accepts audio input. It is charged **zero tokens**
+by the compaction estimator and preserved unconditionally through
+truncation — almost certainly incidental rather than intended.
+
+**Images survive compaction atomically.**
+`compact_remote_v2_images.rs::truncate_message_to_token_budget` truncates a
+boundary message from the end and, on meeting an `InputImage`, takes the
+image together with its adjacent `<image …>` / `</image>` labels as one
+indivisible group: it fits entirely or it is dropped entirely, and once an
+image fails to fit, `remaining` is set to 0 so no older content backfills
+into the gap. Text alongside keeps ordinary middle truncation. Cost comes
+from `estimate_image_bytes()` — a flat `RESIZED_IMAGE_BYTES_ESTIMATE = 7373`
+bytes per resized image, or the measured base64 payload for
+`detail: original`. The number of images that survived is emitted as
+`retained_image_count` on the compaction analytics event, the only
+image-retention metric found in any harness here.
+
+**Screenshots as *review* evidence.**
+`codex-rs/core/src/context/node_repl_review_evidence.rs` keeps a bounded
+(8 MB), thread-scoped store of items produced by nested `node_repl` /
+`cua_repl` calls, and exposes them to a Guardian reviewer under a
+three-valued mode: `NodeReplReviewEvidenceMode::{Disabled, TextOnly,
+Multimodal}`, selected by `model_info.node_repl_auto_review_required` or the
+pair of feature flags `GuardianEnhancedNodeReplTranscripts` +
+`GuardianNodeReplTranscriptImages`. Images are deduplicated by URL
+(`images()` uses a `HashSet` on `image_url`) and are the first thing
+discarded when the byte cap binds (`discard_images()`). Whether the reviewer
+can *see* is a separate, configurable decision from whether the actor can —
+the only instance of that split in this collection.
+
+**No browser.** Confirmed again against the live tool registry: no
+screenshot, navigate or click handler exists in `codex-rs`. The `cua_repl`
+name and a `confirmation_policies.computer_use` config key
+(`mcp_tool_call.rs`, `openai_models.rs`) indicate a computer-use surface
+that reaches this codebase only as an MCP-hosted tool, not a built-in. The
+separately-provenanced `leaked/codex-supplement/control-chrome.md` describes
+a different Codex-branded product surface — see that folder's README.

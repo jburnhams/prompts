@@ -481,6 +481,66 @@ and `source` mean any section can be traced back to the authored file and
 heading. §5's rule that a PR editing a conventions file is a finding is
 unaffected — it operates on the diff, not on the normalised sections.
 
+### Kinds: one vocabulary, three resolutions
+
+**The vocabulary is v1 even though narrowing is not.** `kinds` as a
+*context-service narrowing parameter* is reserved (next subsection). The
+kind **vocabulary itself** is already load-bearing today, under two other
+names, and unifying them is worth doing before a third appears:
+
+| Where it appears | Spelling | What it selects |
+|---|---|---|
+| `Task`, spawning a review specialist | `role` | which scope paragraph the reviewer core runs with |
+| A review finding | `role` | provenance — which lens raised it |
+| Prose throughout `review.md` | "lens" | the same thing, as a concept |
+| This service, later | `kinds` | which corpus sections come back |
+
+They are one open, service-validated string set — `bugs`, `security`,
+`conventions`, `visual`, `ux`, `performance`, `testing`, `data` — not four
+parallel taxonomies. "Lens" is retained as the prose word for *a kind in
+its scoping use*, and `role` stays as the field name in the two schemas
+that already ship it, because renaming a live field for tidiness is churn
+this folder's supersession discipline exists to discourage. What changes is
+that they are documented as one thing.
+
+**Generalised: an agent declares the kinds it covers, and the harness
+resolves them to three payloads.**
+
+```
+kinds  ──►  context sections   (this service — reserved, next subsection)
+       ──►  prompt scope       (the reviewer core's scope paragraph — v1)
+       ──►  tool grants        (which tools the spawn is wired with — v1)
+```
+
+The third is live as of the `visual` lens: it is the one review kind wired
+with `InspectImage` (`../agent-design/review.md` §1c). That supersedes the
+narrower formulation recorded a day earlier — "tool scope is keyed on the
+`(subagent_type, role)` pair" — which was the same mechanism stated as a
+special case. The general form is **`(subagent_type, kinds)` → capability
+set**, and it costs nothing extra because the fan-out already carries the
+kind.
+
+**Two rules keep this from being a privilege-escalation surface**, and they
+matter more for the tool payload than for the other two:
+
+1. **A kind selects from a harness-defined capability set; it never defines
+   one.** The mapping from kind to tools lives in harness configuration.
+   The context corpus only ever *tags sections* with kinds — it cannot
+   introduce, name, or widen a capability. Without this rule, someone
+   editing a repository's conventions file could grant an agent a tool,
+   which is precisely the class of hole §9 and `review.md` spend their
+   effort closing (a file that forges its own envelope, a PR that edits the
+   rules used to review it).
+2. **Kinds are declared at spawn, by the spawner — never by the agent about
+   itself, and never mid-run.** The review orchestrator passes a
+   specialist's kind when it fans out; a coding run's kinds come from its
+   plan or its dispatcher (next subsection). An agent that could declare
+   its own kinds mid-run could ask for tools, which turns an advisory
+   selector into a privilege request.
+
+Both rules are already true of everything shipped; stating them is what
+keeps them true when the context payload joins the other two.
+
 ### Narrowing, later: `paths` and `kinds`
 
 **Not v1.** v1 appends the whole corpus. This subsection exists to record
@@ -509,10 +569,12 @@ happens to have nothing under that spelling. That is a narrower net than
 an enum, and it is the reason the second rule below matters more here than
 it would otherwise.
 
-**Who names them, and the better answer.** A review specialist asks for
-its own lens (`formats.md` §4's `bugs`/`security`/`conventions`, plus
-`ticket_compliance` when `medium.md` §3a lands) — the fan-out is already
-keyed on exactly that, so it needs no new input from anywhere.
+**Who names them, and the better answer.** A review specialist's kind is
+its `role` (`formats.md` §4's `bugs`/`security`/`conventions`/`visual`,
+plus `ticket_compliance` when `medium.md` §3a lands) — the fan-out is
+already keyed on exactly that, so the context payload needs no new input
+from anywhere. Per the rule above, the *spawner* names it, not the
+specialist.
 
 Coding is the harder half, and dispatcher-declared kinds are the obvious
 answer rather than the right one: it puts a correctness-relevant decision

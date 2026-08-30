@@ -344,3 +344,30 @@ documentation, not from any capture here.
   knowledge retrieval simply isn't described to the model as a thing it
   does, which is consistent with the retrieval being performed for it,
   upstream of the prompt.
+
+## Vision and multimodal
+
+Devin is the collection's clearest **hybrid** browser: it addresses page
+elements by injected id *or* by pixel coordinate, in the same tool.
+
+```
+<click_browser devinid="12" coordinates="420,1200" tab_idx="0"/>
+<type_browser  devinid="12" coordinates="420,1200" press_enter="True/False" …>
+```
+
+and `<view_browser reload_window="…" scroll_direction="…" tab_idx="0"/>`
+*"Returns the current screenshot **and HTML** for a browser tab"* — pixels
+and structure in one observation, rather than the separate
+snapshot-vs-screenshot tools most a11y-first harnesses ship. The
+`reload_window` parameter comes with its own usage note (don't reload when
+you are waiting for a page to finish loading, "since then the page would be
+in a loading state again"). `restart_browser` optionally enables browser
+extensions by path.
+
+Images also enter through the read tool: `open_file` *"can also be used to
+open and view .png, .jpg, or .gif images."*
+
+The prompt adds a rule about how to *use* what it sees, which no other
+source states: *"if you are opening an image or viewing a browser
+screenshot, you should spend extra time thinking about what you see in the
+screenshot and what that really means in the context of your task."*

@@ -392,3 +392,85 @@ prompt-side assembly in the copies stored here (`system.ts`,
   `workspace:` / `global:` / `remote:` prefix and the patterns that matched,
   so a user can see *why* a rule fired. No other loader surfaces its
   activation reasoning.
+
+## Vision and multimodal
+
+Read from source on 2026-08-30 (`cline/cline` @ `48d6385`, now a monorepo:
+`apps/vscode/src/services/browser/`, `sdk/packages/llms/`,
+`sdk/packages/shared/src/llms/`). Cross-harness comparison in
+[`agent-vision-multimodal.md`](../agent-vision-multimodal.md).
+
+**`browser_action`: one tool, six actions, a state machine in prose.** The
+tool description (`cline/system.ts`) carries what the schema cannot — every
+action but `close` returns "a screenshot of the browser's current state,
+along with any new console logs"; the sequence "**must always start with**
+launching the browser at a URL, and **must always end with** closing"; and
+an exclusivity lock: "While the browser is active, only the `browser_action`
+tool can be used… if you run into an error and need to fix a file, you must
+close the browser, then use other tools to make the necessary changes, then
+re-launch the browser to verify the result." The viewport is interpolated
+into the description from settings (`${browserSettings.viewport.width}x…`)
+so the coordinate space the model is told about cannot drift from the one it
+gets, and clicks are specified as "the **center of the element**, not on its
+edges."
+
+Every mention of the tool — the tool block, the capabilities bullet, the
+generic-task rule, the worked verify-loop example in the objective section —
+is gated behind the same `supportsBrowserUse` flag, four separate ternaries
+in one file. A model without browser support is never told browsers exist.
+
+**Screenshot capture** (`BrowserSession.ts`): WebP by default with a PNG
+retry on empty output (`useWebp` constructor flag), console and `pageerror`
+listeners attached per action and detached after, a `pWaitFor` on 500 ms of
+log inactivity capped at 3 s before the shot is taken, navigation with
+`waitUntil: ["domcontentloaded", "networkidle2"]` at a 7 s timeout followed
+by a `waitTillHTMLStable` poll — with the reasoning in comments
+("`networkidle0` may not ever resolve, and not waiting could return page
+content too early before js has loaded"). Each action returns
+`{screenshot, logs, currentUrl, currentMousePosition}`.
+
+**The image-in-tool-result bug, and the fix.**
+`sdk/packages/llms/src/providers/middleware/split-tool-images.ts` is the
+clearest statement of this failure mode found anywhere:
+
+> The OpenAI Chat Completions wire format does NOT support multimodal tool
+> messages — `role:"tool"` content must be a single string. The
+> `@ai-sdk/openai-compatible` chat-messages converter therefore just
+> `JSON.stringify`s the parts array. The image bytes survive as escaped
+> base64 inside a string, which the model treats as ~50KB of opaque text and
+> hallucinates the image's actual contents.
+
+The middleware runs on the typed `LanguageModelV4Prompt` *before* the wire
+converter: media parts inside a tool result are replaced with the text
+`(see following user message for image)`, and a synthetic `role:"user"`
+message carrying typed file parts is inserted immediately after the tool
+message — so every downstream converter (Chat Completions, Anthropic,
+Mistral, Bedrock) renders it natively. The header records that this replaced
+a fetch-interceptor doing the same rewrite post-converter, and why the
+middleware position is better: no JSON round-trip per request, covers
+converters with their own message mapping, decoupled from the SDK's wire
+shape.
+
+**Two placeholders, two meanings** (`sdk/packages/shared/src/llms/media.ts`):
+
+```ts
+IMAGE_OMITTED_PLACEHOLDER     = "[media omitted: invalid or exceeds size limit]"
+IMAGE_UNSUPPORTED_PLACEHOLDER = "[Image attached — this model cannot view images]"
+```
+
+with a comment on the second that states the rule the rest of the field
+should copy: *"Substituted for image content at request-build time when the
+target model does not advertise image input. **The stored conversation
+history keeps the real image, so switching to an image-capable model
+restores it.**"*
+
+**Media budget.** `DEFAULT_MAX_IMAGE_ENCODED_BYTES` 5 MB,
+`DEFAULT_MAX_IMAGE_DECODED_BYTES` 6 MB, `DEFAULT_MAX_TOTAL_MEDIA_BYTES` 8 MB
+per request, `SUPPORTED_IMAGE_MEDIA_TYPES` = png/jpeg/gif/webp, and six
+typed failure reasons (`unsupported_media_type`, `media_type_mismatch`,
+`invalid_base64`, `encoded_limit`, `decoded_limit`, `total_limit`). Remote
+`http(s)` image URLs, whose byte size is unknown at formatting time, are
+charged the **full per-image cap** — "so URL media doesn't count as free" —
+the only conservative accounting for unknown-size media in this collection.
+A `GeneratedMedia` schema covers model-produced image/audio/video/file with
+a refinement asserting modality matches media type.

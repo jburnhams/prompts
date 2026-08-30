@@ -81,7 +81,45 @@ gives the model*: shell type/persistence, search tooling, code execution,
 browser/web access, multimodal handling, async/background execution,
 persistent memory & deployment, sandbox/isolation, and extensibility
 (MCP/skills/dynamic tool sets), across all 25 sources with a documented
-tool surface.
+tool surface. Its §4–§5 (browser access, multimodal) are largely
+**superseded** by the source-grounded pass in
+[`agent-vision-multimodal.md`](./agent-vision-multimodal.md).
+
+**[→ `agent-vision-multimodal.md`](./agent-vision-multimodal.md)** — the
+drill-down that overturned that section: how agents actually get pixels in
+front of a model, read from source across twelve harnesses plus the leaked
+corpus. Reading code rather than prompts falsified the earlier "multimodal
+is the thinnest capability here" verdict — Goose, Crush, Zed, OpenHands and
+Gemini CLI all handle images through tools no captured prompt names, and
+Gemini CLI ships a whole browser sub-agent. Organised around the four
+questions a harness answers independently (entry, transport, admission,
+lifetime) and the pixel-first/text-first split. Findings that recur: the
+**image-in-a-tool-result bug** — Chat Completions cannot carry one, the
+converter `JSON.stringify`s it, and the model "treats it as ~50KB of opaque
+text and hallucinates the image's actual contents," a failure that never
+errors — with Cline's middleware fix and SWE-agent's opposite answer
+(base64 through stdout, promoted to image blocks by a history processor);
+five independent implementations of capability-gated degradation whose
+**placeholder strings differ in whether the model can act on them**, and
+the rule that emerges (strip at request-build time, keep the real image in
+history, so a model switch restores sight); resize budgets tabulated
+(patches as well as pixels in Codex, a ceiling that drops from 8000px to
+2000px past twenty images in OpenHands), and the coordinate-drift problem
+with three shipped answers — state the scale factor in-band, fix the
+viewport, or draw a red crosshair into the screenshot. §8 is the
+under-served question: only Codex prices images and keeps them atomic
+through compaction (with `retained_image_count` as the field's only
+retention metric), and only Gemini CLI **evicts a stale visual observation**
+— a type-aware supersession rule with a lifetime of one, which generalises
+and nobody has generalised. §10 names the strongest convergent pattern:
+three harnesses independently put the screenshot in front of a *different*
+model and return only text (Gemini CLI defangs its computer-use delegate by
+excluding its action functions; OpenHands's tool refuses to register when no
+sighted profile exists). §11 covers screenshots as verification evidence —
+Jules gating task completion on a `screenshot_path` parameter, Antigravity's
+auto-recorded WebP walkthroughs, and Codex's three-valued
+`Disabled`/`TextOnly`/`Multimodal` mode deciding whether the *reviewer*
+gets to see — and §12 the injection surface a text scanner cannot cover.
 
 **[→ `agent-tool-implementations.md`](./agent-tool-implementations.md)** —
 the layer below that one, and the first doc here grounded in **source code

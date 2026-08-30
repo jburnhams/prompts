@@ -19,19 +19,49 @@ with it.
 
 Availability by role:
 
-| Tool | Coding orchestrator | Review orchestrator | `general-purpose` sub-agent | `reviewer` / `validator` sub-agent |
-|---|---|---|---|---|
-| Read | yes | yes | yes | yes |
-| Edit | yes | no | yes | no |
-| Write | yes | no | yes | no |
-| Bash | yes | no | yes | no |
-| Grep | yes | yes | yes | yes |
-| List | yes | yes | yes | yes |
-| Task | yes | yes | yes | no |
-| AskUser | yes | no | no | no |
-| FetchJira | yes | no | no | no |
-| AddComment | `plan` runs only | yes | no | no |
-| Complete | yes | yes | no | no |
+| Tool | Coding orchestrator | Review orchestrator | `general-purpose` sub-agent | `reviewer` (`bugs`/`security`/ `conventions`/`all`) | `reviewer` (`visual`) | `validator` |
+|---|---|---|---|---|---|---|
+| Read | yes | yes | yes | yes | yes | yes |
+| Edit | yes | no | yes | no | no | no |
+| Write | yes | no | yes | no | no | no |
+| Bash | yes | no | yes | no | no | no |
+| Grep | yes | yes | yes | yes | yes | yes |
+| List | yes | yes | yes | yes | yes | yes |
+| Task | yes | yes | yes | no | no | no |
+| AskUser | yes | no | no | no | no | no |
+| FetchJira | yes | no | no | no | no | no |
+| AddComment | `plan` runs only | yes | no | no | no | no |
+| InspectImage | yes | yes | yes | **no** | **yes** | **no** |
+| Complete | yes | yes | no | no | no | no |
+
+**Tool scope is keyed on the `(subagent_type, kinds)` pair, not on
+`subagent_type` alone** — where a reviewer's kind is the `role` it was
+spawned with. `role`, "lens" and the context service's `kinds` are one
+open vocabulary under three spellings, and a kind resolves to three
+payloads: prompt scope, tool grants, and (reserved) context sections.
+[`context-files.md`](./context-files.md)'s "Kinds: one vocabulary, three
+resolutions" is the general statement; this table is its tool half.
+
+Two rules from there apply directly and are the reason this is safe:
+a kind **selects from** a harness-defined capability set and never defines
+one — the mapping below lives in harness config, never in a repository's
+corpus — and kinds are **declared at spawn by the spawner**, never by an
+agent about itself mid-run.
+
+The concrete consequence: This supersedes the earlier phrasing that
+"`reviewer` and `validator` sub-agent types get `Read`/`Grep`/`List` only":
+true for three of the four reviewer lenses, and not for `visual`, which is
+the one lens that needs `InspectImage` (`review.md` §1c). Both fields are
+model-supplied enums the harness validates and maps to a tool set, so
+keying on the pair is exactly as structural as keying on the type — the
+gate is the harness's mapping table either way, not the argument. Widening
+the key rather than minting a fourth sub-agent type keeps one reviewer core
+parameterised by lens, which is the property `system-prompts.md` §4 exists
+to preserve.
+
+The validator is deliberately *not* given sight even for validating a
+`visual` finding — see `review.md` §1c for why granting it would dissolve
+the independence rule rather than serve it.
 
 The "Review orchestrator" column covers both review run shapes
 (`review.md` §6): the single-stage reviewer (`system-prompts.md` §2b)
@@ -176,7 +206,9 @@ didn't want.
 **Spill, don't dump.** A result past the harness's size ceiling is written
 to a file in the scratch directory (`{{SCRATCH_DIR}}`, `formats.md` §1a) and
 the model receives a preview plus that path. `Read` is the deliberate
-exception — spilling a read to a file the model then reads back is circular
+exception — spilling a read to a file the model then reads back is circular — and the exemption extends to every tool that *reads the artifact
+store*: `Read` over `artifact://`, and every `InspectImage` op. A tool whose
+job is reading artifacts must never mint one (`artifacts.md` §5.1)
 — so `Read` self-bounds via its own limits instead.
 
 Two constraints on the spilled file itself, both of which exist because a
@@ -505,6 +537,11 @@ handed a problem rather than a design.
 | `bash.timeout_ms` | 120,000 (max 600,000) | Already in the Bash schema; matches the field's common shape |
 | `bash.output_cap_chars` | 30,000 | OpenHands's `MAX_CMD_OUTPUT_SIZE` exactly; Cline's 48,000 is the nearest neighbour. Head and tail are kept, the middle is elided, and the full output always spills to scratch |
 | `spill_threshold_chars` | 30,000 | Any tool result past this is written to scratch and previewed, per the implementation contract — except `Read`, which is exempt because spilling a read to a file the model then reads back is circular |
+| `vision.max_dimension` | 2000 | Longest edge an image is downscaled to before it reaches the model. Claude Code's `IMAGE_MAX_WIDTH/HEIGHT`; OpenHands's many-image ceiling is the same number. The scale factor is always disclosed in the frame (`vision.md` §3d) |
+| `vision.max_bytes_encoded` | 5 MB | Per-image cap after encoding. Claude Code's `API_IMAGE_MAX_BASE64_SIZE`; Cline's is identical |
+| `vision.max_pinned_images` | 2 | Images held in context beyond the turn that loaded them. A pinned mockup plus a pinned annotated flow is a plausible specification; five is a context leak. Exceeding it is an error naming which to release |
+| `vision.model` | (a small, fast sighted model) | The sub-model `InspectImage`'s `ask` op calls — single-turn, no tools. Unset disables `ask` and `view`, and both drop out of the advertised schema (`vision.md` §6) |
+| `artifacts.max_fetch_bytes` | 25 MB | Cap enforced on the response stream when fetching attachment bytes, before decode (`artifacts.md` §6) |
 | `tolerance.enabled` | on | The alternate-forms table above is data, so a deployment can prune it; turning tolerance off entirely is available and is the wrong default, per the decision log |
 
 Three derived rules the harness validates at startup, rather than trusting
@@ -565,6 +602,44 @@ whole run, so they cannot.
 
 > Reads one or more files from the working tree. Paths are absolute, or
 > relative to the working directory named in `<env>`.
+>
+> A path may be any **ref** — one address space covers the working tree,
+> other repositories at a pinned ref, dependency source, stored artifacts
+> and past runs, and all of them read the same way:
+>
+> | Ref | What it names |
+> |---|---|
+> | `src/parser/index.ts` | a file in the working tree — the common case, and the shortest form |
+> | `file:///tmp/.../repro.py` | an absolute local path, scratch directory included |
+> | `git://acme/payments@a1b2c3d/src/Bill.java` | a file in another repository at a branch, tag or commit |
+> | `dep://com.acme:billing:4.2.1/com/acme/Bill.java` | source of a dependency of this build |
+> | `artifact://txt_04d1e8f2` | a stored payload — an attachment, or an earlier result too large to inline |
+> | `run://2026-08-14T09-22Z-7f3a/transcript` | a past run |
+>
+> **Read local first, always.** A remote scheme is for code that is *not*
+> in the tree, never a second way to read code that is — it costs a
+> network round trip where a path costs nothing. A read against a moving
+> ref (`@main`) reports back the commit it actually resolved to.
+>
+> **Anything readable comes back as text.** A PDF returns its text (pages
+> selectable), a spreadsheet its sheets, a `.docx` its prose, an image the
+> text in it, an archive its member list. The result always says which
+> conversion happened — an OCR'd screenshot and a PDF with a real text
+> layer are not equally trustworthy, and you need to know which you got.
+> Append `:raw` to any ref to skip conversion.
+>
+> Selectors narrow a read and go on the end of the ref: `:120-260` for
+> lines, `:p4-6` for PDF pages, `:Sheet2` or `:Sheet2!A1:D80` for a
+> spreadsheet, `:path/inside` for an archive member. A line range may also
+> be given as `start_line`/`end_line` on the entry, which is the same
+> thing.
+>
+> **A large result comes back as a reference, not a wall of text.** You
+> get a preview plus an `<artifact>` block naming the whole thing, and the
+> note tells you the exact next call — `Read artifact://txt_x:2001-4000`.
+> That reference is a snapshot: paging through it cannot be disturbed by
+> the underlying file changing under you. Images are the one thing you
+> cannot page this way — use `InspectImage` to look at one.
 >
 > **Read several files in one call** whenever you already know what you
 > need — a caller and its callee, a module and its test, every file a
@@ -998,7 +1073,7 @@ Code's own tool contract carries an `aliases` field for.
       "subagent_type": { "type": "string", "enum": ["general-purpose", "reviewer", "validator"] },
       "description": { "type": "string", "description": "A short (3-5 word) label for this call." },
       "prompt": { "type": "string", "description": "The complete, self-contained task for the sub-agent, including exactly what it should return." },
-      "role": { "type": "string", "enum": ["bugs", "security", "conventions"], "description": "Required when subagent_type is \"reviewer\": the lens that specialist reviews through." },
+      "role": { "type": "string", "enum": ["bugs", "security", "conventions", "visual"], "description": "Required when subagent_type is \"reviewer\": the lens that specialist reviews through. \"visual\" is spawned only when the PR carries an image artifact or touches UI-classified paths, and is the one lens whose specialist is wired with InspectImage." },
       "finding": { "type": "object", "description": "Required when subagent_type is \"validator\": the single candidate finding to check, in the review-finding schema (see formats.md)." }
     },
     "required": ["subagent_type", "description", "prompt"],
@@ -1220,6 +1295,31 @@ error rather than a runtime surprise — same device the Task tool uses
 for its conditional requirements.
 
 ---
+
+---
+
+## InspectImage
+
+> Looks at an image artifact — the full tool description, schema,
+> operations and result formats are specified in
+> [`vision.md`](./vision.md) §3, and the store it reads from in
+> [`artifacts.md`](./artifacts.md).
+
+Summarised here so the tool set reads complete in one place:
+
+- **Ops.** `extract_text` (OCR; no image and no model call), `ask` (a
+  tool-less sighted sub-model answers a specific question, returns text),
+  `view` (the image enters context for this turn only).
+- **`region`** crops before the operation, taken from the original bytes so
+  a crop is sharper than the whole downscaled image.
+- **`pin`** keeps a viewed image for the rest of the run — the exception,
+  budgeted at `vision.max_pinned_images` (default 2).
+- **Why it is a separate tool and not part of `Read`:** the granularity rule
+  admits a split when the existing tool's reducing grammar does not apply.
+  `Read` reduces by line range; an image has no lines.
+- **Degrades, not fails:** with no sighted model configured, only
+  `extract_text` is advertised — `ask` and `view` are absent from the
+  schema rather than present and erroring.
 
 ---
 

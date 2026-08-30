@@ -167,3 +167,60 @@ no agent-directed commit/PR workflow at all.
   Docker-based and external to the prompt; the harness presumably
   applies the produced diff externally to score against a held-out
   test suite.
+
+## Vision and multimodal
+
+Read from source on 2026-08-30 (`SWE-agent/SWE-agent` @ `3ea751c`),
+resolving the "named but unconfirmed" row in `agent-tool-surfaces.md` §5.
+Cross-harness comparison in
+[`agent-vision-multimodal.md`](../agent-vision-multimodal.md).
+
+**`tools/image_tools` exists and contains exactly one tool.**
+`view_image <image_file>` ("view an image file") is a 30-line Python script
+that validates the MIME type against `{png, jpeg, webp}`, base64-encodes the
+bytes, and prints **one markdown image tag** to stdout:
+
+```
+![path/to/img.png](data:image/png;base64,iVBORw0KG…)
+```
+
+**The transport is the text channel, promoted afterwards.** Because
+SWE-agent's tools are shell commands, a tool result is a string with no
+content-block structure. A history processor closes the gap:
+`ImageParsingHistoryProcessor` (`sweagent/agent/history_processors.py`,
+`type: image_parsing`) runs over the whole history before each request,
+regex-matches `!\[…\]\(data:<mime>;base64,…\)` in `user` and `tool`
+messages, and splits the string into interleaved `text` / `image_url`
+segments — keeping the markdown prefix and suffix as text around the
+promoted image, normalising `image/jpg` → `image/jpeg`, and leaving
+disallowed MIME types as literal text. It is the only harness here where the
+agent loop is unaware images exist at all; one channel, one truncation
+policy, and the base64 passes through every intermediate path at full size
+before promotion.
+
+The observation cap is raised to match:
+`max_observation_length: 10_000_000  # need longer for images`.
+
+**An explicit ablation pair.** `config/default_mm_with_images.yaml` and
+`config/default_mm_no_images.yaml` differ by the `disable_image_processing`
+template flag, the `image_tools` bundle and the `image_parsing` history
+processor, both targeting `instances: {type: swe_bench, subset:
+multimodal}`. No other source in this collection ships the with/without
+comparison as configuration.
+
+**`tools/web_browser` is pixel-first, with a rendered cursor.** The bundle
+is `open_site`, `close_site`, `screenshot_site`, `click_mouse <x> <y>
+[button]`, `double_click_mouse`, `drag_mouse`, `move_mouse`,
+`press_keys_on_page`, `navigate_back` / `_forward`, `get_console_output`,
+`execute_script_on_page`. Every mouse tool's docstring ends "(shown as a red
+crosshair) on the current page," and the instance template repeats it: *"In
+the browser, your mouse is shown as a red crosshair."* Drawing the cursor
+into the screenshot is the cheapest available answer to coordinate drift —
+the model gets closed-loop feedback on where its last click actually landed,
+and it survives an unknown resize anywhere downstream (contrast Claude
+Code's stated scale factor and Cline's fixed viewport,
+`agent-vision-multimodal.md` §7).
+
+The same template also carries the background-server pattern the browser
+work needs — `server_command &> my_server_log.txt &` — "so you can see the
+server's output in the file and it will not block the rest of your work."

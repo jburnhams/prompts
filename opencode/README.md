@@ -556,3 +556,28 @@ loaders in the collection:
   a compacted-away file eligible for re-attachment.
 - **`OPENCODE_DISABLE_PROJECT_CONFIG`** flips the whole project tier off
   and re-points relative glob resolution at the global config directory.
+
+## Vision and multimodal
+
+Checked from source on 2026-08-30 (`sst/opencode` @ `10765ff`).
+
+**No browser automation, and the file that looks like it is not.**
+`packages/opencode/src/mcp/browser.ts` exports a service whose entire
+interface is `open(url)` — it shells out to the `open` package to launch the
+user's default browser for an MCP OAuth flow, waits 500 ms, and reports
+non-zero exits. There is no page, no screenshot, no DOM. The `WebFetch`
+restriction to `opencode.ai` documented under Tool surface remains the whole
+web surface.
+
+**Images are an attachment path, not a tool.** Image handling lives in
+`packages/opencode/src/image/image.ts` and `packages/core/src/image/
+photon.ts` (Photon WASM for resize/encode), driven by the client's
+attachment UI (`packages/app/src/components/prompt-input/image-attachments`).
+No tool advertises image reading, and the `Read` tool description says
+nothing about images — so on the entry-point taxonomy in
+[`agent-vision-multimodal.md`](../agent-vision-multimodal.md) §2, OpenCode
+has door A only.
+
+`packages/core/src/github-copilot/responses/tool/image-generation.ts` is a
+provider-passthrough for Copilot's hosted image-generation tool, not an
+OpenCode tool.

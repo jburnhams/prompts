@@ -365,3 +365,41 @@ written in the collection**, and its JIT trigger is unique.
   block in a hints file is expanded.
 - **Per-import envelope**: `--- Content from <path> ---\n<expanded>\n--- End
   of <path> ---`, spliced in place of the reference.
+
+## Vision and multimodal
+
+**Correction.** `agent-tool-surfaces.md` §5 listed Goose under "not
+addressed at all" from prompt text. The developer extension registers a
+fifth tool, `read_image`
+(`crates/goose/src/agents/platform_extensions/developer/image.rs`, read
+2026-08-30 @ `HEAD`), whose test asserts the full tool list is
+`["write", "edit", "shell", "tree", "read_image"]`.
+
+**Description**: *"Read an image from a local file path or http(s) URL and
+return it as image content for the model to inspect. Supports png, jpeg,
+gif, and webp."* Tool annotations reflect whether network access is in play
+(`read_image_annotations_reflect_network_access`).
+
+**The distinctive parameter is `crop`** — `{x, y, width, height}` in pixels
+from the top-left, documented as *"use to zoom in and get more details."*
+No other harness in this collection lets the model re-examine part of an
+image without re-sending the whole thing; everywhere else, "zoom in" means
+another full screenshot.
+
+**Result shape** is a three-part MCP `CallToolResult`:
+
+- a `TextContent` summary annotated `priority: 0.0` —
+  `Loaded image from <source> (12345 bytes, image/png, 800x600). Cropped
+  from 1600x1200 to 800x600.`
+- a `ContentBlock::image(data, mime_type)`
+- `structured_content` carrying `{source, mimeType, width, height, bytes,
+  originalWidth, originalHeight, crop}`
+
+so the dimensions the model needs for coordinate reasoning arrive as text
+next to the pixels, and the same facts are available to the client
+programmatically. `MAX_IMAGE_BYTES` is 20 MB; format is detected with
+`image::guess_format` rather than the extension, and an unsupported format
+returns *"unsupported image format; supported formats are png, jpeg, gif,
+and webp"* as a tool error.
+
+**No browser, no screenshot tool.** That part of the earlier survey stands.

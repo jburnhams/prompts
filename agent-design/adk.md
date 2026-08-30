@@ -156,6 +156,14 @@ part rather than an error.
 > changes the calculus for anything that wants to return a screenshot.
 > See `../agent-tool-result-transport.md` §5.
 
+> **Now due, 2026-08-30.** [`vision.md`](./vision.md) specifies image
+> artifacts the model can `view`, so this is no longer a forward-looking
+> note: **the `AbstractMcpTool` subclass converting `ImageContent` into a
+> Gemini inline part is a v1 prerequisite.** It is the only prerequisite,
+> and it fails soft — without it, `InspectImage`'s `extract_text` and
+> `ask` ops work unchanged (both return text) and only `view` is
+> unavailable, which is a coherent degraded mode rather than a blocker.
+
 **2c. Our text is JSON-escaped on the way to the model.** The function
 response is a struct, so newlines become `\n`, tabs `\t`, and quotes in
 source code `\"`. This erodes the premise behind `formats.md` §8a that
