@@ -459,6 +459,29 @@ like `build.sh` in any command. Cline's is the only one that decides which
 rules to load by parsing *the human's own text* — the code fence stripping
 exists precisely because pasted code produced false positives.
 
+**Scoping is by path, essentially never by subject.** Every mechanism in
+that table selects on *where a file is* — a directory, a glob, a touched
+path. Nothing in the collection lets a caller ask for "the security rules"
+as a first-class request. Three partial exceptions, none of them a schema:
+
+- **PR-Agent** gives each tool its own `extra_instructions` slot —
+  `pr_reviewer_prompts.toml`, `pr_description_prompts.toml`,
+  `pr_code_suggestions_prompts.toml`, `pr_add_docs.toml`,
+  `pr_questions_prompts.toml` each interpolate their own — so the
+  selector is the *operation* being run, configured per tool in TOML.
+  It is the closest thing here to per-task instruction selection.
+- **Codex's hosted review** applies the closest `AGENTS.md`
+  **"Review guidelines"** section to each changed file — subject selection
+  by *heading convention*, with nothing enforcing the convention.
+- **Skills** (§12a) are subject-selected, but by the model at call time
+  rather than by the caller at assembly time, and their unit is a
+  procedure rather than a rule.
+
+Worth knowing before building on it: the absence may be because path
+scoping is what repository-resident files naturally support — a file's
+location is metadata you get for free, and a subject taxonomy is metadata
+somebody has to maintain.
+
 Cline is also the only one that **reports its activation reasoning back**:
 activated conditional rules are surfaced with a `workspace:`/`global:`/
 `remote:` prefix and the patterns that matched, so a user can see why a
@@ -895,6 +918,12 @@ gets to fill cheaply:
   eleven-way skill-retrieval bake-off selects among existing files and
   runs in shadow (§12a). No hook, server or plugin anywhere produces
   `AGENTS.md`-equivalent content per run.
+- **Nobody lets a caller ask for context by subject.** Scoping is by path
+  everywhere (§12); PR-Agent's per-tool `extra_instructions` and Codex's
+  "Review guidelines" heading convention are as close as the field gets,
+  and neither is a schema. A multi-role review fan-out therefore either
+  hands every specialist the same full conventions text or hand-picks per
+  brief.
 - **Nobody applies the file-side discipline to the programmatic
   channels.** Codex gives a plugin's own instruction text and a hook's
   stdout a `developer`-role message with **empty markers** — higher in the
@@ -966,12 +995,19 @@ write-up lives in [`agent-design/`](./agent-design).
 8. **Don't template it.** §8 is a clean negative result across eleven
    implementations; inheriting it is free, and diverging from it opens a
    code-execution surface in a contributor-writable file.
-9. **Hold the programmatic channels to the file standard, not below it.**
+9. **If context is selected by subject, close the vocabulary and exempt
+   the non-negotiable.** Subject scoping is the obvious way to stop a
+   five-way review fan-out carrying the same conventions text five times,
+   and it has one failure the path-based mechanisms don't: asking for the
+   wrong word returns nothing, indistinguishably from there being nothing.
+   An unknown subject should be an error, and rules marked
+   non-overridable should be returned whatever was asked for.
+10. **Hold the programmatic channels to the file standard, not below it.**
    If a hook, plugin or MCP server can contribute instruction text, it
    gets the same envelope, the same provenance line and the same scope
    statement as a repository file — and no higher a role. Codex's
    inversion (§12a) is the thing to not copy.
-10. **Make mid-session additions append-only conversation events.** Both
+11. **Make mid-session additions append-only conversation events.** Both
     harnesses that thought about late-arriving context reached the same
     answer, and Claude Code encodes the alternative in a constant name:
     `DANGEROUS_uncachedSystemPromptSection` — "rebuilt every turn;

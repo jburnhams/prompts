@@ -186,6 +186,20 @@ lookup** — it is a normalising cache: it ingests standards as their owners
 actually write them, resolves them into a canonical structure, caches that,
 and exposes a current version. Forge consumes the normalised form.
 
+The shape this gives the whole design is worth naming, because it is not
+how any harness in the collection works: **standing knowledge accumulates
+as a tiered corpus, and the prompt for a run is assembled from a query
+against it** — by ref, by path, by subject — rather than by concatenating
+whatever files happened to be on disk. The nearest precedent is DeepSeek
+Harness, the one source in the collection where "no file in the repo
+contains the system prompt" because each plugin contributes an ordered
+section and the assembler concatenates them per request
+([`../deepseek-harness/`](../deepseek-harness)). Its axis is which tool
+packages loaded rather than which standards apply, so this is that idea
+pointed at a knowledge base; and its repo-scoped, continuously-rewritten
+`dsh-code-review` skill is the closest thing anywhere to a tier that
+evolves rather than a file that is edited.
+
 That division is what makes the rest of this document work. Standards get
 authored the way people author standards — one "Engineering Standards"
 document with a security section, a licensing section and a style section,
@@ -212,7 +226,8 @@ repo tier at**, and **the path scope the run will work in**.
 ```
 { "repo": "...", "ref": "<merge-base for review, branch head for coding>",
   "team": "...", "task_id": "...",
-  "paths": ["<changed files (review), or the run's subtree (coding)>"] }
+  "paths": ["<changed files (review), or the run's subtree (coding)>"],
+  "kinds": ["security", "conventions"] }
 ```
 
 `ref` is not optional and not defaulted. §5's whole finding depends on a
@@ -297,7 +312,8 @@ unmarked section inherits the document; an unmarked document is `default`
   Python-only standard does not load for a Go PR. Evaluated by the
   **harness**, against the changed-file set (review) or the working tree
   (coding), using the same glob semantics as everything else here.
-- **`paths`** — bounds the response. See below.
+- **`paths`** — bounds the response by location. See below.
+- **`kinds`** — bounds it by subject. See below.
 - **`resolved_for`** — echoes what the service was asked. The dispatcher
   asserts `repo`, `ref`, `team`, `task_id` and `paths`; the service decides what that
   combination implies. Forge sends what it knows and never guesses at team
@@ -409,6 +425,54 @@ and `source` mean any section can be traced back to the authored file and
 heading. §5's rule that a PR editing a conventions file is a finding is
 unaffected — it operates on the diff, not on the normalised sections.
 
+### `kinds`: bounding by subject, safely
+
+A `security` review specialist does not need the house import ordering; a
+coding run touching a batch job does not need the UX copy standards. With
+a five-way review fan-out, the root sections otherwise arrive five times.
+So the request may name **kinds**, and the service returns only sections
+whose `scope` intersects them.
+
+**The vocabulary is closed and it already exists.** It is the review role
+taxonomy (`formats.md` §4): `bugs`, `security`, `conventions`, plus
+`ticket_compliance` when `medium.md` §3a lands. A coding run asks for the
+union of what its task implies; a review specialist asks for its own lens.
+Nothing invents a kind at the call site.
+
+Two rules make this safe to filter on, and they are the whole reason it is
+worth doing at all:
+
+- **An unknown kind is an error, not an empty result.** A request naming
+  `secrets` when the vocabulary says `security` fails loudly at dispatch.
+  The alternative — returning zero sections for an unrecognised word — is
+  a silent, undetectable omission of exactly the rules someone was trying
+  to fetch.
+- **`policy` sections are returned regardless of `kinds`**, as are
+  sections the pipeline could not assign a scope to. A non-negotiable rule
+  must not be filterable away by asking the wrong question, and an
+  untagged section is a tagging gap rather than an irrelevant one. `kinds`
+  is therefore an optimisation over the `default` body of the corpus, and
+  never a gate on the parts that matter most.
+
+Those two rules are what makes subject-scoping different from the pattern
+this document otherwise argues against. Elsewhere it rejects knobs whose
+setting is invisible; `kinds` is recorded in `resolved_for` (§1b) and in
+the run record (§10), and it cannot suppress a policy — so its worst
+outcome is a run that was handed less advisory context than it could have
+used, which is visible and recoverable.
+
+**Precedent, and its thinness.** No harness in the collection does
+request-time subject scoping as a first-class mechanism; scoping in the
+field is almost entirely by *path*
+([`../agent-context-file-loading.md`](../agent-context-file-loading.md)
+§12). The closest working example is PR-Agent's `extra_instructions`,
+which is a separate injection slot per *tool* (`/review`, `/describe`,
+`/improve`, `/add_docs`, `/ask`) — the kind being the operation rather
+than the subject. Codex's hosted review does the subject version by
+convention rather than schema: it applies the closest `AGENTS.md`
+**"Review guidelines"** section to each changed file. Thin precedent is a
+reason for the two guards above, not a reason to skip the mechanism.
+
 ### The response is a projection, and the cache entry is not
 
 A monorepo with 400 packages, each carrying an `AGENTS.md`, would return
@@ -416,14 +480,17 @@ A monorepo with 400 packages, each carrying an `AGENTS.md`, would return
 the request's `paths`**: only sections whose `source.path` lies on a path
 from the repository root down to one of them.
 
-The important part is that this is a **projection of a whole-repository
-resolution, not a differently-scoped resolution**. Internally the service
+`kinds` narrows it the same way, on a different axis. The important part
+for both is that this is a **projection of a whole-repository resolution,
+not a differently-scoped resolution**. Internally the service
 still resolves and caches `(repo, ref)` in full, exactly as §1 specifies,
 and filters on the way out. Three properties follow, and they are the
 reason to be explicit about the split:
 
 - **The cache key stays `(repo, ref)`** and does not fragment per task.
-  Two runs on the same ref with different `paths` hit the same entry.
+  Two runs on the same ref with different `paths` or `kinds` hit the same
+  entry — which matters most for the review fan-out, where five
+  specialists ask five different questions of one resolution.
 - **`version` names the resolution, not the projection**, so two runs
   reporting the same `version` really did see the same underlying rules —
   reproducibility survives the bounding.
@@ -462,6 +529,10 @@ deterministic filters, in order:
 2. **`scope`** — matched against the run mode, and in a multi-stage review
    against each specialist's lens (`review.md` §4), so a security-scoped
    section reaches the specialist that can act on it rather than all five.
+   When the request already named `kinds`, this is a no-op for the common
+   case and a backstop for the rest: the harness still filters, because a
+   `policy` section arrives whatever was asked for and the specialist brief
+   still has to be assembled deliberately.
 3. **Budget** — the fill order below.
 
 Then it concatenates, in precedence order (§1a), into the envelope.
@@ -1128,6 +1199,7 @@ already logged, and already distinguishable from repository content.
 | (new) | Service request carries a **`ref`** and a **`paths`** scope; the internal cache stays keyed on `(repo, ref)` and the response is a projection of it; a miss fetches and resolves | §1b — a service serving "the current version" reintroduces §5's finding, as either the Codex failure (a PR edits the rules that review it) or the Gemini one (rules from the default branch, diff from the PR). Bounding the *response* rather than the *resolution* keeps the cache key and `version` intact, so reproducibility survives |
 | §1b as first written: contradictions surfaced but never resolved; derived `policy` gated on human review | The pipeline **resolves** duplicates and contradictions and **reports** what it resolved; nothing in Forge branches on `reviewed_by_human` | §1b. Superseded by a better framing: handing an agent overlapping documents means it dedupes and reconciles anyway — at runtime, in a model, differently each run, with no inspectable artifact. Normalising in advance *relocates* that interpretation somewhere versionable and testable rather than adding it. Humans maintain the inputs; the `conflicts` report exists to get the inputs fixed, not to gate the run |
 | (new) | Org and team standards live in **repositories**, so every tier is `(source repo, ref)`; short TTL to notice new refs, publish hooks as an optimisation | §1b — refs are immutable, so cache entries invalidate themselves and `stale` gets a precise meaning; `version` becomes a function of the contributing refs |
+| (new) | Request may name **`kinds`**; unknown kind is an error, and `policy` or untagged sections return regardless | §1b — bounds the review fan-out's payload by subject without ever letting a non-negotiable rule be filtered away by asking the wrong question. Vocabulary is the existing review role taxonomy, not a new one |
 | (new) | Repo `AGENTS.md` files go through the **same** normalisation pipeline as org and team documents | §1b — the divergence between authored bytes in a PR diff and normalised bytes in the prompt is recorded via `derivation` and `source` rather than prevented; §5's conventions-edit finding operates on the diff and is unaffected |
 | (new) | Section selection is **harness-side and deterministic** — `applies_to`, then `scope`, then budget | §1b — a `policy` section the model declined to open is a policy that did not apply, and a model choosing makes "why was this rule in context" unanswerable |
 | §9 as first written: JIT walks the filesystem and reads nearby files | JIT **reveals** sections the harness already holds from the one resolution | §9 — nothing is read from disk at attach time, so a run's conventions are fixed at one ref for its whole duration |
