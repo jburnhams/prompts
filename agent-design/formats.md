@@ -68,12 +68,15 @@ reviewed PR is accepted and noted in `future.md`.)
 </plan>
 
 <repo_context>
-  {{ optional: the root project-conventions file as a nonce-bearing
-     <conventions path= rev= nonce=> block. Inlined up to 32 KiB;
-     beyond that the first 32 KiB with a `!` truncation note — never
-     path-only. Omitted entirely when no such file exists. Deeper files
-     arrive just-in-time (§8b). Full loader spec, including the
-     review-mode base-SHA rule, in `context-files.md` }}
+  {{ optional: nonce-bearing <conventions tier= binding= nonce= ...>
+     blocks, in precedence order — org and team documents resolved by the
+     context service at dispatch (`context-files.md` §1b), then the root
+     project-conventions file read from the working tree. Each inlined up
+     to 32 KiB, truncated at a heading boundary with a `!` note beyond
+     that — never path-only. Omitted entirely when there is nothing to
+     carry. Deeper repo files arrive just-in-time (§8b). Full loader
+     spec, including the tier precedence and the review-mode base-SHA
+     rule, in `context-files.md` }}
 </repo_context>
 ```
 

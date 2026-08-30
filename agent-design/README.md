@@ -221,8 +221,13 @@ does not need lifecycle folders or a format gate):
    protocol, the run-bounding contract, and (§8) the byte-level shape
    of every tool result — including how a multi-file, multi-range
    `Read` delimits its blocks without escaping anything.
-4. `context-files.md` — how a repository's own `AGENTS.md`/`CLAUDE.md`
-   becomes prompt bytes: discovery and collision rules, the byte budget
+4. `context-files.md` — where the agent's standing instructions come
+   from and how they become prompt bytes. Three tiers — org and team
+   resolved by a context service at dispatch, repo discovered by a
+   filesystem walk — with a two-axis precedence rule (`policy` from above
+   beats the repo, `default` from above loses to it) and the response
+   contract the context service has to meet. Then discovery and collision
+   rules for the repo tier, the byte budget
    and how truncation is announced, path+revision provenance, the
    nonce-bearing envelope, what the file is *scoped* to instruct, and
    the review-mode rule that conventions are read at the **base** SHA

@@ -55,14 +55,17 @@ watching this one. Three names, not Zed's nine: reading `.cursorrules` and
 users, and Forge has none.
 
 **Walk**: from the run's working directory up to the repository root
-inclusive, and no further. The root is the git root. Above the git root is
-somebody's home directory or a CI scratch path — neither is repository
-context, and in CI the former does not exist. There is no user tier and no
-global tier: Forge is dispatched by a system, not run by a person at a
-terminal, so "this user's cross-project preferences" has no referent. If a
-deployment needs org-wide review rules, they belong in the orchestrator's
-`<focus>` block (`review.md` §4) where their provenance is legible, not in
-a file the agent picks up off the runner's filesystem.
+inclusive, and no further. The root is the git root. **Above the git root
+the harness does not look** — a runner's home directory or CI scratch path
+is not repository context, and discovering instructions there is the
+failure mode
+[`../agent-context-file-loading.md`](../agent-context-file-loading.md) §15
+records: unversioned, machine-local, invisible in the transcript, and
+liable to change when someone rebuilds an image.
+
+That is a rule about **where the harness reads from**, not a rule against
+tiers above the repository. Those exist and matter — they arrive by a
+different route entirely (§1a).
 
 **Order**: root first, deepest last — matching the whole field, and for
 the same reason (a subdirectory file is an amendment to the root one, and
@@ -71,6 +74,185 @@ amendments read after what they amend).
 **No ancestor-walk opt-out, no configurable filename list, no
 `project_root_markers` equivalent.** Every knob here is a knob whose
 setting is invisible in the transcript.
+
+---
+
+## 1a. Three tiers, two sources
+
+| Tier | Scope | Source | Discovered how |
+|---|---|---|---|
+| **org** | every run, every repo | the context service | supplied at task start |
+| **team** | every run dispatched by one team or service | the context service | supplied at task start |
+| **repo** | this repository (root → deeper, §1) | the working tree | filesystem walk |
+
+The split is the design. **The harness discovers only the repo tier**,
+because a repository is the one context whose bytes are already versioned,
+reviewable and present. Everything above the repository is **handed to the
+run**, by a service that resolves which standards apply to this repo and
+this team and returns them structured (§1b). Nothing above the git root is
+read off disk.
+
+This is deliberately unlike the field, where the org and user tiers are
+paths on the machine running the agent — `~/.claude/CLAUDE.md`,
+`~/.codex/AGENTS.md`, `~/.config/crush/CRUSH.md`, Claude Code's managed
+policy at `/etc/claude-code/CLAUDE.md`. Those work for a person at a
+terminal who put the file there. For a dispatched run they are the worst
+of both worlds: authoritative enough to change the output, invisible
+enough that nobody can tell they did.
+
+**No user tier.** A run is dispatched by a system, and the design's
+archetype-2 posture (`README.md`) means there is no person in the loop
+whose preferences should shape the result. A review whose findings depend
+on which human happened to trigger it is hard to defend to the person
+receiving them. Team is the smallest useful unit here, and it is a unit
+the dispatcher knows.
+
+### Precedence
+
+Two axes, not one ladder. Every document above the repo tier carries a
+**binding**: `policy` (non-overridable) or `default` (the repo may
+override). Within one binding, the more local source wins.
+
+```
+org policy  >  team policy  >  repo (deeper → shallower)  >  team default  >  org default
+```
+
+Read it as: policy from above beats the repo; defaults from above lose to
+it. That is what an organisation usually means by "our standards" — a
+small non-negotiable core (security, licensing, data handling, supported
+language versions) and a larger body of preferences a team or repo is
+entitled to depart from. Collapsing both into one precedence number forces
+a choice between a repo that can opt out of a security policy by writing a
+contrary line in its own `AGENTS.md`, and an org that can dictate naming
+conventions to a vendored fork.
+
+Three rules that make the split behave:
+
+- **`default` is the default.** A document the service returns without an
+  explicit binding is a `default`, never a `policy`. An unmarked blob that
+  silently becomes non-overridable is a much worse failure than one that
+  silently becomes advisory.
+- **`policy` is declared by the service, never inferred from the text.**
+  No keyword matching on "must" or "never". The binding is metadata (§1b),
+  because a rule's force is a decision someone made, not a property of its
+  wording.
+- **A repo file contradicting an org `policy` is a review finding, not a
+  silent override.** The policy wins for the run, *and* the conflict
+  surfaces — the same treatment §5 gives a PR that edits its own
+  conventions. An org policy quietly overriding a repo rule teaches nobody
+  anything; a finding saying "`AGENTS.md` line 40 conflicts with org policy
+  `data-retention`" gets the repo fixed.
+
+---
+
+## 1b. What the context service must return
+
+The org and team tiers come from a separate system that resolves which
+standards apply and returns them structured. These are the requirements
+Forge places on that response — written from the loader's side, so the
+service can be built against them.
+
+### Shape
+
+Per-document, per-tier. **Not one concatenated blob.**
+
+```
+{
+  "resolved_for": { "repo": "...", "team": "...", "task_id": "..." },
+  "version": "<opaque, stable for identical inputs>",
+  "retrieved_at": "<ISO-8601>",
+  "documents": [
+    {
+      "id": "org/security-baseline",
+      "tier": "org" | "team",
+      "binding": "policy" | "default",
+      "title": "...",
+      "body": "<Markdown, inert>",
+      "bytes": 4211,
+      "source": { "system": "...", "ref": "<commit, version, or record id>" },
+      "scope": ["security", "licensing"],
+      "applies_to": ["**/*.py"]
+    }
+  ]
+}
+```
+
+Every field earns its place against something in this document:
+
+- **`documents[]`, not a blob** — precedence (§1a), budgeting (§2), the
+  run record (§10) and the write-protection set (§10a) all need
+  per-document granularity. A blob makes "which rule applied" unanswerable,
+  which is the failure this whole document exists to avoid.
+- **`binding`** — the load-bearing field. See §1a. Absent ⇒ `default`.
+- **`source.ref`** — the org tier's equivalent of §3's `rev`. It must
+  identify a specific version of that document in the system that owns it,
+  so the run record can name it and two runs can be compared. A document
+  with no `ref` is loadable but is recorded as unpinned, and that shows up
+  in the record.
+- **`version`** — one opaque token for the whole response, stable across
+  identical inputs. Lets a run be reproduced and lets the harness state
+  "these are the same standards as last time" without diffing bodies.
+- **`bytes`** — so the harness can budget (§2) before deciding what to
+  inline, rather than measuring after.
+- **`scope`** — the machine-readable form of §5's scope sentence. It says
+  what area a document speaks to, and lets a review run hand a
+  security-scoped org document to the specialist that can act on it rather
+  than to all of them.
+- **`applies_to`** — optional path or language predicates, so a
+  Python-only standard does not load for a Go PR. Evaluated by the
+  **harness**, against the changed-file set (review) or the working tree
+  (coding), using the same glob semantics as everything else here.
+- **`resolved_for`** — echoes what the service was asked, so an empty
+  `documents` array is distinguishable from a question never asked. That
+  distinction is the difference between "this org has no policies" and
+  "the integration is broken", and only one of those is fine.
+
+### Behaviour
+
+- **Determinism.** The same `resolved_for` inputs return the same
+  `documents` and the same `version` until someone changes a standard.
+  Nondeterminism here means a PR reviewed twice gets two answers with
+  nothing in the record explaining why.
+- **Ordering is stable** and the harness preserves it. Not for
+  correctness — precedence comes from `tier` and `binding`, not position —
+  but so the assembled envelope is byte-identical between runs, which §7's
+  cache reasoning depends on.
+- **Empty is a valid answer**, returned as `documents: []` with a
+  `version`, never as an error and never as a 404.
+- **Availability is a decided policy, not a discovered one.** If the
+  service is unreachable or slow, the run **proceeds without the org and
+  team tiers and records the failure prominently** in the harness report
+  (§10) — and, in review mode, states it in the posted review. Blocking the
+  run is the tempting answer and the wrong one: it converts an
+  availability problem into a delivery problem for every repo at once. But
+  a review that silently ran without org policy, and reads exactly like one
+  that ran with it, is the failure this design cannot tolerate. Loud
+  degradation, not silent.
+- **Authenticated transport, and tier is not self-asserted.** The response
+  is an instruction channel — it changes what the agent does. The harness
+  accepts `tier: "org"` only from the configured, authenticated service
+  endpoint. Anything reaching the loader by another route is not an org
+  document however it labels itself.
+- **Bodies are inert Markdown** (§6). The service may template, assemble
+  or generate them however it likes on its side; what arrives is text with
+  no expansion, no `@` imports and no interpolation performed by Forge.
+- **A `body` is subject to the same scope statement as a repo file**
+  (§5) and arrives in the same nonce-bearing envelope (§4). Being remote
+  and org-authored earns it a higher *binding*, not a higher *role*, and
+  not an exemption from containment — §12's first rule, applied to the
+  channel it was written for.
+
+### Budget interaction
+
+Org and team documents share the §2 total with repo files, and they are
+**not** first in line. A run that truncates an org security policy to fit
+a verbose `AGENTS.md` has failed at the thing it was most supposed to get
+right, so the fill order is: **all `policy` documents, then repo files,
+then `default` documents**, each truncated at a heading boundary and
+announced (§2). If `policy` documents alone exceed the total budget, that
+is a configuration error the harness reports rather than papers over —
+it means the organisation has written more non-negotiable rules than an
+agent can hold, and silently dropping some is the worst available answer.
 
 ---
 
@@ -152,10 +334,21 @@ This is also what makes §5 checkable rather than a matter of trust.
 ## 4. The envelope, and the nonce
 
 ```
-<conventions path="{{path}}" rev="{{sha}}" nonce="{{nonce}}">
+<conventions tier="repo" path="{{path}}" rev="{{sha}}" nonce="{{nonce}}">
 {{ file body, verbatim }}
 </conventions-{{nonce}}>
+
+<conventions tier="org" binding="policy" id="{{id}}" ref="{{source.ref}}"
+             nonce="{{nonce}}">
+{{ document body, verbatim }}
+</conventions-{{nonce}}>
 ```
+
+One tag for all three tiers, distinguished by attributes — so the model
+has one thing to understand and the orchestrator has one transclusion rule.
+`tier` is `org`, `team` or `repo`; `binding` is present on the first two
+only (§1a); `path`+`rev` identify a repo file, `id`+`ref` a service
+document (§1b).
 
 Two rules.
 
@@ -188,6 +381,15 @@ an assembler that can emit it bare.
 
 Two paragraphs of harness-authored framing precede the blocks. They differ
 by mode, and the difference is the point.
+
+The framing below is written for the repo tier. Org and team documents get
+the same scope sentence and the same envelope, plus one line naming their
+binding: a `policy` document is introduced as non-overridable and a
+`default` one as a preference the repository may depart from (§1a). The
+model is told the precedence order once, in the same place, rather than
+being left to infer it from block ordering — the mistake
+[`../agent-context-file-loading.md`](../agent-context-file-loading.md) §4
+finds the whole field making.
 
 **Coding mode** — the file is repository-owned, on a branch the dispatcher
 chose, and is the best available statement of house style:
@@ -456,10 +658,10 @@ triggered a JIT attachment. Asking the model to report facts it cannot
 verify is exactly what the rest of this design refuses to do — so the
 component that made each decision is the component that records it.
 
-One entry per file:
+One entry per document, across all three tiers:
 
 ```
-{ path, rev, bytes, truncated, trigger, shadowed }
+{ tier, binding, path|id, rev|ref, bytes, truncated, trigger, shadowed }
 ```
 
 where `trigger` is `envelope` or the tool call that caused the JIT load,
@@ -467,7 +669,12 @@ where `trigger` is `envelope` or the tool call that caused the JIT load,
 lists any same-directory candidates that lost the first-match collision
 (§1).
 
-Five things this buys, each of them something the field currently cannot
+Alongside it, the context service's own outcome: the `version` and
+`resolved_for` it returned (§1b), or — when it was unreachable — the
+failure, recorded prominently enough that nobody mistakes a degraded run
+for a normal one.
+
+Six things this buys, each of them something the field currently cannot
 answer:
 
 - **Which collision rule fired, and what lost.** A repo with `AGENTS.md`
@@ -477,6 +684,9 @@ answer:
   for a review run.
 - **Whether the budget bit** (§2), independently of the model noticing the
   `!` note.
+- **Whether the org and team tiers were actually present.** A run that
+  proceeded without them (§1b) is recorded as such, so a review is never
+  read as having applied policy it never saw.
 - **Whether a rule that should have loaded didn't.** The most common
   real-world failure is a conventions file that quietly stops taking
   effect: a name the loader doesn't match, a BOM that breaks frontmatter
@@ -536,9 +746,10 @@ protected — it was never instruction to this run.
 | Not doing | Why | Where the field does it |
 |---|---|---|
 | `@path` imports | §6 — every implementation is a security project; the ancestor walk covers the main case | Claude Code, Gemini CLI, Goose |
-| User/global tier | §1 — no user; a runner's home directory is not repository context | almost all |
+| User tier | §1a — a dispatched run has no person whose preferences should shape the result | almost all |
+| Reading *any* tier off the runner's filesystem | §1a — org and team arrive from the context service (§1b); the harness reads only the working tree | all of them (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, `/etc/claude-code/CLAUDE.md`) |
 | Fetching instructions over HTTP | unpinned, uncached, unverified bytes steering a run | OpenCode (`config.instructions` accepts `https://`, 5s timeout, no integrity check) |
-| Cross-repo / marketplace rule sources | same, plus they change with no commit in the repo under review | OpenHands (`load_public_skills`), Cline (`remote` tier), Claude Code (managed policy, team memory) |
+| Cross-repo / marketplace rule sources fetched by the *agent* | same, plus they change with no commit in the repo under review. The context service is the sanctioned version of this: resolved once at dispatch, versioned, recorded (§1b) | OpenHands (`load_public_skills`), Cline (`remote` tier), Claude Code (managed policy, team memory) |
 | `paths:` frontmatter conditionals | §9's ancestor walk is the coarse version and needs no DSL; the fail-open/fail-closed matrix is four decisions to get right | Claude Code, Cline |
 | Per-file toggles / exclusion globs | a knob whose setting is invisible in the transcript | Cline (UI toggles), Claude Code (`claudeMdExcludes`) |
 | Mid-session reload | a run is short; Codex caches on environment selection and does not reload on edit either | nobody reloads on mtime |
@@ -626,4 +837,7 @@ already logged, and already distinguishable from repository content.
 | `review.md` §4: conventions "scoped to the changed paths" (undefined) | Root file + every conventions file on a path down to each changed file's directory, deduped | §5 — §1's walk with the changed set standing in for cwd |
 | (new) | Coding sub-agents inherit conventions verbatim; review specialists stay scoped to the `conventions` lens | §8a — inherit when the sub-agent does the same job, scope when it does a different one |
 | `medium.md`: structural write protection as a conditional upgrade | Shipped in v1 — `Edit`/`Write` refuse against a loaded conventions path absent a dispatch override | §10a — §5 supplies the reason not to wait for the post-run flag to fire first |
+| Earlier draft of this document: no tier above the repository, org rules routed to `review.md`'s `<focus>` | **Three tiers** — org, team, repo — with org and team supplied by a context service at task start | §1a, §1b. The original argument ("a dispatched run has no user") only ever applied to the *user* tier; `<focus>` is a few sentences of per-run direction and review-only, so an org coding standard had nowhere to go at all |
+| (new) | Precedence is two axes: `policy` from above beats the repo, `default` from above loses to it | §1a — collapsing them forces a choice between a repo that can opt out of security policy and an org that dictates naming to a vendored fork |
+| (new) | Context-service response contract: per-document, `binding` defaulting to `default`, `source.ref` pinning, stable `version`, `resolved_for` echo, loud degradation on unavailability | §1b |
 | (new) | `Bash` working directory is a JIT trigger alongside file-tool paths | §9 — closes the package-scoped build/test-conventions case without argv parsing |
