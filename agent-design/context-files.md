@@ -31,8 +31,17 @@ decision made in `review.md` §1** — see §5.
 AGENTS.md   CLAUDE.md   AGENT.md
 ```
 
-**First match per directory wins.** A directory containing both
-`AGENTS.md` and `CLAUDE.md` contributes only `AGENTS.md`.
+**First match per directory wins, and the shadowed file is named in the
+run record.** A directory containing both `AGENTS.md` and `CLAUDE.md`
+contributes only `AGENTS.md` — and §10's `conventions_loaded`, which the
+*harness* writes, carries a `shadowed` entry naming the `CLAUDE.md` that
+lost, so "my `CLAUDE.md` is being ignored" is a visible fact rather than a
+mystery. The model is never told, and could not be: it has no way to know
+a file it was not shown exists. The rule without
+the reporting is exactly the invisibility
+[`../agent-context-file-loading.md`](../agent-context-file-loading.md)
+§18 faults the field for: a repo with both files gets a different answer
+from every harness and none of them says which.
 
 Rationale. The field splits roughly evenly between first-match (Codex,
 Zed, OpenCode) and load-all (Claude Code, Gemini CLI, Goose, Cline,
@@ -77,17 +86,37 @@ to the log, and **the model is told nothing**. A model that has silently
 lost the second half of the conventions file will confidently review
 against the first half.
 
-So: truncation is per-file, at a line boundary, and **announced in the
-envelope** using the same `!`-note convention `formats.md` §8b already
-uses for truncated `Read` results:
+So: truncation is per-file, **at a Markdown heading boundary**, and
+**announced in the envelope** using the same `!`-note convention
+`formats.md` §8b already uses for truncated `Read` results:
 
 ```
-<conventions path="AGENTS.md" rev="a1b2c3d" truncated="true">
-! This file is 71 KB; the first 32 KB is shown. Read the rest with Read if
-! you need it.
+<conventions path="AGENTS.md" rev="a1b2c3d" truncated="at-heading"
+             shown="7 of 11 sections">
+! This file is 71 KB; the first 7 sections (32 KB) are shown, cut at a
+! heading boundary. The remaining sections are: "Release process",
+! "Generated files", "Deprecations", "Vendored dependencies". Read the
+! file with Read if you need them.
 ...
-</conventions>
+</conventions-{{nonce}}>
 ```
+
+**Cutting at the last heading that fits, not the last line.** A rule is a
+unit of meaning and half of one is worse than none: a line-boundary cut
+can leave `- Never call the legacy client directly` intact while dropping
+the `— except in src/compat/, where it is required` that followed it, and
+the model has no way to know a qualifier was removed. A heading boundary
+guarantees every rule the model sees is a whole rule.
+
+Two consequences to accept. It costs a Markdown parse of a file that has
+already been read — cheap, and the loader is doing nothing else. And a
+file with one giant section, or no headings at all, has no boundary to cut
+at: that case **degrades to a line-boundary cut**, with the note saying so
+(`truncated="at-line"`), because a document with no internal structure
+offers nothing better. Naming the dropped section headings in the note is
+what turns "something is missing" into "these four things are missing",
+which is the difference between a gap the model can act on and one it
+can only worry about.
 
 Whole files dropped for the total cap get a note too, listing the paths,
 so "there were four and you were given three" is visible rather than
@@ -315,25 +344,42 @@ Only the root file is inlined at dispatch. Deeper files arrive by §9.
 
 ## 9. Just-in-time loading for deeper files
 
-When a `Read`, `Edit` or `Write` touches a path below the working
-directory, the harness walks up from that path to the working directory
-and attaches any `AGENTS.md` in between that has not already been sent,
+When a tool touches a path below the working directory, the harness walks
+up from that path to the working directory and attaches any `AGENTS.md`
+in between that has not already been sent,
 appended once after `</files>` in a `<system-reminder>` block — the
 mechanism `formats.md` §8b already specifies, now with §4's envelope and
 §3's `rev`.
 
-**Trigger: the resolved path arguments of file tools only.** Not shell
-argv, and not the user's prose.
+**Two triggers, both of them a single resolved path the harness already
+holds:**
 
-Six JIT triggers exist in the field and the two widest are the two to
-avoid. Goose tokenizes the `command` argument with `shell_words::split`
-and treats any non-flag token containing a path separator *or a dot* as a
-path — so `pytest tests/unit/test_x.py` loads `tests/unit/.goosehints`,
-and so does a bare `build.sh`. Cline scrapes path-shaped tokens out of the
+1. the resolved path arguments of `Read`, `Edit` and `Write`;
+2. **the working directory a `Bash` call runs in.**
+
+Nothing else. Not tokens parsed out of a command string, and not the
+user's prose.
+
+The `Bash` cwd is in because it closes the case the file-tool trigger
+misses and Forge hits constantly: a package-scoped `AGENTS.md` whose whole
+content is "run this package's tests with X". Its build and test
+conventions are needed at exactly the moment the agent runs a command in
+that package, which is not necessarily a moment it has read a file there.
+The harness sets that working directory explicitly, so it is one
+unambiguous path per call — the same shape as a file-tool argument, and
+nothing like parsing argv.
+
+That distinction is the whole reason the other two field mechanisms are
+out. Goose tokenizes the `command` argument with `shell_words::split` and
+treats any non-flag token containing a path separator *or a dot* as a
+path, so `pytest tests/unit/test_x.py` loads `tests/unit/.goosehints` and
+so does a bare `build.sh`. Cline scrapes path-shaped tokens out of the
 *user's message text* (stripping code fences first, because pasted code
 produced false positives). Both make "which rules were in context" depend
 on incidental string shapes, which for an unsupervised run is a
-reproducibility problem before it is anything else.
+reproducibility problem before it is anything else. Goose's underlying
+instinct — shell work needs local conventions too — is right; its
+implementation is what to avoid.
 
 **Dedup is by realpath**, in a per-run set. Gemini CLI's `dev:ino` keying
 is the only fully correct dedup in the field and it exists for a case
@@ -352,15 +398,38 @@ them there" has to be answerable afterwards.
 
 ## 10. What the run reports
 
-The `Complete` report (`formats.md` §3) gains a `conventions_loaded`
-array: one entry per file, `{path, rev, bytes, truncated, trigger}` where
-`trigger` is `envelope` or the tool call that caused the JIT load.
+`conventions_loaded` goes in **the report the harness hands downstream**
+(`formats.md` §3a — the same artifact that already carries the `git
+status` cross-check and the conventions-file diff flag), **not** in
+`Complete`.
 
-Four things this buys, each of them something the field currently cannot
+That placement is the point, not a detail. `Complete` is the *model's*
+self-report, and §3a is explicit that the harness does not take its
+claims on faith. Half of what `conventions_loaded` records is something
+the model structurally cannot know: it never saw the `CLAUDE.md` that
+first-match shadowed (§1), it cannot distinguish a file the loader skipped
+from one that did not exist, and it has no view of which tool call
+triggered a JIT attachment. Asking the model to report facts it cannot
+verify is exactly what the rest of this design refuses to do — so the
+component that made each decision is the component that records it.
+
+One entry per file:
+
+```
+{ path, rev, bytes, truncated, trigger, shadowed }
+```
+
+where `trigger` is `envelope` or the tool call that caused the JIT load,
+`truncated` is `false` / `at-heading` / `at-line` (§2), and `shadowed`
+lists any same-directory candidates that lost the first-match collision
+(§1).
+
+Five things this buys, each of them something the field currently cannot
 answer:
 
-- **Which collision rule fired.** A repo with `AGENTS.md` and `CLAUDE.md`
-  gets a different answer from every harness and none of them says which.
+- **Which collision rule fired, and what lost.** A repo with `AGENTS.md`
+  and `CLAUDE.md` gets a different answer from every harness and none of
+  them says which — let alone names the file that was dropped.
 - **Which revision applied** (§3, §5) — checkable against the PR's base
   for a review run.
 - **Whether the budget bit** (§2), independently of the model noticing the
@@ -463,5 +532,8 @@ already logged, and already distinguishable from repository content.
 | `formats.md` §1: inline "if short enough", else path only | Explicit 32 KiB per-file / 64 KiB total, truncate-and-announce, never path-only | §2, §8 |
 | `formats.md` §8b: nearby conventions appended after `</files>` | Same, plus `rev`, nonce, realpath dedup, and a logged trigger | §9 |
 | `system-prompts.md` step 1: "read it before writing any code" | Unchanged for a file the envelope didn't carry; the root file now arrives inlined, so step 1 is a fallback rather than the primary path | §8 |
-| (new) | `Complete.conventions_loaded` | §10 |
+| (new) | `conventions_loaded` in the **harness's** downstream report, not `Complete` | §10 — the model cannot know what was shadowed, skipped, or JIT-triggered, and `formats.md` §3a already refuses to take its self-report on faith |
 | (new) | `<conventions>` `rev` = `base_sha` in review mode, matching `<pull_request>`'s `Base SHA` | §3, §5 — same merge-base the diff already uses |
+| (new) | First-match collision **reports the shadowed file** | §1, §10 — the rule without the reporting is the invisibility this document faults the field for |
+| (new) | Oversize files cut at a **heading** boundary, dropped section names listed | §2 — a line cut can strip a rule's qualifier and leave the rule; the model cannot tell |
+| (new) | `Bash` working directory is a JIT trigger alongside file-tool paths | §9 — closes the package-scoped build/test-conventions case without argv parsing |
