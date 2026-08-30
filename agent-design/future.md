@@ -174,7 +174,8 @@ re-litigated later.
   when) — the multi-repo analog of what `agent-context-compaction.md`
   is to context. Tracked so the asynchronous path doesn't get bent
   out of shape trying to fake it.
-- **Cross-run repo memory — resolved and moved to `medium.md` §6.**
+- **Cross-run repo memory — resolved, moved to `medium.md` §6, and now
+  specified in [`memory.md`](./memory.md).**
   This entry previously tracked the open question and its blocker: a
   Forge-writable memory file that future runs read is *exactly* the
   self-instruction-poisoning surface the conventions file is defended
@@ -188,7 +189,10 @@ re-litigated later.
   ever influence *suppression* of review findings (`medium.md` §6f
   ships informs-never-vetoes deliberately), which needs the finding
   outcome data of §3e before it can be argued from evidence rather
-  than from taste.
+  than from taste. `memory.md` narrows it slightly — informs-never-vetoes
+  is now a `binding` value rather than a prose rule, so lifting it would
+  mean letting a machine-written section carry `policy`, which is a
+  sharper question than the one this entry originally asked.
 - **Semantic / symbol-aware code search.** V1's Grep/List sits at the
   middle of the field's clearest capability ladder — plain text match
   → semantic/embedding search (Cursor, Windsurf, Roo Code) →
