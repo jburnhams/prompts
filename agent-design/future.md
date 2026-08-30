@@ -151,6 +151,12 @@ re-litigated later.
   product-owner entrypoint raises — and an answer to what the originating
   run does while it waits, which is either `AskUser`'s suspend/resume
   protocol (`formats.md` §5) or a completion that names the follow-up.
+  Sequencing note: this is one of three things that want to land together
+  — context narrowing ([`context-files.md`](./context-files.md) §1b's
+  "Narrowing, later"), what a run does when it reaches outside its scope,
+  and task splitting. None is urgent while v1 hands every run the whole
+  corpus, and each is awkward without the other two.
+
   Note the shape is close to the existing dependency-change path below:
   file the ask, suspend, integrate when it ships. The difference is that
   the dependency here is a task in the same repository rather than a

@@ -21,6 +21,41 @@ diff flag), §8b (nearby conventions on a `Read` batch), `review.md` §1 and
 single specification those five now point at, and it **supersedes one
 decision made in `review.md` §1** — see §5.
 
+## Status: what is v1, and what is room left for later
+
+Not everything below is v1, and the difference matters more here than
+usual, because the cheap version and the elaborate version share a
+contract and the point of writing the contract now is that the first does
+not preclude the second.
+
+**v1 is deliberately blunt.** The service merges all three tiers into one
+resolved, cached, versioned corpus; the harness fetches it at dispatch and
+**appends all of it**. No subject filtering, no path bounding, no
+per-specialist tailoring. That is a complete, useful system, and it is
+where the design starts.
+
+**The direction of travel is the opposite of blunt**: coding runs and
+review runs plainly want different things, specialist review agents want
+narrower things still, and the end state is a **prompt constructed for the
+task** out of a tiered knowledge base. The sections below that describe
+`paths`, `kinds` and per-specialist selection are that direction — marked
+where they appear — not v1 obligations.
+
+**What v1 must therefore get right is the shape, not the filtering.**
+Three things have to be true from the first version or the expansion is a
+rewrite: the corpus is **sectioned** rather than a blob, every section
+carries **provenance and binding**, and the service caches the **whole
+resolution** while the response is a **projection** of it. Given those,
+adding a filter later changes what is projected and nothing else.
+
+**And the bias when in doubt is to include.** Forge runs unsupervised;
+a run that fails because it lacked a convention costs a whole cycle and a
+human's attention, while a run carrying some context it did not need costs
+tokens. Those are not the same price. Filtering exists to make the review
+fan-out affordable, not as a virtue in itself, and no filter should ever
+be able to drop something the run needed to succeed — which is why the
+guards below matter more than the filters they guard.
+
 ---
 
 ## 1. Discovery (a specification for the service, not the harness)
@@ -220,15 +255,22 @@ a pointer back to the document and heading it came from. Repo-tier sections
 come back in the same shape, with `source` naming a path and a commit
 instead of a standards-system record.
 
-The request carries what the dispatcher knows: **the ref to resolve the
-repo tier at**, and **the path scope the run will work in**.
+The request carries what the dispatcher knows, and — **the one field v1
+cannot do without** — the ref to resolve the repo tier at:
 
 ```
 { "repo": "...", "ref": "<merge-base for review, branch head for coding>",
   "team": "...", "task_id": "...",
-  "paths": ["<changed files (review), or the run's subtree (coding)>"],
-  "kinds": ["security", "conventions"] }
+
+  // reserved, ignored in v1 — see "Narrowing, later" below
+  "paths": [...],
+  "kinds": [...] }
 ```
+
+**v1 sends the first four and gets the whole resolved corpus back.**
+`paths` and `kinds` are in the shape from the start so that adding them
+later is a change to what the service projects, not to the contract; a
+service that ignores them is a valid v1 service.
 
 `ref` is not optional and not defaulted. §5's whole finding depends on a
 review run reading conventions at the merge-base rather than at the PR
@@ -312,8 +354,8 @@ unmarked section inherits the document; an unmarked document is `default`
   Python-only standard does not load for a Go PR. Evaluated by the
   **harness**, against the changed-file set (review) or the working tree
   (coding), using the same glob semantics as everything else here.
-- **`paths`** — bounds the response by location. See below.
-- **`kinds`** — bounds it by subject. See below.
+- **`paths`** / **`kinds`** — reserved narrowing parameters, ignored in
+  v1. See "Narrowing, later".
 - **`resolved_for`** — echoes what the service was asked. The dispatcher
   asserts `repo`, `ref`, `team`, `task_id` and `paths`; the service decides what that
   combination implies. Forge sends what it knows and never guesses at team
@@ -425,13 +467,19 @@ and `source` mean any section can be traced back to the authored file and
 heading. §5's rule that a PR editing a conventions file is a finding is
 unaffected — it operates on the diff, not on the normalised sections.
 
-### `kinds`: bounding by subject, safely
+### Narrowing, later: `paths` and `kinds`
 
-A `security` review specialist does not need the house import ordering; a
-coding run touching a batch job does not need the UX copy standards. With
-a five-way review fan-out, the root sections otherwise arrive five times.
-So the request may name **kinds**, and the service returns only sections
-whose `scope` intersects them.
+**Not v1.** v1 appends the whole corpus. This subsection exists to record
+what narrowing will look like when it is needed, and — more usefully —
+what v1 has to avoid doing so that it stays available.
+
+The pressure that will force it is the review fan-out. A `security`
+specialist does not need the house import ordering; a coding run touching
+a batch job does not need the UX copy standards; and with a five-way
+fan-out the root sections otherwise arrive five times. Two axes are
+available: **`paths`** (bound by location — the changed-file set for a
+review, the run's subtree for a coding task) and **`kinds`** (bound by
+subject, against each section's `scope`).
 
 **The vocabulary is open, and validated at the boundary.** A kind is any
 string the corpus uses — `security`, `conventions`, `ux`, `performance`,
@@ -447,13 +495,31 @@ happens to have nothing under that spelling. That is a narrower net than
 an enum, and it is the reason the second rule below matters more here than
 it would otherwise.
 
-**Who names them.** A review specialist asks for its own lens
-(`formats.md` §4's `bugs`/`security`/`conventions`, plus
+**Who names them, and the better answer.** A review specialist asks for
+its own lens (`formats.md` §4's `bugs`/`security`/`conventions`, plus
 `ticket_compliance` when `medium.md` §3a lands) — the fan-out is already
-keyed on exactly that. A **coding run's kinds are named by the
-dispatcher**, per ticket, alongside the `paths` scope: the same place that
-already decides what the run is for. Nothing is inferred from file
-extensions, and the model never chooses.
+keyed on exactly that, so it needs no new input from anywhere.
+
+Coding is the harder half, and dispatcher-declared kinds are the obvious
+answer rather than the right one: it puts a correctness-relevant decision
+in dispatch config, where getting it wrong means the agent writes code
+against rules it was never shown, and the record shows what was asked
+rather than what was missed.
+
+**A well-specified, planned task is a better selector than a declaration.**
+The design already produces exactly that artifact: a `mode: plan` run
+analyses the work and emits a plan the later `implement` run consumes
+through the envelope's `<plan>` block (`formats.md` §1, §6). A plan that
+has established which packages, layers and concerns the change touches has
+*derived* the answer that a dispatcher field would have been guessing at.
+So the shape to aim for is **the plan naming what knowledge its
+implementation needs**, with dispatcher-declared kinds as the fallback for
+runs dispatched without a plan. That also puts the decision where it is
+cheapest to get right and most visible when wrong — in a plan a human or a
+later run can read — rather than in configuration.
+
+Nothing is inferred from file extensions, and the model never chooses
+mid-run.
 
 Two rules make this safe to filter on, and they are the whole reason it is
 worth doing at all:
@@ -493,17 +559,18 @@ reason for the two guards above, not a reason to skip the mechanism.
 
 ### The response is a projection, and the cache entry is not
 
-A monorepo with 400 packages, each carrying an `AGENTS.md`, would return
-400 sections for a run that touches three. So **the response is bounded by
-the request's `paths`**: only sections whose `source.path` lies on a path
-from the repository root down to one of them.
+**This part *is* v1**, even though v1 projects the identity function. It
+is the structural decision that keeps narrowing available later without a
+rewrite, which is why it belongs in the first version rather than the
+version that needs it.
 
-`kinds` narrows it the same way, on a different axis. The important part
-for both is that this is a **projection of a whole-repository resolution,
-not a differently-scoped resolution**. Internally the service
+The service resolves and caches `(repo, ref)` **in full**, exactly as §1
+specifies, and the response is a **projection** of that cached
+resolution — in v1, all of it; later, bounded by `paths`, by `kinds`, or
+by whatever selector the plan supplies. Internally the service
 still resolves and caches `(repo, ref)` in full, exactly as §1 specifies,
-and filters on the way out. Three properties follow, and they are the
-reason to be explicit about the split:
+and filters on the way out. Three properties follow, and they are the whole reason to separate
+resolution from response now rather than when narrowing arrives:
 
 - **The cache key stays `(repo, ref)`** and does not fragment per task.
   Two runs on the same ref with different `paths` or `kinds` hit the same
@@ -521,11 +588,11 @@ and that is the whole of it — so §1b's failure taxonomy stays a
 dispatch-time concern and nothing in a run depends on the service still
 being reachable.
 
-That leaves the case the re-request was for: a coding run whose ticket
-named one package but whose fix reaches into another. The answer is not to
-widen the context, because **a run that wanders outside its remit is
-evidence the task was mis-scoped, and quietly re-resolving hides that.**
-Two things follow:
+In v1 the question barely arises: the run has the whole corpus, so there
+is nothing outside its context to wander into. It becomes live exactly
+when narrowing does, and the answer then is not to widen the context,
+because **a run that wanders outside its remit is evidence the task was
+mis-scoped, and quietly re-resolving hides that.** Two things follow:
 
 - **Reads outside scope are unrestricted.** Exploration is how a run
   discovers the boundary was wrong, and forbidding it would just make the
@@ -539,11 +606,13 @@ Two things follow:
   coding run could not — but the dispatcher gets told its scoping was
   wrong, which is the signal that actually fixes the problem.
 
-Blocking the write instead is the stricter reading and is deliberately not
-v1: it converts a scoping mistake into a stalled ticket, and the design
-has no splitting mechanism yet to hand the overflow to. That mechanism —
-spawning a dependent task with its own resolution rather than stretching
-this one — is the real fix, and is tracked in `future.md`.
+Blocking the write instead is the stricter reading, and it only becomes
+right once there is somewhere to hand the overflow: it converts a scoping
+mistake into a stalled ticket otherwise. That somewhere — spawning a
+dependent task with its own resolution rather than stretching this one —
+is the real fix, and is tracked in `future.md`. Note the ordering that
+falls out: narrowing, wander-handling and task splitting want to arrive
+together, and none of them is urgent while v1 hands every run everything.
 
 A **review run cannot wander**: its `paths` are the changed-file set,
 which is fixed before the run starts.
@@ -555,6 +624,9 @@ narrowed the run to a package, which is when bounding the response is what
 you wanted — and when a wander is most worth knowing about.
 
 ### Selection is the harness's job, and it is deterministic
+
+**Also not v1** — v1's harness appends what it receives. When selection
+arrives, this is where it belongs and what it must look like.
 
 The service returns everything that applies to `(repo, ref, team)`. The
 harness then selects **which of those sections this run gets**, by three
@@ -576,9 +648,12 @@ deterministic filters, in order:
 
 Then it concatenates, in precedence order (§1a), into the envelope.
 
-**No model-side selection.** The alternative — advertise a catalogue of
-section titles and let the model pull the bodies it wants, the skills
-pattern from
+**No model-side selection *mid-run*.** A plan produced by an earlier run
+naming what its implementation needs is a different thing and is the
+direction above — that selection is made deliberately, recorded in an
+artifact, and reviewable before the implementing run starts. What is ruled
+out is the in-flight version: advertise a catalogue of section titles and
+let the model pull the bodies it wants, the skills pattern from
 [`../agent-context-file-loading.md`](../agent-context-file-loading.md)
 §12a — scales better to a large corpus and is wrong here for two reasons.
 A `policy` section the model declined to open is a policy that did not
@@ -1235,11 +1310,11 @@ already logged, and already distinguishable from repository content.
 | (new) | Dispatcher asserts `repo`/`ref`/`team`/`task_id`; the service resolves what they imply, and echoes them back | §1b — Forge never guesses at team membership, and a wrong team is visible in the record instead of silently producing the wrong standards |
 | §1a as first written: harness walks the working tree for the repo tier, service supplies org and team | **All three tiers from the service**, resolved at one ref; Forge reads no conventions off any filesystem | §1a, §1b. Separation of concerns: discovery, collision, normalisation, caching and versioning are one problem and belong to one component. One contract then covers all three tiers instead of two differently-shaped paths |
 | §1b as first written: on service failure, proceed without the org and team tiers and record it loudly | **A run that cannot get a resolution does not start** | §1b's failure taxonomy. Superseded by the repo tier moving behind the same service: an unresolvable org tier is a partial answer, an unresolvable repo tier means no conventions at all, and "proceeds without" stops being coherent. Buys the invariant that every run that starts has a resolved, versioned, recorded context. Costs a delivery outage on a coverage gap, accepted because that failure is loud and specific where the alternative is silent by construction |
-| (new) | Service request carries a **`ref`** and a **`paths`** scope; the internal cache stays keyed on `(repo, ref)` and the response is a projection of it; a miss fetches and resolves | §1b — a service serving "the current version" reintroduces §5's finding, as either the Codex failure (a PR edits the rules that review it) or the Gemini one (rules from the default branch, diff from the PR). Bounding the *response* rather than the *resolution* keeps the cache key and `version` intact, so reproducibility survives |
+| (new) | Service request carries a **`ref`**; the internal cache stays keyed on `(repo, ref)` and the response is a **projection** of it (the identity projection in v1); a miss fetches and resolves | §1b — a service serving "the current version" reintroduces §5's finding, as either the Codex failure (a PR edits the rules that review it) or the Gemini one (rules from the default branch, diff from the PR). Bounding the *response* rather than the *resolution* keeps the cache key and `version` intact, so reproducibility survives |
 | §1b as first written: contradictions surfaced but never resolved; derived `policy` gated on human review | The pipeline **resolves** duplicates and contradictions and **reports** what it resolved; nothing in Forge branches on `reviewed_by_human` | §1b. Superseded by a better framing: handing an agent overlapping documents means it dedupes and reconciles anyway — at runtime, in a model, differently each run, with no inspectable artifact. Normalising in advance *relocates* that interpretation somewhere versionable and testable rather than adding it. Humans maintain the inputs; the `conflicts` report exists to get the inputs fixed, not to gate the run |
 | (new) | Org and team standards live in **repositories**, so every tier is `(source repo, ref)`; short TTL to notice new refs, publish hooks as an optimisation | §1b — refs are immutable, so cache entries invalidate themselves and `stale` gets a precise meaning; `version` becomes a function of the contributing refs |
 | §1b as first written: a run reaching outside its declared `paths` re-requests | **No mid-run re-request.** Reads outside scope are free; writes outside scope are recorded and the model is told it is outside its conventions; the dispatcher learns its scoping was wrong | §1b. A wander is evidence the task was mis-scoped, and re-resolving hides that. Also removes the one mid-run service dependency, so the failure taxonomy is purely dispatch-time. The real fix — spawning a dependent task with its own resolution — is tracked in `future.md` |
-| (new) | Request may name **`kinds`**, an **open vocabulary validated by the service**; a coding run's kinds are named by the **dispatcher** per ticket; unknown kind is an error, and `policy` or untagged sections return regardless | §1b — bounds the review fan-out's payload by subject without ever letting a non-negotiable rule be filtered away by asking the wrong question. Vocabulary is the existing review role taxonomy, not a new one |
+| (new, **not v1**) | `paths` and `kinds` are reserved narrowing parameters, ignored in v1; `kinds` an open vocabulary the service validates; unknown kind is an error, and `policy` or untagged sections return regardless. For coding runs the intended selector is **the plan**, with dispatcher-declared kinds as the fallback | §1b "Narrowing, later". v1 appends the whole corpus; the fields exist from the start so adding them changes what is projected, not the contract. A planned task has *derived* what knowledge it needs, where a dispatcher field would be guessing |
 | (new) | Repo `AGENTS.md` files go through the **same** normalisation pipeline as org and team documents | §1b — the divergence between authored bytes in a PR diff and normalised bytes in the prompt is recorded via `derivation` and `source` rather than prevented; §5's conventions-edit finding operates on the diff and is unaffected |
 | (new) | Section selection is **harness-side and deterministic** — `applies_to`, then `scope`, then budget | §1b — a `policy` section the model declined to open is a policy that did not apply, and a model choosing makes "why was this rule in context" unanswerable |
 | §9 as first written: JIT walks the filesystem and reads nearby files | JIT **reveals** sections the harness already holds from the one resolution | §9 — nothing is read from disk at attach time, so a run's conventions are fixed at one ref for its whole duration |
