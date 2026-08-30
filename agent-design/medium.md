@@ -284,6 +284,25 @@ day-to-day tickets against moving dependencies.
 
 ### 2e. `SearchSource` / `ReadSource` (ref-pinned source beyond the working tree)
 
+> **Superseded as a *tool* design, 2026-08-30 — the capability is now v1.**
+> [`artifacts.md`](./artifacts.md) makes every read tool speak one address
+> space, so these are not new tools: this entry's `repo:`, `artifact:`/
+> `class:` and `run:` scopes become the `git://`, `dep://` and `run://`
+> **schemes** on the existing `Read` and `Grep`. Under `tools.md`'s own
+> granularity rule the split was never justified — `ReadSource` and `Read`
+> differ in none of the four harness answers (permission class,
+> destructiveness, concurrency, result shape), only in where the bytes come
+> from, which is what a scheme encodes.
+>
+> Everything below survives as **resolver requirements**, unchanged and
+> still load-bearing: the phasing, the rule that a dependency's version
+> comes from the build manifest and never from the model, the local-first
+> ordering guidance, the refusal to silently decompile, the pinned-hash
+> reporting, and the untrusted-content stance on third-party source. Read
+> it as the specification of what `git://` and `dep://` must do, not of two
+> tools to build.
+
+
 **What**: read-only search and file retrieval over source that is
 *not* in the working tree — another repository at an exact ref, or
 (phase 2) a dependency of the current build. `SearchSource` speaks

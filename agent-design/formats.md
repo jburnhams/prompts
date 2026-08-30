@@ -330,7 +330,7 @@ a second fetch — it is not itself recursively expanded (no
 
 `attachments` is **complete and unconditional** — every attachment on the
 issue and on its comments, never a filtered or size-capped subset
-(`artifacts.md` §2.1). It carries no bytes: each entry is minted from the
+(`artifacts.md` §5.1). It carries no bytes: each entry is minted from the
 attachment metadata the issue API already returns, so enumerating twelve
 attachments costs twelve stubs and zero downloads. Bytes are fetched lazily
 on the first `InspectImage` or `Read` against the id. `attached_to` lets
@@ -377,7 +377,7 @@ review-comment attachments.
 
 `evidence` is the hook the verification gate needs later (`vision.md` §8).
 V1 accepts it and does one thing with it: any artifact referenced here is
-promoted to `expires="persist"` (`artifacts.md` §2.5) so it survives the run
+promoted to `expires="persist"` (`artifacts.md` §5.5) so it survives the run
 and can be posted alongside the report. V1 has no browser, so nothing yet
 *produces* an image to put here — accepting the field now means the gate
 ("when the diff touches UI-classified paths, `evidence` is required") is a
@@ -1120,7 +1120,7 @@ that one bad path doesn't discard three good files.
 
 Binary and oversized payloads never appear inline; the model gets a stub
 carrying the payload's *shape*. Full specification in
-[`artifacts.md`](./artifacts.md) §2.3; the block grammar is §8a's unchanged
+[`artifacts.md`](./artifacts.md) §5.3; the block grammar is §8a's unchanged
 (tag-framed, attributes carry facts, `!` lines carry notes).
 
 ```
@@ -1128,13 +1128,28 @@ carrying the payload's *shape*. Full specification in
           dims="2880x1620" name="checkout-broken-mobile.png"
           origin="jira:PROJ-1234#attachment-10021" author="c.nolan@example.com"
           created="2026-08-27T14:02:11Z" trust="internal" expires="run">
-! Not loaded. InspectImage id="img_7f3a2b9c" to look at it.
+! Not loaded. Read artifact://img_7f3a2b9c for its text, or InspectImage to look at it.
 </artifact>
 ```
 
 A text artifact carries `lines`/`encoding` in place of `dims` and holds its
 first page as content rather than a `!` note; the recovery line names a
-`Read` call against `artifact://<id>` instead.
+ranged `Read` against `artifact://<id>` instead:
+
+```
+<artifact id="txt_04d1e8f2" kind="text" mime="text/plain" bytes="3914004"
+          lines="41022" origin="bash:call_7c21" trust="generated" expires="run">
+1	  Compiling billing v4.2.1
+…
+! Showed lines 1-40 of 41022. Read artifact://txt_04d1e8f2:41-500 to continue.
+</artifact>
+```
+
+This is also the shape every oversized non-write result takes
+(`artifacts.md` §4): the block replaces the truncation footer that §8a's
+"every truncation states the next call" rule used to produce, and the next
+call it names reads an immutable snapshot rather than the mutable original.
+The rule itself is unchanged — only the target of the next call is.
 
 Attribute values are XML-escaped per §8a. That matters more here than
 elsewhere: `name` comes from tracker metadata, which an external reporter

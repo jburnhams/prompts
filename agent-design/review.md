@@ -90,7 +90,7 @@ before/after screenshots, an annotated mockup, and on a re-review the
 thread. These reach review mode exactly as they reach coding mode: as
 `<artifact>` stubs (`formats.md` §8g) inside `<pull_request>` and inside
 `<existing_comments>`, complete and unconditional, with bytes fetched only
-if something looks (`artifacts.md` §2.1).
+if something looks (`artifacts.md` §5.1).
 
 Two rules specific to review:
 

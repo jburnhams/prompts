@@ -178,7 +178,7 @@ to a file in the scratch directory (`{{SCRATCH_DIR}}`, `formats.md` §1a) and
 the model receives a preview plus that path. `Read` is the deliberate
 exception — spilling a read to a file the model then reads back is circular — and the exemption extends to every tool that *reads the artifact
 store*: `Read` over `artifact://`, and every `InspectImage` op. A tool whose
-job is reading artifacts must never mint one (`artifacts.md` §2.1)
+job is reading artifacts must never mint one (`artifacts.md` §5.1)
 — so `Read` self-bounds via its own limits instead.
 
 Two constraints on the spilled file itself, both of which exist because a
@@ -511,7 +511,7 @@ handed a problem rather than a design.
 | `vision.max_bytes_encoded` | 5 MB | Per-image cap after encoding. Claude Code's `API_IMAGE_MAX_BASE64_SIZE`; Cline's is identical |
 | `vision.max_pinned_images` | 2 | Images held in context beyond the turn that loaded them. A pinned mockup plus a pinned annotated flow is a plausible specification; five is a context leak. Exceeding it is an error naming which to release |
 | `vision.model` | (a small, fast sighted model) | The sub-model `InspectImage`'s `ask` op calls — single-turn, no tools. Unset disables `ask` and `view`, and both drop out of the advertised schema (`vision.md` §6) |
-| `artifacts.max_fetch_bytes` | 25 MB | Cap enforced on the response stream when fetching attachment bytes, before decode (`artifacts.md` §4) |
+| `artifacts.max_fetch_bytes` | 25 MB | Cap enforced on the response stream when fetching attachment bytes, before decode (`artifacts.md` §6) |
 | `tolerance.enabled` | on | The alternate-forms table above is data, so a deployment can prune it; turning tolerance off entirely is available and is the wrong default, per the decision log |
 
 Three derived rules the harness validates at startup, rather than trusting
@@ -573,10 +573,43 @@ whole run, so they cannot.
 > Reads one or more files from the working tree. Paths are absolute, or
 > relative to the working directory named in `<env>`.
 >
-> A path may also be `artifact://<id>`, naming a text artifact from an
-> `<artifact>` block — line ranges, paging and truncation notices all
-> work exactly as they do for a file. Image artifacts are not readable
-> this way; use `InspectImage`.
+> A path may be any **ref** — one address space covers the working tree,
+> other repositories at a pinned ref, dependency source, stored artifacts
+> and past runs, and all of them read the same way:
+>
+> | Ref | What it names |
+> |---|---|
+> | `src/parser/index.ts` | a file in the working tree — the common case, and the shortest form |
+> | `file:///tmp/.../repro.py` | an absolute local path, scratch directory included |
+> | `git://acme/payments@a1b2c3d/src/Bill.java` | a file in another repository at a branch, tag or commit |
+> | `dep://com.acme:billing:4.2.1/com/acme/Bill.java` | source of a dependency of this build |
+> | `artifact://txt_04d1e8f2` | a stored payload — an attachment, or an earlier result too large to inline |
+> | `run://2026-08-14T09-22Z-7f3a/transcript` | a past run |
+>
+> **Read local first, always.** A remote scheme is for code that is *not*
+> in the tree, never a second way to read code that is — it costs a
+> network round trip where a path costs nothing. A read against a moving
+> ref (`@main`) reports back the commit it actually resolved to.
+>
+> **Anything readable comes back as text.** A PDF returns its text (pages
+> selectable), a spreadsheet its sheets, a `.docx` its prose, an image the
+> text in it, an archive its member list. The result always says which
+> conversion happened — an OCR'd screenshot and a PDF with a real text
+> layer are not equally trustworthy, and you need to know which you got.
+> Append `:raw` to any ref to skip conversion.
+>
+> Selectors narrow a read and go on the end of the ref: `:120-260` for
+> lines, `:p4-6` for PDF pages, `:Sheet2` or `:Sheet2!A1:D80` for a
+> spreadsheet, `:path/inside` for an archive member. A line range may also
+> be given as `start_line`/`end_line` on the entry, which is the same
+> thing.
+>
+> **A large result comes back as a reference, not a wall of text.** You
+> get a preview plus an `<artifact>` block naming the whole thing, and the
+> note tells you the exact next call — `Read artifact://txt_x:2001-4000`.
+> That reference is a snapshot: paging through it cannot be disturbed by
+> the underlying file changing under you. Images are the one thing you
+> cannot page this way — use `InspectImage` to look at one.
 >
 > **Read several files in one call** whenever you already know what you
 > need — a caller and its callee, a module and its test, every file a
