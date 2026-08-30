@@ -1331,6 +1331,20 @@ The shape in one line: **a learnings run is a review run whose
 subject is a finished PR and whose delivery channel is a memory store
 instead of comments.** Everything below follows from that.
 
+> **Partly superseded by [`memory.md`](./memory.md).** That document
+> revises three things below and leaves the rest standing. The store is a
+> **learned tier of the context service** rather than an unspecified
+> memory store, which is what makes dependency-scoped learnings and
+> mechanical staleness checks possible (`memory.md` §2, §5b); capture
+> moves **into the originating run** as `Retrospect`, so this run
+> *promotes* candidates rather than extracting them, with the transcript
+> pass kept as the fallback for runs that captured nothing (§3); and
+> `applies_to` becomes a structured subject with a `tool` kind that
+> routes to `ReportProblem` instead of the store (§4a, §6). §6a's run
+> shape, §6b's envelope, §6f's informs-never-vetoes and every safety rule
+> here are unchanged — though §6f is now enforced by the section
+> `binding` rather than by prose.
+
 ### 6a. The run shape
 
 **What**: a fourth entrypoint alongside coding, review, and (§5)

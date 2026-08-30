@@ -181,7 +181,22 @@ changes made *outside* the edit region, which is exactly the failure mode
 an unsupervised agent has. The synthesis is deflating and worth stating:
 there is no public evidence base good enough to pick an edit format from,
 and what every credible actor in this space actually did was build their
-own eval on their own harness.
+own eval on their own harness. A 2026-08-30 pass added §12 on a tool
+family the doc's four questions don't reach — **memory tools** — and its
+finding is that nobody built the database the name implies: every
+implementation is the ordinary file tools pointed at a different
+directory (Claude Code, Gemini CLI) or a read/list/search family scoped to
+one root (Codex's namespaced `memories.*`, Goose's MCP server), so the
+engineering lands in the path predicate that runs before any I/O, the
+single create-only write whose schema refuses an update verb, and the
+guards that run before the bytes do — including the collection's only
+*content* guard on a write path, a curated gitleaks subset that blocks a
+secret from reaching a team-shared memory file, running inside
+`FileWriteTool`'s own validation. It also records a bug class this family
+invites, in shipped code: Goose keys retrieved memories by their tag
+string, so two entries with the same tags silently collapse into one at
+read time — nothing about either the write path or the read path is wrong
+in isolation.
 
 **[→ `agent-tool-call-dialects.md`](./agent-tool-call-dialects.md)** — the
 layer below *that* one, and the lowest in this collection: the **wire
@@ -446,6 +461,43 @@ semantic *codebase* search pointed that infrastructure at the code, not
 at the memory; and two vendor **retreats** — Cursor's Memories feature appears removed in favour of
 Rules, and Gemini CLI deleted `save_memory` outright ("There is no
 `save_memory` tool").
+
+A second pass (2026-08-30) read five of those systems as **source**
+rather than as prompt text and changed several conclusions. It added the
+collection's fullest machine-written-memory specification, from the
+leaked Claude Code source's `src/memdir/`: a four-type taxonomy whose
+`<scope>` line routes each type to a private or a **team-shared** store,
+a rule to record validated *successes* as well as corrections (because a
+failure-only store "may grow overly cautious"), staleness computed from
+`mtime` and rendered in words at read time ("models are poor at date
+arithmetic"), retrieval by a **cheap model acting as the selector** —
+≤5 files chosen from a manifest, hallucinated filenames dropped, and
+reference docs for a tool already in use suppressed while its *warnings*
+are not — memory scoped per **sub-agent type** and shippable as a
+snapshot, and several paragraphs carrying **eval results in code
+comments** (a section that scored 3/3 with its own header and 0/3 as a
+bullet with identical text). That team-shared store contradicts what the
+first pass had recorded as the field's cleanest rule — Gemini CLI's "an
+extractor may never patch the file your team commits" — and ships a
+gitleaks-derived secret scanner inside `FileWriteTool`'s validation
+instead of a review queue. The same pass found Gemini CLI computing a
+**model-free session digest** (tool sequence, touched paths, and whether
+tests passed, in ≤160 characters) that decides which transcripts an
+extractor bothers to read; Codex deciding whether to consolidate at all
+from **git dirtiness** rather than a database watermark; Goose loading
+only its *global* memories into the prompt while a tag-keyed map silently
+collapses same-tagged entries at read time; a third retreat (Cline's
+`new_rule` tool is now a settings-UI button); and, in DeepSeek Harness,
+the sharpest single datum in the topic — its review-criteria mining loop
+has produced **zero** rule changes from 426 human feedback items, while
+`git log` shows every actual rule change arriving in the ordinary PR that
+established the convention it governs. The doc closes with a channel it
+argues is missing almost everywhere: **improvement requests** — what an
+agent does with a finding about a broken tool, a misleading library, or
+the harness itself, which is neither a memory (nothing retrieves it) nor
+a question (nothing blocks). Devin's `report_environment_issue` is the
+only first-class instance; DeepSeek routes the same signal the opposite
+way, with feedback that by contract "never reaches the model".
 
 **[→ `agent-context-file-loading.md`](./agent-context-file-loading.md)** —
 the read side of the same files `agent-memory-learning.md` covers the

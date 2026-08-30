@@ -27,7 +27,27 @@ collection before this pass.
 **Methodology note**: three sources were investigated from fresh live
 clones — Codex CLI (`openai/codex`), Gemini CLI
 (`google-gemini/gemini-cli`), and PR-Agent (`qodo-ai/pr-agent`) — and
-those three produced most of this doc's code-level detail. Everything
+those three produced most of this doc's code-level detail.
+
+A **second code pass on 2026-08-30** re-read Codex CLI (`2832735`), Gemini
+CLI (`0bd1d43`), Goose (`8ae4e4b`), DeepSeek Harness (`cd5ef81`) and Cline
+(`48d6385`), and added one source that had never been read for memory at
+all: the leaked **Claude Code** source's `src/memdir/`,
+`src/services/teamMemorySync/` and `src/tools/AgentTool/agentMemory*.ts`
+(`6f6f12b`; the authenticity caveats in [`sources.md`](./sources.md)
+apply). That last one changes several conclusions below, because Claude
+Code turns out to have the most developed machine-written memory system in
+this collection *and* the only one that writes to a team-shared store —
+the boundary the rest of this doc had recorded as the field's cleanest
+rule. Three things this pass established that no prompt capture could:
+Goose's shipped behaviour differs from its own docs (§5); DeepSeek's
+review-skill learning loop has produced zero rules while the skill itself
+gained one, from somewhere else entirely (§8); and Gemini CLI now computes
+a **deterministic, model-free session digest** that decides which
+transcripts the extractor bothers to read (§3). Tool-level detail —
+schemas, caps, path predicates, guards — is in
+[`agent-tool-implementations.md`](./agent-tool-implementations.md) §12
+rather than repeated here. Everything
 else came from files already in this collection (leaked prompts, shipped
 prompt source) plus vendor documentation for the features that are
 entirely server-side (Claude Code auto memory, Devin Knowledge,
@@ -97,6 +117,23 @@ annoying.
 | **Repo / project, private to one developer** | Machine-specific setup, personal notes, *not* committed | Claude Code's auto memory (`~/.claude/projects/<project>/memory/`), Gemini CLI's private project memory (`~/.gemini/tmp/<hash>/memory/MEMORY.md`), `CLAUDE.local.md`, `AGENTS.local.md` (Roo Code), Goose's `.goose/memory` |
 | **User / global** | Cross-project personal preferences | `~/.claude/CLAUDE.md` + `~/.claude/rules/`, `~/.gemini/GEMINI.md`, `~/.config/goose/memory`, `~/.kiro/steering/`, Codex's single `~/.codex/memories` store (scoped internally by `cwd`, not by directory) |
 | **Org / enterprise** | Policy, compliance, company standards | Claude Code's managed-policy `CLAUDE.md` (+ the `claudeMd` settings key), CodeRabbit's org-level learnings, Devin's org- and enterprise-scoped knowledge, PR-Agent's `[best_practices] organization_name` |
+| **Sub-agent / role** | What *this kind of agent* has learned, across projects or within one | Claude Code only: `<memoryBase>/agent-memory/<agentType>/`, `.claude/agent-memory/<agentType>/`, or `.claude/agent-memory-local/<agentType>/`, chosen per agent definition by a `memory: 'user' \| 'project' \| 'local'` setting, each with its own `MEMORY.md`. Orthogonal to every row above — the axis is *who is remembering*, not *where the fact applies* |
+
+Two scopes that appear in no source in this collection, and are worth
+naming as absences rather than leaving implicit:
+
+- **Library / dependency scope.** Nothing here can say "this fact is about
+  `pytest 8.x`, not about this repo." Codex comes closest and still isn't
+  close: its `applies_to: cwd=…; reuse_rule=…` line scopes a memory by
+  *working directory*, so "this library's `AsyncClient` leaks connections
+  unless you close it" is filed under whichever repo happened to hit it,
+  and is unavailable to the next repo that uses the same library. Every
+  store in this doc is addressed by *where the work happened*.
+- **Harness / tooling scope.** Likewise nothing files a durable memory
+  about the agent's own tools — "the `edit` tool fails on this file's line
+  endings", "the sandbox denies X, escalate immediately." Devin's
+  `report_environment_issue` (§12) is the one adjacent mechanism, and it is
+  a notification, not a memory: nothing retrieves it later.
 
 Three sources are worth reading in full on this axis, because they don't
 just *have* levels — they have explicit routing rules for choosing one:
@@ -123,7 +160,23 @@ just *have* levels — they have explicit routing rules for choosing one:
   machine-written store keyed to the git repository — so all worktrees
   and subdirectories of one repo share one auto-memory directory, and it
   is explicitly machine-local ("not shared across machines or cloud
-  environments").
+  environments"). Reading the source rather than the docs adds two things
+  the vendor page doesn't. First, there is now a **sixth store: team
+  memory**, a shared directory synced per organization+repo through a
+  server API (`GET/PUT /api/claude_code/team_memory`, ETag-versioned with
+  per-entry SHA-256 checksums), which the model writes with the ordinary
+  file tools — see §9 and §10 for the boundary that crosses and the guard
+  it ships instead. Second, **routing is decided per memory type, not per
+  fact**: the four-type taxonomy (`user`/`feedback`/`project`/`reference`)
+  carries a `<scope>` line inside each `<type>` block — `user` is "always
+  private", `feedback` is "default to private… save as team only when the
+  guidance is clearly a project-wide convention that every contributor
+  should follow (e.g., a testing policy, a build invariant), not a
+  personal style preference", `project` is "private or team, but strongly
+  bias toward team", `reference` is "usually team". Where Gemini CLI asks
+  the *user* to disambiguate an unclear tier, Claude Code pre-answers the
+  question at the level of the taxonomy, so the model's scope decision is
+  mostly a classification decision it has already made.
 - **Codex inverts the usual layout**: there is one global store at
   `~/.codex/memories`, and project scoping is carried *inside* the
   content as metadata rather than by directory. Every raw memory carries
@@ -175,7 +228,13 @@ they're told to be:
   "remember"/"save" (store), "forget"/"clear memory" (remove),
   "memory"/"search memory" (retrieve), with a
   `remember_memory(category, data, tags, is_global)` signature that makes
-  category and scope mandatory arguments.
+  category and scope mandatory arguments. The shipped server instructions
+  (built in `MemoryServer::new()`) are more cautious than the docs: "Save
+  proactively when users share preferences, project configurations,
+  workflow patterns, or recurring commands. **Always confirm with the user
+  before saving.** Suggest relevant categories and tags, and clarify
+  storage scope (local vs global)." That confirm-first rule puts Goose in
+  the approval column of §9, not the write-immediately one.
 - **Category-driven** — Qoder's "Memory Management Guidelines" tell the
   model to "Store important knowledge and **lessons learned** for future
   reference" across four named categories (`user_prefer`, `project_info`,
@@ -191,6 +250,60 @@ they're told to be:
   shape — the model reads and writes `~/.claude/projects/<project>/memory/`
   with ordinary file tools, and the UI surfaces "Saved 2 memories" /
   "Recalled 2 memories" as a side effect.
+- **Typed, with the taxonomy carrying the whole policy** — Claude Code's
+  `src/memdir/memoryTypes.ts` is the fullest inline-writer specification
+  found anywhere in this collection, and worth reading whole. Four types,
+  each an XML `<type>` block with `<name>`, `<scope>`, `<description>`,
+  `<when_to_save>`, `<how_to_use>`, sometimes `<body_structure>`, and two
+  or three worked `user:` / `assistant: [saves … memory: …]` examples.
+  Three rules inside it have no counterpart in any other writer prompt
+  here:
+  - **Record success, not only correction.** "Record from failure AND
+    success: if you only save corrections, you will avoid past mistakes
+    but drift away from approaches the user has already validated, and
+    may grow overly cautious." The triggers are asymmetric and the prompt
+    says so — "Corrections are easy to notice; confirmations are quieter —
+    watch for them" — with an example of a *validated judgment call*
+    ("yeah the single bundled PR was the right call here") saved as
+    positive evidence. Every other writer prompt in this doc mines
+    failures.
+  - **A required body shape that preserves the reason.** For `feedback`
+    and `project` types: "Lead with the rule itself, then a **Why:** line
+    (the reason the user gave — often a past incident or strong
+    preference) and a **How to apply:** line (when/where this guidance
+    kicks in). Knowing *why* lets you judge edge cases instead of blindly
+    following the rule." Compare DeepSeek's Agent Notes, which make
+    `## Alternatives considered` mandatory for the same reason at a much
+    larger grain (§9).
+  - **Resolve relative time at write time.** "Always convert relative
+    dates in user messages to absolute dates when saving (e.g.,
+    'Thursday' → '2026-03-05'), so the memory remains interpretable after
+    time passes." One line, and it removes an entire class of memory that
+    silently becomes wrong.
+
+  The exclusion list is equally specific — code patterns, conventions,
+  architecture, file paths, git history, debugging fix recipes, anything
+  already in `CLAUDE.md`, ephemeral task state — under one principle:
+  memory is for **context not derivable from the current project state**.
+  The file's own comment says the taxonomy exists to keep memory from
+  overlapping `CLAUDE.md`. And it closes the obvious hole: "These
+  exclusions apply even when the user explicitly asks you to save. If they
+  ask you to save a PR list or activity summary, ask what was *surprising*
+  or *non-obvious* about it — that is the part worth keeping." A code
+  comment records that this sentence was added after an eval went 0/2 →
+  3/3, to stop "save this week's PR list" becoming activity-log noise.
+
+  That comment is not isolated. Several sections of this prompt carry
+  **eval results and position findings in the source comments** — the
+  read-side "Before recommending from memory" block scored 3/3 when given
+  its own section header and 0/3 when the identical text was demoted to a
+  bullet under "When to access memories", and a comment records that the
+  action-cue header ("Before recommending from memory") beat the abstract
+  one ("Trusting what you recall") with the same body. It is the only
+  memory prompt in this collection whose individual paragraphs come with a
+  measurement attached, and the finding that *position and header wording
+  moved the score more than content did* is the most transferable thing in
+  it.
 
 ### (b) A separate background agent reads finished transcripts
 
@@ -204,6 +317,52 @@ in this doc:
 | **Gemini CLI** | `confucius` / "Skill Extractor" (`PREVIEW_GEMINI_FLASH_MODEL`) | Fire-and-forget at CLI startup, with a lock, a 30-minute inter-run throttle, and per-session eligibility gates | Unified-diff `.patch` files into `.inbox/<kind>/extraction.patch`, plus `SKILL.md` candidates |
 | **GitHub Copilot CLI** | `rem-agent` ("Memory consolidation agent"), scoped to exactly one tool (`context_board`) | Launched in the background from `/subconscious run`, after a session | `context_board` `add`/`prune` entries |
 | **Google Antigravity** | "KNOWLEDGE SUBAGENT" | Background, over past conversation logs; not model-invocable at all | Knowledge Items (`metadata.json` + `artifacts/`) that are created *or updated* over multiple conversations |
+
+Reading two of these as source rather than as prompt text adds a stage the
+table above hides: **before any model sees a transcript, something decides
+which transcripts are worth reading, and neither team used a model to do
+it.**
+
+- **Gemini CLI computes a deterministic session digest.** Every recorded
+  session carries a `memoryScratchpad` — `{version, workflowSummary,
+  toolSequence, touchedPaths, validationStatus}` — built by
+  `buildMemoryScratchpad` with no model call at all: the first six distinct
+  tools used (shell calls reduced to the bare command name by a hand-written
+  tokenizer that strips quoting, path prefixes and `VAR=` assignments), up
+  to four touched paths (collected only from argument keys matching
+  `/path|file|dir|directory|cwd|root/`, at most six levels deep), and a
+  `validationStatus` of `passed`/`failed`/`unknown` inferred by matching
+  tool names and commands against
+  `/test|tests|vitest|jest|pytest|cargo test|npm test|…|lint|build|check|typecheck/`
+  and reading the tool call's status. The whole thing renders as a
+  ≤160-character line — `read -> shell: pytest -> edit | paths src/foo.py |
+  validated` — which is what the extraction agent actually routes on: the
+  session index it receives shows `[NEW]`/`[old]`, a one-line intent
+  summary, and "optional workflow hint", with the instruction "Use workflow
+  hints to prioritize which sessions to read… Matching summary text or
+  workflow hints alone is never enough evidence." A **staleness flag**
+  (`memoryScratchpadIsStale`) is set when messages arrive after the digest
+  was written, and a stale digest is dropped rather than shown. Two things
+  fall out: the expensive selection ("which of 50 sessions do I read?") is
+  answered by four mechanically-derived features, and *whether the session
+  validated anything and whether it passed* — the single most useful
+  retrospective signal — is captured for free, with no model and no tool.
+- **Codex decides whether to run at all from a git diff.** Phase 2 keeps
+  the memories root as a git baseline (`~/.codex/memories/.git`), syncs the
+  filesystem artifacts (`raw_memories.md` in stable thread-id order,
+  `rollout_summaries/` matched exactly to the selected set), prunes what is
+  no longer selected, and then asks git whether anything changed: "if the
+  memory workspace has no changes after artifact sync/pruning, marks the
+  job successful and exits". Only if the tree is dirty does it write
+  `phase2_workspace_diff.md` and spawn the consolidation sub-agent
+  *pointed at that diff*. The DB watermark is explicitly demoted to
+  bookkeeping — "the global phase-2 lock does not use DB watermarks as a
+  dirty check; git workspace dirtiness decides whether an agent needs to
+  run." Stable ordering exists for exactly this reason: so that a change in
+  usage *rank* does not manufacture a diff and wake the agent for nothing.
+  The diff file is deleted before the git baseline is reset, so deleted
+  content is not retained in the prompt artifact or in unreachable git
+  objects.
 
 Two shared design decisions across all four are worth pulling out. First,
 **the transcript is evidence, not instruction** — Codex: "Raw rollouts
@@ -502,6 +661,40 @@ Five retrieval modes, and most mature systems use two or three at once:
   category than it first appears — see "Nobody is doing RAG over agent
   memory" in §4 for why the systems with the most developed memory use
   grep instead.
+- **A model as the retriever** — the sixth mode, and the only *implemented*
+  semantic retrieval in this collection. Claude Code's
+  `findRelevantMemories` scans the memory directory for frontmatter
+  headers, builds a manifest of filename + description, and issues a
+  side-query to Sonnet with a JSON-schema output
+  (`{selected_memories: string[]}`, `max_tokens: 256`) under a selection
+  prompt that is almost entirely about restraint: "Only include memories
+  that you are certain will be helpful based on their name and
+  description… If you are unsure… do not include it in your list. Be
+  selective and discerning… feel free to return an empty list." Up to five
+  per turn. The engineering around the call is the transferable part:
+  returned names are filtered against the real filename set so a
+  hallucinated pick is dropped rather than read; an `alreadySurfaced` set
+  removes files shown in earlier turns *before* the call, "so the selector
+  spends its 5-slot budget on fresh candidates"; failure returns an empty
+  list, so an outage degrades to no memory rather than a broken turn; and
+  telemetry fires even on an empty selection because "selection-rate needs
+  the denominator." The sharpest rule in it is a *negative* filter: given
+  the list of recently-used tools, "do not select memories that are usage
+  reference or API documentation for those tools (Claude Code is already
+  exercising them). **DO still select memories containing warnings,
+  gotchas, or known issues about those tools — active use is exactly when
+  those matter.**" That single sentence separates the two kinds of thing a
+  memory store holds — reference, which is redundant once you are already
+  doing the work, and warnings, which are most valuable at exactly that
+  moment — and nothing else in this doc distinguishes them at retrieval
+  time.
+
+  The three retrieval economies are now visible side by side: Claude Code
+  spends **an extra model call per turn**, Codex spends **model turns**
+  inside the main agent (its stated 4–6 search-step budget), and Goose
+  spends **context** by pasting its global store into the server's
+  instructions. Only the first scales to a store larger than the context
+  window without asking the working model to go looking.
 
 What's rarer, and more interesting, is an explicit **retrieval policy in
 the prompt** — telling the model when *not* to bother:
@@ -532,13 +725,14 @@ the prompt** — telling the model when *not* to bother:
 | **Goose** (memory extension, MCP) | `remember_memory(category, data, tags, is_global)`, `retrieve_memories(category, is_global)`, `remove_memory_category(...)`, `remove_specific_memory(...)` | Full CRUD; category and scope mandatory on every call |
 | **Qoder** | `update_memory` (store/update/delete), `search_memory` | Write + semantic read |
 | **Anthropic memory tool** (Messages API) | one `memory` tool with commands `view`/`create`/`str_replace`/`insert`/`delete`/`rename`, scoped to `/memories` | Full CRUD, executed client-side by the app |
-| **Codex CLI** | `memories.search`, `memories.read`, `memories.list`, `memories.add_ad_hoc_note` | **Three read, one restricted write** |
+| **Codex CLI** | `memories.search`, `memories.read`, `memories.list`, `memories.add_ad_hoc_note` | **Three read, one restricted write**, namespaced under `memories` |
 | **Cursor** (historical) | `update_memory(title, knowledge_to_store, action, existing_knowledge_id)` | **Write only** |
 | **Augment** | `remember(memory)` — "The concise (1 sentence) memory to remember" | **Write only** |
 | **Jules** | `initiate_memory_recording()` | Write, entirely unspecified |
 | **GitHub Copilot CLI** | `context_board` (add/prune) — **scoped to `rem-agent`, not the main agent**; the main agent gets raw SQL over `session_store`, and `send_inbox` belongs to the sidekick | Split across three agents |
 | **Gemini CLI** | none — "There is no `save_memory` tool" | Ordinary `replace`/`write_file` on interpolated paths |
-| **Claude Code** | none — no memory-named tool in the captured `Tools.json`; Read/Edit/Write against the memory directory, and `/memory` is a human-facing slash command | Ordinary file tools |
+| **Claude Code** | none — no memory-named tool in the captured `Tools.json`; Read/Edit/Write against the memory directories, and `/memory` is a human-facing slash command | Ordinary file tools, plus path predicates inside those tools' validation (`isAgentMemoryPath`, `isTeamMemPath`) that change what a write to those paths is allowed to contain |
+| **Cline** | none, *now* — a `new_rule` tool shipped historically; at `48d6385` the SDK surface is nine tools with no rule or memory tool, and `NewRuleRow.tsx` is a "+ New rule" button in settings | The capability moved from the model to the human, and from a tool to a form |
 | **Antigravity, Devin, Manus, CodeRabbit, Kiro, OpenHands** | none | Retrieval happens upstream; the writer is a separate agent or a human |
 
 Three findings fall out of the table:
@@ -566,7 +760,14 @@ Three findings fall out of the table:
   Both reached the same conclusion — if the agent already has file tools
   and is told the absolute paths, a dedicated tool is redundant surface
   area — and it is the same instinct behind Codex's read tools being
-  thin wrappers over grep rather than a query language.
+  thin wrappers over grep rather than a query language. With Cline's
+  `new_rule` gone too, **three products have now removed a
+  memory-or-rule-writing tool and none has added one**, while the systems
+  with the deepest memory (Claude Code, Gemini CLI) are precisely the two
+  with no tool. What replaced the tools is bigger, not smaller: tier
+  routing with interpolated absolute paths, background consolidators,
+  approval inboxes, and — in Claude Code's case — guards that live inside
+  the ordinary write tool rather than in a memory-specific one.
 
 ### What is actually injected, and where
 
@@ -608,10 +809,33 @@ Codex sends `memory_summary.md` only, Claude Code the capped
 Antigravity "KI summaries with artifact paths", Qoder a
 `<project_knowledge_list>` tree. Everything below the index — topic
 files, rollout summaries, skills, KI artifacts, raw transcripts — is a
-path the agent opens on demand. **Goose is the outlier**: per its docs it
-"loads all saved memories at the start of a session and includes them in
-every prompt," with no index, no budget, and no truncation rule — the
-model that degrades worst as the store grows.
+path the agent opens on demand.
+
+**Goose is the outlier, with a correction.** Per its docs it "loads all
+saved memories at the start of a session and includes them in every
+prompt," with no index, no budget, and no truncation rule — the model that
+degrades worst as the store grows. The source narrows that: the injected
+block is assembled once in `MemoryServer::new()` from `retrieve_all(true,
+…)` — **global memories only**. The project-local `.goose/memory` store is
+never pasted; it is write-mostly unless the model calls
+`retrieve_memories` itself. The prompt then asks the model to garden the
+injected copy by hand — "if the user removes a memory that was previously
+loaded into the system, please remove it from the system instructions" —
+which is a request to edit a string it cannot reach, and the clearest
+illustration in this doc of why injection and storage need to be the same
+mechanism.
+
+**Claude Code injects two things at two different times**, which is worth
+separating from the single-index pattern above: the capped `MEMORY.md`
+index (200 lines / 25,000 bytes) rides in the prompt as usual, and then up
+to five *whole memory files* are attached per turn as `relevant_memories`,
+chosen by the side-query of the previous subsection and wrapped in
+`<system-reminder>` tags with a freshness note computed from `mtime`. The
+index is what the model always sees; the selected files are what it gets
+without asking. The prompt is explicit that these are different objects —
+"`MEMORY.md` is an index, not a memory — each entry should be one line,
+under ~150 characters: `- [Title](file.md) — one-line hook`. It has no
+frontmatter. Never write memory content directly into `MEMORY.md`.".
 
 Two smaller patterns worth copying:
 
@@ -677,6 +901,22 @@ criteria, and they agree with each other across vendors:
   ("Discussion of how to build something, without a validated
   implementation").
 
+**Recurrence is required by self-mined loops and explicitly *not* required
+by human-mined ones**, and reading the two specifications side by side
+makes the reason plain. Gemini's extractor will not promote a
+single-occurrence procedure ("A project-specific procedure appeared once
+and seems useful, but recurrence is not yet clear" → do not create).
+DeepSeek's review-skill maintenance is the opposite: **"A singleton may
+qualify; recurrence is not required."** Both are right, because they are
+counting different things. An agent mining its own trajectories has only
+*frequency* to distinguish a durable pattern from an accident, so one
+occurrence really is a data point. A loop mining human review comments has
+already had a person judge the case and a diff prove the judgment was
+adopted — the evidence of durability is in the adoption, not in the count.
+The design consequence: **if you can get a human verdict into the loop, you
+can drop the recurrence requirement, and with it the delay before a
+learning becomes usable.**
+
 **And one criterion nobody else states**: Codex optimizes for the
 *user's* keystrokes, not the agent's tokens. "Optimize for future user
 time saved, not just future agent time saved. A strong memory often
@@ -725,6 +965,26 @@ by successful ones -> failure shield") and the same "User interruptions:
 
 Elsewhere:
 
+- **Claude Code** is the only source that retrospects on *success* as
+  deliberately as on failure. Its `feedback` memory type is triggered by
+  either pole — a correction ("no not that", "don't", "stop doing X") **or**
+  a confirmation ("yes exactly", "perfect, keep doing that", accepting an
+  unusual choice without pushback) — with the stated reason that a
+  failure-only store produces an agent that "avoid[s] past mistakes but
+  drift[s] away from approaches the user has already validated, and may
+  grow overly cautious." Every other retrospective in this section is a
+  failure shield; this is the only one that also builds a success shield,
+  and it identifies the failure mode that follows from not having one.
+- **Gemini CLI captures the outcome signal mechanically.** Its per-session
+  digest (§2b) carries a `validationStatus` of `passed`/`failed`/`unknown`,
+  derived by matching tool names and shell commands against a
+  test/lint/build/typecheck regex and reading the tool call's success
+  status. Codex spends a whole "TASK OUTCOME TRIAGE" prompt stage inferring
+  roughly this from a transcript; Gemini gets a coarser version of it for
+  free, before any model is invoked, and uses it to decide which
+  transcripts are worth a model's attention at all. The two are
+  complementary rather than competing: cheap mechanical triage for
+  *selection*, expensive model triage for *labelling*.
 - **Qoder** names one of its four memory categories `experience_lessons`
   — "Pain points to avoid, best practices, tool usage optimization" —
   and triggers on "Common pain points discovered".
@@ -847,6 +1107,43 @@ better (a human actually accepted or ignored the suggestion), which is
 probably why the review tools were comfortable making their loops fully
 automatic while the coding agents wrap theirs in approval queues.
 
+**A follow-up read settles what the acceptance run left open.** Re-reading
+`deepseek-ai/deepseek-harness` at `cd5ef81` (2026-08-30, two weeks after
+the first pass at `47f9438`) shows `dsh-code-review/SKILL.md` has changed
+exactly once, gaining one rule:
+
+> 7. **Client UI copy is locale-owned.** Reject product text embedded in
+>    JSX, templates, helper returns, accessibility attributes, or primitive
+>    defaults. Require typed dictionary keys, the standard `t` seat or
+>    explicit localized props, `verify-client-ui-i18n`, and behavior
+>    evidence in each affected locale…
+
+It did not come from the mining loop. `git log` on that file shows the rule
+arriving in `3c10f5d2d fix(client): route UI copy through locale` — the
+**implementation PR that established the convention**, which in one commit
+routes ~40 files' UI strings through the locale dictionaries, adds a new
+Agent Note (`2026-08-23-locale-owned-client-ui-copy.md`), adds the
+`verify-client-ui-i18n` gate, and appends the review rule that will catch
+the next violation. The same pattern holds for the file's other recent
+history: `61703d224 feat(dev-infra): add explicit change scope report`
+adds a tool *and* rewrites the skill's opening paragraph to tell reviewers
+to run it; `a4be4b5e5 docs(invariants): codify semantic review rules`
+replaces item 5 wholesale rather than appending a sixth.
+
+So the scoreboard for this repo's review criteria, over the window this
+collection has observed, is: **mining 426 human feedback items across 62
+merged PRs produced zero rules; ordinary PRs that changed a convention
+produced every rule.** That is not an argument against the mining loop —
+its authors describe silence as correct behaviour, and it is designed to
+catch what nobody thought to write down. It is an argument about *order of
+investment*: the cheapest learned-review-criteria mechanism is a
+contribution rule ("the PR that establishes a convention adds the check
+that enforces it, in the same commit"), it needs no infrastructure at all,
+and in the one repository where both mechanisms run side by side it is
+responsible for 100% of the change. Note also what the human path does
+that an append-only miner structurally cannot: `a4be4b5e5` *replaced* a
+rule, and the file has stayed at ~50 lines.
+
 DeepSeek adds a third position that breaks the dichotomy: **mine humans
 reviewing each other, and let the bot read the result.** The signal is
 cleaner still — it is not contaminated by what the bot already says, so
@@ -865,7 +1162,7 @@ humans is not extraction, it is refusing to extract.
 | Posture | Sources |
 |---|---|
 | **Nothing is applied without human review** | Gemini CLI — every extraction is a `.patch` in `.inbox/<kind>/`, and "Every patch you write is held for `/memory inbox` review. Nothing is applied automatically; the user must approve each patch before it touches active files." Augment's Memory Review shows an "X Pending Memory" button in the turn summary. CodeRabbit's `approval_delay`. Cursor's memories (historically) were proposed by a background model and approved by the user |
-| **Written immediately, visible after the fact** | Windsurf ("Any memories you create will be presented to the USER, who can reject them if they are not aligned with their preferences"), Claude Code auto memory (`/memory` browses and edits plain markdown; toggle via `autoMemoryEnabled` or `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`), Goose, Qoder |
+| **Written immediately, visible after the fact** | Windsurf ("Any memories you create will be presented to the USER, who can reject them if they are not aligned with their preferences"), Claude Code auto memory (`/memory` browses and edits plain markdown; toggle via `autoMemoryEnabled` or `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`), Qoder. **Goose belongs one row up on the source**: its shipped server instructions say "Always confirm with the user before saving" |
 | **The agent owns the store; the human's write path is indirect** | Codex — the working agent may not edit memory files at all, only drop ad-hoc notes for the consolidator; the consolidator's own writes are unreviewed, but the whole store is a git repo the user can edit by hand, and hand edits are explicitly respected on the next pass |
 
 **Citation.** Two sources make the model declare what it used, and they
@@ -892,7 +1189,29 @@ collection closes that loop.
 **Staleness.** Claude Code stamps a `modified` ISO-8601 field into any
 memory file that already has frontmatter, so "the timestamp shows how
 current the fact is, both to you and to Claude when it reads the memory
-back." Codex handles the same problem in the prompt instead, with a
+back." The source shows a second, better mechanism layered on top, and its
+reasoning is written into the code: staleness is **computed from `mtime`
+and rendered in words at read time**, because "models are poor at date
+arithmetic — a raw ISO timestamp doesn't trigger staleness reasoning the
+way '47 days ago' does." `memoryFreshnessNote` returns nothing at all for
+memories ≤1 day old (a warning there is noise) and otherwise attaches a
+`<system-reminder>`: *"This memory is N days old. Memories are
+point-in-time observations, not live state — claims about code behavior or
+file:line citations may be outdated. Verify against current code before
+asserting as fact."* The motivating report is recorded beside it: stale
+`file:line` citations being asserted as fact, where **the citation made the
+stale claim sound more authoritative, not less**. The read-side prompt
+carries the matching rule in its own section — "A memory that names a
+specific function, file, or flag is a claim that it existed *when the
+memory was written*… If the memory names a file path: check the file
+exists. If the memory names a function or flag: grep for it… 'The memory
+says X exists' is not the same as 'X exists now'" — plus a separate rule
+for snapshot-shaped memories ("frozen in time… prefer `git log` or reading
+the code"). Two levers, then: compute the age (the writer cannot be relied
+on to stamp it) and spend it at the moment of use, not at the moment of
+storage.
+
+Codex handles the same problem in the prompt instead, with a
 cost/benefit rule: verify a memory-derived fact when drift is likely and
 verification is cheap; otherwise it's acceptable to answer from memory
 in an interactive turn, "but you should say that it is memory-derived,
@@ -958,11 +1277,50 @@ implemented note at all. Four rules are worth lifting whole:
   from *deleted* memory — and the distinction is what makes it safe to
   retire aggressively.
 
+**The machine/shared boundary, and the one product that crossed it.**
+§2(b)'s cleanest rule — Gemini CLI's "Project/workspace shared
+instructions… are NOT auto-extractable. They are managed by humans only" —
+is no longer unanimous. Claude Code ships **team memory**: a shared store,
+scoped to organization + repository, synced through a server API at
+session start and on a 2-second debounce after local changes
+(ETag-versioned, per-entry SHA-256 checksums, PUT batched under 200 KB,
+3 transport retries, 2 conflict retries, 250 KB per entry), written by the
+model with the ordinary file tools, and read by every colleague who works
+in that repository. The four-type taxonomy routes into it by type
+(§1), so a "feedback" memory the model judges to be a project-wide
+convention lands in a file the whole team's agents will read, with no
+review queue in front of it.
+
+What it ships instead of review is a **write-time content guard**:
+`checkTeamMemSecrets` runs inside `FileWriteTool`/`FileEditTool`'s
+`validateInput`, and refuses a write to a team path whose content matches a
+curated subset of gitleaks rules — "only rules with distinctive prefixes
+that have near-zero false-positive rates… generic keyword-context rules are
+omitted" — with the refusal naming the matched rule and the reason ("Team
+memory is shared with all repository collaborators"). The prompt carries a
+matching instruction ("You MUST avoid saving sensitive data within shared
+team memories"), but the enforcement is in the tool.
+
+Read against Gemini's rule, this is a genuine disagreement about which risk
+is worse: Gemini treats *quiet rewriting of a team's conventions* as the
+unacceptable failure and pays for it with an inbox nobody may drain; Claude
+Code treats *a fact learned once and re-learned by six colleagues* as the
+unacceptable waste and pays for it with a leak surface it then guards. The
+guard is only about secrets — nothing checks whether the memory is
+*correct* before every colleague's agent reads it, which is the risk Gemini
+was actually pricing. Both positions are defensible; what is not
+defensible is holding one of them by accident.
+
 **Portability — a distribution axis nothing else here has.** Every source
 above treats memory as something that lives where it was written: a file
-in a repo, a row in a database, a patch in an inbox. Command Code's
-**Taste** is the one design that treats learned preference as a
-*publishable artifact*: profiles are pushed, pulled, listed and
+in a repo, a row in a database, a patch in an inbox. Claude Code's
+**agent-memory snapshots** are a small second instance:
+`.claude/agent-memory-snapshots/<agentType>/` ships a starting memory
+alongside a sub-agent definition and is copied into that agent's live
+memory directory on first use, with a `.snapshot-synced.json` marker
+recording its origin — so a sub-agent can be published with prior
+experience attached. Command Code's **Taste** is the fuller design, and
+the one that treats learned preference as a *publishable artifact*: profiles are pushed, pulled, listed and
 **composed** through a package-manager-shaped CLI (`npx taste push --all`,
 `pull`, `list`, `compose`) against a hosted Studio, so a preference set can
 be shared with a team or the community and several can be layered to match
@@ -1018,6 +1376,28 @@ that built a background consolidator noticed:
   collaboration for it "to prevent recursive delegation."
 - **Path traversal** — Anthropic's memory-tool docs make this the
   implementer's headline responsibility (`/memories/../../secrets.env`).
+  The implemented versions all put the check before any I/O and derive it
+  from a name the model chose: Goose rejects a `category` that is empty,
+  `*`, `.`, `..`, or contains `/`, `\` or `:`, plus Windows reserved device
+  names, *before* forming `<category>.txt`; Claude Code normalises a path
+  and then prefix-matches it against three separate agent-memory roots,
+  with a comment naming `..`-segment bypass as the reason; Codex's backend
+  types `InvalidPath` / `InvalidFilename` / `NotFile` as model-visible
+  errors rather than failures.
+- **A content guard on the write path, not a prompt rule** — Claude Code's
+  team-memory secret scanner (§9) is the only instance in this collection
+  of a memory write being *refused* on content. It matters because it is
+  the first machine-written store here whose blast radius is other people:
+  the same prompt sentence ("never save API keys") exists in Codex and
+  Gemini, but only here does a check run.
+- **The consolidator's inputs wrapped in an unforgeable envelope** —
+  DeepSeek's maintenance tool wraps mined review comments in
+  `<untrusted-feedback nonce="…">` with a 128-bit nonce specifically so a
+  comment body cannot forge the closing tag, and spawns its reviewer
+  subprocesses with a scrubbed environment and a `cwd` outside the
+  repository. The nonce is the detail worth copying: every other source
+  here relies on a fixed tag name that appears in the untrusted text at the
+  attacker's discretion.
 
 ## 11. Retreats, absences, and capture gaps
 
@@ -1042,6 +1422,17 @@ the additions:
   is strictly larger — the four-tier routing policy of §1 plus the
   background extractor of §2(b) — so this is a redesign rather than a
   retreat, but the tool a lot of documentation still references is gone.
+- **Cline's `new_rule` tool is gone.** The tool is referenced in
+  community documentation and in this collection's earlier Cline notes; at
+  `48d6385` the SDK tool surface is nine tools (`read_files`,
+  `search_codebase`, `editor`, `apply_patch`, `run_commands`,
+  `fetch_web_content`, `skills`, `ask_question`, `submit_and_exit`) with
+  no rule or memory tool among them, and the surviving artifact is
+  `NewRuleRow.tsx` — a "+ New rule" affordance in the settings UI. The
+  capability moved from the model to the human, and from a tool to a form.
+  Read next to Cline's own stated premise — memory resets completely
+  between sessions, so all project knowledge must be externalised — this
+  is a vendor concluding that *externalising* is the human's job.
 - **Windsurf's own docs now recommend rules over memories** for anything
   durable: memories "are for one-off facts," while "for knowledge you
   want Cascade to reliably reuse, write it as a Rule or add it to
@@ -1078,6 +1469,66 @@ Capture gaps worth flagging rather than reading as absences:
   understood concept but never defines a KI anywhere in its 451 lines —
   either injected at runtime or not captured.
 
+## 12. The channel that isn't memory: improvement requests
+
+There is a fourth thing an agent can do with something it learned, distinct
+from storing it, asking about it, or acting on it: **hand it to a human who
+can fix the thing it is about**. It looks like memory and behaves nothing
+like it — nothing retrieves it later, the writer is not the reader, and the
+subject is usually not the code.
+
+Almost nothing in this collection has one. The instances:
+
+- **Devin's `report_environment_issue`** is the only first-class version.
+  "Use this to report issues with your dev environment as a reminder to the
+  user so that they can fix it. They can change it in the Devin settings
+  under 'Dev Environment'… It is critical that you use this command
+  whenever you encounter an environment issue so the user understands what
+  is happening" — with examples (missing auth, missing dependencies, broken
+  config, VPN, pre-commit hooks failing, missing system dependencies) and,
+  crucially, a paired instruction in the main prompt: "Then, find a way to
+  continue your work without fixing the environment issues, usually by
+  testing using the CI rather than the local environment. **Do not try to
+  fix environment issues on your own.**" Report-and-continue, not
+  report-and-stop: it is neither a question (nothing blocks) nor a memory
+  (nothing recalls it).
+- **The ask-a-human-to-persist-it convention** of §2(c) — OpenCode and Amp
+  telling the model to "proactively suggest writing it to AGENTS.md" — is
+  the same channel with the repo as its subject and no tool behind it.
+- **DeepSeek Harness routes human feedback the other way, deliberately.**
+  Its `feedback/` package group collects a free-text session remark
+  (`/feedback`, recorded "without a model turn") and per-message ratings,
+  and the group README states the rule as a contract: these are "signals
+  about the output, **never input to it**… Neither kind of feedback reaches
+  the model." Per-message ratings "never appear in model history or
+  telemetry." A harness that has thought hardest about what the model sees
+  chose to make its quality signal invisible to the model — which is the
+  strongest available argument that improvement signal and agent context
+  are different pipes.
+- **DeepSeek's Agent Notes are the durable version** of the same channel:
+  a `proposed/` note is an agent- or human-written proposal that a human
+  later promotes to `implemented/` or `rejected/`, with `## Alternatives
+  considered` mandatory and the archive frozen (§9). It is the only
+  mechanism here where "the agent thinks the system should change" has a
+  file format, a lifecycle, and a gate.
+
+The gap is conspicuous once named. An agent that hits a broken tool, a
+misleading tool description, a library whose documented API does not match
+its behaviour, or a repo convention that its instructions contradict has,
+in almost every system here, exactly two options: work around it silently,
+or tell the user in prose that scrolls away. Neither produces a durable
+record, and neither reaches the person who maintains the thing. Three
+distinctions decide whether such a channel is worth building:
+
+1. **Subject** — the repo, a third-party library, or the harness itself.
+   Only the first has any home in the systems surveyed here (§1's
+   absences).
+2. **Addressee** — a future run of this agent (that is memory), or a human
+   maintainer of the subject (that is a request). Conflating them produces
+   a memory store full of complaints nothing can act on.
+3. **Blocking or not** — Devin's answer, report-and-continue, is the one
+   that survives an unsupervised run.
+
 ## Design takeaways
 
 1. **Separate the levels before designing anything else.** Team-shared
@@ -1086,10 +1537,16 @@ Capture gaps worth flagging rather than reading as absences:
    requirements, and different lifetimes. Gemini CLI's two rules —
    exactly one tier per fact, and ask the user when it's ambiguous — are
    worth stealing wholesale.
-2. **Machines propose to private stores; humans own shared ones.** The
-   most defensible boundary found here is Gemini CLI's: an automated
-   extractor may never patch the file your team commits. It removes the
-   entire class of "the agent quietly rewrote our conventions" failures.
+2. **Decide the machine/shared boundary on purpose — the field no longer
+   agrees on it.** Gemini CLI's rule (an automated extractor may never
+   patch the file your team commits) removes the entire class of "the agent
+   quietly rewrote our conventions" failures, at the cost of an inbox
+   nobody may drain. Claude Code's team memory takes the other side: the
+   model writes to an org+repo-shared store with no review queue, guarded
+   only against secrets. If you take the second position, notice what the
+   guard does *not* cover — nothing checks that a shared memory is
+   *correct* before every colleague's agent reads it — and price that
+   deliberately (§9).
 3. **Retrospect from a finished transcript, not from a live one.** The
    four independent background-consolidator implementations all wait
    until a session is over (Gemini: idle ≥3h, ≥10 user messages; Codex:
@@ -1100,10 +1557,16 @@ Capture gaps worth flagging rather than reading as absences:
    agent plausibly act better because of what I write here?" plus an
    explicit empty-output contract, plus per-run caps (0–5 memories, 0–2
    skills), is the difference between a memory store and a junk drawer.
-5. **Grade candidates by recurrence, and defer the promotion decision.**
-   Capture preference *evidence* per task; let a later consolidation
-   pass decide whether repeated signals amount to a stable preference.
-   One occurrence is a data point, not a rule.
+5. **Grade candidates by recurrence — unless a human already judged the
+   case.** When you are mining your own trajectories, frequency is the
+   only durability signal you have, so capture preference *evidence* per
+   task and let a later consolidation pass decide whether repeated signals
+   amount to a stable preference: one occurrence is a data point, not a
+   rule. When the evidence is a human verdict that a diff demonstrably
+   adopted, the count stops mattering — DeepSeek's loop states it outright
+   ("a singleton may qualify; recurrence is not required"), and dropping
+   the requirement removes the delay before a learning becomes usable
+   (§6).
 6. **Trust user messages over your own.** Both mature extractor prompts
    independently rank user messages and tool outputs above assistant
    messages, and both explicitly refuse to promote assistant proposals
@@ -1121,18 +1584,44 @@ Capture gaps worth flagging rather than reading as absences:
    retention-ranking chain is the only mechanism here that can tell a
    useful memory from a useless one after the fact. Anything that only
    ever writes will eventually need a human to garden it.
-10. **Mark provenance and staleness at write time.** A `modified`
-    timestamp, an `applies_to` scope line, and an "evidence → implication
-    → future action" phrasing convention make a memory auditable; the
-    read-side rule ("say it's memory-derived and may be stale, offer to
-    refresh") makes an unauditable one safe to use anyway.
+10. **Mark provenance at write time; compute staleness at read time.** A
+    `modified` timestamp, an `applies_to` scope line, and an "evidence →
+    implication → future action" phrasing convention make a memory
+    auditable — but do not rely on the writer to stamp freshness. Derive
+    the age from the file and render it in words at the moment of use
+    ("this memory is 47 days old"), because a model reasons about elapsed
+    time far better than about an ISO date, and suppress the note entirely
+    when the memory is fresh. The read-side prompt rules ("say it's
+    memory-derived and may be stale"; "check the file exists, grep for the
+    function") make an unauditable memory safe to use anyway.
 11. **Treat transcripts as untrusted input.** Data-not-instructions,
     secret redaction, write-scope confinement, no network for the
     consolidator, and silent rejection of malformed patches — every
     background-memory implementation here converged on some subset, and
     the ones that skipped a layer are the ones that only store facts the
     user explicitly dictated.
-12. **Don't reach for a vector store by default.** Every first-party
+12. **Retrieve with a cheap model before you retrieve with an index.** The
+    only implemented semantic retrieval here is Claude Code's side-query:
+    a small model picks ≤5 files from a manifest of filename +
+    description, its answer is filtered against the real filename set, and
+    an empty answer is a normal outcome. It costs one extra round trip and
+    buys precision that neither grep nor embeddings gives, and its most
+    valuable rule is a negative one — suppress reference material for a
+    tool already in use, but never suppress the warnings about it.
+13. **Separate the improvement channel from the memory channel.** A
+    finding the agent cannot act on and a future run cannot use belongs in
+    a request addressed to a human maintainer, not in a memory store
+    (§12). Devin's report-and-continue shape is the one that survives an
+    unsupervised run; DeepSeek's rule that human feedback "never reaches
+    the model" is the same separation seen from the other end.
+14. **The cheapest learned-review-criteria loop is a contribution rule.**
+    In the one repository observed running both, mining human review
+    comments produced zero rule changes across 426 feedback items, while
+    ordinary PRs that established a convention produced every rule change
+    — because the author of the convention is the cheapest possible
+    extractor, and can *replace* a rule rather than only appending one
+    (§8). Build the mining loop second, if at all.
+15. **Don't reach for a vector store by default.** Every first-party
     implementation here retrieves memory with grep over
     model-written markdown, and the one vendor that had a database
     chose FTS5 and told the model to be its own embedder. Distillation
@@ -1140,13 +1629,13 @@ Capture gaps worth flagging rather than reading as absences:
     guess at, keeps the store editable by a human, and has no index to
     invalidate when someone hand-edits a file. Reconsider only when the
     corpus stops being small.
-13. **Decide separately whether the agent may read its memory and
+16. **Decide separately whether the agent may read its memory and
     whether it may write it.** The two are independent, and the
     strongest systems restrict one of them: Codex reads freely but may
     only append a note for the background writer; Cursor and Augment
     write freely but never fetch, because selection happens upstream.
     "The agent has a memory tool" is not one decision.
-14. **For review agents, learn from the human's reaction, not your own
+17. **For review agents, learn from the human's reaction, not your own
     verdict.** Accepted-vs-ignored suggestions and 👍/👎 are cleaner
     signal than self-assessment — with a hardcoded floor (Greptile never
     suppresses security findings) so the loop can't be trained into

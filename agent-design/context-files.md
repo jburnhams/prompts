@@ -169,6 +169,20 @@ and is exactly what produces the CI ambiguity
 documents, where the tree the rules came from and the tree the diff came
 from are set by different steps and nothing records either.
 
+**A fourth tier arrives later, and it is machine-written.**
+[`memory.md`](./memory.md) adds `tier: "learned"` — cross-run learnings
+stored by the same service, at the same kind of ref, and served through
+this same contract. It is specified there rather than here because it
+changes one property of this document: a resolution stops being a pure
+function of `(repo, ref, team)`, so the learned tier needs its own version
+in `resolved_for`, its own entry in the run record, and its own component
+of the cache key (`memory.md` §2c). Everything else it needs — sections as
+the unit, precedence, `kinds`/`paths` narrowing, the budget, the nonce
+envelope, §10's run record — it inherits unchanged, and its `binding` is
+always `default`, which is how "a learning informs but never vetoes"
+becomes a property of precedence rather than a rule someone has to
+remember.
+
 **No user tier.** A run is dispatched by a system, and the design's
 archetype-2 posture (`README.md`) means there is no person in the loop
 whose preferences should shape the result. A review whose findings depend
@@ -1196,7 +1210,9 @@ a section on error handling to AGENTS.md" is a normal request, and it
 arrives through the dispatcher, which is exactly where an explicit
 permission belongs. A run without the flag that concludes it needs a
 conventions change has `AskUser` and `Complete`'s report; it does not have
-`Write`.
+`Write`. [`memory.md`](./memory.md) §6 adds the third and better option:
+`ReportProblem` against the section's id — a durable record addressed to
+whoever owns that section, with still no write path to it.
 
 The protected set is **every repo section's `source.path` in the
 resolution**, not just the ones inlined so far. A section held back for
