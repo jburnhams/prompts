@@ -368,3 +368,73 @@ collection, and it is real code rather than prompt prose.
   *not* found, so a typo in a filename is invisible from inside the
   session — the same debugging gap Claude Code answers with `/context`
   and an `InstructionsLoaded` hook.
+
+## Context-file loading
+
+Read 2026-08-30 from the copy stored here
+(`sections/custom-instructions.ts`, 548 lines). Roo Code has the widest
+*surface* of any loader in the collection — six sources, two of them
+mode-scoped — and it is the only one that resolves symlinks recursively
+by design rather than as a dedup side-effect.
+
+- **Six sources, assembled in one `USER'S CUSTOM INSTRUCTIONS` block**
+  (`====`-delimited, appended to the system prompt):
+  1. `Language Preference:` (a generated sentence, not a file)
+  2. `Global Instructions:` (settings text)
+  3. `Mode-specific Instructions:` (settings text)
+  4. mode rules — `.roo/rules-<mode>/` directories, else `.roorules-<mode>`,
+     else `.clinerules-<mode>`
+  5. `rooIgnoreInstructions`
+  6. `AGENTS.md` / `AGENT.md` / `AGENTS.local.md`
+  7. generic rules — `.roo/rules/` directories, else `.roorules`, else
+     `.clinerules`
+- **Directory rules shadow legacy single files.** If any `.roo/rules/`
+  directory yields files, the `.roorules`/`.clinerules` fallbacks are not
+  read at all — and the same for the mode-scoped pair. The fallback chain
+  is `.roo*` before `.cline*` in both cases, so a repo carrying both gets
+  the Roo one only.
+- **`AGENTS.md` and `AGENT.md` are first-match-wins; `AGENTS.local.md` is
+  always additive.** `loadAgentRulesFileFromDirectory` tries `AGENTS.md`
+  then `AGENT.md` and `break`s on the first non-empty — but then
+  unconditionally tries `AGENTS.local.md`, and the comment is explicit that
+  it loads "even if AGENTS.md doesn't exist".
+- **Symlinks are followed recursively, with a depth cap of 5**
+  (`MAX_DEPTH`), through both `resolveDirectoryEntry` and `resolveSymLink`,
+  including symlinks pointing at directories (whose entries are then walked)
+  and nested symlink chains. Rules directories are read with
+  `{recursive: true}`. `readAgentRulesFile` lstats first and resolves a
+  symlinked `AGENTS.md` to its target before reading.
+- **Sorting is by the *symlink* name, not the target.** `readTextFilesFromDirectory`
+  keeps `originalPath` for sorting and `resolvedPath` for reading, sorts
+  case-insensitively by `basename(sortKey)` via `localeCompare`, and then
+  **displays the resolved path**. So ordering is controlled by the link
+  name while provenance shown to the model is the target — a deliberate
+  split, and the only place in the collection where those two differ.
+- **A cache/junk-file denylist**, not an allowlist: `shouldIncludeRuleFile`
+  rejects 20 patterns (`*.DS_Store`, `*.swp`, `*.pyc`, `*.lock`, `*.log`,
+  `Thumbs.db`, …). Everything else in a rules directory is treated as a
+  rule regardless of extension — a `.png` dropped in `.roo/rules/` is read
+  as UTF-8 text (contrast Claude Code's extension allowlist).
+- **Envelopes are Markdown headings with relative paths**:
+  `# Rules from <relative path>:` per file inside a directory (joined by
+  blank lines, under a `# Rules from .roo directories:` banner),
+  `# Rules from <filename>:` for a legacy single file,
+  `# Agent Rules Standard (AGENTS.md) from <dir>:` and
+  `# Agent Rules Local (AGENTS.local.md) from <dir>:` for the agent-rules
+  family. The `from <dir>` suffix appears **only when `showPath` is set**,
+  which happens only for non-root directories under `enableSubfolderRules`
+  — so in the default configuration the root `AGENTS.md` arrives with no
+  path at all.
+- **Subfolder discovery is opt-in and keyed on `.roo` directories.**
+  `enableSubfolderRules` (default `false`) switches
+  `getRooDirectoriesForCwd` → `getAllRooDirectoriesForCwd` and pulls
+  `AGENTS.md` from every subdirectory that *has a `.roo` folder* — an
+  unusual gate: the marker that makes a subdirectory's `AGENTS.md`
+  discoverable is the presence of a sibling Roo config directory, not the
+  file itself.
+- **No imports, no templating, no escaping, no byte budget.** Content is
+  `.trim()`ed and concatenated. Nothing caps total size, and nothing
+  prevents a rules file from containing the `====` separator or a
+  `# Rules from ...` heading of its own.
+- **`useAgentRules: false`** disables the `AGENTS.md` family only; the
+  `.roo`/`.cline` families have no equivalent switch.

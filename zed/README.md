@@ -274,3 +274,61 @@ do, so the user can follow along. Skip the preamble for trivial single
 reads or when continuing a clearly described step" — ordinary prompted
 narration (this doc's §3), with an explicit skip-condition for trivial
 actions not every other source's version of this rule states.
+
+## Context-file loading
+
+Read 2026-08-30 from `crates/prompt_store/src/prompts.rs`,
+`crates/agent/src/agent.rs` (`load_worktree_rules_file`) and
+`crates/agent/src/templates/system_prompt.hbs` at `399258f`. Zed's loader
+is the simplest in the collection and, on one axis — escaping — the most
+careful.
+
+- **Nine candidate filenames, one winner per worktree.**
+  `RULES_FILE_NAMES` is `[".rules", ".cursorrules", ".windsurfrules",
+  ".clinerules", ".github/copilot-instructions.md", "AGENT.md", "AGENTS.md",
+  "CLAUDE.md", "GEMINI.md"]` — the broadest cross-vendor filename list
+  anywhere in this collection, and it is read in that order with
+  `.next()`, so **the first hit wins and the rest are ignored**. A repo
+  carrying both `AGENTS.md` and `CLAUDE.md` gets `AGENTS.md`; one carrying
+  `.cursorrules` and `AGENTS.md` gets `.cursorrules`.
+- **Worktree root only.** No ancestor walk, no subdirectory rules, no JIT
+  loading. One `RulesFileContext { path_in_worktree, text }` per worktree,
+  and `ProjectContext.has_rules` is just "any worktree has one". Multi-root
+  projects therefore get one rules file *each*, rendered as a labelled list.
+- **A documented non-support**: "Cline supports `.clinerules` being a
+  directory, but that is not currently supported. This doesn't seem to
+  occur often in GitHub repositories." Zed reads the *name* from four other
+  vendors but only the file form.
+- **Content is trimmed and otherwise untouched** — no frontmatter parsing,
+  no imports, no comment stripping, no size cap.
+- **It is the only harness that fences the file body.** `system_prompt.hbs`
+  wraps every rules payload in **six backticks**:
+
+  ```
+  ### Project Rules
+  ...
+  `<root_name>/<path_in_worktree>`:
+  ``````
+  <rules text>
+  ``````
+  ```
+
+  Six is enough to survive a rules file containing ordinary ``` fences,
+  which is the realistic case; a file containing its own `` `````` `` run
+  still escapes. Handlebars renders the body with a triple-stache
+  (`{{{rules_file.text}}}`), i.e. HTML-escaping is explicitly turned off —
+  the fence, not escaping, is the containment mechanism.
+- **Precedence is stated in prose and matched by position.** The personal
+  `AGENTS.md` block says "Project-specific rules below may override them",
+  and the project block says "They take precedence over the personal
+  `AGENTS.md` above when they conflict" — a rare case of the two halves of
+  a precedence claim being written at both ends of the ordering, and of the
+  document order actually matching the claim.
+- **A stated ceiling**: the whole `## User's Custom Instructions` section is
+  introduced as instructions to be "followed to the best of your ability
+  **without interfering with the tool use guidelines**" (the clause is
+  conditional on there being any tools). Same posture as Cline's.
+- Loading goes through the project's buffer store (`project.open_buffer`
+  → `Rope`), not `fs::read`, so an open, unsaved editor buffer is what the
+  model sees — the only loader in the collection that reads editor state
+  rather than disk.

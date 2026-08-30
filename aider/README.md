@@ -181,3 +181,38 @@ nothing between sessions by design.
   [`agent-git-vcs.md`](../agent-git-vcs.md) §2), which leaves the
   history as the only artifact a future session could learn from — and
   nothing in the prompts tells it to read that history for lessons.
+
+## Context-file loading: the null case
+
+Worth recording precisely because Aider is the one mature coding agent in
+this collection that **has no context-file loader at all**. Read
+2026-08-30 from `aider/website/docs/usage/conventions.md` and
+`base_prompts.py` (stored here).
+
+- **No auto-discovery.** There is no `AIDER.md`, no upward walk, no
+  `AGENTS.md` support, no rules directory. The documented pattern is to
+  write a `CONVENTIONS.md` and pass it explicitly: `/read CONVENTIONS.md`,
+  `aider --read CONVENTIONS.md`, or a `read:` key in `.aider.conf.yml` —
+  "You can also configure aider to always load your conventions file."
+- **It travels through the ordinary read-only-file channel**, not a
+  dedicated one. The docs' reasoning is entirely about the properties that
+  channel already has: "This way it is marked as read-only, **and cached if
+  prompt caching is enabled**." The conventions file is therefore
+  automatically inside the cache prefix and automatically protected from
+  edits — two things the auto-discovering loaders elsewhere in this
+  collection each have to arrange separately (Claude Code's
+  `isPartialView` read-state bookkeeping; OpenHands' `CacheTier`).
+- **The envelope is the generic read-only prefix**
+  (`base_prompts.py:50`): `Here are some READ ONLY files, provided for your
+  reference.\nDo not edit these files!` — no per-tier labelling, no
+  provenance framing, no precedence statement, because there are no tiers.
+  Aider delivers it as a **simulated user/assistant turn pair** (files in a
+  user message, a canned acknowledgement back), the same way it delivers
+  the repo map, rather than as system-prompt text.
+- **Consequences worth naming**: no precedence rules to get wrong, no
+  hierarchy to dedup, no import expander to sandbox, no size budget to
+  silently truncate — and equally, no way for a repository to hand
+  conventions to a contributor's agent without that contributor opting in.
+  Aider pushes the sharing problem to a separate place instead: a
+  community [conventions repository](https://github.com/Aider-AI/conventions)
+  of files you fetch and point `--read` at.

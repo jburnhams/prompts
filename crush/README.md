@@ -347,3 +347,65 @@ it once.
 - **No machine-written store and no retrospective**: "memory" here always
   means the human-owned instruction file, and nothing distils a finished
   session.
+
+## Context-file loading
+
+Read 2026-08-30 from `internal/config/config.go`, `internal/config/load.go`,
+`internal/agent/prompt/prompt.go` and the copy of `coder.md.tpl` stored
+here, at `1ea2714`.
+
+- **Sixteen default context paths, and the list is mostly
+  case-variants.** `defaultContextPaths` =
+  `.github/copilot-instructions.md`, `.cursorrules`, `.cursor/rules/`,
+  `CLAUDE.md`, `CLAUDE.local.md`, `GEMINI.md`, `gemini.md`, `crush.md`,
+  `crush.local.md`, `Crush.md`, `Crush.local.md`, `CRUSH.md`,
+  `CRUSH.local.md`, `AGENTS.md`, `agents.md`, `Agents.md`. Enumerating
+  casings is Crush's substitute for case-insensitive lookup.
+- **The list is sorted, then compacted, then deduped again by lowercased
+  path — and the sort is what makes the casings safe.**
+  `load.go:601-604` does `append(defaults, user...)`, `slices.Sort`,
+  `slices.Compact`; `prompt.go:loadContextFiles` then keys a map on
+  `strings.ToLower(expanded)` and skips repeats. ASCII sort puts
+  `CRUSH.md` before `Crush.md` before `crush.md`, so the uppercase variant
+  claims the shared lowercase key first and the file is found on a
+  case-sensitive filesystem. Two consequences fall out of this that are
+  worth stating plainly:
+  - **User-configured `context_paths` do not take precedence** — they are
+    appended to the defaults and then sorted into the same alphabetical
+    list, so their position in the prompt is an accident of their name.
+  - **Load order is alphabetical, not by authority**: `.cursor/rules/`,
+    `.cursorrules`, `.github/copilot-instructions.md`, then `AGENTS.md`,
+    `CLAUDE.md`, `CRUSH.md`, `GEMINI.md`. Crush's own eponymous file lands
+    third among the four, purely because `C` sorts where it does.
+- **A directory entry is walked recursively and every file in it is loaded**
+  (`processContextPath` → `filepath.WalkDir`), with no extension filter and
+  no depth limit — so `.cursor/rules/` contributes its whole subtree,
+  binary files included, as UTF-8 strings.
+- **Working-directory only. No ancestor walk, no subdirectory discovery, no
+  JIT loading, no imports, no frontmatter, no size cap.**
+  `filepathext.SmartJoin(WorkingDir, p)` and one `os.Stat`.
+- **Global paths are a separate list**, defaulting to
+  `<crush config dir>/CRUSH.md` and `<parent of config dir>/AGENTS.md`,
+  also sorted; they render into a different template block.
+- **Envelope is XML-ish, and unescaped.** `coder.md.tpl`:
+
+  ```
+  # Project-Specific Context
+  Make sure to follow the instructions in the context below.
+  <project_context>
+  <file path="{{.Path}}">
+  {{.Content}}
+  </file>
+  ...
+  </project_context>
+  ```
+
+  with `<user_preferences>` for the global tier, introduced as "personal
+  content added by the user that they'd like you to follow no matter what
+  project you're working in". The template is executed with Go's
+  **`text/template`, not `html/template`** (`prompt.go:12`), so neither
+  `.Path` nor `.Content` is escaped: a path containing `"` breaks the
+  attribute, and a context file containing `</file>` closes its own block.
+- **`initialize_as`** (default `AGENTS.md`) names which file `/init` writes,
+  independently of which files are read — so a project can be initialized
+  into `docs/LLMs.md` while still reading all seventeen defaults.
