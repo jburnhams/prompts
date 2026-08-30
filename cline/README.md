@@ -316,3 +316,79 @@ collection's most **promiscuous rules-file reader**.
   premise Windsurf's `<memory_system>` states — and the two products
   answered it in opposite ways (a database tool vs. a user-maintained
   file convention).
+
+## Context-file loading
+
+Read 2026-08-30 from `apps/vscode/src/core/context/instructions/user-instructions/`
+(`rule-helpers.ts` 467 lines, `rule-conditionals.ts` 153,
+`frontmatter.ts` 59, `external-rules.ts` 49) at `48d6385`, plus the
+prompt-side assembly in the copies stored here (`system.ts`,
+`responses.ts`).
+
+- **Four rule families, all read from the workspace root**: `.clinerules`
+  (file or directory), `.cursorrules` + `.cursor/rules/*.mdc`,
+  `.windsurfrules`, and `AGENTS.md` — plus a global `.clinerules/`
+  directory and a **remote** tier (`GlobalInstructionsFile[]`, org-pushed
+  instructions that never touch the repo).
+- **Per-file user toggles are the distinctive mechanism.** Every rules file
+  has a boolean in workspace/global state (`localClineRulesToggles`,
+  `localCursorRulesToggles`, `localWindsurfRulesToggles`,
+  `localAgentsRulesToggles`, …); `synchronizeRuleToggles` reconciles the
+  toggle map against what is actually on disk on each refresh, and
+  `getRuleFilesTotalContentWithMetadata` skips any path whose toggle is
+  explicitly `false`. Cursor's two valid locations are synchronized
+  separately and `combineRuleToggles`d so neither drops the other's entries.
+  No other harness in the collection offers per-file opt-out from the UI —
+  the closest is Claude Code's `claudeMdExcludes` glob setting.
+- **Frontmatter conditionals are a tiny DSL with deliberate fail
+  directions.** `evaluateRuleConditionals` walks the frontmatter keys and
+  runs a registered evaluator per key; **unknown keys are ignored** (forward
+  compatibility). The only implemented key is `paths`:
+  - a non-array / malformed value → **fail-open** (conditional ignored,
+    rule loads);
+  - `paths: []`, or patterns that trim to nothing → **fail-closed** (rule
+    never loads) — documented as the explicit way to disable a rule from
+    inside the file;
+  - `paths` present but no candidate paths in the evaluation context →
+    fail-closed ("no evidence => do not activate path-scoped rules");
+  - omitted entirely → the evaluator never runs, so the rule is universal.
+- **Candidate paths can come from the user's prose.** `extractPathLikeStrings`
+  scrapes path-shaped tokens out of the message text to allow first-turn
+  activation of a path-scoped rule before any file has been touched. It
+  strips fenced code blocks first ("to avoid extracting paths from pasted
+  code"), removes URLs, requires either a slash or a `name.ext` shape, drops
+  tokens over 300 chars, and rejects absolute paths and anything containing
+  `..`. It is the only mechanism in the collection that decides which rules
+  to load by parsing the *user's* text rather than tool arguments or the
+  file tree.
+- **A YAML parse error is fail-open in an unusual way**: the rule is
+  emitted with its **raw frontmatter fence left in**, and the comment gives
+  the reason — "so the LLM can still see the author's intended scoping
+  (e.g., `paths:`) and reason about it, even if it cannot be evaluated
+  reliably due to invalid YAML." Everywhere else, frontmatter is stripped
+  before the model sees it.
+- **A UTF-8 BOM bug, fixed in the parser.** `stripUtf8Bom` runs before the
+  frontmatter regex because Node's `utf-8` decode leaves `﻿` in place,
+  so a file saved by Windows Notepad as "UTF-8 with BOM" never matched
+  `^---` and silently lost its frontmatter (`cline/cline#12151`). The only
+  encoding-level context-file bug documented anywhere in this collection.
+- **Per-file envelope is a bare relative path line**: `<relative
+  path>\n<trimmed body>`, joined by blank lines — the most minimal in the
+  collection. The tier framing comes one level up, from `responses.ts`
+  templates that name the source and its scope, e.g.
+  `# .clinerules/\n\nThe following is provided by a root-level .clinerules/
+  directory where the user has specified instructions for this working
+  directory (<cwd>)\n\n<content>`, with sibling variants for the global
+  directory, `.windsurfrules`, `.cursorrules` and `.cursor/rules`.
+- **Assembly order is fixed in `addUserInstructions`** (`system.ts`):
+  preferred language → global `.clinerules` → local `.clinerules` →
+  `.cursorrules` → `.cursor/rules` → `.windsurfrules` → `.clineignore`,
+  under `==== USER'S CUSTOM INSTRUCTIONS` with the softening clause "should
+  be followed to the best of your ability **without interfering with the
+  TOOL USE guidelines**" — an explicit subordination of repo instructions
+  to the harness's own tool contract, which only Gemini CLI and Zed also
+  state.
+- **Activated conditional rules are reported back to the UI** with a
+  `workspace:` / `global:` / `remote:` prefix and the patterns that matched,
+  so a user can see *why* a rule fired. No other loader surfaces its
+  activation reasoning.

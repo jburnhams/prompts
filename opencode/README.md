@@ -506,3 +506,53 @@ no distillation agent, but its per-model prompt family contains three
 - **No retrospective mechanism anywhere**: nothing reviews a finished
   session, and the three memory variants above all capture facts, never
   failures.
+
+## Context-file loading: the mechanics
+
+The notes above cover `instruction.ts` in outline. Re-read 2026-08-30
+against the copy stored here (`instruction.ts`, 237 lines) for the
+loading-mechanics pass; the details that distinguish it from the other
+loaders in the collection:
+
+- **Global tier is first-match-wins across vendors.** `globalFiles` is
+  `[<global.config>/AGENTS.md, ~/.claude/CLAUDE.md]` and the loop `break`s
+  on the first that exists — so a user with both gets only the OpenCode
+  one. The Claude entry is dropped entirely under
+  `flags.disableClaudeCodePrompt`.
+- **Project tier is first-*filename*-wins, but all-directories.**
+  `instructionFiles` is `["AGENTS.md", "CLAUDE.md", "CONTEXT.md"]`
+  (`CONTEXT.md` marked deprecated). For each name in turn it runs
+  `findUp(file, ctx.directory, ctx.worktree)`; the **first name that
+  matches anywhere** claims the tier, and *all* of that name's matches up
+  the tree are added. The comment states the intent: "The first
+  project-level match wins so we don't stack AGENTS.md/CLAUDE.md from every
+  ancestor." A repo with `AGENTS.md` at the root and `CLAUDE.md` in a
+  subdirectory loads only the former.
+- **Configured instructions accept globs, `~`, and URLs.**
+  `config.instructions` entries are split: `http(s)://` entries are fetched
+  over HTTP (concurrency 4, **5-second timeout**, failures silently
+  yielding `""`); everything else is globbed — absolute paths via
+  `glob(basename, {cwd: dirname})`, relative ones via `globUp` from the
+  directory to the worktree root. **This is the only loader in the
+  collection that will pull instruction text off the network**, and it does
+  so with no integrity check, no caching, and no user approval.
+- **Envelope is a bare provenance line.** `Instructions from: <absolute
+  path or URL>\n<content>` per file, returned as an array of strings for
+  the prompt assembler to place. No tags, no fences, no escaping, no
+  trailing delimiter — a file's content runs straight into the next file's
+  header. Empty files are dropped.
+- **Dedup is by resolved path in a `Set`**, and the per-message `claims`
+  map prevents the same instruction file being attached twice within one
+  assistant message.
+- **JIT attachment is driven off `read`-tool metadata.** `resolve()` walks
+  upward from the file just read, stopping strictly below the session root
+  (`current !== root`), and attaches the nearest instruction file per
+  ancestor directory — skipping anything already in the system set
+  (`systemPaths()`), already loaded in this session (`extract()` reads the
+  `loaded` array out of completed `read` tool-call metadata, ignoring
+  compacted ones), or already claimed for this message. The dedup source
+  being *tool-result metadata in the transcript* rather than a side table is
+  what makes it survive session resume; the compaction check is what makes
+  a compacted-away file eligible for re-attachment.
+- **`OPENCODE_DISABLE_PROJECT_CONFIG`** flips the whole project tier off
+  and re-points relative glob resolution at the global config directory.

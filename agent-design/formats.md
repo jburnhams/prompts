@@ -68,9 +68,16 @@ reviewed PR is accepted and noted in `future.md`.)
 </plan>
 
 <repo_context>
-  {{ optional: contents of the root project-conventions file, if one
-     exists and is short enough to inline; otherwise its path only,
-     and the model reads it itself in step 1 of its workflow }}
+  {{ nonce-bearing <conventions tier= binding= nonce= ...> blocks, in
+     precedence order. All three tiers — org, team and repo — come from
+     one context-service resolution at dispatch, keyed on the run's ref
+     (`context-files.md` §1b); the harness selects which sections apply
+     and concatenates. Each inlined up to 32 KiB, truncated at a heading
+     boundary with a `!` note beyond that — never path-only. Deeper repo
+     sections are held back and revealed just-in-time (§8b). A run whose
+     resolution failed does not start, so this block is never absent for
+     want of one. Full spec, including tier precedence and the
+     review-mode base-SHA rule, in `context-files.md` }}
 </repo_context>
 ```
 
@@ -922,7 +929,12 @@ Rules:
   never silently dropped: a block exists for every request.
 - **Nearby project conventions** discovered for any file in the batch are
   appended once, after `</files>`, inside a single `<system-reminder>`
-  block naming which paths they came from — not repeated per file.
+  block naming which paths they came from — not repeated per file. Each
+  arrives as the same nonce-bearing `<conventions path= rev=>` block the
+  envelope uses; the trigger is the **resolved path arguments of file
+  tools only** (never shell argv, never the user's prose), dedup is by
+  realpath in a per-run set, and every attachment is logged with the tool
+  call that caused it. See `context-files.md` §9.
 
 ### 8c. `List`
 

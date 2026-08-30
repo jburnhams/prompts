@@ -305,3 +305,132 @@ extraction").
   Codex's Phase 1 does; auto memory accumulates observations during the
   session rather than distilling them from a completed transcript
   afterwards.
+
+## Context-file loading: the mechanics (`CLAUDE.md`)
+
+The [memory section above](#memory-learnings-and-retrospectives) covers *what* the tiers
+are and who writes them. This section covers the loader itself, read
+2026-08-30 from the leaked source at `6f6f12b` (commit dated 2026-05-07)
+— `src/utils/claudemd.ts` (1479 lines), `src/context.ts`,
+`src/utils/api.ts`, `src/utils/messages.ts`, `src/utils/attachments.ts`.
+Treat specifics as of that snapshot; the leaked-source caveats at the top
+of this README apply.
+
+- **Discovery order is fixed and additive, not first-match.**
+  `getMemoryFiles()` pushes, in order: Managed `CLAUDE.md` → managed
+  `.claude/rules/*.md` → user `~/.claude/CLAUDE.md` → user
+  `~/.claude/rules/*.md` → then, walking **root-downward to cwd**, per
+  directory: `CLAUDE.md`, `.claude/CLAUDE.md`, `.claude/rules/*.md`
+  (Project) and `CLAUDE.local.md` (Local) → optional `--add-dir`
+  directories (behind `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD`,
+  default off) → the auto-memory `MEMORY.md` entrypoint → team memory.
+  Every one that exists is loaded; nothing shadows anything.
+- **A worktree-specific de-duplication rule.** When cwd is a git worktree
+  nested inside its own main repo (`claude -w` puts them under
+  `.claude/worktrees/`), the upward walk crosses both the worktree root and
+  the main repo root, and would load the same checked-in `CLAUDE.md` twice.
+  `isNestedWorktree` detects `findGitRoot != findCanonicalGitRoot` and skips
+  **Project-type** files from directories inside the canonical root but
+  outside the worktree — while still loading `CLAUDE.local.md`, because it
+  is gitignored and therefore only exists in the main repo. Cited to
+  `anthropics/claude-code#29599`.
+- **Imports are extracted from a Markdown token stream, not a regex over
+  raw text.** `parseMemoryFileContent` lexes once with `marked`
+  (`gfm: false` — required so `~/path` doesn't tokenize as strikethrough)
+  and shares the tokens between comment-stripping and import extraction.
+  `extractIncludePathsFromTokens` skips `code` and `codespan` tokens
+  outright, and for `html` tokens strips the comment spans and scans only
+  the residue (so `<!-- note --> @./file.md` still imports). The scan regex
+  is `/(?:^|\s)@((?:[^\s\\]|\\ )+)/g` — escaped spaces (`\ `) are supported
+  and unescaped, and a `#fragment` suffix is trimmed off the path.
+- **Import guards**: `MAX_INCLUDE_DEPTH = 5`; a `processedPaths` set
+  normalized for Windows drive-letter casing, seeded with **both** the
+  symlink path and its realpath; a `TEXT_FILE_EXTENSIONS` allowlist (~30
+  extensions) so a `@./logo.png` cannot pull binary bytes into context; and
+  an "external" check — an import resolving outside the original cwd is
+  dropped unless `hasClaudeMdExternalIncludesApproved` is set, which is a
+  **one-time user approval dialog** (`ClaudeMdExternalIncludesDialog.tsx`).
+  User-tier files are exempt and always allowed external imports.
+  Parent-before-children ordering: the importing file is pushed first, then
+  its imports.
+- **Content is transformed before it is measured or shown.** Frontmatter is
+  stripped; block-level HTML comments are stripped via the lexer (inline
+  comments and comments inside code spans are preserved, and an *unclosed*
+  `<!--` is deliberately left in place "so a typo doesn't silently swallow
+  the rest of the file"); `MEMORY.md` entrypoints are truncated to line and
+  byte caps. When any of that fires, `contentDiffersFromDisk` is set and the
+  untouched bytes are kept in `rawContent` — so the `readFileState` cache
+  entry is marked `isPartialView` and `Edit`/`Write` still demand a real
+  `Read` first. This is the only loader in the collection that tracks the
+  divergence between what the model was shown and what is on disk.
+- **`.claude/rules/*.md` are conditional on `paths:` frontmatter.** Rules
+  *without* `paths` load eagerly with everything else. Rules *with* `paths`
+  load only when a tool touches a matching file:
+  `processConditionedMdRules` resolves the target relative to the parent of
+  `.claude` (for Project rules) or the original cwd (Managed/User), rejects
+  anything that escapes the base (`..`, absolute, cross-drive), and matches
+  with the `ignore` library. `paths: **` is normalized away to "no globs"
+  (i.e. unconditional), and a trailing `/**` is stripped because `ignore`
+  treats a bare path as matching the subtree too.
+- **Exclusion is a glob setting with symlink-aware pattern expansion.**
+  `claudeMdExcludes` (picomatch, `dot: true`) applies to User/Project/Local
+  only — **Managed, AutoMem and TeamMem can never be excluded**.
+  `resolveExcludePatterns` additionally realpath-resolves the static prefix
+  of each absolute pattern and adds the resolved form, so a user-written
+  `/tmp/project/CLAUDE.md` still matches when the process sees
+  `/private/tmp/...` on macOS.
+- **The eager envelope has no delimiters at all.** `getClaudeMds()` emits
+  `MEMORY_INSTRUCTION_PROMPT` once —
+
+  > Codebase and user instructions are shown below. Be sure to adhere to
+  > these instructions. IMPORTANT: These instructions OVERRIDE any default
+  > behavior and you MUST follow them exactly as written.
+
+  — then, per file, `Contents of <absolute path> <description>:\n\n<trimmed
+  content>`, joined by blank lines. The description is the tier
+  (`" (project instructions, checked into the codebase)"`, `" (user's
+  private project instructions, not checked in)"`, `" (user's private
+  global instructions for all projects)"`, `" (user's auto-memory, persists
+  across conversations)"`). **The only tier that gets a machine-readable
+  tag is team memory** — `<team-memory-content source="shared">` — i.e. the
+  tag tracks provenance/trust (content synced from outside this repo), not
+  document structure. Nothing is escaped or fenced.
+- **Delivery is a synthetic first user message, not the system prompt.**
+  `getUserContext()` returns `{ claudeMd, currentDate }`; `prependUserContext`
+  (`src/utils/api.ts:449`) turns that map into one `isMeta` user message:
+
+  ```
+  <system-reminder>
+  As you answer the user's questions, you can use the following context:
+  # claudeMd
+  <the getClaudeMds output>
+
+  # currentDate
+  ...
+
+        IMPORTANT: this context may or may not be relevant to your tasks. You should not respond to this context unless it is highly relevant to your task.
+  </system-reminder>
+  ```
+
+  Note the collision: the **outer** wrapper hedges ("may or may not be
+  relevant"), while the **inner** `MEMORY_INSTRUCTION_PROMPT` it wraps says
+  the same bytes "OVERRIDE any default behavior and you MUST follow them
+  exactly as written". Two opposite framings of one payload, nested, in a
+  single message.
+- **JIT nested loading rides the attachment system.** `nested_memory`
+  attachments are produced when a tool touches a path below cwd
+  (`getMemoryFilesForNestedDirectory`), converted by
+  `memoryFilesToAttachments` (skipping anything in `loadedNestedMemoryPaths`
+  or already in `readFileState`), and rendered as
+  `wrapMessagesInSystemReminder([...])` with the body
+  `Contents of <path>:\n\n<content>` — the tier description is **dropped**
+  on this path, so a JIT-loaded file arrives less labelled than an eager one.
+- **Kill switches**: `CLAUDE_CODE_DISABLE_CLAUDE_MDS` is hard-off always;
+  `--bare` skips auto-discovery but still honours explicit `--add-dir`
+  ("skip what I didn't ask for", not "ignore what I asked for"); the
+  `settingSources` mechanism gates the User/Project/Local tiers
+  independently; and an `InstructionsLoaded` hook fires per file with its
+  type, globs, parent and load reason (`session_start` / `include` /
+  conditional) — audit-only, fire-and-forget, and deliberately **not**
+  fired for AutoMem/TeamMem, which are "a separate memory system, not
+  'instructions'".

@@ -69,9 +69,12 @@ Work in this order. Skip a step only when it's genuinely inapplicable
 inconvenient:
 
 1. **Orient.** Read the task envelope and any linked ticket fully before
-   touching anything. If the repository has a project-conventions file
-   (`AGENTS.md`, `CLAUDE.md`, or equivalent — check the repository root
-   first), read it before writing any code. If the envelope carries a
+   touching anything. The root project-conventions file
+   (`AGENTS.md`, `CLAUDE.md`, or equivalent) arrives inlined in the
+   envelope's `<repo_context>` when one exists, so read it there; check
+   the repository root yourself only if that block is absent. Files in
+   subdirectories reach you automatically as you work in them — you do
+   not need to hunt for them. If the envelope carries a
    `<plan>` (produced by an earlier `mode: plan` run against this same
    ticket), read it now and treat it as your primary guide to *what* to
    do and *where* — it already did the exploration this step would

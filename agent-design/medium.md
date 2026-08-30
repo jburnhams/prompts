@@ -1780,12 +1780,24 @@ the simple version measurably falls short.
   precomputed index for the run shapes that have no workspace at all.
   The tool surface is the same whichever backs it; only the harness's
   mapping changes.
-- **Structural write protection for the project-conventions file**, if
-  the post-run flag on conventions-file diffs (`formats.md` §3a) ever
-  actually fires on a non-conventions ticket. The upgrade is Roo
-  Code's `RooProtectedController` shape
-  (`agent-permissions-approval.md` §3): the harness rejects
-  `Edit`/`Write` calls targeting the conventions path unless the run
-  was dispatched with an explicit this-ticket-may-edit-conventions
-  flag. Deferred because the flag already makes the failure visible
-  rather than silent.
+- **Structural write protection for the project-conventions file** —
+  **resolved and moved into v1**; see
+  [`context-files.md`](./context-files.md) §10a. This entry previously
+  gated the upgrade on the post-run flag (`formats.md` §3a) actually
+  firing on a non-conventions ticket. The context-file loader research
+  supplied the reason not to wait for that evidence: the conventions file
+  is instruction to every future run, and the coding entrypoint's
+  deliverable *is* the working tree, so a forbidden edit that gets written
+  has already landed by the time the flag sees it. `Edit`/`Write` now
+  refuse against a path the run loaded as conventions unless the dispatch
+  carried an explicit override.
+
+  The original sketch, kept for the record, and adopted essentially
+  unchanged: the upgrade is Roo Code's `RooProtectedController` shape
+  (`agent-permissions-approval.md` §3) — the harness rejects
+  `Edit`/`Write` calls targeting the conventions path unless the run was
+  dispatched with an explicit this-ticket-may-edit-conventions flag. The
+  one refinement §10a adds is that the protected set is the paths the run
+  *actually loaded*, which is why the harness-side load record
+  (`context-files.md` §10) is a prerequisite rather than an optional
+  extra.

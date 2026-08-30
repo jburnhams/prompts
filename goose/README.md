@@ -297,3 +297,71 @@ everything below is from vendor documentation.
   "memory"/"search memory" to retrieve. There is no signal gate, no
   no-op default, and no distillation pass — so what accumulates is
   whatever the user asked for in the moment.
+
+## Context-file loading (`.goosehints` / `AGENTS.md`)
+
+Read 2026-08-30 from `crates/goose/src/hints/load_hints.rs` (1039 lines)
+and `crates/goose/src/hints/import_files.rs` (1416) at `8ae4e4b`. Goose's
+discovery is ordinary; its **import expander is the most defensively
+written in the collection**, and its JIT trigger is unique.
+
+- **Two filenames, both loaded, configurable as a list.**
+  `get_context_filenames()` returns `CONTEXT_FILE_NAMES` from config, or
+  `[".goosehints", "AGENTS.md"]`. Both are read in each directory — no
+  first-match-wins.
+- **Global then project, root-first.** Global candidates are
+  `<config dir>/<name>` for each name, plus `<agents home>/AGENTS.md` when
+  `AGENTS.md` is in the list. Local directories come from
+  `get_local_directories`: cwd up to the git root, reversed, so root-first;
+  no git root means cwd only.
+- **Envelope is Markdown headings with a sentence of framing**:
+  `### Global Hints\nThese are my global goose hints.` and
+  `### Project Hints\nThese are hints for working on the project in this
+  directory.` — the global one written in the *user's* voice ("my"), which
+  is unique here. Subdirectory loads get
+  `### Subdirectory Hints (<absolute dir>)`.
+- **JIT loading is triggered by parsing tool arguments — including shell
+  command lines.** `SubdirectoryHintTracker::record_tool_arguments` takes
+  any `path` argument, and for a `command` argument runs
+  `shell_words::split` and treats every non-flag token containing a path
+  separator **or a dot** as a path. So `pytest tests/unit/test_x.py` and
+  even `npm run build.sh` register their parent directories as pending.
+  `load_new_hints` then canonicalizes, requires the directory to be
+  strictly below the working dir, and loads once per directory
+  (`loaded_dirs`). No other harness derives context-file loads from shell
+  argv.
+- **Imports (`@path`) run under a three-way budget.** `MAX_DEPTH = 3`,
+  `MAX_REFERENCE_OPERATIONS = 64`, `MAX_EXPANDED_OUTPUT_BYTES = 1 MiB`
+  (`ExpansionBudget`), plus a 128 KB cap on the content a single file's
+  references are parsed from. Once exhausted, the budget latches
+  (`exhausted`) and every later reference degrades — see below.
+- **Failure degrades to the literal source text, not to an error note.**
+  Every reject path — depth exceeded, budget spent, path outside the
+  boundary, gitignored, unreadable — does
+  `result.push_str(content_between(content, reference.start, reference.end))`,
+  i.e. writes back the original `@path` characters. The model sees an
+  unexpanded reference rather than `<!-- Import failed -->` (Gemini CLI) or
+  a silent gap. It is the only loader that makes an unexpanded import
+  visually indistinguishable from one the author never intended to expand.
+- **Cycle handling is a `visited` set with backtracking.**
+  `process_file_reference` inserts the path before recursing and
+  **removes it after** — so a diamond (two files both importing a third)
+  expands the third twice, while a true cycle still terminates. Everyone
+  else uses a monotonic "processed" set, which collapses diamonds to one
+  copy.
+- **The import boundary is the git root, canonicalized**, with
+  `git_metadata_directories` excluded so a reference cannot walk into
+  `.git`, and a `MAX_GIT_POINTER_BYTES = 4096` cap on reading `.git`
+  pointer files. References are also filtered through the **hierarchical
+  gitignore** (`build_gitignore` composes `.gitignore` from the git root
+  down to cwd, matching git's own semantics), so an ignored file cannot be
+  inlined into the prompt — the only loader that ties import eligibility to
+  version-control state.
+- **The reference regex is deliberately narrow**:
+  `(?:^|\s)@([a-zA-Z0-9_\-./]+(?:\.[a-zA-Z0-9]+)+|[A-Z][a-zA-Z0-9_\-]*|[a-zA-Z0-9_\-./]*[./][a-zA-Z0-9_\-./]*)`
+  — a dotted filename, a CapitalizedWord, or something containing `.` or
+  `/`. It does **not** exclude code fences (contrast Gemini CLI and Claude
+  Code, which both mask code regions), so an `@example.md` inside a fenced
+  block in a hints file is expanded.
+- **Per-import envelope**: `--- Content from <path> ---\n<expanded>\n--- End
+  of <path> ---`, spliced in place of the reference.

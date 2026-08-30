@@ -781,3 +781,94 @@ model-facing prompt files stored in this folder — it lives in
   inside the rollout content," and secret redaction mandated in-prompt
   (`[REDACTED_SECRET]`) as well as applied to the generated fields by
   the pipeline.
+
+## Context-file loading (`AGENTS.md`)
+
+Read 2026-08-30 from `codex-rs/core/src/agents_md.rs` (513 lines) +
+`agents_md_manager.rs`, `codex-rs/core/src/context/user_instructions.rs`,
+`codex-rs/context-fragments/src/fragment.rs`, and
+`codex-rs/codex-home/src/instructions/mod.rs`, at `63d2138`. The whole
+discovery contract is written as a doc-comment at the top of
+`agents_md.rs`, which is unusual — most harnesses leave it implicit.
+
+- **Two candidate filenames per directory, in a fixed order**:
+  `AGENTS.override.md` (`LOCAL_AGENTS_MD_FILENAME`) then `AGENTS.md`,
+  plus whatever `project_doc_fallback_filenames` adds. **First match
+  per directory wins** — an override file *replaces* the sibling
+  `AGENTS.md` rather than stacking on it, which is the opposite of the
+  Claude Code `CLAUDE.local.md` convention (concatenated alongside).
+- **Root is a marker search, not a fixed depth.** `project_root_markers`
+  defaults to `[".git"]` (`config/src/project_root_markers.rs:5`);
+  `find_nearest_ancestor_with_markers` walks up until one hits. No marker
+  found → only the cwd is considered. **An empty marker list disables
+  parent traversal entirely**, which is the documented way to opt out of
+  the hierarchy without opting out of the file.
+- **Order is root → cwd, and traversal never passes the root.** Deeper
+  files come *later* in the concatenation, so "the nearest file wins" is
+  positional only — nothing tells the model that later text outranks
+  earlier text.
+- **One shared byte budget across the whole hierarchy.**
+  `project_doc_max_bytes` defaults to **32 KiB**
+  (`config/src/config_toml.rs:73`) and is decremented per file. Files are
+  read in order until it hits zero; the file that straddles the boundary is
+  **byte-truncated mid-content** (`data.truncate(remaining)`) with a
+  `tracing::warn!`, and everything after it is silently dropped. The model
+  is told nothing. Decoding is `String::from_utf8_lossy`, so a truncation
+  landing mid-codepoint degrades to U+FFFD rather than failing.
+- **User-level instructions are loaded separately and are not charged to
+  that budget**: `~/.codex/AGENTS.override.md` then `~/.codex/AGENTS.md`,
+  first non-empty wins, trimmed (`codex-home/src/instructions/mod.rs`).
+  They are carried as `Instructions { text, source }` and emitted before
+  every project entry.
+- **The separator is a one-shot transition marker, not a per-file
+  delimiter.** `AGENTS_MD_SEPARATOR` (`"\n\n--- project-doc ---\n\n"`) is
+  emitted only on the transition from user/internal instructions to the
+  first project entry; project files are joined to each other with a bare
+  `"\n\n"`. The comment says so explicitly: the marker "tells the model
+  where workspace-scoped instructions begin". **Individual project files
+  are therefore not separated or labelled at all** in the single-workspace
+  case — the model sees one run-on document and cannot tell which
+  directory a given line came from.
+- **Multi-workspace mode relabels rather than delimits.** When entries come
+  from more than one turn environment, `environment_labeled_text()` emits
+  `for `<environment_id>` with root <path>` **once per environment group**,
+  not per file.
+- **The envelope is asymmetric and doubles as a re-identification
+  key.** `UserInstructions` renders as:
+
+  ```
+  # AGENTS.md instructions for <cwd>
+
+  <INSTRUCTIONS>
+  <text>
+  </INSTRUCTIONS>
+  ```
+
+  — role `user`, content kind `agents_md.instructions` carried in
+  `InternalChatMessageMetadataPassthrough.content_item_kinds`. The markers
+  are `("# AGENTS.md instructions", "</INSTRUCTIONS>")`: a Markdown heading
+  opening and an XML closing tag, which never pair. That is deliberate but
+  load-bearing — `matches_marked_text` later classifies any transcript text
+  that *starts with* the first marker and *ends with* the second (both
+  case-insensitively, after trimming) as an injected context fragment
+  rather than user speech, and `is_contextual_user_fragment` uses that to
+  decide what is harness-injected. A user message, or an `AGENTS.md` body,
+  shaped to those two anchors is misfiled by that classifier.
+- **No escaping, no templating, no imports.** The file body is spliced
+  between the tags verbatim. There is no `@import` mechanism (contrast
+  Claude Code, Gemini CLI, Goose), no variable interpolation, and no
+  fencing — an `AGENTS.md` containing the literal `</INSTRUCTIONS>` closes
+  the envelope early.
+- **Untrusted projects load nothing.** `load_project_instructions` returns
+  before any filesystem walk when `config.active_project.is_untrusted()`
+  — project docs are gated on the same trust decision as the rest of the
+  project's configuration. User-level instructions still apply.
+- **The cache key is the environment selection, not the file.**
+  `AgentsMdManager` caches `LoadedAgentsMd` keyed on the turn-environment
+  selections plus `active_project.trust_level`. Neither mtime nor content
+  hash is part of the key, so **editing `AGENTS.md` mid-session does not
+  reload it**; changing directory (or trust level) does.
+- Discovery probes run `.buffered(256)` over the ancestor list
+  (`MAX_CONCURRENT_ANCESTOR_PROBES`) through the exec-server filesystem
+  abstraction, so the walk works against remote/sandboxed environments,
+  not just local disk. Symlinks are explicitly allowed.

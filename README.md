@@ -447,6 +447,87 @@ at the memory; and two vendor **retreats** — Cursor's Memories feature appears
 Rules, and Gemini CLI deleted `save_memory` outright ("There is no
 `save_memory` tool").
 
+**[→ `agent-context-file-loading.md`](./agent-context-file-loading.md)** —
+the read side of the same files `agent-memory-learning.md` covers the
+writing of: **how a repo's `AGENTS.md`/`CLAUDE.md`/`GEMINI.md` actually
+becomes prompt bytes**, read from eleven loaders' source rather than
+their docs (fetch paths and commits in [`sources.md`](./sources.md)).
+The nine questions every loader answers differently — filenames,
+walk boundaries, collision (first-match vs. load-all, and how a repo
+with both `AGENTS.md` and `CLAUDE.md` gets three different answers with
+no indication which fired), ordering, dedup, transformation, imports,
+envelope, injection point. The findings that recur: **everyone
+concatenates root-first**, so every "sub-directory rules win" claim in
+the field is carried by nothing but position in the text — Gemini CLI
+states that claim twice and satisfies it once, and Crush's precedence is
+alphabetical by accident (`slices.Sort` over the merged default and
+user-configured path lists). Five different dedup keys, only one of them
+— Gemini CLI's `dev:ino` — actually correct on a case-insensitive
+filesystem. A comparison of the four `@import` expanders on every safety
+axis, where only Goose bounds *total* cost (64 operations / 1 MiB /
+128 KB parse input), only Goose filters imports through the repo's own
+`.gitignore` so a committed hints file can't inline a `.env`, only
+Claude Code gates escaping the repo behind a one-time human approval,
+and OpenCode will fetch instruction text over **HTTPS** with no
+approval, cache, or integrity check. A clean negative result on
+templating — **nobody evaluates the context file as a template**, in any
+of the eleven — and a much less comfortable one on escaping: **nobody
+escapes the body either**, so a file containing `</INSTRUCTIONS>`,
+`</file>` or `# Rules from …` forges its own envelope; Zed's
+six-backtick fence is the only containment attempt in the field. The
+three incompatible postures on authority, quoted: Claude Code's "These
+instructions OVERRIDE any default behavior and you MUST follow them
+exactly as written", Gemini CLI's ceiling ("cannot override Core
+Mandates regarding safety, security, and agent integrity"), and
+OpenHands alone shipping an `<UNTRUSTED_CONTENT>` banner plus a
+*capability scope* ("coding style, project conventions, and
+documentation guidance only") — applied to its own memory files too,
+because "anyone with access to the workspace or repository can edit or
+commit them". Claude Code's delivery mechanism contains the
+contradiction in miniature: one `<system-reminder>` user message whose
+outer wrapper hedges ("may or may not be relevant... you should not
+respond to this context") around an inner payload that says the same
+bytes must be obeyed exactly. Plus: six distinct JIT triggers (Goose
+derives context loads from **shell argv**; Cline from path-shaped tokens
+scraped out of the user's own prose); Codex's 32 KiB shared budget that
+byte-truncates mid-file and tells the model nothing; Codex's cache keyed
+on environment selection rather than mtime, so **editing `AGENTS.md`
+mid-session doesn't reload it**; the two harnesses that place the file
+deliberately with respect to the prompt cache (OpenHands' `CacheTier`,
+Aider's read-only-file channel) and the nine that don't; and the
+**revision question** for CI — no loader anywhere is revision-aware or
+records the SHA a rule came from, Codex's reference review workflow
+checks out `refs/pull/N/merge` so **a PR that edits `AGENTS.md` changes
+the rules used to review that same PR**, Gemini's is a `workflow_call`
+whose comment-triggered path reads `GEMINI.md` from `main` while the
+diff comes from the API, both vendors' workflows statically disable the
+folder-trust gate that would otherwise refuse to load these files at
+all, and Claude's action runs a bidi-override-stripping sanitizer over
+every PR comment while applying none of it to the `CLAUDE.md` the same
+prompt tells the model to follow. Aider is included as the deliberate
+null case — no loader at all, conventions passed by `--read`, which buys
+edit-protection and cache-stability for free. A later section (§12a)
+covers the **programmatic** channels the file loaders can't answer for —
+MCP server `instructions`, skills, hooks and plugins — and finds the
+governance running backwards: Claude Code diffs newly-connected MCP
+servers against prior attachments in the conversation's own history and
+announces only the delta, because the alternative is a constant literally
+named `DANGEROUS_uncachedSystemPromptSection` ("rebuilt every turn;
+cache-busts on late connect"); Codex assembles its prompt from 45 typed
+fragments and assigns third-party *content* the `user` role while
+harness-authored framing gets `developer` — but gives a plugin's own text
+and a hook's stdout a `developer` message with an **empty marker pair**,
+i.e. higher in the instruction hierarchy than `AGENTS.md` and with no
+envelope at all; and Codex's `dynamic_skill_selector/` holds **eleven**
+competing retrieval implementations (fielded BM25, character n-grams,
+routing cards, LRU hybrids, RRF fusion) behind a trait documented as
+running "in shadow mode on every turn... without changing the
+model-visible catalog" — the most developed retrieval-over-instructions
+machinery in the collection, deliberately not shipped, by the same vendor
+whose *memory* search is a grep. Across all eleven, **nobody generates
+repository context programmatically**: skills are progressive disclosure
+of static files, not construction.
+
 ## Sources so far
 
 | Folder | Project | Type | License |
