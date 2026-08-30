@@ -81,6 +81,35 @@ because its model has no tools to go look.
 
 ---
 
+
+### 1c. Attachments on the PR and its threads
+
+A pull request's description and its review comments carry images —
+before/after screenshots, an annotated mockup, and on a re-review the
+"here's what it looks like now" reply that is the whole point of the
+thread. These reach review mode exactly as they reach coding mode: as
+`<artifact>` stubs (`formats.md` §8g) inside `<pull_request>` and inside
+`<existing_comments>`, complete and unconditional, with bytes fetched only
+if something looks (`artifacts.md` §2.1).
+
+Two rules specific to review:
+
+- **Reviewer sight is a separate decision from actor sight**, and defaults
+  to off. `InspectImage` is not wired for `reviewer` or `validator`
+  sub-agent types in v1 — consistent with the narrowed tool scope those
+  types already get (`README.md`'s decision log) — so images reach the
+  review pipeline as stubs the orchestrator may inspect, not as pixels every
+  specialist pays for. Codex is the only source in the collection that
+  models this explicitly, with a three-valued `Disabled`/`TextOnly`/
+  `Multimodal` mode governing whether a reviewer receives screenshots at all
+  (`../agent-vision-multimodal.md` §11); granting one lens sight is the
+  documented upgrade, in `vision.md` §8.
+- **An image in a comment thread is discussion, not a verdict**, under the
+  same rule §4–5 already applies to comment text: threads are never verdicts
+  nor a skip list. An author's screenshot showing a fix does not close a
+  finding; it is evidence to weigh.
+
+
 ## 2. Diff construction algorithm
 
 The harness builds `<diff>` — Forge never runs `git diff` in review

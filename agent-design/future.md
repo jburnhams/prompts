@@ -310,7 +310,15 @@ re-litigated later.
   both directions, and the tool catalogue moving into the system prompt
   at a cost paid every turn.
 - **Artifacts: a session-scoped store, and a stub in place of the
-  payload.** V1 has no answer for a tool result that is legitimately
+  payload.** ~~Gated on a real case.~~ **Promoted into scope — specified
+  in [`artifacts.md`](./artifacts.md).** The real case arrived from a
+  direction this entry did not anticipate: **Jira and PR attachments**,
+  which both fetch tools currently drop. The entry below is left as
+  written; the two decisions it defers to "that point, not now" are
+  answered in `artifacts.md` §2.1 (minting is *ingest*-triggered, with
+  spill deliberately still out of scope) and §3 (a stub survives
+  compaction; a reference to a gone artifact fails loudly with the
+  re-fetch call named). V1 has no answer for a tool result that is legitimately
   large — the caps in `tools.md` truncate or error, and both are the
   right default for the *file* case, where the model asked for
   something specific and the recovery is a narrower call. They are the

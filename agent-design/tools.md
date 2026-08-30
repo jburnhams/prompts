@@ -176,7 +176,9 @@ didn't want.
 **Spill, don't dump.** A result past the harness's size ceiling is written
 to a file in the scratch directory (`{{SCRATCH_DIR}}`, `formats.md` §1a) and
 the model receives a preview plus that path. `Read` is the deliberate
-exception — spilling a read to a file the model then reads back is circular
+exception — spilling a read to a file the model then reads back is circular — and the exemption extends to every tool that *reads the artifact
+store*: `Read` over `artifact://`, and every `InspectImage` op. A tool whose
+job is reading artifacts must never mint one (`artifacts.md` §2.1)
 — so `Read` self-bounds via its own limits instead.
 
 Two constraints on the spilled file itself, both of which exist because a
@@ -505,6 +507,11 @@ handed a problem rather than a design.
 | `bash.timeout_ms` | 120,000 (max 600,000) | Already in the Bash schema; matches the field's common shape |
 | `bash.output_cap_chars` | 30,000 | OpenHands's `MAX_CMD_OUTPUT_SIZE` exactly; Cline's 48,000 is the nearest neighbour. Head and tail are kept, the middle is elided, and the full output always spills to scratch |
 | `spill_threshold_chars` | 30,000 | Any tool result past this is written to scratch and previewed, per the implementation contract — except `Read`, which is exempt because spilling a read to a file the model then reads back is circular |
+| `vision.max_dimension` | 2000 | Longest edge an image is downscaled to before it reaches the model. Claude Code's `IMAGE_MAX_WIDTH/HEIGHT`; OpenHands's many-image ceiling is the same number. The scale factor is always disclosed in the frame (`vision.md` §3d) |
+| `vision.max_bytes_encoded` | 5 MB | Per-image cap after encoding. Claude Code's `API_IMAGE_MAX_BASE64_SIZE`; Cline's is identical |
+| `vision.max_pinned_images` | 2 | Images held in context beyond the turn that loaded them. A pinned mockup plus a pinned annotated flow is a plausible specification; five is a context leak. Exceeding it is an error naming which to release |
+| `vision.model` | (a small, fast sighted model) | The sub-model `InspectImage`'s `ask` op calls — single-turn, no tools. Unset disables `ask` and `view`, and both drop out of the advertised schema (`vision.md` §6) |
+| `artifacts.max_fetch_bytes` | 25 MB | Cap enforced on the response stream when fetching attachment bytes, before decode (`artifacts.md` §4) |
 | `tolerance.enabled` | on | The alternate-forms table above is data, so a deployment can prune it; turning tolerance off entirely is available and is the wrong default, per the decision log |
 
 Three derived rules the harness validates at startup, rather than trusting
@@ -565,6 +572,11 @@ whole run, so they cannot.
 
 > Reads one or more files from the working tree. Paths are absolute, or
 > relative to the working directory named in `<env>`.
+>
+> A path may also be `artifact://<id>`, naming a text artifact from an
+> `<artifact>` block — line ranges, paging and truncation notices all
+> work exactly as they do for a file. Image artifacts are not readable
+> this way; use `InspectImage`.
 >
 > **Read several files in one call** whenever you already know what you
 > need — a caller and its callee, a module and its test, every file a
@@ -1220,6 +1232,31 @@ error rather than a runtime surprise — same device the Task tool uses
 for its conditional requirements.
 
 ---
+
+---
+
+## InspectImage
+
+> Looks at an image artifact — the full tool description, schema,
+> operations and result formats are specified in
+> [`vision.md`](./vision.md) §3, and the store it reads from in
+> [`artifacts.md`](./artifacts.md).
+
+Summarised here so the tool set reads complete in one place:
+
+- **Ops.** `extract_text` (OCR; no image and no model call), `ask` (a
+  tool-less sighted sub-model answers a specific question, returns text),
+  `view` (the image enters context for this turn only).
+- **`region`** crops before the operation, taken from the original bytes so
+  a crop is sharper than the whole downscaled image.
+- **`pin`** keeps a viewed image for the rest of the run — the exception,
+  budgeted at `vision.max_pinned_images` (default 2).
+- **Why it is a separate tool and not part of `Read`:** the granularity rule
+  admits a split when the existing tool's reducing grammar does not apply.
+  `Read` reduces by line range; an image has no lines.
+- **Degrades, not fails:** with no sighted model configured, only
+  `extract_text` is advertised — `ask` and `view` are absent from the
+  schema rather than present and erroring.
 
 ---
 
