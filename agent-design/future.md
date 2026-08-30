@@ -126,6 +126,36 @@ re-litigated later.
   standing grooming loop that keeps a board healthy on a schedule
   rather than per-dispatch — same primitives, same
   policy-pass-required caveat.
+- **Task splitting: spinning off a dependent task with its own context.**
+  A coding run is dispatched with a `paths` scope and a set of `kinds`,
+  and its context is resolved once against them
+  ([`context-files.md`](./context-files.md) §1b). A run whose fix reaches
+  outside that scope is therefore working, for those files, without the
+  conventions that govern them. v1's answer is to record it and let the
+  review entrypoint catch what the coding run could not — deliberately
+  minimal, because the alternatives are both worse: re-resolving mid-run
+  papers over a mis-scoped task and adds the only mid-run service
+  dependency in the design, and blocking the write stalls the ticket with
+  nothing to hand the overflow to.
+
+  The real fix is the thing to hand it to: **a run that finds work outside
+  its remit spins off a dependent task rather than stretching itself**,
+  and that task is dispatched with its own `paths`, its own `kinds` and
+  its own resolution. That makes "keep tasks focussed" structural rather
+  than aspirational, and it makes each task's context correct by
+  construction instead of correct-if-the-scoping-was-right.
+
+  What it needs before it can be specified: a spinoff primitive with a
+  dependency relationship (this ticket blocks that one), a policy for who
+  approves the split — the same policy-pass question `medium.md` §5's
+  product-owner entrypoint raises — and an answer to what the originating
+  run does while it waits, which is either `AskUser`'s suspend/resume
+  protocol (`formats.md` §5) or a completion that names the follow-up.
+  Note the shape is close to the existing dependency-change path below:
+  file the ask, suspend, integrate when it ships. The difference is that
+  the dependency here is a task in the same repository rather than a
+  change in another one, which may mean it is the *easier* case to build
+  first rather than a separate subsystem.
 - **Coordinated multi-repo changes.** `medium.md`'s dependency-change
   path is asynchronous by design: file the ask, suspend, integrate
   when it ships — each repo's change lands on its own timeline. The

@@ -433,20 +433,38 @@ a five-way review fan-out, the root sections otherwise arrive five times.
 So the request may name **kinds**, and the service returns only sections
 whose `scope` intersects them.
 
-**The vocabulary is closed and it already exists.** It is the review role
-taxonomy (`formats.md` §4): `bugs`, `security`, `conventions`, plus
-`ticket_compliance` when `medium.md` §3a lands. A coding run asks for the
-union of what its task implies; a review specialist asks for its own lens.
-Nothing invents a kind at the call site.
+**The vocabulary is open, and validated at the boundary.** A kind is any
+string the corpus uses — `security`, `conventions`, `ux`, `performance`,
+`testing`, `data` — so the taxonomy grows with the standards rather than
+having to be designed ahead of them. What keeps that from decaying into
+guesswork is that **the service validates**: a requested kind it has never
+seen is rejected, so the closed-vocabulary guarantee holds at the boundary
+without anyone maintaining an enum in two places.
+
+Its weakness relative to a real enum should be named: a kind that exists
+but is *misspelled* at the call site is only caught because the service
+happens to have nothing under that spelling. That is a narrower net than
+an enum, and it is the reason the second rule below matters more here than
+it would otherwise.
+
+**Who names them.** A review specialist asks for its own lens
+(`formats.md` §4's `bugs`/`security`/`conventions`, plus
+`ticket_compliance` when `medium.md` §3a lands) — the fan-out is already
+keyed on exactly that. A **coding run's kinds are named by the
+dispatcher**, per ticket, alongside the `paths` scope: the same place that
+already decides what the run is for. Nothing is inferred from file
+extensions, and the model never chooses.
 
 Two rules make this safe to filter on, and they are the whole reason it is
 worth doing at all:
 
-- **An unknown kind is an error, not an empty result.** A request naming
-  `secrets` when the vocabulary says `security` fails loudly at dispatch.
-  The alternative — returning zero sections for an unrecognised word — is
-  a silent, undetectable omission of exactly the rules someone was trying
-  to fetch.
+- **A kind the corpus has never seen is an error, not an empty result.**
+  A request naming `secrets` when the corpus says `security` fails loudly
+  at dispatch. The alternative — returning zero sections for an
+  unrecognised word — is a silent, undetectable omission of exactly the
+  rules someone was trying to fetch. This is the whole reason validation
+  sits in the service: it is the only component that knows what kinds
+  exist.
 - **`policy` sections are returned regardless of `kinds`**, as are
   sections the pipeline could not assign a scope to. A non-negotiable rule
   must not be filterable away by asking the wrong question, and an
@@ -498,22 +516,43 @@ reason to be explicit about the split:
   `shadowed` list does not change depending on which paths a run asked
   about.
 
-**When a run wanders outside its declared scope** — a coding run whose
-ticket named one package but whose fix reaches into another — the harness
-re-requests with the widened path set. That is a mid-run service call,
-which the §1b failure taxonomy otherwise avoids, and it is an accepted
-cost rather than an oversight: the failure it introduces is narrow
-("wandered outside the declared scope and could not resolve the new one"),
-it names exactly what went wrong, and it is far rarer than the general
-mid-run dependency that fetching every section body on demand would
-create. A review run cannot wander — its `paths` are the changed-file set,
-which is fixed.
+**There is no mid-run re-request.** One resolution per run, at dispatch,
+and that is the whole of it — so §1b's failure taxonomy stays a
+dispatch-time concern and nothing in a run depends on the service still
+being reachable.
+
+That leaves the case the re-request was for: a coding run whose ticket
+named one package but whose fix reaches into another. The answer is not to
+widen the context, because **a run that wanders outside its remit is
+evidence the task was mis-scoped, and quietly re-resolving hides that.**
+Two things follow:
+
+- **Reads outside scope are unrestricted.** Exploration is how a run
+  discovers the boundary was wrong, and forbidding it would just make the
+  discovery worse.
+- **Writes outside scope are recorded, not blocked.** The harness knows
+  the declared `paths`; any `Edit`/`Write` landing outside them is flagged
+  in the post-run report (§10) with the paths involved, and the model is
+  told in the same `!`-note style §2 uses that it is working outside the
+  conventions it was given. The work still lands — the review entrypoint
+  *will* have the right conventions for that area and will catch what the
+  coding run could not — but the dispatcher gets told its scoping was
+  wrong, which is the signal that actually fixes the problem.
+
+Blocking the write instead is the stricter reading and is deliberately not
+v1: it converts a scoping mistake into a stalled ticket, and the design
+has no splitting mechanism yet to hand the overflow to. That mechanism —
+spawning a dependent task with its own resolution rather than stretching
+this one — is the real fix, and is tracked in `future.md`.
+
+A **review run cannot wander**: its `paths` are the changed-file set,
+which is fixed before the run starts.
 
 In practice the coding case is usually the whole repository anyway: a
 run's `paths` is its working subtree, which for an ordinary task is the
 repository root. Scoping bites exactly when the dispatcher deliberately
 narrowed the run to a package, which is when bounding the response is what
-you wanted.
+you wanted — and when a wander is most worth knowing about.
 
 ### Selection is the harness's job, and it is deterministic
 
@@ -971,9 +1010,9 @@ appeared, between dispatch and the tool call. Every section a run sees
 comes from one resolution at one ref, so the run's conventions are fixed
 for its whole duration and the record can name them once.
 
-The one exception is a run that reaches outside its declared scope, which
-re-requests (§1b) — still one resolution at one ref, just a wider
-projection of it.
+There is no exception: a run that reaches outside its declared scope does
+not get more context, it gets recorded (§1b). One resolution, one ref, for
+the run's whole life.
 
 **Every JIT attachment is logged with the same fields as an eager one** —
 path, rev, and the tool call that triggered it. Conditional loading is
@@ -1199,7 +1238,8 @@ already logged, and already distinguishable from repository content.
 | (new) | Service request carries a **`ref`** and a **`paths`** scope; the internal cache stays keyed on `(repo, ref)` and the response is a projection of it; a miss fetches and resolves | §1b — a service serving "the current version" reintroduces §5's finding, as either the Codex failure (a PR edits the rules that review it) or the Gemini one (rules from the default branch, diff from the PR). Bounding the *response* rather than the *resolution* keeps the cache key and `version` intact, so reproducibility survives |
 | §1b as first written: contradictions surfaced but never resolved; derived `policy` gated on human review | The pipeline **resolves** duplicates and contradictions and **reports** what it resolved; nothing in Forge branches on `reviewed_by_human` | §1b. Superseded by a better framing: handing an agent overlapping documents means it dedupes and reconciles anyway — at runtime, in a model, differently each run, with no inspectable artifact. Normalising in advance *relocates* that interpretation somewhere versionable and testable rather than adding it. Humans maintain the inputs; the `conflicts` report exists to get the inputs fixed, not to gate the run |
 | (new) | Org and team standards live in **repositories**, so every tier is `(source repo, ref)`; short TTL to notice new refs, publish hooks as an optimisation | §1b — refs are immutable, so cache entries invalidate themselves and `stale` gets a precise meaning; `version` becomes a function of the contributing refs |
-| (new) | Request may name **`kinds`**; unknown kind is an error, and `policy` or untagged sections return regardless | §1b — bounds the review fan-out's payload by subject without ever letting a non-negotiable rule be filtered away by asking the wrong question. Vocabulary is the existing review role taxonomy, not a new one |
+| §1b as first written: a run reaching outside its declared `paths` re-requests | **No mid-run re-request.** Reads outside scope are free; writes outside scope are recorded and the model is told it is outside its conventions; the dispatcher learns its scoping was wrong | §1b. A wander is evidence the task was mis-scoped, and re-resolving hides that. Also removes the one mid-run service dependency, so the failure taxonomy is purely dispatch-time. The real fix — spawning a dependent task with its own resolution — is tracked in `future.md` |
+| (new) | Request may name **`kinds`**, an **open vocabulary validated by the service**; a coding run's kinds are named by the **dispatcher** per ticket; unknown kind is an error, and `policy` or untagged sections return regardless | §1b — bounds the review fan-out's payload by subject without ever letting a non-negotiable rule be filtered away by asking the wrong question. Vocabulary is the existing review role taxonomy, not a new one |
 | (new) | Repo `AGENTS.md` files go through the **same** normalisation pipeline as org and team documents | §1b — the divergence between authored bytes in a PR diff and normalised bytes in the prompt is recorded via `derivation` and `source` rather than prevented; §5's conventions-edit finding operates on the diff and is unaffected |
 | (new) | Section selection is **harness-side and deterministic** — `applies_to`, then `scope`, then budget | §1b — a `policy` section the model declined to open is a policy that did not apply, and a model choosing makes "why was this rule in context" unanswerable |
 | §9 as first written: JIT walks the filesystem and reads nearby files | JIT **reveals** sections the harness already holds from the one resolution | §9 — nothing is read from disk at attach time, so a run's conventions are fixed at one ref for its whole duration |
