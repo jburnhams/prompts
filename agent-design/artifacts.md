@@ -348,6 +348,15 @@ artifact is referenced by something that outlives the run — named in a
 never sets it; it falls out of the reference, which keeps the store from
 becoming a place things are kept just in case.
 
+**The backing store is durable object storage** (GCS or equivalent, which is
+one of ADK's `ArtifactService` backends — nothing to build, per
+`future.md`'s original note). Confirmed 2026-08-30, and it matters in three
+places: `persist` genuinely persists rather than meaning "until the
+container goes away", so evidence referenced by a `Complete` report is still
+retrievable after the run ends; `run://` is implementable rather than
+aspirational; and cross-run artifacts (§10) are gated on a *use case* rather
+than on missing substrate.
+
 **Expiry is a recoverable, self-describing error, never a null** — MCP's
 guidance, and right:
 
@@ -412,7 +421,7 @@ credentials:
 | Value | Source |
 |---|---|
 | `internal` | attached by an authenticated member of the org |
-| `external` | attached by a reporter outside the org, or an account the harness cannot resolve |
+| `external` | attached by a reporter outside the org, or an account the harness cannot resolve — **not reachable via Jira in the current deployment** (attachment is restricted to authenticated org members), but live for third-party source under `dep://` and for outside contributors' PR comments |
 | `generated` | produced by this run — a spilled result, a screenshot |
 
 Everything in the store is untrusted *content* in the sense the rest of this
@@ -489,9 +498,12 @@ part, needed only for `InspectImage`'s `view` (`vision.md` §7).
 
 **Out, with reasons:**
 
-- **Cross-run artifacts** beyond `persist`. No user-scoped widening.
-  Revisit with `medium.md` §3f's stateful re-review sessions, the first
-  thing that genuinely wants an artifact to outlive a run.
+- **Cross-run artifacts** beyond `persist`. No user- or app-scoped widening
+  in v1 — but note this is now gated on a **use case, not on substrate**:
+  the store is durable object storage, so the capability exists and is
+  simply not wired. Revisit with `medium.md` §3f's stateful re-review
+  sessions, the first thing that genuinely wants an artifact to outlive a
+  run.
 - **Write-through refs.** No scheme is writable. `Edit`/`Write` take
   working-tree paths only, which keeps the "code Forge can read but does not
   own goes through a proposal, never an edit" rule of `medium.md` §4a
