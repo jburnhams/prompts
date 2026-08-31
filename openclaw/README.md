@@ -796,12 +796,19 @@ Ordered by how much it changes the picture.
   establish provenance should not be making a provenance claim — and
   the five-role attribution separation is kept in full.
 
-Still not integrated, and scoped under "Aspects this collection has
-covered elsewhere" above: `agent-subagent-architectures.md`,
-`agent-context-compaction.md`, `agent-memory-learning.md`,
-`agent-git-vcs.md`, `agent-tool-implementations.md`,
-`code-review-approaches.md`, `agent-vision-multimodal.md`,
-`agent-context-file-loading.md`.
+**The topic-doc pass is done.** Each finding above now lives in the doc
+it belongs to:
+
+| Doc | What landed |
+|---|---|
+| [`../agent-subagent-architectures.md`](../agent-subagent-architectures.md) | Visibility-as-a-spawn-parameter and collector children (§2); Swarm's argued refusal of a fan-out DSL, set against OpenHands's `workflow` (§2); the composed sub-agent prompt (§3); the `<prompt-data>` wrapper and the `## Active Subagents` roster (§4); two independent budget systems (§5); depth-derived roles frozen into session metadata (§6); **and a new absence — the layer above the call graph, which nothing else here has** (§8) |
+| [`../agent-context-compaction.md`](../agent-context-compaction.md) | New **§2a**: the summary as an audited artifact, and the only fail-closed compaction in the collection. Plus a §4 re-distill row, a §5 recovery row, and §7's cache-boundary material — including the rule that prompt-state mutations default to *deferred* invalidation |
+| [`../agent-memory-learning.md`](../agent-memory-learning.md) | The runtime receipt of which skills fired (§2b); a new subsection on the writer that **may place but may not author**, with the dream diary as the counterexample; the authoring standards' deletion rules (§6); untrusted-evidence clauses including memory-as-its-own-vector (§10) |
+| [`../agent-git-vcs.md`](../agent-git-vcs.md) | §4 gains the collection's only managed worktree *lifecycle* — snapshot-into-`refs/openclaw/snapshots/`, lossless-only removal, disk reserves computed before allocation, `.worktreeinclude`, and permission re-evaluated on retry |
+| [`../agent-tool-implementations.md`](../agent-tool-implementations.md) | §1 gains the three-consumer split named in one type, plus two `AGENTS.md` rules (no static cross-tool references; guidance is served whole, never windowed); §6b gains a **fourth axis** — continuation past a per-line clamp; §10 gains a description that reads host policy state |
+| [`../code-review-approaches.md`](../code-review-approaches.md) | `autoreview` as a fifteenth source: deliberate context starvation with its anti-hallucination corollary (§4), round-cost economics and the second sweep (§2d), the priority-threshold preamble and scope-discipline mode (§6), and a consumer-side contract no other source ships (§9) |
+| [`../agent-vision-multimodal.md`](../agent-vision-multimodal.md) | §5 gains the three-way description builder, the `direct-only` routing that dodges §4's transport bug, and the dead-summary-key capture gap; §8 gains image-omission markers with a byte budget |
+| [`../agent-context-file-loading.md`](../agent-context-file-loading.md) | New **§10a**: the clean negative survives but changes meaning — a harness that has the escaper and does not point it here. Plus a §6 transformation nobody else has, and two §18 amendments |
 
 ## Caveats
 

@@ -62,6 +62,14 @@ base config (its benchmark-tuned config is rich — see §3).
 
 ---
 
+**OpenClaw** was added 2026-08-31 (read from source, MIT — see
+[`openclaw/`](./openclaw)) and contributes almost entirely to §4: it has
+the only *managed worktree lifecycle* in this collection, including the
+only reversible deletion (snapshot-into-`refs/`), the only disk-capacity
+policy, and the only permission-freshness rule on retry.
+
+---
+
 ## 1. Commit message conventions
 
 | Convention | Sources |
@@ -260,6 +268,85 @@ checkpoint/undo system at all**.
   silently on session exit — the two dispositions (`keep`/`remove`)
   also govern any tmux session running inside the worktree, left
   running for reattachment on `keep`, killed on `remove`.
+- **The most developed treatment in this collection — a managed
+  worktree *lifecycle*, not just a creation call** — OpenClaw (read
+  from source 2026-08-31, MIT). Every other entry above answers "how do
+  I make one"; this one answers "what happens to it afterwards," which
+  is where the real problems are. Six mechanisms, all confirmed in
+  [`docs/concepts/managed-worktrees.md`](https://github.com/openclaw/openclaw/blob/v2026.8.1/docs/concepts/managed-worktrees.md):
+  - **Location and naming.** Checkouts live under the state directory,
+    not inside the source repo, at
+    `<state-dir>/worktrees/<repo-fingerprint>/<name>` — the fingerprint
+    being the first 16 hex of SHA-256 over the git *common* directory
+    plus origin URL, so two clones of the same remote don't collide and
+    one clone's worktrees don't leak into another's. Branches are
+    `openclaw/<name>` (the same prefix idea as OpenCode's
+    `opencode/<name>`), with generated crustacean-themed names
+    (`brisk-lobster`) and numeric suffixes on collision against *any*
+    registered worktree, local branch or unmanaged path.
+  - **Removal snapshots into the object database.** This is the
+    finding. Cleanup does not just delete: it creates *"a synthetic
+    commit containing tracked and non-ignored untracked files, then
+    pins it at `refs/openclaw/snapshots/<id>`."* Restore recreates the
+    branch at the original pre-snapshot commit and rebuilds the
+    differences as **unstaged modifications and untracked files**, so
+    the synthetic commit never enters branch history and the restored
+    tree looks like the one you lost rather than like a commit you
+    didn't make. Ignored files never enter the ODB; provisioned ignored
+    files are stored in chunked SQLite rows instead. 30-day retention,
+    after which the ref and registry row are deleted. Nothing else in
+    this collection treats "delete a worktree" as an operation that
+    needs to be reversible.
+  - **Lossless-only automatic removal.** At run end a worktree is
+    removed *only* when `git status --porcelain` is empty **and**
+    `git log HEAD --not --remotes --oneline` finds no unpushed commits;
+    otherwise the activity lock is simply released and the outcome is
+    recorded on the worktree record — lossless removal, or retention
+    because the checkout is busy, dirty, unpushed, or has
+    provisioned-file drift, or failure with a reason. Claude Code's
+    fail-closed removal (above) refuses on uncommitted changes; this
+    additionally checks for commits that exist nowhere else, which is
+    the case where "uncommitted" is clean and the loss is total.
+  - **Disk accounting before allocation.** Keep 10% of each volume
+    free, minimum 4 GiB and maximum 16 GiB reserve, plus twice the
+    estimated checkout size, plus more again when a setup script will
+    run; re-checked after setup. Snapshot removal uses a much smaller
+    128 MiB reserve *"so safe cleanup remains possible below the
+    operational reserve"* — i.e. the system deliberately keeps enough
+    headroom to clean up after itself once it can no longer allocate.
+    30 live worktrees per state directory. The only numeric
+    disk-capacity policy in this section.
+  - **Two repository-local contracts, with no config key.**
+    `.worktreeinclude` (gitignore syntax) copies selected
+    *ignored-and-untracked* files into a new worktree — the `.env.local`
+    problem every worktree design hits and nobody else here addresses —
+    recording only the paths it actually created, so a later manifest
+    edit cannot make those files invisible to cleanup. And
+    `.openclaw/worktree-setup.sh`, run with `OPENCLAW_SOURCE_TREE_PATH`
+    and `OPENCLAW_WORKTREE_PATH` in the environment, where a nonzero
+    exit aborts creation and removes the new worktree and branch. Both
+    are declared *"a repository-local contract; there is no OpenClaw
+    config key for it"* — the same shape as OpenCode's startup script,
+    but owned by the repo rather than the tool.
+  - **Setup is scoped by caller permission, re-evaluated on retry.**
+    All creation disables repository git hooks;
+    `.openclaw/worktree-setup.sh` runs only for an `operator.admin`
+    caller, and *"retries evaluate the current caller's scope rather
+    than retaining the original caller's permission."* That second
+    clause is a permission-freshness rule this collection has not seen
+    elsewhere: a retry is not authorised by whoever started the thing.
+
+  Two lifecycle couplings are worth naming separately because they are
+  what make the above a *lifecycle* rather than a feature: **archiving a
+  session** snapshots and removes its checkout while preserving the
+  binding, and unarchiving restores branch HEAD plus dirty and untracked
+  files *before admitting work* — with an explicit refusal to substitute
+  an empty checkout if the repository or snapshot is gone. And hourly
+  garbage collection snapshots and removes session- and board-owned
+  worktrees idle for more than 7 days **even when dirty**, which is only
+  safe because of the snapshot rule above. A live process lock or any
+  foreign/unrecognised git worktree lock protects a checkout from
+  collection.
 - **Worktree-*aware*, never worktree-*creating***: Codex CLI — no
   mechanism anywhere in the codebase creates a `git worktree` for
   parallel tasks or sub-agents (`spawn_agent`'s schema has no
