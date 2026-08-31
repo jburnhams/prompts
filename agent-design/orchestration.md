@@ -108,6 +108,15 @@ a task record directly (§8 explains why, and §9 gives the one exception).
   ],
   "budget": { "max_attempts": 2, "max_run_seconds": 0, "attempts_used": 0 },
   "abandon_reason": "string | null — set only in the abandoned state; e.g. budget_exhausted, ticket_closed, pr_closed_unmerged",
+  "supersedes": "task id | null — set when this task replaces one the ledger had abandoned; see §10a",
+
+  "tracker_observed": {
+    "at": "…— when the ticket was last read",
+    "revision": "opaque — the tracker's own change marker, so a re-read is a comparison and not a diff",
+    "state": "open | closed | unknown",
+    "priority": "low | normal | high | urgent",
+    "fields_digest": "hash over only the fields the envelope carried — summary, description, acceptance criteria"
+  },
 
   "outcome": {
     "target_branch": "string | null",
@@ -211,8 +220,9 @@ it is the right default; §12 says what run-suspension narrows to.
 point `future.md` deferred as "when to give up, how to hand off to a
 human"; §7 makes it a query.
 
-**When the ticket is closed underneath a task**, the ledger never kills
-a run mid-flight. A run may be seconds from a useful report, and
+**When the ticket is closed underneath a task** — one row of §10a's
+table, worked here because it is the case that shapes the lifecycle —
+the ledger never kills a run mid-flight. A run may be seconds from a useful report, and
 cancelling it discards a working tree and a transcript for nothing. So:
 the run finishes normally, the ledger records the outcome, and *then*
 the task moves to `abandoned` with `abandon_reason: "ticket_closed"`.
@@ -446,6 +456,7 @@ about what it is shown, and a stalled task shows nothing.
 | `blocked_stale` | `blocked` and untouched for longer than a threshold | escalate |
 | `unverified_done` | `done` with an empty `verification` array in `outcome.report` | flag on the handoff |
 | `missing_regression` | `done`, the diff added a test file, `regression_evidence` is null | flag on the handoff |
+| `undelivered_projection` | a §10a projection failed to reach its ticket | surface on the operator run record; never treated as delivered |
 | `dependency_cycle` | `depends_on` closure contains the task | reject at file time, not at dispatch |
 | `orphan_dependency` | `depends_on` names an `abandoned` task | `blocked` — the thing it waited for is not coming |
 
@@ -620,7 +631,13 @@ The whole of §2–§8 is not a v1. The slice that is:
 - A PR-event subscription closing `handoff` (§3) — the same one
   `medium.md` §1 needs anyway — and the committer writing
   `outcome.pull_request` back once.
-- Projection comments on the four transitions in §10.
+- Projection comments on §10's transitions, plus §10a's
+  stale-requirements flag.
+- §10a's reconciliation: a ticket re-read before dispatch and at
+  settlement, `tracker_observed` on the record, the three verbs
+  (adopt/stop/say), and the two anti-loop rules. No webhook — a
+  tracker-event subscription is a latency optimisation, not the
+  mechanism.
 
 **Deferred within this document**, in rough order of when they will be
 wanted: `parked` and wake predicates (§3), which need `medium.md` §1's
@@ -668,13 +685,189 @@ already reaches the ticket through the existing path, and a second
 comment per dispatch would make the ticket unreadable, and the state is
 visible in the ledger.
 
-**What this leaves open** is reconciliation, and it is a real cost of the
-choice rather than an oversight: the ledger and the tracker can disagree,
-because a human can move a ticket without telling the ledger. §3's
-ticket-closed policy is the one case worked through; the general rule is
-that **the tracker wins on intent and the ledger wins on execution
-state**, and where they conflict the ledger projects a comment rather
-than silently reconciling.
+§10a adds one more transition to this table — a **stale-requirements
+flag**, when a run's report was produced against a ticket that has since
+changed — and the reason it earns a projection where the depth-0 spinoff
+overflow (§11) did not is the test both were decided by: *is this fact
+anywhere a person will already be looking?*
+
+**What this costs** is reconciliation: the ledger and the tracker can
+disagree, because a human can move a ticket without telling the ledger.
+The general rule is that **the tracker wins on intent and the ledger
+wins on execution state**. §10a works that out.
+
+---
+
+## 10a. Reconciliation
+
+### It is not a sync problem
+
+The instinct on seeing two stores that can disagree is bidirectional
+sync: detect divergence, merge, resolve conflicts. That framing turns a
+small problem into a distributed-systems one, and it is the wrong
+framing here, for a reason visible in §2's record.
+
+The two stores hold **disjoint field sets**. The tracker owns intent —
+should this work happen, who is it for, how important is it, what does
+done mean. The ledger owns execution — has a run started, what did it
+produce, which branch is bound, how many attempts remain. Nothing is
+authoritative in both places. So there is no symmetric conflict to
+merge; there is only ever **a tracker change that invalidates an
+execution assumption**.
+
+That reduces reconciliation from *sync* to *invalidation*, which is a
+much smaller thing: you do not merge two versions, you notice that a
+premise changed and either re-derive or stop. It is the same shape as
+the context service's cache design, where every tier reduces to
+`(source repo, ref)` so entries invalidate themselves
+([`context-files.md`](./context-files.md) §1b) — and it should be,
+because the ledger's copy of a ticket *is* a cache.
+
+### Three verbs, and the constraint that produces them
+
+The ledger cannot write to the tracker. `AddComment` is the only outward
+channel and `WriteJira` is deferred (`medium.md` §5b), so every
+reconciliation action is one of exactly three:
+
+- **Adopt** — take the tracker's value into the ledger (priority, and
+  nothing else).
+- **Stop** — move the task to `blocked` or `abandoned`.
+- **Say** — project a comment.
+
+It can never **fix**. A permissions decision made for unrelated reasons
+turns out to make reconciliation tractable: with only three verbs there
+is no reconciliation logic to get subtly wrong, and the failure mode of
+every branch is "a human is told," which is the failure mode this design
+prefers everywhere else.
+
+### When it runs: at transitions, not continuously
+
+The ledger re-reads a ticket at exactly two moments, plus one sweep:
+
+1. **Before dispatch**, as part of §4's pass — so a task never starts
+   against intent that has already changed.
+2. **At settlement**, when a run calls `Complete` — so the report is
+   judged against the ticket as it stands now, not as it stood at
+   dispatch.
+3. **Opportunistically** for tasks not in `running`, on the ordinary
+   dispatch pass, bounded by the same per-pass work as everything else.
+
+No webhook is required, and this is deliberate rather than a shortcut.
+It is §8's argument again in a different place: a watcher is a thing that
+must be running, can silently stop, and reasons over what it happens to
+be shown; a check at a transition is a query that either ran or did not.
+A Jira-event subscription is a latency optimisation on top of this, never
+the mechanism — if it is missing, reconciliation is late, not absent.
+
+`tracker_observed` (§2) is what makes the re-read a comparison rather
+than a diff: the ledger stores the tracker's own revision marker and a
+digest over **only the fields the envelope actually carried**. A label
+change or a watcher being added is not a requirements change, and a rule
+that cannot tell those apart is a rule that fires constantly and gets
+switched off.
+
+### The cases
+
+| Tracker change | Task state | What the ledger does |
+|---|---|---|
+| Closed (any resolution) | `filed`/`ready`/`parked` | **Abandon**, `ticket_closed`. Project. Dependents go to `blocked`, not abandoned (§3) |
+| Closed | `running` | Let the run finish, then abandon (§3). **Project, naming the branch** — see below |
+| Closed | `handoff` | Nothing. The PR's own merged/closed event is the authority; a closed ticket with a landing PR is a human's contradiction to resolve |
+| Reopened after `abandoned` | `abandoned` | **A new task**, `supersedes` the old — see below |
+| Reopened | `done` | Nothing automatic. Project once: the ledger has a merged PR against a ticket someone reopened, and that is a fact a person needs, not a task to restart |
+| Reassigned | any | **Nothing.** See below |
+| Priority changed | not `running` | **Adopt.** It only affects §4's ordering, and only for tasks not yet started |
+| Priority changed | `running`/`handoff` | Nothing; ordering is moot once a task is running |
+| Requirements edited (digest differs) | `running`/`handoff`/`done` | **Project** a stale-requirements flag — see below |
+| Requirements edited | `filed`/`ready` | **Adopt**: re-resolve scope at dispatch, which happens anyway. No projection; nothing has been built against the old text |
+| Ticket deleted or unreadable | any | **Abandon**, `ticket_missing`. The projection has nowhere to go — see below |
+
+Four of those need their reasons stated.
+
+**Closing a ticket does not delete the work, and the projection must say
+where it went.** A `running` task that finishes after its ticket closed
+leaves a branch with real commits on it. Abandoning the task without
+naming that branch silently orphans it — the ledger knows where the work
+is and the only person who could use it does not. So the
+`ticket_closed` projection carries `outcome.target_branch`, and the
+managed-worktree rules do the rest: a dirty or unpushed checkout is
+preserved rather than cleaned (`agent-git-vcs.md` §4's lossless-only
+removal), so the branch is still there when someone goes looking.
+
+**Reopening produces a new task, not a resurrection.** The abandoned
+task's attempt budget is spent, its scope was resolved against an older
+ref, and its `abandon_reason` is a fact about what happened that should
+not be edited away. Resurrecting it forces a bad choice: reset the
+budget and lose the give-up signal, or keep it and re-abandon
+immediately. A new task with `supersedes` pointing at the old one keeps
+both records legible — the same supersession discipline this folder
+applies to its own decisions (`README.md`, "Maintaining these
+documents"), for the same reason.
+
+**Reassignment is a no-op, and that is evidence rather than luck.** When
+the concurrency key was `(repository, ticket assignee)`, a reassignment
+mid-`handoff` would have moved a task between owner buckets while it
+held un-landed work — a real reconciliation case with no clean answer.
+Keying on `(repository, branch)` (§4) deleted the case: the ledger has
+no assignee-derived state, and projections reach the ticket, which the
+new assignee is now reading. A design change made for a different reason
+removing a whole row from this table is worth noting, because it is the
+usual sign that the key was named after the wrong thing the first time.
+
+**Stale requirements get the fifth projection, and the contrast with
+§11's overflow decision is the point.** When a run's report was produced
+against requirements that have since changed, no existing path carries
+that fact: the report reaches the ticket by the ordinary route, but the
+run never knew the ticket moved, so nothing in it says so. Compare the
+depth-0 spinoff overflow (§11), which looked like it needed a projection
+and did not — because the information was already in a report a human
+was going to read. The test is the same in both cases and gives opposite
+answers: *is this fact anywhere a person will already be looking?* Here
+it is not, and the consequence of missing it is expensive — a PR built
+to superseded criteria, reviewed by someone who assumes it was not.
+
+Deliberately **not** an automatic re-dispatch: with `max_attempts: 2`,
+spending an attempt on a guess about which edit mattered is worse than
+telling a human that the ground moved.
+
+**A projection that cannot be delivered is not nothing.** If the ticket
+is gone, `AddComment` has no target. The rule is that the ledger records
+the delivery failure against the task and surfaces it on the operator's
+run record — because "we tried to tell someone and could not" is exactly
+the silence §10 exists to prevent, and a projection layer that treats
+undeliverable as done reintroduces it at the last step.
+
+### Two rules that keep it from looping
+
+**The ledger ignores its own projections.** A projected comment is a
+change to the ticket; without this rule, projecting a comment could
+trigger a re-read that observes a change and projects again. Projections
+are attributed and excluded from the digest — the same rule the PR
+steward needs for its own comments (`future.md`), arriving here first.
+
+**One observation, one action.** `tracker_observed.revision` advances
+when the ledger acts on a change, so a change is reconciled once even if
+several dispatch passes see it before the projection lands. Without it,
+a `blocked` task whose ticket closed would project on every pass.
+
+### What is still open
+
+Two things, named rather than left to be discovered:
+
+- **Multi-ticket tasks have no answer here.** A task carries one
+  `issue_key`. A human splitting a ticket into three, or merging two,
+  produces a tracker shape the ledger cannot represent, and the
+  degenerate handling — the original key stops resolving, so the task
+  abandons as `ticket_missing` — is honest but crude. Fixing it properly
+  needs the tracker-side relationship model this design deliberately
+  does not read.
+- **The tracker's `done` and the ledger's `done` are not the same
+  claim.** A human marking a ticket done asserts the work is complete; a
+  ledger `done` asserts a PR merged. They usually agree and nothing in
+  the design requires them to. This is fine while `AddComment` is the
+  only write, and becomes a real decision the moment `WriteJira` lands
+  (`medium.md` §5b) — because then the ledger would be closing tickets,
+  and it would need to be right about what done means.
 
 ## 11. Safety
 
