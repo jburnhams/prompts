@@ -681,7 +681,14 @@ whole run, so they cannot.
 >   comes back partly elided even though no single entry hit its own cap.
 >   If you want more than twenty files, you are exploring rather than
 >   reading: use List or Grep.
-> - Lines longer than 2000 characters are truncated, and say so in place.
+> - Lines longer than 2000 characters are truncated, and say so in place —
+>   and, like every other cap here, the truncation names the exact next
+>   call. Pass `char_offset` on the entry to resume that line from a
+>   character position, so a minified bundle, a long generated constant
+>   or a single-line JSON fixture is *resumable* rather than merely
+>   clipped. `char_offset` applies to the first line of the range read
+>   and is 0-indexed; use it with `start_line` to land on the line you
+>   mean.
 > - Every capped or elided entry says what it showed, how much exists, and
 >   the exact next call (`showed lines 1-2000 of 8123 — pass start_line:
 >   2001`). Asking explicitly for a range larger than the cap allows is an
@@ -713,7 +720,8 @@ whole run, so they cannot.
           "properties": {
             "path": { "type": "string", "description": "Absolute or working-directory-relative path to the file." },
             "start_line": { "type": "integer", "minimum": 1, "description": "1-indexed first line to read. Omit to start at the beginning. Must be on the same object as the path it applies to." },
-            "end_line": { "type": "integer", "minimum": 1, "description": "1-indexed last line to read, inclusive. Omit to read to the end of the file or the cap, whichever comes first." }
+            "end_line": { "type": "integer", "minimum": 1, "description": "1-indexed last line to read, inclusive. Omit to read to the end of the file or the cap, whichever comes first." },
+            "char_offset": { "type": "integer", "minimum": 0, "description": "0-indexed character position to resume a truncated over-long line from. Applies to the first line of the range. Use only after a read reported that line as truncated." }
           },
           "required": ["path"],
           "additionalProperties": false
@@ -1347,6 +1355,19 @@ Summarised here so the tool set reads complete in one place:
 > off. `status: "blocked"` is for a run resuming after AskUser that
 > still didn't fully resolve things; within a single run, use AskUser
 > directly instead of reaching Complete with status `blocked`.
+> `status: "budget_exhausted"` is what the final-turn nudge asks for when
+> a run hits its turn or context budget (`formats.md` §7): the report is
+> partial and honest, but running out of room is a different fact from
+> being unable to do the work, and only one of them is worth retrying
+> with a bigger budget. Do not use it for a run that is genuinely stuck.
+>
+> `report.spun_off` is where you record work you found **outside this
+> run's `paths` scope and deliberately did not do**. File it; do not
+> stretch to cover it. Use `relation: "blocks_this"` (with
+> `status: "blocked"`) when you could not finish without that work, and
+> `relation: "follows_this"` when you finished your own scope and
+> something else also needs doing. At most two entries, and none at all
+> if this run's own task was itself spun off — see `formats.md` §3a.
 >
 > In `implement` mode, the **first** `Complete(status: "done")` call
 > does not complete the run. It returns a fixed checklist as the tool
@@ -1373,7 +1394,7 @@ Summarised here so the tool set reads complete in one place:
   "input_schema": {
     "type": "object",
     "properties": {
-      "status": { "type": "string", "enum": ["done", "planned", "skipped", "failed", "blocked"] },
+      "status": { "type": "string", "enum": ["done", "planned", "skipped", "failed", "blocked", "budget_exhausted"] },
       "summary": { "type": "string", "description": "Short, human-readable. This is what a person reads first." },
       "report": { "type": "object", "description": "Full structured report. Shape depends on mode — see formats.md." }
     },

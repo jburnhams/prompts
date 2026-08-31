@@ -773,11 +773,28 @@ Ordered by how much it changes the picture.
 - [`../agent-design/orchestration.md`](../agent-design/orchestration.md)
   — new. Workboard read as a **run ledger** and adapted into the design:
   task records with dependencies, harness-held leases instead of
-  agent-facing claim tokens, a one-task-per-owner dispatcher,
+  agent-facing claim tokens, a (repository, branch) dispatcher,
   health as queries rather than a supervisor run, and task splitting
   specified as a `Complete.report.spun_off` proposal. Its §8 carries the
   non-model-oversight argument and the role invariant read out of five
   OpenClaw roles.
+- **Session goals → run persistence.** `agent-design/system-prompts.md`
+  gains a persistence rule for declaring `blocked` (the same obstacle
+  twice, with a different approach tried in between), and
+  `formats.md` §7 / `tools.md` gain **`budget_exhausted`** as a
+  `Complete` status distinct from `failed` — both adapted from
+  OpenClaw's session-goal pair of a recurrence rule and a
+  `budget_limited` terminal state.
+- **`read`'s within-line cursor → `char_offset`.**
+  `agent-design/tools.md`'s `Read` gains a third continuation axis, so a
+  truncated over-long line is resumable rather than a dead end.
+- **`autoreview`'s blame epistemics → `review.md` §4a**, adapted rather
+  than ported: our review roles have no `Bash`, so the verification
+  protocol cannot transfer, but the distinction can. The vocabulary is
+  three-valued (**introduced / made visible / pre-existing**) rather
+  than four — `unknown` is dropped, because a finder that cannot
+  establish provenance should not be making a provenance claim — and
+  the five-role attribution separation is kept in full.
 
 Still not integrated, and scoped under "Aspects this collection has
 covered elsewhere" above: `agent-subagent-architectures.md`,

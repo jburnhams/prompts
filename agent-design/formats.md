@@ -371,9 +371,32 @@ review-comment attachments.
   ],
   "evidence": [
     "string — artifact id of something produced by this run that should outlive it; empty array if none"
+  ],
+  "spun_off": [
+    {
+      "relation": "blocks_this | follows_this",
+      "title": "string — what needs doing",
+      "rationale": "string — why this run did not do it",
+      "paths": ["string — the subtree the work is in, as best this run knows"],
+      "kinds": ["string — optional; omitted means the dispatcher decides"]
+    }
   ]
 }
 ```
+
+`spun_off` is how a run reports work it found **outside its own `paths`
+scope and deliberately did not do** — the mechanism specified in
+[`orchestration.md`](./orchestration.md) §6, and the thing that makes
+"keep tasks focussed" structural rather than aspirational. Entries are
+*proposals*: the ledger creates the task, and a run may file but never
+dispatch (`orchestration.md` §8). `relation` decides two things at once —
+whether this run could finish (`blocks_this` pairs with
+`status: "blocked"`; `follows_this` with an ordinary completion) and
+whether the resulting task auto-chains or waits for a human. Capped at
+**2 entries per run**, and a run whose own task was itself spun off may
+not file any (spinoff depth 0, `orchestration.md` §11) — its entries are
+recorded on the task and surfaced to a human instead. Empty array is the
+common case.
 
 `evidence` is the hook the verification gate needs later (`vision.md` §8).
 V1 accepts it and does one thing with it: any artifact referenced here is
@@ -702,6 +725,19 @@ explicit position on what happens at each:
    In review mode, where `AskUser` isn't wired at all (`tools.md`), the
    nudge names `Complete` as the only acceptable action — the injected
    text is mode-aware, not one fixed string.
+
+   **The status for a nudged run is `budget_exhausted`, not `failed`.**
+   The two are different facts and they imply different next actions:
+   "ran out of room" is worth a fresh run with a raised budget, "could
+   not do it" is worth a human. Collapsing them loses the distinction
+   at exactly the point something downstream needs it — the ledger's
+   retry policy counts only genuine failures toward its
+   repeated-failure give-up rule, and with a low `max_attempts` an
+   attempt spent on a merely-out-of-context run is expensive
+   ([`orchestration.md`](./orchestration.md) §7, §8). The report is
+   otherwise identical: partial, honest, saying what was done and what
+   remains. A run that is genuinely stuck still uses `failed`; the
+   nudge does not launder one into the other.
    Grok Build's harder variant — refusing to end a turn at all while
    work is still open — is not adopted here, since it fights the same
    budget this mechanism exists to enforce.
@@ -713,7 +749,8 @@ explicit position on what happens at each:
    "this didn't fit," which is actionable (split the ticket, raise the
    budget), instead of silence, which isn't. Compaction is the natural
    v2 lever if budget-exhausted runs turn out to be common on
-   legitimately-sized tasks.
+   legitimately-sized tasks — and the `budget_exhausted` status above is
+   what makes "common" measurable rather than anecdotal.
 
 A run killed by infrastructure failure (crash, timeout at a layer below
 the harness) is the one case with no `Complete` — the harness itself

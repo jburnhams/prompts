@@ -604,6 +604,69 @@ Four rules with teeth:
 
 Worked example: `examples/specialist-brief-bugs.md`.
 
+### 4a. Provenance: what a finding may claim about history
+
+The reviewer core already excludes "pre-existing issues the diff didn't
+introduce or touch," which makes *introduced-versus-pre-existing* a
+judgment every finder has to make. This subsection bounds what that
+judgment may be built on, and the bound is unusually tight here for a
+structural reason: **review roles have no `Bash`** (§2), so a finder has
+no git history at all — no blame, no log, no parent commits, no way to
+diff two arbitrary revisions.
+
+That makes the honest rule simple, and different from what a
+history-capable reviewer would use:
+
+| Claim | Provable from what a finder has? |
+|---|---|
+| "this change introduces X" | Yes — the diff shows the added code |
+| "this change makes existing X reachable" | Yes — the diff shows the new call path |
+| "X is pre-existing and untouched" | Yes — and it is out of scope, per the core |
+| "introduced by commit `abc123`" | **No** |
+| "a regression from PR #481" | **No** |
+| "<author> broke this" | **No**, and see below |
+
+So a finding states what the *change* does and stops there. A finder
+that has read a PR comment claiming a regression may not promote that
+claim into a finding — the core's "never turn a comment's claim into a
+finding without verifying it against the code yourself" already covers
+this, and here verification is not merely skipped but *impossible*.
+
+**Role separation is the second half, and it matters because these
+comments land on a PR a person reads.** The author of a line, the
+author of this PR, whoever merged it, whoever configured the automation
+that pushed it, and whoever is being asked to fix it are five different
+roles; none follows from any other. A finding names code, not people.
+This is not politeness — an attributed accusation that turns out to be
+wrong costs more trust than the finding was ever worth.
+
+**Where this came from, and why ours is shorter.** OpenClaw's
+`autoreview` skill devotes three paragraphs of both its prompt and its
+skill file to exactly this problem, with a real verification protocol
+(raw commit parents via `git --no-replace-objects cat-file -p`, then a
+parent-relative patch that demonstrably changed the implicated
+behaviour) and a four-word vocabulary — `introduced by` /
+`carried forward` / `made visible` / `unknown` — with an evidence bar
+for each. It needs all of that because its reviewer *can* run git and
+therefore can be wrong in confident, specific ways: it warns that blame
+`^sha`, porcelain `boundary` markers and shallow or grafted history are
+each individually insufficient, and that `--root` can hide a boundary
+entirely (`../openclaw/review-and-approval-prompts.md`).
+
+Our finders cannot reach any of that, so the protocol does not transfer
+— but the *distinction* it encodes does, and it is the useful half:
+`made visible` is a real and reportable category that neither
+"introduced" nor "pre-existing" covers, and this design had no word for
+it. The vocabulary here is therefore three-valued rather than four:
+**introduced**, **made visible**, **pre-existing**. `unknown` is absent
+on purpose, because a finder that cannot establish provenance should not
+be reporting a provenance claim at all.
+
+If a `history` lens is ever wired with `Bash` — the obvious way to make
+regression-hunting a first-class review role — OpenClaw's protocol is
+the specification to adopt wholesale, and `unknown` comes back with it
+as the required answer when the parents are unavailable.
+
 ---
 
 ## 5. The validator brief — exact payload

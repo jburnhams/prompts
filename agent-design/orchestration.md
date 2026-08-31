@@ -11,9 +11,10 @@ schema, AskUser suspend/resume) and
 at dispatch). It supersedes three items that
 [`future.md`](./future.md) tracked separately — see §12.
 
-**Status:** §2–§8 are specified. §10 is an open deployment question.
-The v1 slice is small and named in §9: one new `Complete` field and
-one harness-side table.
+**Status:** specified throughout; the twelve decisions behind it are in
+`README.md`'s decision log. The v1 slice is named in §9. What is
+deliberately *not* settled is listed at the end of §9 and in §10's
+closing paragraph (reconciliation between the ledger and the tracker).
 
 ---
 
@@ -49,6 +50,18 @@ blocked on part of the same object:
 | Generalized task suspension (`medium.md` §4c) | already has the right instinct — "prefer being woken over waiting" | §3: the ledger makes a parked *task* the default and narrows run-suspension to the case where a transcript must survive |
 
 Each was being designed as its own subsystem. They are one table.
+
+**Scope: coding runs, not review runs.** A review run is dispatched by an
+event, posts everything it concludes, and terminates — it carries no
+obligation that outlives the run, which is the entire reason the ledger
+exists. So review runs stay outside it in v1. What *does* enter the
+ledger is the review → implement handoff (`medium.md` §1b): a finding
+that needs code becomes an ordinary **coding** task with
+`source: "review_finding"`. That keeps the review pipeline unchanged and
+keeps §8's "may file, may not dispatch" rule from having to be
+re-answered for reviewers. `medium.md` §3f's stateful re-review sessions
+are the case that will eventually pull review runs in; when they do, the
+table already has the shape.
 
 **Why this matters more for us than for an interactive agent.** In an
 archetype-1 tool, *the human is the ledger*: they remember what is
@@ -93,10 +106,12 @@ a task record directly (§8 explains why, and §9 gives the one exception).
       "status": "done | planned | skipped | failed | blocked | lease_lost",
       "summary": "string — the run's Complete.summary, or the failure reason" }
   ],
-  "budget": { "max_attempts": 3, "max_run_seconds": 0, "attempts_used": 0 },
+  "budget": { "max_attempts": 2, "max_run_seconds": 0, "attempts_used": 0 },
+  "abandon_reason": "string | null — set only in the abandoned state; e.g. budget_exhausted, ticket_closed, pr_closed_unmerged",
 
   "outcome": {
     "target_branch": "string | null",
+    "pull_request": "string | null — written back once by the committer; what the PR-event subscription watches",
     "report": "the last successful run's Complete.report, verbatim",
     "evidence": ["artifact id"]
   },
@@ -150,11 +165,12 @@ memory. The ledger adds no new channel; it stores the one that exists.
        │   │handoff │  │ blocked │ │  filed  │    (attempt recorded)
        │   └────┬───┘  └─────────┘ │ (follow-│
        │        │                  │ up impl)│
-       │   accepted                └─────────┘
-       │        │
+       │  PR merged                └─────────┘
+       │        │        PR closed unmerged ──► abandoned
        │   ┌────▼───┐
        └──►│  done  │            parked ◄──► ready   (wake predicate)
-           └────────┘            abandoned            (§7 give-up)
+           └────────┘            abandoned            (§7 give-up,
+                                                       ticket closed)
 ```
 
 Two states differ from what a naive port of a Kanban board would give,
@@ -162,11 +178,24 @@ and both differences are ours rather than borrowed.
 
 **`handoff`, not `review`.** This design never commits, pushes, or opens
 a PR (`README.md`'s decision log). A coding run's deliverable is a
-working tree plus a report, and something downstream turns that into a
-commit and a PR. `handoff` is the state where that has happened and the
-task is out of the agent's hands but not yet finished. It matters
-because §4's concurrency rule counts it as occupied: an owner with
-un-landed work should not be handed more.
+working tree plus a report, and **an external committer downstream turns
+that into a commit and a PR** — a confirmed deployment fact, which is
+what makes this a v1 state rather than a deferred one, and what gives
+`suggested_commit_message` (`formats.md` §3a) a consumer. `handoff` is
+the state where that has happened and the task is out of the agent's
+hands but not yet finished. It matters because §4's concurrency rule
+counts it as occupied.
+
+**A task leaves `handoff` on a PR merged or closed event.** The
+committer writes the PR reference back onto the task once, and from
+there the ledger uses the **same PR-activity subscription
+`medium.md` §1 already needs** for CI-failure and comment-responder
+runs — no second integration, and the ledger sees human pushes to the
+branch for free. Merged → `done`. Closed unmerged → `abandoned`, with
+the PR reference kept: a closed PR is a decision, not a failure, and it
+should not be retried. A task in `handoff` with no PR reference after a
+threshold is a `stranded` case for §7, because it means the committer
+never ran.
 
 **`parked` holds a task, not a run.** `medium.md` §4c's suspension
 mechanism keeps a *run* alive across an event — envelope, transcript
@@ -177,9 +206,28 @@ previous attempt's report in its envelope. That is strictly cheaper and
 it is the right default; §12 says what run-suspension narrows to.
 
 `abandoned` is a real terminal state, distinct from `done` and from
-`blocked`. A task the ledger gave up on has a recorded reason and does
-not silently rot in `ready`. This is the point `future.md` deferred as
-"when to give up, how to hand off to a human"; §7 makes it a query.
+`blocked`. A task the ledger gave up on has a recorded reason
+(`abandon_reason`) and does not silently rot in `ready`. This is the
+point `future.md` deferred as "when to give up, how to hand off to a
+human"; §7 makes it a query.
+
+**When the ticket is closed underneath a task**, the ledger never kills
+a run mid-flight. A run may be seconds from a useful report, and
+cancelling it discards a working tree and a transcript for nothing. So:
+the run finishes normally, the ledger records the outcome, and *then*
+the task moves to `abandoned` with `abandon_reason: "ticket_closed"`.
+The report is still posted to the ticket — work that happened should
+not be invisible because the ticket closed while it happened. Two
+details follow from the same reasoning:
+
+- **Dependent spinoffs go to `blocked`, not `abandoned`.** A closed
+  parent ticket says nothing about whether the spun-off work is still
+  worth doing, and abandoning a chain on one human's ticket-hygiene
+  click is a worse error than leaving it for someone to look at.
+- **A task already in `handoff` is left alone.** There is a PR open; the
+  PR's own merged/closed event is the authority, and a closed ticket
+  with a landing PR is a human's contradiction to resolve, not the
+  ledger's.
 
 ---
 
@@ -202,18 +250,44 @@ because the order is subtle.
 
 **One task per owner, and `handoff` counts as occupied.** A pass starts
 at most one task for a given `owner`, and skips an owner that already
-has a task in `running` *or* `handoff`. This is adapted from OpenClaw's
-Workboard rule, which is expressed per agent id; we have no agent
-identities, so `owner` defaults to the **(repository, ticket assignee)**
-pair. Two reasons, and they are different reasons:
+has a task in `running` *or* `handoff`. `owner` is the **(repository,
+branch)** pair. This is adapted from OpenClaw's Workboard rule, which is
+expressed per agent id — we have no agent identities, so the key names
+the contended resource instead of the contending party.
 
-- *Working-tree contention.* Two `implement` runs on the same repository
-  cannot share a checkout, and the design has no worktree management.
-- *Reviewer attention.* The `handoff` half is the one worth arguing for:
-  an assignee with an un-landed branch has a review coming back, and
-  that review may itself dispatch an `implement` run against the same
-  code (`medium.md` §1b). Filling their queue in the meantime
-  guarantees a merge conflict with the agent's own earlier work.
+The `handoff` half is the part worth arguing for, and the argument is
+about the branch rather than about a person's queue: a review of the
+handed-off PR can itself dispatch an `implement` run
+(`medium.md` §1b), and that run targets **the same branch**. Starting
+unrelated work there in the meantime guarantees a conflict with the
+agent's own earlier output. Keying on the branch is also the honest
+version of what the rule protects — an earlier draft keyed it on
+(repository, ticket assignee) and justified it as reviewer attention,
+which was a proxy for the resource rather than the resource.
+
+**This rule has a substrate prerequisite, and it is met.** Two branches
+can only be occupied at once if two runs can hold two checkouts at once.
+The harness provisions **a worktree or clone per run** and checks out
+`target_branch` before the run starts (`formats.md` §1a) — so parallel
+runs in one repository are real, and (repository, branch) is
+enforceable rather than aspirational. Where that does not hold, the rule
+degrades correctly to repository-only: one live checkout is one branch.
+
+Two consequences the design has to state rather than assume:
+
+- **The agent still never creates or switches branches.** Checkout
+  provisioning moves from "the harness has already checked out
+  `target_branch`" to "the harness owns per-run checkouts", which is a
+  larger job, not a different rule. The no-git-writes stance and its
+  harness-side blocklist (`README.md`'s decision log) are unchanged.
+- **A spun-off task needs a branch decided at dispatch.** A `follows_this`
+  spinoff is ordinarily new work off the base branch; a `blocks_this`
+  spinoff usually wants the *same* branch, since its output is what the
+  parent will build on. The ledger records the intended branch on the
+  task at file time and the dispatcher resolves it — the run does not
+  choose. Where a `blocks_this` spinoff shares the parent's branch, the
+  parent is `blocked` and therefore not occupying it, so the owner rule
+  is satisfied by construction.
 
 **A per-pass start cap**, defaulting low. Its job is to make a
 misconfigured dependency graph or a badly-decomposed ticket produce a
@@ -317,11 +391,30 @@ which no spinoff mechanism can. Splitting handles the case where the run
 *did* notice, which is the more common one and the one where the current
 answer wastes a review cycle.
 
-**Approval.** `future.md` asks who approves a split. The ledger's answer:
-a spun-off task is `filed`, and whether `filed → ready` needs a human is
-one deployment policy, exactly parallel to the plan → implement gate
-(`formats.md` §6) that this design also deliberately left open. Gated and
-auto-chained are both valid; §11 caps apply either way.
+**Approval — asymmetric, and each half has its own reason.**
+`future.md` asks who approves a split. The answer is that `filed → ready`
+depends on the relation:
+
+- **`blocks_this` auto-chains.** Its parent is *already stalled*. Gating
+  it means two tasks wait on one human decision that nobody has been
+  asked to prioritise, and the work is by construction a prerequisite of
+  something already approved — the ticket. The caps in §11 are what bound
+  it.
+- **`follows_this` is gated.** This is new scope the run decided to
+  invent. It is precisely where a human should look, and nothing is
+  stalled while they do: the parent went to `handoff` normally.
+
+The gate reuses the mechanism `formats.md` §6 already offers for
+plan → implement — an approving reply on the ticket thread — rather than
+adding a second approval channel. The two gates stay independent
+decisions, but a deployment that has already chosen "gated" there will
+find the same wiring here.
+
+Note what the asymmetry is *not*: it is not a claim that blocking work is
+safer. It is a claim that the cost of a wrong auto-dispatch is bounded by
+§11's caps, while the cost of a wrong gate on a blocking task is an
+indefinitely stalled ticket — and only one of those two failures is
+self-limiting.
 
 ---
 
@@ -335,9 +428,11 @@ about what it is shown, and a stalled task shows nothing.
 | Check | Condition | Action |
 |---|---|---|
 | `stranded` | `ready` and not dispatched for longer than a threshold | surface; usually an owner-concurrency stall (§4) |
+| `stranded_handoff` | `handoff` with no `outcome.pull_request` after a threshold | the committer never ran; surface, do not retry the coding work |
 | `lease_expired` | `running` with a lease past its deadline | reclaim, record `lease_lost` attempt |
 | `repeated_failure` | ≥2 attempts ending `failed` | `blocked` — a human reads the attempt summaries |
-| `budget_exhausted` | `attempts_used == max_attempts` | `abandoned`, with the last attempt's reason |
+| `budget_exhausted` | `attempts_used == max_attempts` | `abandoned`, `abandon_reason: "budget_exhausted"` |
+| `context_exhausted` | last attempt ended `Complete(budget_exhausted)` (§8) | retry with raised budget — **does not** count toward `repeated_failure` |
 | `blocked_stale` | `blocked` and untouched for longer than a threshold | escalate |
 | `unverified_done` | `done` with an empty `verification` array in `outcome.report` | flag on the handoff |
 | `missing_regression` | `done`, the diff added a test file, `regression_evidence` is null | flag on the handoff |
@@ -437,15 +532,26 @@ ledger level. Its session **goal** injects a line into every turn:
 paired with an optional token budget whose exhaustion moves the goal to
 `budget_limited` — a terminal state *distinct from failure*.
 
-Both halves are things this design lacks. `formats.md` §7's run bounding
-has the budget half (the final-turn nudge) but treats exhaustion as a
-degraded completion rather than as its own outcome; and nothing anywhere
-tells a hands-off run how long to persist before declaring itself
-blocked, which is precisely the judgment an unsupervised run is worst at
-and most consequential about. The three-consecutive-turns rule is a good
-shape because it is checkable from the transcript rather than from
-introspection. Both belong in `system-prompts.md` and `formats.md` §7 as
-a follow-up, not here.
+Both halves are things this design lacked, and **both are being taken**:
+
+- **A persistence rule**, in `system-prompts.md`'s coding workflow: do
+  not conclude `blocked` on the first occurrence of a blocker — only
+  once the *same* blocker has recurred across turns, with the attempts
+  in between named in the report. The shape is good because it is
+  checkable from the transcript rather than from introspection; a run
+  cannot satisfy it by feeling stuck.
+- **`budget_exhausted` as its own `Complete` status**, distinct from
+  `failed`. `formats.md` §7's run bounding already produces the
+  situation — the final-turn nudge fires and the run reports what it
+  has — but classifies the result as a degraded completion, which loses
+  the one fact the ledger needs. "Ran out of room" and "genuinely could
+  not do it" are different retry decisions: the first is worth a fresh
+  run with a raised budget, the second is worth a human. §7's
+  `repeated_failure` query counts only the second.
+
+The retry asymmetry is the reason the status is worth a schema change
+rather than a note in `summary`: with `max_attempts: 2` (§11), spending
+an attempt on a run that merely ran out of context is expensive.
 
 ---
 
@@ -453,63 +559,90 @@ a follow-up, not here.
 
 The whole of §2–§8 is not a v1. The slice that is:
 
-**v1 — one field and one table.**
+**In the design documents.**
 
-- `formats.md` §3a: `Complete.report` gains `spun_off` (§6). Runs may
-  file follow-up work; nothing else changes about how they run.
-- A harness-side task table with `id`, `state`, `depends_on`,
-  `spun_off_from`, `attempts`, `scope`, `owner`, `outcome`. States
-  `filed` / `ready` / `running` / `handoff` / `done` / `blocked`.
-- A dispatch pass implementing §4 steps 1, 3 and 5, plus the
-  `budget_exhausted` and `repeated_failure` queries from §7.
-- `tools.md`: no new tools. `Complete`'s description gains one sentence
-  about `spun_off` and the "file, do not stretch" rule.
-- `system-prompts.md`: coding mode gains the rule that work outside the
-  run's `paths` is filed rather than done — which is the *first* thing
-  in this design that makes "keep tasks focussed" structural instead of
-  aspirational.
+- `formats.md` §3a: `Complete.report` gains `spun_off` (§6).
+- `formats.md` §7 and `tools.md`: `Complete.status` gains
+  **`budget_exhausted`**, distinct from `failed` (§8).
+- `system-prompts.md`, coding mode: two rules — work outside the run's
+  `paths` is **filed, not done** (the first thing in this design that
+  makes "keep tasks focussed" structural rather than aspirational), and
+  the **persistence rule** for declaring `blocked` (§8).
+- `tools.md`: no new tools. `Complete`'s description gains a sentence on
+  `spun_off` and one on `budget_exhausted`.
+
+**In the harness.**
+
+- A task table with `id`, `state`, `owner`, `depends_on`,
+  `spun_off_from`, `attempts`, `budget`, `abandon_reason`, `scope`,
+  `outcome`. States `filed` / `ready` / `running` / `handoff` / `done` /
+  `blocked` / `abandoned` — everything except `parked`.
+- Per-run checkout provisioning (§4), which the (repository, branch)
+  owner key depends on.
+- A dispatch pass implementing §4 steps 1, 3, 4 and 5, with §11's caps
+  and the asymmetric `filed → ready` gate from §6.
+- §7's queries: `lease_expired`, `repeated_failure`, `budget_exhausted`,
+  `stranded`, `orphan_dependency`, `dependency_cycle`. The two
+  evidence-quality queries (`unverified_done`, `missing_regression`) can
+  follow.
+- A PR-event subscription closing `handoff` (§3) — the same one
+  `medium.md` §1 needs anyway — and the committer writing
+  `outcome.pull_request` back once.
+- Projection comments on the four transitions in §10.
 
 **Deferred within this document**, in rough order of when they will be
 wanted: `parked` and wake predicates (§3), which need `medium.md` §1's
-trigger sources first; the `handoff` state (§3), which needs a
-downstream committer to hand off *to*; `kinds` on a spinoff (§6), which
-needs `context-files.md`'s narrowing to be live; and a mid-run
-`ProposeTask` tool (§6), on the trigger named there.
+trigger sources first; `kinds` on a spinoff (§6), which needs
+`context-files.md`'s narrowing to be live; spinoff **depth 1** (§11),
+which needs evidence about how often layered dependencies actually
+occur; a mid-run `ProposeTask` tool (§6), on the trigger named there;
+and review runs entering the ledger at all (§1), which
+`medium.md` §3f's stateful re-review will force.
 
 ---
 
-## 10. Where the ledger lives — open
+## 10. Where the ledger lives
 
-The honest question this document does not settle: **is this table just
-Jira with an agent-owned status field?**
-
-The case that it is: Jira is already the task store for this deployment.
-`issue_key` is already in the envelope. A parent/child link, a status,
-an assignee and a comment history all exist there, are already visible
-to humans, and already survive everything. Building a second store means
-two places to look and a reconciliation problem.
-
-The case that it is not: nothing in §2 outside `state`, `depends_on` and
-`priority` maps onto a tracker field without abuse. A lease with a
-deadline, an attempt list with run ids, a frozen `scope` with an
-authority token, and per-task budgets are agent-execution state, not
-project-management state, and putting them in a tracker's custom fields
-is how integrations become unmaintainable. Tracker writes are also a
-permission surface this design does not currently have at all — the
-decision log keeps `AddComment` as the only outward channel, and
-`WriteJira` is explicitly deferred to `medium.md` §5b.
-
-**The shape that is probably right, stated as a hypothesis rather than a
-decision:** the ledger owns execution state in its own store and holds
+**Decided: the ledger owns execution state in its own store and holds
 `issue_key` as a reference; the tracker stays the human-facing record and
-receives *projections* — a comment when a task is filed, blocked or
-abandoned — through the existing `AddComment` path. That keeps tracker
-writes at their current privilege level and keeps humans looking at one
-place, without pretending a lease is a Jira field. It needs a real pass
-before it is settled, including what happens when a human closes the
-ticket underneath a running task.
+receives projections.**
 
----
+The question this settles is whether the table is just Jira with an
+agent-owned status field. It is not, and the reason is that only three
+fields in §2 — `state`, `depends_on`, `priority` — map onto tracker
+fields without abuse. A lease with a deadline, an attempt list with run
+ids, a frozen `scope` carrying an authority token, and per-task budgets
+are **agent-execution state**, not project-management state, and putting
+them in custom fields is how integrations become unmaintainable. Tracker
+writes are also a permission surface v1 does not have: the decision log
+keeps `AddComment` as the only outward channel and `WriteJira` is
+deferred to `medium.md` §5b, so a Jira-as-ledger design would have to
+open that surface before the ledger did anything useful.
+
+**Projections keep humans looking at one place.** The ledger posts
+through the existing `AddComment` path — no new privilege, no new
+channel — on exactly four transitions:
+
+| Transition | Why it is worth a comment |
+|---|---|
+| A spinoff is `filed` | Someone has to see that the agent invented scope, especially a gated `follows_this` that is waiting for their reply |
+| A task moves to `blocked` | The blocker is the thing a human can act on |
+| A task moves to `abandoned` | Silence here is the failure mode the whole ledger exists to prevent |
+| A `blocks_this` dependency completes and its parent returns to `ready` | Otherwise a ticket appears to sit dead for a day and then move on its own |
+
+`done` is deliberately **not** on that list: the `Complete` report
+already reaches the ticket through the existing path, and a second
+"task done" comment on top of it is noise. Neither is `running` — a
+comment per dispatch would make the ticket unreadable, and the state is
+visible in the ledger.
+
+**What this leaves open** is reconciliation, and it is a real cost of the
+choice rather than an oversight: the ledger and the tracker can disagree,
+because a human can move a ticket without telling the ledger. §3's
+ticket-closed policy is the one case worked through; the general rule is
+that **the tracker wins on intent and the ledger wins on execution
+state**, and where they conflict the ledger projects a comment rather
+than silently reconciling.
 
 ## 11. Safety
 
@@ -518,17 +651,32 @@ work. Three constraints, all needed in the same pass as the feature —
 `future.md` already flagged the approval question as open, and the
 ledger makes it live rather than theoretical.
 
-**Caps, enforced by the dispatcher.**
+**Caps, enforced by the dispatcher.** Numbers, not placeholders — a cap
+without a value is a cap nobody implemented:
 
-- Maximum spun-off tasks per run. A small number; the failure this
-  prevents is a badly-scoped ticket fragmenting into dozens of
-  fragments, each of which files more.
-- Maximum spinoff *depth*: a task spun off from a task spun off from a
-  task. Tracked via `spun_off_from`; past the limit, a run's spinoffs
-  are recorded on the task and surfaced to a human instead of filed.
-- Maximum total tasks per originating `issue_key`, which catches
-  fan-out that the per-run cap misses because it is spread across
-  attempts.
+| Cap | v1 value | What it prevents |
+|---|---|---|
+| Spun-off tasks per run | **2** | One run turning a badly-scoped ticket into a fan of fragments |
+| Spinoff **depth** | **0** | A spun-off task spinning off further work — see below |
+| Total tasks per originating `issue_key` | **8** | Fan-out spread across *attempts*, which the per-run cap cannot see |
+| Attempts per task (`max_attempts`) | **2** | A task grinding through retries that are not converging |
+
+**Depth 0 is the load-bearing one, and it is deliberately structural.**
+A task with a non-null `spun_off_from` may not spin off further work at
+all: its `Complete.report.spun_off` entries are recorded on the task and
+surfaced to a human instead of being filed. That kills runaway fan-out
+by *shape* rather than by budget arithmetic, which matters most in a
+first version, when nobody has calibration for what normal looks like —
+a depth limit is checkable at file time, whereas a total-task budget is
+only violated after the fact.
+
+The cost is real and worth naming: a genuinely layered dependency (fix
+the type, then its callers, then the tests) cannot decompose itself in
+one pass. It arrives at a human as a recorded observation on the
+first-level task, which is the right place for it while the mechanism is
+new. Depth 1 is the obvious first relaxation once there is evidence
+about how often that layering actually occurs, and it needs no schema
+change — only a constant.
 
 **Authority does not travel with the record.** A task stores the
 authority it was filed under; at dispatch, the ledger intersects that
