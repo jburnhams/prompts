@@ -1124,6 +1124,18 @@ waiting shows up.
 
 ### 4c. Long waits across runs: generalized task suspension
 
+> **Narrowed by [`orchestration.md`](./orchestration.md) §3/§12.** The
+> ledger makes a **parked task** — a record with a wake predicate and no
+> held transcript — the default answer to "wait for X", which is what
+> this section's own "prefer being woken over waiting" stance argues
+> for. `AwaitEvent` narrows to the case named below as its real purpose:
+> when *this* task's accumulated context must survive the event. That is
+> rarer than assumed here, and the lazy-suspend worry largely dissolves,
+> because the lazy option now costs a fresh run rather than a parked
+> one. `AskUser`'s own suspend/resume (`formats.md` §5) is unaffected —
+> a question mid-investigation is exactly the transcript-must-survive
+> case.
+
 **What**: the AskUser suspend/resume protocol (`formats.md` §5),
 with the wake condition generalized. V1's protocol is already "end
 the run, record a suspended-task, resume when an external event

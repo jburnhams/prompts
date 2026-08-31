@@ -112,7 +112,13 @@ re-litigated later.
   deployment-as-a-tool precedent in the collection
   (`agent-tool-surfaces.md` §7). If ever built, it belongs behind the
   tiered permission subsystem above, not before it.
-- **A standing PR-steward loop.** Today every run is one-shot:
+- **A standing PR-steward loop.** **Largely superseded by
+  [`orchestration.md`](./orchestration.md)** — the lifecycle policy this
+  item deferred ("when to give up, how to hand off to a human") is that
+  document's §7 give-up queries and its `abandoned` state, and what
+  remains of the steward is not an orchestration layer at all but a
+  ledger task whose wake predicate is a PR event. Kept below as the
+  original statement of the problem. Today every run is one-shot:
   dispatched, terminates, done. The steward shape — a task that stays
   subscribed to a PR's events (CI results, new comments, new pushes)
   and dispatches the right run type per event until the PR merges or
@@ -127,6 +133,15 @@ re-litigated later.
   rather than per-dispatch — same primitives, same
   policy-pass-required caveat.
 - **Task splitting: spinning off a dependent task with its own context.**
+  **Superseded by [`orchestration.md`](./orchestration.md) §6**, which
+  specifies the spinoff as a `Complete.report.spun_off` array with a
+  two-valued `relation` (`blocks_this`/`follows_this`) and answers all
+  three prerequisites named below: the dependency relationship
+  (`depends_on` on the task record), the approval policy (a deployment
+  choice parallel to the plan→implement gate), and what the originating
+  run does while it waits — **nothing; it ends, and the task waits**.
+  The sequencing note at the end of this item still stands and is
+  restated there. Kept below as the original statement.
   A coding run is dispatched with a `paths` scope and a set of `kinds`,
   and its context is resolved once against them
   ([`context-files.md`](./context-files.md) §1b). A run whose fix reaches

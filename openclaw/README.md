@@ -761,6 +761,31 @@ Ordered by how much it changes the picture.
 
 ---
 
+## Where this has landed so far
+
+- [`../agent-permissions-approval.md`](../agent-permissions-approval.md)
+  §2 gains the exec auto-reviewer (and the **allow-or-escalate, cannot
+  deny** verdict enum that distinguishes it from every other
+  separate-reviewer implementation), and a new **§2a, the
+  consent-assertion problem** — the seam where a model asserts that a
+  human approved something, and OpenClaw's Custodian
+  propose-then-confirm protocol as the only source here that closes it.
+- [`../agent-design/orchestration.md`](../agent-design/orchestration.md)
+  — new. Workboard read as a **run ledger** and adapted into the design:
+  task records with dependencies, harness-held leases instead of
+  agent-facing claim tokens, a one-task-per-owner dispatcher,
+  health as queries rather than a supervisor run, and task splitting
+  specified as a `Complete.report.spun_off` proposal. Its §8 carries the
+  non-model-oversight argument and the role invariant read out of five
+  OpenClaw roles.
+
+Still not integrated, and scoped under "Aspects this collection has
+covered elsewhere" above: `agent-subagent-architectures.md`,
+`agent-context-compaction.md`, `agent-memory-learning.md`,
+`agent-git-vcs.md`, `agent-tool-implementations.md`,
+`code-review-approaches.md`, `agent-vision-multimodal.md`,
+`agent-context-file-loading.md`.
+
 ## Caveats
 
 - **Read, not run.** Nothing here was executed. Section text is
