@@ -46,6 +46,45 @@ defer to the reviewers. Its published acceptance run is the finding:
 changes, which the operator doc frames as the workflow working —
 the hard part of learning from human review is refusing to extract.
 
+**[→ `openclaw/`](./openclaw)** — OpenClaw 2.0 (`v2026.8.1`, MIT, read
+2026-08-31): a messaging **gateway with a personal assistant in it** that
+grew a coding agent as one of its surfaces, and by far the largest source
+here (35,739 files, 159 plugins, 747 doc pages). The inversion is what
+makes it interesting — a coding turn is one mode among many, so the prompt
+is assembled per *surface* from ~60 runtime parameters with a **declared
+cache boundary inside its own text**
+(`<!-- OPENCLAW_CACHE_BOUNDARY -->`), section placement argued as a
+caching decision, and three named sections a provider plugin may replace.
+The team-coding answer is **Workboard**: a bundled, disabled-by-default
+board of claimable cards with claim tokens (redacted in every projection,
+handed out once, and *not* required by the recovery paths), heartbeats
+with a staleness diagnostic, a completion contract whose violation is a
+first-class card event, a dependency DAG that renders each done parent's
+result summary into the child's brief, per-assignee recent-work memory
+scoped to a board, and a dispatcher that starts one card per owner per
+pass — a Kanban WIP limit applied to agents. Its worker prompt is six
+lines. Alongside it, **Swarm** takes the field's strongest position on
+orchestration — *"There is no graph DSL and no separate workflow format.
+The program is the orchestration"* — with `Promise.all`/`while`/
+`Promise.race` as the control flow, JSON-Schema-validated child results
+with one corrective nudge, and collector approvals that **fail closed into
+data the program can branch on**. Other firsts: an **allow-or-escalate**
+model in the exec-approval path (it cannot deny, so a compromised reviewer
+degrades to asking a human); **compaction that fails closed** after
+auditing five required headings in the post-budget text, protecting
+pending asks and exact identifiers from truncation; memory consolidation
+where the model **places but may not write** ("never author replacement
+prose") and must emit a per-candidate operation record; a learning pass
+grounded in an **authoritative runtime receipt** of which skills actually
+fired; worktree cleanup that snapshots into `refs/openclaw/snapshots/<id>`
+and removes only when provably lossless; and a review prompt that reasons
+about **`git blame` epistemics**. It also sharpens
+`agent-context-file-loading.md`'s clean negative: OpenClaw ships a
+general-purpose `<untrusted-text>` escaping wrapper and uses it for
+sub-agent results, attachments and operator `/compact` text — but still
+injects `AGENTS.md`/`SOUL.md`/`MEMORY.md` raw, so the gap is now a
+*choice* rather than an absence.
+
 **[→ `deepseek-harness/`](./deepseek-harness)** — DeepSeek AI's
 open-source agent harness (MIT, developer preview, read 2026-08-14), and
 a different *kind* of source from the rest of the collection: no file in
@@ -749,7 +788,8 @@ From the scaffold-taxonomy paper above: AutoCodeRover, Agentless,
 Moatless Tools, DARS-Agent, Prometheus (all SWE-bench-family agents, same
 category as `swe-agent/`/`mini-swe-agent/`/`live-swe-agent/`/
 `augment-swebench-agent/` above). From Command Code's read-tool benchmark
-(see [`sources.md`](./sources.md)): **Kilo Code**, **Hermes**, **OpenClaw**,
-and **Command Code** itself — four harnesses this collection has no
-coverage of, two of which (Kilo Code, Hermes) are credited with read-tool
-features found nowhere in the sources read so far.
+(see [`sources.md`](./sources.md)): **Kilo Code**, **Hermes** and
+**Command Code** itself — three harnesses this collection has no coverage
+of, two of which (Kilo Code, Hermes) are credited with read-tool features
+found nowhere in the sources read so far. The fourth, **OpenClaw**, has
+since been read and has its own folder above.

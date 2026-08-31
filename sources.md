@@ -114,6 +114,57 @@ Already-stored captures used alongside the code (no fetch needed):
 `leaked/windsurf/tools-wave-11.txt`, `leaked/grok-build/`,
 `leaked/cursor/`, `leaked/github-copilot-cli/`.
 
+## OpenClaw 2.0 (read 2026-08-31)
+
+`github.com/openclaw/openclaw` at `5f714ef` (`main`, 2026-08-31). MIT.
+Version `2026.8.1`, released as "OpenClaw 2.0"; state schema 15, agent
+schema 19. 35,739 tracked files — a **full shallow clone** (`git clone
+--depth 1`, ~647 MB checked out) was simpler than a sparse one here,
+because the material is spread across `src/`, `extensions/`, `packages/`,
+`docs/` and `.agents/`. Sparse alternative if disk matters:
+
+```sh
+git clone --depth 1 --filter=blob:none --sparse https://github.com/openclaw/openclaw.git openclaw
+git -C openclaw sparse-checkout set src/agents src/skills/workshop \
+  extensions/workboard extensions/memory-core packages/agent-core/src/harness \
+  docs/concepts docs/tools docs/plugins docs/gateway .agents/skills/autoreview
+```
+
+Paths that matter, by topic:
+
+| Topic | Path |
+|---|---|
+| System prompt renderer | `src/agents/system-prompt.ts` (1,605 lines), `system-prompt-contribution.ts`, `system-prompt-config.ts`, `prompt-surface.ts` |
+| Prompt fragments | `src/agents/delegation-guidance.ts`, `promised-work-prompt.ts`, `bootstrap-prompt.ts`, `transcript-credential-safety.ts`, `skill-workshop-prompt.ts`, `watched-sessions-prompt.ts`, `progress-card-system-prompt.ts`, `gpt5-prompt-overlay.ts` |
+| Prompt escaping | `src/agents/sanitize-for-prompt.ts` (`wrapPromptDataBlock`, `wrapUntrustedPromptDataBlock`) |
+| Cache boundary | `packages/ai/src/utils/system-prompt-cache-boundary.ts` |
+| Sub-agents | `src/agents/subagents/spawn/subagent-system-prompt.ts`, `subagents/registry/subagent-active-context.ts`, `subagents/announce/subagent-announce-output.ts`, `src/agents/tools/sessions-spawn-tool.ts`, `src/agents/tool-description-presets.ts` |
+| Swarm | `src/agents/subagents/swarm/` (`swarm-scheduler.ts`, `swarm-collector.ts`, `swarm-output-schema.ts`), `src/agents/code-mode-swarm*.ts`, `docs/tools/swarm.md` |
+| Workboard | `extensions/workboard/src/` — `dispatcher.ts` (worker prompt), `store-card-helpers.ts` (`buildWorkerContext`, diagnostics), `tools.ts`, `tools-orchestration.ts`, `sqlite-store.ts`; `docs/plugins/workboard.md`, `docs/cli/workboard.md` |
+| File tools | `src/agents/sessions/tools/` — `read.ts`, `edit.ts`, `write.ts`, `grep.ts`, `find.ts`, `bash.ts`; ceilings in `packages/agent-core/src/harness/utils/truncate.ts` |
+| exec | `src/agents/bash-tools.descriptions.ts` (`describeExecTool`), `bash-tools.exec-run.ts`, `exec-auto-reviewer.prompt.ts` |
+| Compaction | `src/agents/agent-hooks/compaction-safeguard-quality.ts`, `compaction-instructions.ts`, `compaction-safeguard.ts`; `docs/concepts/compaction.md` |
+| Memory / dreaming | `extensions/memory-core/src/` — `memory-tool-contract.ts`, `dreaming-consolidation.ts`, `dreaming-narrative.ts`; `src/plugins/memory-state.ts` |
+| Self-learning | `src/skills/workshop/` — `experience-review-prompt.ts`, `learn-prompt.ts`, `history-scan-prompt.ts`, `skill-authoring-standards.ts` |
+| Code review | `.agents/skills/autoreview/SKILL.md` + `scripts/autoreview` (6,168 lines of Python; `render_review_prompt`, `review_scope_policy`, `SCHEMA` at line 377) |
+| Worktrees | `docs/concepts/managed-worktrees.md`; Workboard's use in `extensions/workboard/src/dispatcher.ts` |
+| Roles / scopes | `docs/gateway/operator-scopes.md`, `docs/tools/permission-modes.md`, `docs/tools/exec-approvals.md` |
+| Repo process corpus | `AGENTS.md` (361 lines), `.agents/skills/` (49 maintainer skills), `skills/` (52 bundled user skills), `taxonomy.yaml` (11,578 lines, not read) |
+
+Committed prompt snapshots exist but were **not** used this pass:
+`test/fixtures/agents/prompt-snapshots/codex-runtime-happy-path/` holds
+Codex thread/turn params plus a reconstructed model-bound prompt layer
+stack for Telegram-direct, Discord-group and heartbeat turns, regenerated
+with `pnpm prompt:snapshots:gen` and drift-checked in CI. They cover the
+*Codex* runtime only, not the OpenClaw-native prompt reproduced in
+[`openclaw/system-prompt-main.md`](./openclaw/system-prompt-main.md), which
+is reconstructed from the renderer. A future pass wanting byte-exact
+evidence for the Codex path should start from those fixtures.
+
+Not read: the ACP/ACPX bridge, `docs/specs/codex-supervision.md`, cloud
+workers and placement, `src/plugin-sdk/`, the Control UI (`ui/`), the
+native apps (`apps/`), and `taxonomy.yaml`.
+
 ## Caveat on the Claude Code source
 
 `tanbiralam/claude-code` claims to be the full leaked TypeScript source
@@ -405,10 +456,10 @@ from its in-band `instructions` block and tool list).
 
 **Hermes and Kilo Code have since been read** and are in the table above
 (Hermes in full, Kilo's read tool only). One harness surfaced by the
-Command Code write-up remains uncovered: **OpenClaw**. **Command Code**
-itself is closed today, though the post says "we're also going open source
-soon," which would make the §6b–§8b material checkable against code rather
-than prose.
+Command Code write-up remained uncovered until 2026-08-31: **OpenClaw**,
+now read in full (see the section above). **Command Code** itself is closed
+today, though the post says "we're also going open source soon," which would
+make the §6b–§8b material checkable against code rather than prose.
 
 Benchmarks worth reading next: **CanItEdit** (the other half of the
 audited pair, and the better-constructed one — near-complete whole-file
