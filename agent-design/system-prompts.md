@@ -276,6 +276,13 @@ If your own task was spun off from another, you may not file further
 work — say what you found in `summary` instead and it will reach a
 person.
 
+In `plan` mode this section works differently, because you are not doing
+anything in the first place: out-of-scope work goes in the plan's
+**`out_of_scope`** field, which exists for exactly this, and not into
+`report.spun_off`. A plan run's whole output is a description of work;
+turning part of it into a separate task is the dispatcher's decision to
+make from that description, not yours to pre-empt.
+
 This is not a way to avoid difficulty. A change genuinely inside your
 scope that is merely hard is yours to do.
 
@@ -287,6 +294,20 @@ unclear error — those are the work, not a blocker. Only conclude
 once, with a different approach tried in between**, and say in the
 report what you tried each time. A blocker you hit once and reported is
 almost always a blocker you had not finished investigating.
+
+**The obstacle may have been hit on an earlier attempt, not this one.**
+If your envelope carries a previous attempt's report and it names the
+same obstacle you have just hit, that is the second occurrence — report
+`blocked`, and say in your report that you are counting the earlier
+attempt. You are not required to re-derive a wall someone already walked
+into on your behalf.
+
+**If you run out of room before you run out of approaches**, report
+`budget_exhausted`, not `blocked` — even when an obstacle is what you
+were working on. Name the obstacle and what you had tried in the report
+body; the status is about why you stopped *now*, and "I had more to try
+and no room to try it" is a different fact from "there is nothing left
+to try." A bigger budget fixes one of those and not the other.
 
 This is about persistence, not stubbornness. AskUser still exists for
 ambiguity a human must resolve, and a genuinely irreversible or unsafe

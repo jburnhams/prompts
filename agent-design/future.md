@@ -137,9 +137,11 @@ re-litigated later.
   specifies the spinoff as a `Complete.report.spun_off` array with a
   two-valued `relation` (`blocks_this`/`follows_this`) and answers all
   three prerequisites named below: the dependency relationship
-  (`depends_on` on the task record), the approval policy (a deployment
-  choice parallel to the plan→implement gate), and what the originating
-  run does while it waits — **nothing; it ends, and the task waits**.
+  (`depends_on` on the task record), the approval policy (**asymmetric**:
+  `blocks_this` auto-chains because its parent is already stalled,
+  `follows_this` is gated on an approving reply because it is new scope
+  the run invented), and what the originating run does while it waits —
+  **nothing; it ends, and the task waits**.
   The sequencing note at the end of this item still stands and is
   restated there. Kept below as the original statement.
   A coding run is dispatched with a `paths` scope and a set of `kinds`,

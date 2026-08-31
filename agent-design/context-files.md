@@ -947,16 +947,43 @@ escaper: sub-agent results, attachments, operator focus text — payloads
 to be *treated as data*, never documents to be *followed*. Escaping is
 right for the first and wrong for the second.
 
-The proportionate fix, if this is ever worth closing, is a narrow
-**invisible-character check at resolution time** in the context service:
-not a transformation of the body, but a refusal — a section containing
-bidi overrides or zero-width characters outside a code fence fails
-resolution and the run does not start, the same fail-closed posture §1b
-already takes for a failed resolution. That keeps the never-transform
-rule intact, keeps the model's copy byte-identical to disk, and puts the
-check where a human can be told about it. **Not v1**, and recorded here
-rather than in `future.md` because it belongs next to the guarantee it
-qualifies.
+**The fix is a refusal, not a transformation, and it is v1.** The
+context service checks each resolved section for characters that can
+change what a human sees without changing what the model receives —
+Unicode `Cf` (bidi overrides, zero-width joiners and non-joiners, soft
+hyphens), `Cc` controls other than tab and newline, and `U+2028`/
+`U+2029` — outside fenced code blocks. A section carrying one **fails
+resolution**, and §1b's existing rule does the rest: *a run whose
+resolution failed does not start.*
+
+Three properties make this the right shape rather than a compromise:
+
+- **It preserves every guarantee above.** The body is still never
+  transformed, the model's copy is still byte-identical to disk, and
+  `Edit`'s exact-match contract is untouched — because nothing is
+  rewritten. The only outcome is that a run does not begin.
+- **It fails toward a human, and toward the right one.** A failed
+  resolution surfaces to whoever dispatched the run, naming the section
+  and the character class. That is the person who can look at the file
+  in a terminal that renders escapes, which is the whole point: the
+  attack works by making a *reviewer* see something other than what the
+  model gets, so the mitigation has to end at a reviewer.
+- **It is proportionate to the trust it protects.** The repo tier is
+  followed because a human approved it. A check that refuses to run
+  rather than silently proceed is the same posture the design already
+  takes when the corpus cannot be resolved at all.
+
+**The carve-out matters as much as the rule.** Fenced code blocks are
+exempt, because a conventions file legitimately contains examples —
+including, plausibly, examples *about* Unicode handling. A rule that
+cannot express "this file is allowed to talk about zero-width
+characters" would be a rule teams disable.
+
+The known cost, stated so it is not a surprise: a legitimate file that
+picks up a stray soft hyphen from a word processor stops every run
+against that repository until someone removes it. That is a real failure
+mode and an acceptable one — it is loud, it names its own cause, and the
+fix is one character. The alternative failure is silent and unbounded.
 
 ---
 

@@ -681,8 +681,11 @@ whole run, so they cannot.
 >   comes back partly elided even though no single entry hit its own cap.
 >   If you want more than twenty files, you are exploring rather than
 >   reading: use List or Grep.
-> - Lines longer than 2000 characters are truncated, and say so in place —
->   and, like every other cap here, the truncation names the exact next
+> - Lines longer than 2000 characters are **clamped**, and say so in
+>   place: the entry's status is `clamped`, distinct from `truncated`
+>   because your next move differs (`formats.md` §8b) — a `truncated`
+>   note tells you to advance `start_line`, which on a one-line minified
+>   file advances past the whole file. The note names the exact next
 >   call. Pass `char_offset` on the entry to resume that line from a
 >   character position, so a minified bundle, a long generated constant
 >   or a single-line JSON fixture is *resumable* rather than merely
@@ -1352,14 +1355,28 @@ Summarised here so the tool set reads complete in one place:
 > run that instead concludes no code change is needed uses
 > `status: "done"` with an empty `steps` list in `report` — the finding
 > was still posted per the same workflow, there's just nothing to hand
-> off. `status: "blocked"` is for a run resuming after AskUser that
-> still didn't fully resolve things; within a single run, use AskUser
-> directly instead of reaching Complete with status `blocked`.
+> off. `status: "blocked"` has three legitimate origins, and they are
+> different situations rather than degrees of the same one. (1) A run
+> resuming after AskUser that still didn't fully resolve things. (2) A
+> run that filed a `blocks_this` spinoff — work outside its scope has to
+> happen first, so it stops and the ledger resumes the task once that
+> work lands. (3) A run that has satisfied the persistence rule
+> (`system-prompts.md` §1): the same obstacle stopped it twice, with a
+> different approach tried in between, or once here and once in a
+> previous attempt named in the envelope. What `blocked` is *not* for is
+> a first encounter with an obstacle — that is the work. And where the
+> thing in the way is an **ambiguity a human must resolve**, use AskUser
+> rather than `blocked`: a question needs an answer, a `blocks_this`
+> spinoff needs a commit, and the two go to different places.
 > `status: "budget_exhausted"` is what the final-turn nudge asks for when
 > a run hits its turn or context budget (`formats.md` §7): the report is
 > partial and honest, but running out of room is a different fact from
 > being unable to do the work, and only one of them is worth retrying
-> with a bigger budget. Do not use it for a run that is genuinely stuck.
+> with a bigger budget. It **outranks `blocked`** on a nudged turn — if
+> you were working on an obstacle when the budget ran out, the status
+> names why you stopped now and the obstacle goes in the report body.
+> Use `failed` instead when the run genuinely could not do the work and
+> more room would not have helped.
 >
 > `report.spun_off` is where you record work you found **outside this
 > run's `paths` scope and deliberately did not do**. File it; do not

@@ -367,7 +367,7 @@ review-comment attachments.
     "string — any ambiguity resolved without AskUser, and why; empty array if none"
   ],
   "open_questions": [
-    "string; must be empty when status is \"done\""
+    "string; must be empty when status is \"done\". A \"budget_exhausted\" or \"blocked\" run should carry what it could not resolve here, and name the obstacle it stopped on"
   ],
   "evidence": [
     "string — artifact id of something produced by this run that should outlive it; empty array if none"
@@ -738,6 +738,24 @@ explicit position on what happens at each:
    otherwise identical: partial, honest, saying what was done and what
    remains. A run that is genuinely stuck still uses `failed`; the
    nudge does not launder one into the other.
+
+   **`budget_exhausted` also outranks `blocked` on a nudged turn**, and
+   the consequence is better than the rule looks. The coding prompt's
+   persistence rule (`system-prompts.md` §1) says not to report `blocked`
+   until the same obstacle has stopped the run twice — which a nudged run
+   may not have had room to establish. Rather than let the nudge force a
+   premature `blocked`, the status names the proximate cause and the
+   obstacle goes in the report body. The ledger then retries with a raised
+   budget ([`orchestration.md`](./orchestration.md) §7), the retry
+   receives the previous attempt's report in its envelope (§2's task
+   record stores it verbatim, and §1a's `<plan>`-style block carries it),
+   and if it meets the same obstacle *that is the second occurrence*.
+
+   So the persistence rule ends up spanning **attempts** rather than
+   turns, which is where it belonged: the second look at an obstacle gets
+   a fresh context window rather than the exhausted tail of the first
+   one, which is exactly the condition under which a second look is worth
+   anything.
    Grok Build's harder variant — refusing to end a turn at all while
    work is still open — is not adopted here, since it fights the same
    budget this mechanism exists to enforce.
@@ -920,7 +938,9 @@ Rules:
   `start_line`, not at 1 — which is what makes a range citable and
   `Edit`-safe without re-reading from the top.
 - **`status` vocabulary**: `ok`, `outlined` (declarations shown, bodies
-  elided — see below), `truncated` (a cap applied — the note
+  elided — see below), `clamped` (a single over-long line was cut at
+  `read.max_line_chars`; continue with `char_offset`, see below),
+  `truncated` (a cap applied — the note
   gives the continuation), `empty` (zero-byte or whitespace-only file),
   `past_eof` (`start_line` beyond the file's length; the note gives
   `total`), `not_found` (with a did-you-mean when one is computable),
@@ -956,6 +976,38 @@ Rules:
   rule — `agent-tool-implementations.md` §6c.) The one place that must
   still cut inside a line is `read.max_line_chars` itself, and **that cut
   is on a codepoint boundary**, never a raw offset.
+- **A clamped line is resumable, and says so — a third cap with its own
+  note.** `read.max_line_chars` is not a variant of the other two: the
+  line window and the byte ceiling both resume on the *next* line, and a
+  clamped line has no next line to resume on. So it carries its own
+  status and its own next call:
+
+  ```xml
+  <file path="dist/bundle.min.js" lines="1-1" total="1" status="clamped"
+        line="1" shown_chars="1-2000">
+  …first 2000 characters…
+  </file>
+  ```
+
+  with the note naming the exact continuation —
+  `line 1 clamped at 2000 chars — pass char_offset: 2000`. `clamped` is
+  distinct from `truncated` for the same reason `outlined` is: the model's
+  next move differs, and a `truncated` note tells it to advance
+  `start_line`, which on a one-line minified file advances past the entire
+  file. Without this, `char_offset` (`tools.md`) would be a parameter the
+  model is never told to reach for — the failure this collection keeps
+  finding, and the one OpenClaw's own doctrine names: *capability that
+  prompt/tool text does not mention does not exist.*
+
+  Two rules keep it honest. The clamp is per *line*, so a read spanning
+  many lines where several are over-long reports `clamped` with the
+  **first** clamped line named, and repeats on each continuation — the
+  model walks them one at a time rather than being handed a list it
+  cannot act on in one call. And a clamped line inside an otherwise
+  ordinary read does not make the whole entry `clamped`: the file-level
+  status stays `ok` or `truncated`, and the clamp is reported on the line
+  via a `clamped_lines` attribute, because the entry-level status has to
+  keep meaning "how do I continue *this file*".
 - **A `total` the harness has not established is not printed.** `total`
   requires having scanned the file; where a read streamed and stopped at a
   cap without reaching the end, the note states what was shown and the

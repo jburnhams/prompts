@@ -103,7 +103,7 @@ a task record directly (§8 explains why, and §9 gives the one exception).
 
   "attempts": [
     { "run_id": "string", "started_at": "…", "ended_at": "…",
-      "status": "done | planned | skipped | failed | blocked | lease_lost",
+      "status": "done | planned | skipped | failed | blocked | budget_exhausted | lease_lost",
       "summary": "string — the run's Complete.summary, or the failure reason" }
   ],
   "budget": { "max_attempts": 2, "max_run_seconds": 0, "attempts_used": 0 },
@@ -289,6 +289,16 @@ Two consequences the design has to state rather than assume:
   parent is `blocked` and therefore not occupying it, so the owner rule
   is satisfied by construction.
 
+**Read-only runs do not occupy an owner.** A `plan` run and a review run
+neither hold a working tree nor leave un-landed work, so counting them
+against (repository, branch) would serialise investigation behind
+implementation for no reason — and `plan` runs are exactly the work you
+want to run several of at once while an implement task is in `handoff`.
+The rule applies to `implement` tasks only. Stated because the naive
+reading of §2's record — every task has an `owner`, therefore every task
+competes — is wrong, and the failure it produces (a quiet throughput
+collapse) is the kind nobody diagnoses.
+
 **A per-pass start cap**, defaulting low. Its job is to make a
 misconfigured dependency graph or a badly-decomposed ticket produce a
 small visible mess rather than a large one.
@@ -432,7 +442,7 @@ about what it is shown, and a stalled task shows nothing.
 | `lease_expired` | `running` with a lease past its deadline | reclaim, record `lease_lost` attempt |
 | `repeated_failure` | ≥2 attempts ending `failed` | `blocked` — a human reads the attempt summaries |
 | `budget_exhausted` | `attempts_used == max_attempts` | `abandoned`, `abandon_reason: "budget_exhausted"` |
-| `context_exhausted` | last attempt ended `Complete(budget_exhausted)` (§8) | retry with raised budget — **does not** count toward `repeated_failure` |
+| `context_exhausted` | last attempt ended `Complete(budget_exhausted)` (§8) | retry with a raised budget — **does not** count toward `repeated_failure`. The retry's envelope carries the previous attempt's report, so an obstacle named there counts as already-seen for the persistence rule (§8) |
 | `blocked_stale` | `blocked` and untouched for longer than a threshold | escalate |
 | `unverified_done` | `done` with an empty `verification` array in `outcome.report` | flag on the handoff |
 | `missing_regression` | `done`, the diff added a test file, `regression_evidence` is null | flag on the handoff |
@@ -553,6 +563,28 @@ The retry asymmetry is the reason the status is worth a schema change
 rather than a note in `summary`: with `max_attempts: 2` (§11), spending
 an attempt on a run that merely ran out of context is expensive.
 
+**The two rules interact, and the interaction improves both.** A nudged
+run that has hit an obstacle once has not satisfied the persistence rule
+and cannot honestly report `blocked`; `budget_exhausted` wins, and the
+obstacle goes in the report body (`formats.md` §7). The ledger retries
+with a raised budget, `outcome.report` reaches the retry's envelope
+verbatim (§2), and an obstacle named there **counts as the first
+occurrence** — so the persistence rule spans *attempts* rather than
+turns.
+
+That is where it belonged. A second look at an obstacle is only worth
+having if it gets a real context window, and the within-a-run version
+guaranteed the opposite: the second look happened at the exhausted tail
+of the first. It also means the rule is cheap to satisfy honestly — a
+run does not have to spend budget manufacturing a second failure to earn
+the right to say it is stuck.
+
+One consequence to keep in view: this is the design's only path where a
+task's *effective* budget grows, and it is bounded by `max_attempts: 2`
+rather than by a separate escalation policy. A task that exhausts
+context twice is `abandoned` under `budget_exhausted`, not raised a
+third time.
+
 ---
 
 ## 9. What changes elsewhere, and the v1 slice
@@ -663,8 +695,18 @@ without a value is a cap nobody implemented:
 
 **Depth 0 is the load-bearing one, and it is deliberately structural.**
 A task with a non-null `spun_off_from` may not spin off further work at
-all: its `Complete.report.spun_off` entries are recorded on the task and
-surfaced to a human instead of being filed. That kills runaway fan-out
+all: its `Complete.report.spun_off` entries are **not filed as tasks**,
+and no new field is needed to keep them — `outcome.report` already
+stores the completing run's report verbatim (§2), and `spun_off` is part
+of it. The dispatcher simply declines to act on the entries.
+
+They still reach a human, through paths that already exist rather than a
+fifth projection: a `blocks_this`-shaped overflow means the run could not
+finish, so the task lands in `blocked` — which §10 *does* project — and
+a `follows_this`-shaped one completes normally, so the report reaches the
+ticket by the ordinary route. The only thing §10's four transitions would
+otherwise miss is an overflow on a task that completed cleanly, and that
+one is in the report a person is already reading. That kills runaway fan-out
 by *shape* rather than by budget arithmetic, which matters most in a
 first version, when nobody has calibration for what normal looks like —
 a depth limit is checkable at file time, whereas a total-task budget is
