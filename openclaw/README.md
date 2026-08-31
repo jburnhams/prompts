@@ -810,6 +810,15 @@ it belongs to:
 | [`../agent-vision-multimodal.md`](../agent-vision-multimodal.md) | §5 gains the three-way description builder, the `direct-only` routing that dodges §4's transport bug, and the dead-summary-key capture gap; §8 gains image-omission markers with a byte budget |
 | [`../agent-context-file-loading.md`](../agent-context-file-loading.md) | New **§10a**: the clean negative survives but changes meaning — a harness that has the escaper and does not point it here. Plus a §6 transformation nobody else has, and two §18 amendments |
 
+One note on what did **not** transfer, since it was offered and declined:
+escaping the conventions corpus. `agent-design/context-files.md` §4a now
+records why, and the reasoning runs the other way from how it was first
+framed — with the run nonce on **both** delimiters, escaping buys nothing
+against forgery, and it costs real accuracy on a document full of angle
+brackets that the model is meant to quote from. The place OpenClaw points
+its own escaper is instructive: results, attachments and operator text —
+payloads to be treated as data, never documents to be followed.
+
 ## Caveats
 
 - **Read, not run.** Nothing here was executed. Section text is
