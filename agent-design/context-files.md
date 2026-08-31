@@ -872,18 +872,118 @@ the transformation, and Forge has no reason to transform: it is not
 measuring the file against a budget the author has to manage, and it has
 no `paths:` frontmatter DSL.
 
-**The closing tag carries a nonce; the opening tag does not.** This is the
-same asymmetric-delimiter scheme `review.md` §4 already uses for
-`<existing_comments>`, applied here for the first time. Across all eleven
-loaders in the field, **nothing escapes or fences the file body**, so a
-file containing `</INSTRUCTIONS>` closes Codex's envelope, one containing
-`</file>` closes Crush's block, one containing `# Rules from …` forges a
-Roo Code header, and Zed's six-backtick fence — the only containment
-attempt anywhere — falls to a file containing six backticks. A nonce makes
-the class unrepresentable rather than unlikely, and §4's existing rule
-applies unchanged: **the orchestrator transcludes a nonce-bearing block
-whole and never re-wraps it**, because an assembler that emits the tag is
-an assembler that can emit it bare.
+**Both tags carry the run nonce** — as an attribute on the open tag and
+in the tag name on the close. This matches the scheme `review.md` §4
+already uses for `<existing_comments>`
+(`<existing_comments nonce="…">` … `</existing_comments nonce="…">`) and
+the reviewer core's own promise to the model, which says the nonce is
+one *"you can see on both the opening and closing tag"*
+(`system-prompts.md` §4).
+
+*(Corrected. An earlier revision of this paragraph said the opening tag
+carried no nonce and called the scheme "asymmetric" — contradicted by the
+template directly above it, by the `<existing_comments>` precedent it
+cited, and by the shipped prompt text. Nothing about the mechanism
+changed; the description of it was wrong. Recorded rather than silently
+edited, per `README.md`'s maintenance rules.)*
+
+Symmetry is not decoration here, and the reason is specific to a
+**multi-tier** envelope. In a single-envelope scheme the closing tag is
+the only thing an attacker needs, because escaping the block is the whole
+attack. Here the *attributes carry privilege*: `binding="policy"` means
+non-overridable (§1a). A body that could mint a plausible
+`<conventions tier="org" binding="policy" …>` would not need to close
+anything — it would only need the model to read the next paragraph as
+org-level policy. The nonce on the open tag is what makes that
+unrepresentable, and it is unrepresentable for the ordinary reason: the
+nonce is generated per run, and a file is written before the run.
+
+Across all eleven loaders in the field, **nothing escapes or fences the
+file body**, so a file containing `</INSTRUCTIONS>` closes Codex's
+envelope, one containing `</file>` closes Crush's block, one containing
+`# Rules from …` forges a Roo Code header, and Zed's six-backtick fence —
+the only containment attempt anywhere — falls to a file containing six
+backticks. A nonce makes the class unrepresentable rather than unlikely,
+and one rule keeps it that way: **the orchestrator transcludes a
+nonce-bearing block whole and never re-wraps it**, because an assembler
+that emits the tag is an assembler that can emit it bare.
+
+### 4a. What the nonce does not cover
+
+Stated explicitly, because "it is nonce-wrapped" is easy to hear as "it
+is handled".
+
+**Covered, completely**: forging either delimiter. Neither an early close
+nor a minted higher-binding open tag is representable without the run
+nonce.
+
+**Not covered**: characters that change what a *human* sees without
+changing what the model receives — bidi overrides, zero-width joiners,
+soft hyphens, homoglyphs. The body is injected verbatim (the rule above),
+and `formats.md` §1's sanitiser deliberately does not run here: it covers
+ticket text, PR bodies, comments and diffs, and explicitly exempts
+repository file contents so `Edit`'s exact-match contract survives.
+
+That residual matters more for this input than for any other, and the
+reason is the trust model rather than the mechanism. The repo tier is
+trusted because *a human reviewed and committed it* — that is the whole
+justification for §5's coding-mode framing, which tells the model to
+follow it. An invisible-character payload attacks precisely that
+assumption: the reviewer approves what their terminal renders, and the
+model receives something else. Review mode is already hardened against
+the *timing* version of this problem (resolve at `base_sha`; a diff
+touching a conventions file is a finding, §5), but neither rule helps
+against a payload that was invisible when it was approved.
+
+**Why escaping is not the fix**, despite being the obvious one. Escaping
+`<`/`>` to entities — OpenClaw's approach for its untrusted blocks
+([`../openclaw/README.md`](../openclaw/README.md)) — buys nothing once
+both delimiters carry a nonce, and costs something real: a conventions
+file is *full* of angle brackets, in generics, JSX, HTML and XML
+examples, and it is a document the model is meant to read closely and
+quote from. Handing it `&lt;T&gt;` in a house-style example invites the
+model to reproduce the entity. Note where OpenClaw actually points its
+escaper: sub-agent results, attachments, operator focus text — payloads
+to be *treated as data*, never documents to be *followed*. Escaping is
+right for the first and wrong for the second.
+
+**The fix is a refusal, not a transformation, and it is v1.** The
+context service checks each resolved section for characters that can
+change what a human sees without changing what the model receives —
+Unicode `Cf` (bidi overrides, zero-width joiners and non-joiners, soft
+hyphens), `Cc` controls other than tab and newline, and `U+2028`/
+`U+2029` — outside fenced code blocks. A section carrying one **fails
+resolution**, and §1b's existing rule does the rest: *a run whose
+resolution failed does not start.*
+
+Three properties make this the right shape rather than a compromise:
+
+- **It preserves every guarantee above.** The body is still never
+  transformed, the model's copy is still byte-identical to disk, and
+  `Edit`'s exact-match contract is untouched — because nothing is
+  rewritten. The only outcome is that a run does not begin.
+- **It fails toward a human, and toward the right one.** A failed
+  resolution surfaces to whoever dispatched the run, naming the section
+  and the character class. That is the person who can look at the file
+  in a terminal that renders escapes, which is the whole point: the
+  attack works by making a *reviewer* see something other than what the
+  model gets, so the mitigation has to end at a reviewer.
+- **It is proportionate to the trust it protects.** The repo tier is
+  followed because a human approved it. A check that refuses to run
+  rather than silently proceed is the same posture the design already
+  takes when the corpus cannot be resolved at all.
+
+**The carve-out matters as much as the rule.** Fenced code blocks are
+exempt, because a conventions file legitimately contains examples —
+including, plausibly, examples *about* Unicode handling. A rule that
+cannot express "this file is allowed to talk about zero-width
+characters" would be a rule teams disable.
+
+The known cost, stated so it is not a surprise: a legitimate file that
+picks up a stray soft hyphen from a word processor stops every run
+against that repository until someone removes it. That is a real failure
+mode and an acceptable one — it is loud, it names its own cause, and the
+fix is one character. The alternative failure is silent and unbounded.
 
 ---
 

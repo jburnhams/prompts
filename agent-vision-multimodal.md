@@ -308,6 +308,7 @@ they say*.
 | **Crush** | `SupportsImagesContextKey` in the tool's `ctx` | inside the `view` tool, before reading bytes | `This model (%s) does not support image data.` (as a tool error) |
 | **Codex** | `model_info.input_modalities.contains(Image)` | tool entry, before any I/O | `view_image is not allowed because you do not support image inputs` |
 | **OpenHands** | `llm.vision_is_active()` = `not disable_vision and features.supports_vision` | request build, plus tool-registration | tool simply isn't registered (§10) |
+| **OpenClaw** | session model's vision support, **or** a configured/resolvable image model | tool construction — `createImageTool` returns `null` when neither exists | tool simply isn't registered, like OpenHands; when it *is* registered, its description is one of three variants naming which of the two paths applies |
 
 Two rules fall out of the comparison.
 
@@ -351,6 +352,56 @@ conservative-accounting rule for unknown-size media anywhere in this
 collection.
 
 ---
+
+**A sixth variation the table can't hold: the description itself is the
+gate's output.** OpenClaw's `view_image` builds its description from
+the same capability check that decides whether to register at all, so
+the model is told *which* of two mechanisms it is about to use:
+
+```text
+(sighted session model)   Load image(s) into private model context for inspection: … Prompt images are already visible.
+(configured image model)  Inspect image(s) in private model context with the configured model: …
+(auto-resolved model)     Inspect image(s) in private model context with available vision: …
+```
+
+The sighted variant's trailing clause — *"Prompt images are already
+visible"* — is doing §8's job inside a tool description: it stops a model
+that can already see the conversation's images from re-loading them, the
+duplicate-admission problem §8 finds nobody tracking. It is a
+one-sentence answer, not a retention policy, but it is the only place in
+this collection where a harness tells the model *what it can already
+see*.
+
+All three variants end with *"Does not display, attach, or send files
+to the user"*, which is the §13 consent boundary stated at the tool
+rather than in a prompt section: loading an image into model context and
+showing it to a human are different acts, and a tool that does the first
+says so.
+
+**And a routing decision that §4's transport problem makes necessary.**
+OpenClaw's Code Mode hides every catalogue-eligible tool behind a
+JSON-only guest bridge — except those whose results cannot survive it.
+With a sighted model, `view_image` is marked
+`catalogMode: "direct-only"` and stays a real model tool. That is §4's
+image-in-a-tool-result bug avoided by *routing* rather than by
+degradation: instead of converting an image into something the transport
+can carry (and hallucinating from it, per Cline's finding), the harness
+declines to move the tool onto that transport at all. Worth naming
+because it is a third option alongside "convert" and "drop", and it only
+exists because the harness treats transport capability as a per-tool
+property.
+
+**A capture-gap footnote, recorded because this doc's §16 index exists
+to catch exactly this class of thing.** OpenClaw's prompt renderer keys
+its tool-catalogue summary map on `image` while the tool and the render
+order both use `view_image`, so the vision tool appears in the system
+prompt's `## Tooling` list as a bare `- view_image` with no summary at
+all, and the `image: "Analyze images"` entry is unreachable. The
+capability is real and fully described at the schema; it is only the
+every-turn catalogue line that is empty. Small, and precisely the defect
+the same repository's own product doctrine is aimed at — *"Capability
+that prompt/tool text does not mention — or contradicts — does not exist
+for users."*
 
 ## 6. Preparation: the numbers
 
@@ -495,6 +546,28 @@ state of X" has a lifetime of one. Snapshots, screenshots, `git status`,
 directory listings, a build's output. Superseding them in place with a
 pointer to the tool that refreshes them is strictly better than compaction,
 because it is exact, cheap, and needs no model call.
+
+**A third, thinner data point: OpenClaw marks what the summariser could
+not see, and budgets the markers.** Its built-in compaction receives
+text, not pixels, so an omitted image becomes
+`[image data omitted from summary input]`. Two details lift this above
+a placeholder string. First, the marker deliberately *"[does not] claim
+that a model processed the data"* — so a later reader can distinguish
+"the summariser saw this and judged it unimportant" from "the summariser
+never saw it," which is exactly the ambiguity §5's replacement strings
+create when they are written from the *model's* point of view rather
+than the *record's*. Second, the marker policy is itself bounded: at
+most two fixed markers on each of the first eight affected messages, one
+aggregate statement thereafter, and a hard ceiling of **847 UTF-8 bytes**
+of added markers per summariser request — a harness that has evidently
+met a conversation where the omission notices cost more than the
+omissions saved.
+
+It is not retention: nothing here tracks how many images survive, and
+custom compaction providers still receive the original content. But it
+is the second instance in this collection of a harness treating an
+image's *absence* as something the record has to state, and the first to
+put a byte budget on saying so.
 
 ---
 

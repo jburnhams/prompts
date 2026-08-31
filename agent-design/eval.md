@@ -203,3 +203,28 @@ design that can retire one.
    needs tracking. If it is large, the prerequisite is typed return
    schemas on every tool in `tools.md`, which the surface does not
    declare today.
+
+8. **Does the persistence rule change outcomes, or just spend budget?**
+   The coding prompt now refuses `blocked` on a first obstacle
+   (`system-prompts.md` §1), which is a bet that a second approach
+   usually exists. It is directly measurable and cheap to get wrong in
+   both directions: run the same seeded-blocker fixtures with the rule
+   on and off, and compare *completed* tasks — not turn counts — against
+   the budget spent. Two failure signatures look alike in aggregate and
+   should be separated: a run that grinds through variations of the same
+   failed approach (the rule bought nothing and cost a budget), and a
+   run that reports `budget_exhausted` where the old prompt would have
+   said `blocked` (the rule deferred a human decision by one attempt).
+   The second is only a loss if the retry then fails the same way, which
+   the ledger's `attempts` list records directly.
+9. **What fraction of `spun_off` proposals are worth having been
+   filed?** Task splitting (`orchestration.md` §6) assumes a run that
+   meets out-of-scope work should hand it off rather than stretch.
+   Whether the proposals are any good is open, and the design already
+   contains a free proxy: a gated `follows_this` spinoff waits for a
+   human reply, so the **approval rate is the measurement**, arriving
+   for nothing once the gate exists. A low rate means runs are inventing
+   scope and §11's caps are load-bearing rather than precautionary; a
+   high one means the gate is ceremony and auto-chaining `follows_this`
+   deserves a second look. Not measurable on `blocks_this`, which
+   auto-chains and therefore produces no signal.

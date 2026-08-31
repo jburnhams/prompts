@@ -117,6 +117,63 @@ and then `mapToolResultToToolResultBlockParam` converts that into what the
 model sees — which for the `text` case is just `cat -n`-numbered file
 content with no JSON envelope at all.
 
+**OpenClaw splits the model channel in two as well, and names all
+three in one type.** Its `ToolDefinition` carries `description` (the
+schema-level text the model sees at call time), `label` /
+`displaySummary` (the human UI's spinner and collapsed-row strings), and
+`promptSnippet` / `promptGuidelines` — a *shorter* register written for
+the system prompt's tool catalogue rather than for the schema. `read`'s
+three model-facing strings show the register difference directly:
+
+```text
+description:       Read text/image file (jpg/png/gif/webp/bmp); images attach to model context.
+                   Text caps 2000 lines or 50KB. Continue with offset/limit, or cursor within a long line.
+promptSnippet:     Read file contents
+promptGuidelines:  Use read to examine files and its offset, limit, or cursor to continue.
+```
+
+This is the same split DeepSeek arrives at below, reached from the other
+end: DeepSeek pulls guidance *out* of the description into a per-plugin
+prompt section; OpenClaw declares both on the tool and lets the prompt
+renderer pick. Either way the finding is that "the model channel" is not
+one string — a catalogue entry the model reads *every turn* and a schema
+description it reads *when deciding to call* have different budgets, and
+the harnesses that treat them as one end up with the catalogue paying
+for the schema's detail.
+
+**A rule that follows from taking the split seriously**, from the same
+repository's `AGENTS.md`, and one this collection has not seen stated
+anywhere else:
+
+> Tool/prompt descriptions never statically name tools from other
+> toolsets/plugins; gating turns the reference into hallucination bait.
+> Needed cross-references are injected at definition-build time from
+> what is actually available.
+
+That is why almost every OpenClaw description of any complexity is a
+*builder* — `describeExecTool`, `describeSessionsSpawnTool`,
+`describeAgentsWaitTool`, `describeAgentsListTool`, the memory
+contracts — taking availability flags and producing different text. §10
+treats the tool *set* as a runtime artifact; this is the same claim one
+level down, about the tool's own prose. A static "use `sessions_yield`
+to wait" in a profile where `sessions_yield` is filtered out is not a
+harmless stale sentence; it is an instruction to call something that
+does not exist.
+
+**And a second rule about what a tool may do to guidance it serves:**
+
+> Guidance the model must apply in full (skills, playbooks, prompt
+> instructions) is served whole: no offset/limit or windowed-read
+> parameters on those tools. Given a window, the model treats the first
+> window as the whole document.
+
+§12 documents memory tools as a confined second file family; this is the
+adjacent rule for a *guidance* family, and its justification is a
+behavioural claim rather than a safety one. Compare §6's entire
+apparatus of ceilings and continuations: the point is that pagination is
+correct for evidence and wrong for instructions, and that a tool's
+truncation policy should follow from what its payload *is*.
+
 ### 1a. DeepSeek Harness splits the model channel in two, and makes the human channel replay-pure
 
 [`deepseek-harness`](./deepseek-harness) is the strongest confirmation of
@@ -1302,6 +1359,32 @@ where §6 and §8 collide: a clamped line means the model has *not* seen the
 file's bytes, which makes the read partial in a way the line count doesn't
 reveal. §8b is what happens when a harness forgets that.
 
+**And the clamp is a dead end unless something can continue past it —
+which is a fourth axis, not a fourth ceiling.** Every source in §6a
+answers "how much do I return"; only one answers "how do I return the
+*rest* of a clamped line." OpenClaw's `read` takes `offset`, `limit`
+**and `cursor`** — a position *within* a long line — and says so in the
+description the model reads:
+
+```text
+Read text/image file (jpg/png/gif/webp/bmp); images attach to model context. Text caps 2000 lines or 50KB. Continue with offset/limit, or cursor within a long line.
+```
+
+Its ceilings are otherwise unremarkable (2,000 lines / 50 KB, with
+`grep` clamping match lines at 500 chars and capping at 100 matches, and
+`find` at 1,000 results). What is not unremarkable is that the minified
+bundle stops being a file the model can only ever see the first 2,000
+characters of. Command Code's framing is that each ceiling is the only
+defence against one file shape — true, and the per-line clamp's animal
+is the one the harness *defends against but cannot then read*. A
+continuation axis is what turns that from a refusal into pagination.
+
+Nothing else in §6a has it. This is the cheapest genuinely-missing
+feature this section has turned up: one optional integer, and it
+composes with the existing rule that every capped result names its exact
+next call. It is adopted in
+[`agent-design/tools.md`](./agent-design/tools.md) as `char_offset`.
+
 ### 6c. The truncation you cannot yet honestly claim
 
 Two implementation details from the same source, both about reads that
@@ -1806,7 +1889,33 @@ The harness channel from §1, in practice:
 
 ## 10. The tool set is a runtime artifact, not a constant
 
-Four mechanisms, all found in code:
+Five mechanisms, all found in code:
+
+**A tool description that reads host *policy state* at build time.**
+OpenClaw's `describeExecTool` composes its text from three availability
+flags — and, on Windows only, renders the host's own exec approval
+allowlist into the description the model reads:
+
+```text
+Pre-approved executables (exact arguments are enforced at runtime; no approval prompt needed when args match):
+  ${shortName} (any arguments)
+  ${shortName} (restricted args)
+```
+
+Capped at ten entries, filtered to allowlist patterns containing a path
+separator or `~`, and wrapped in a `try/catch` because *"allowlist
+loading is best-effort; don't block tool creation."* Every other
+mechanism in this section varies a tool by *model family*, *capability*
+or *config*; this one varies it by the contents of a file the operator
+edits, so the same binary on two machines advertises different tools.
+The payoff is that the model stops proposing commands it will be
+prompted for — an approval-fatigue optimisation reaching back into the
+tool surface (`agent-permissions-approval.md` §2a). The cost is that a
+description is now a cache key on host state, which is exactly the kind
+of dependency §9's metadata discussion says to keep off the model
+channel; OpenClaw pays it on one platform only.
+
+
 
 **Per-model-family declarations.** Gemini CLI's `definitions/` directory
 holds `model-family-sets/gemini-3.ts` and `default-legacy.ts`, plus a

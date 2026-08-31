@@ -25,9 +25,25 @@ etc.) — only things whose job is specifically reviewing code.
 | [`github-pr-bots/opencode-review`](./github-pr-bots/opencode-review) | GitHub PR (`/oc` mention, or automated) | GitHub Action |
 | [`composio-swekit/pr_review`](./composio-swekit) | GitHub PR | Multi-agent framework template (LangGraph) |
 | [`deepseek-harness/skills/dsh-code-review`](./deepseek-harness) | GitHub PR, one repo only | Repo-resident skill + a self-maintenance loop |
+| [`openclaw/.agents/skills/autoreview`](./openclaw) | Any git target (branch, PR, ref range), one repo | Repo-resident skill + a 6,168-line Python driver calling a second model |
 
-The last row is a different animal from the other thirteen and is worth
-saying so up front. Every other source here is a **portable** review tool:
+The **last two rows** are different animals from the other thirteen and
+are worth saying so up front.
+
+`autoreview` is the only source here that is a *program that calls a
+review model*, rather than a prompt handed to an agent already running.
+It builds and validates a change bundle, chunks it byte-exactly when
+oversized, invokes one of five named engines (Codex, Claude, Amp, Pi,
+Kimi) with a pinned model and reasoning effort, validates the returned
+JSON against a strict schema, and stops. That shape is what lets it do
+three things nothing else here can: **starve the reviewer of context on
+purpose** (§4), state **round-cost economics** to the model (§2), and
+enforce a **priority threshold** as a prompt preamble rather than a
+post-filter (§6). It also ships a consumer-side contract telling the
+*calling* agent how to treat the output, which no other source has
+(§9).
+
+The `dsh-code-review` row is a different animal again. Every other source here is a **portable** review tool:
 it ships criteria that are meant to apply to any repository. `dsh-code-review`
 is deliberately the opposite — a skill that reviews *one* codebase, whose
 content is the accumulated residue of that repo's own human review
@@ -147,6 +163,48 @@ documents elsewhere (`gemini-cli/`, `codex/`, `opencode/`,
 be swapped for something leaner on every one of these platforms, but
 isn't, in any of the actual published review tools checked here.
 
+### (d) Two instructions nobody else gives the reviewer
+
+`autoreview`'s prompt carries two rules that are not about *what* to
+find, but about the economics and the psychology of a single pass, and
+neither has an analogue elsewhere in this collection.
+
+**Round-cost economics, stated to the model:**
+
+> Report EVERY distinct actionable defect in this single pass, ordered
+> most severe first. **Each review round costs the caller a full
+> fix-test-review cycle; withholding a known defect until a later round
+> wastes one.**
+
+Most prompts here ask for completeness. This one explains what
+incompleteness costs the human, which is the difference between a
+preference and a reason. It matters most in a hands-off pipeline, where
+a second round is not "the reviewer adds a comment" but an entire
+dispatch.
+
+**An explicit second sweep against attention collapse:**
+
+> Before returning, sweep the bundle once more for independent defects
+> in other files or failure modes that you may have stopped scanning for
+> after an earlier find.
+
+That is a named failure mode — the model finds something good, and its
+remaining attention narrows around it — addressed with a cheap
+deterministic instruction rather than a second model call. Compare §6's
+validation passes, which all check findings that *were* made; this
+checks for findings that were not.
+
+Two more, for completeness. Nested review is forbidden **by name**
+(*"Forbidden nested review commands include: codex review, autoreview,
+claude review, oracle review"*), which is what stops a reviewer with
+shell access from recursively spawning reviewers. And oversized bundles
+are chunked with a byte-exactness assertion — the code raises
+`internal error: review bundle chunking omitted or reordered input` if
+concatenation does not reproduce the bundle — with the chunk prompt
+telling the model that *"original change bytes appear exactly once
+across the chunk sequence"* and that repeated headers in continuation
+context *"are not extra change content."*
+
 ## 3. Context construction — diff format
 
 The most consequential low-level choice: how does the diff actually reach
@@ -195,6 +253,44 @@ suppression. The signal these three learn from is human reaction to
 their own output, which is why their loops run automatically while
 coding agents' self-mined memory tends to sit behind an approval queue.
 
+**The opposite move: deliberately withholding the repository.**
+Every row above adds context. `autoreview` removes it, and says so to
+the model:
+
+> The review sandbox is intentionally empty. The change bundle and
+> explicit prompt or datasets are the only reviewed-repository source.
+> Read-only tools cannot access unchanged repository files.
+
+The Codex adapter runs the reviewer in an empty workspace so ignored
+files and linked-worktree metadata are unreadable. The point is not
+economy — the reviewer keeps web search and read-only tools *for
+external dependency contracts and upstream docs* — it is that a
+reviewer with a working tree will wander into it and report on code the
+PR never touched.
+
+That trade has an obvious failure mode, and the prompt closes it with
+the corollary rule rather than leaving it implicit:
+
+> Do not report a missing import, symbol, definition, call site, config
+> entry, or other unchanged context solely because it is absent from the
+> change bundle. Such a finding requires direct proof in the bundle or
+> explicit datasets.
+
+This is the sharpest statement in the collection of a tension every
+review design has: context prevents "you deleted a function that is
+still called" and simultaneously invites "while I'm here, this
+unrelated file is badly written." Most sources here resolve it by
+adding context and asking the model to stay in scope. This one resolves
+it by removing context and asking the model not to hallucinate absence.
+Both are defensible; only one of them can be verified by looking at the
+inputs.
+
+Where extra context *is* wanted, it enters through explicit
+`--prompt-file`/`--dataset` inputs that are validated to resolve before
+the run — and the scope policy states that they are *"context only. They
+do not expand the selected Git target or make unchanged files part of
+the reviewed diff."*
+
 ## 5. Review strategy — persona and single- vs. multi-agent
 
 | Strategy | Sources |
@@ -224,6 +320,8 @@ arguably where most of the engineering effort in this whole space goes.
 | Explicit "show what got filtered and why" transparency to the user | [`turingmind`](./skills/turingmind) only — a fixed "Filtered Issues" section with counts by reason |
 | Suppress anything a green CI gate already proves, as a stated scope rule | [`dsh-code-review`](./deepseek-harness) — "omit issues already enforced by a green gate"; the skill's declared job is the residue automation cannot reach |
 | Volume cap stated as a preference, not a threshold: one substantiated blocker beats a list | [`dsh-code-review`](./deepseek-harness) — "a short review with one substantiated blocker is better than a list of nits" |
+| **Priority threshold injected as a prompt preamble, plus an anti-inflation clause** | [`autoreview`](./openclaw) — `--max-priority` defaults to **P0**, and the threshold is prepended to the prompt rather than applied as a post-filter: *"Finding threshold: report only P0. Omit all lower-priority observations, polish, speculative risks, and follow-up ideas outside that threshold. **Do not mark the patch incorrect solely for an omitted lower-priority issue.**"* The second sentence is the part worth stealing: a schema with both a per-finding `priority` and a summary `overall_correctness` will otherwise have the model fail the patch on something it was just told not to report. |
+| **Scope discipline as its own policy block, with a release-freeze mode** | [`autoreview`](./openclaw) — a separate `review_scope_policy()` block states that the helper *"is a closeout gate. Do not turn a narrow patch into a broad redesign request,"* that *"a broader ideal design is not an actionable finding unless the current patch cannot safely land,"* and that where the right fix needs a new protocol, migration or contract the finding must still *"stay tied to the smallest changed line that proves the current patch is not landable."* On a release branch it switches to freeze discipline — only blockers, backport regressions, install/upgrade breakage, crashes, data loss, concrete security exposure or release-infrastructure failures. This collection has plenty of "stay in scope" instructions; this is the only one that is a *mode*. |
 
 ## 7. Output format & schema
 
@@ -267,6 +365,37 @@ what's already on the PR.
 | Terminal/chat output only, nothing touches GitHub | N/A | [`agent37/local-review`](./skills/agent37/local-review), [`turingmind`](./skills/turingmind), [`pr-review-toolkit`](./skills/anthropic/pr-review-toolkit) (despite being framed as PR review — no GitHub comment tool in its `allowed-tools` at all), [`gemini-code-review`](./github-pr-bots/gemini-code-review) `/code-review` |
 | Written into project files instead of GitHub (spec/story file, sprint-status.yaml, deferred-work.md) | No | [`bmad-code-review`](./skills/bmad-code-review) |
 | Inline editor reminders injected as you type/commit, not a comment at all | N/A (not comment-based) | [`security-guidance`](./skills/anthropic/security-guidance) |
+
+**A consumer-side contract — how the *calling* agent must treat the
+output — which no other source here ships.** `autoreview`'s `SKILL.md`
+is largely not a review prompt at all; it is instructions for whoever
+invoked the review:
+
+- *"Treat review output as advisory. Never blindly apply it."*
+- *"Verify every finding by reading the real code path and adjacent
+  files"*, and read dependency docs/source/types when a finding depends
+  on external behaviour.
+- *"Reject unrealistic edge cases, speculative risks, unrelated
+  rewrites, and fixes that over-complicate the codebase."*
+- *"Run one bounded review pass… rerun Autoreview only when the user
+  explicitly requests another pass"* — and, pointedly, *"Stop as soon as
+  the helper exits 0 with no accepted/actionable findings. Do not run an
+  extra review just to get a nicer 'clean' line, a second opinion, or
+  clearer closeout wording."*
+- Patience rules against a caller killing a slow reviewer: heartbeat
+  lines are *"healthy progress, not a hang"*, and *"Do not kill a review
+  just because it has been quiet for 2-5 minutes."*
+- A guard against laundering a partial result into a clean bill:
+  *"Treat `scoped-clean` with exit 0 as clean only for the selected Git
+  target and requested priority. `filtered` is not a correctness
+  certificate; `incomplete` requires resolving the scope mismatch."*
+
+And an anti-auto-invocation rule at the top, which is the inverse of
+every other source's positioning: *"Do not invoke Autoreview
+automatically before a commit, push, PR, merge, deploy, or final reply.
+Repository or workflow rules may call it only when they explicitly name
+it."* A second-model review is expensive enough (up to 30 minutes) that
+the design treats *being called* as the thing to gate.
 
 ## 10. Safety & security constraints
 

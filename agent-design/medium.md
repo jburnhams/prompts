@@ -112,6 +112,22 @@ pattern, same "gated or auto-chained is a deployment policy, not a
 Forge behavior" stance (`formats.md` §6, README's gating-policy
 decision row).
 
+**Where the follow-up lives once the ledger exists.** The dispatched
+`implement` run is a ledger task with `source: "review_finding"`
+([`orchestration.md`](./orchestration.md) §1, §2) — which is the whole
+of what "review runs stay outside the ledger" means: the *review* run
+carries no obligation past its own completion, but the work it
+identified does, and that work is an ordinary coding task. Two
+consequences worth stating here rather than leaving to be rediscovered:
+the task's `owner` is (repository, **the PR's branch**), so it is
+serialised against anything else targeting that branch — including the
+original coding task if it is still in `handoff` (§4's rule, and the
+reason `handoff` counts as occupied); and the reviewer files nothing
+itself. The orchestrator's `Complete` report is what the harness turns
+into a task, preserving "a role may file, propose or report; it may not
+act on what it oversees" (§8) without giving a review role a ledger
+capability.
+
 **Design sketch**: the dispatch policy question is identical in shape
 to plan-gating and should be answered the same way — the harness
 decides whether a fix run fires automatically, only for findings above
@@ -1123,6 +1139,18 @@ waiting shows up.
   draw that line explicitly.
 
 ### 4c. Long waits across runs: generalized task suspension
+
+> **Narrowed by [`orchestration.md`](./orchestration.md) §3/§12.** The
+> ledger makes a **parked task** — a record with a wake predicate and no
+> held transcript — the default answer to "wait for X", which is what
+> this section's own "prefer being woken over waiting" stance argues
+> for. `AwaitEvent` narrows to the case named below as its real purpose:
+> when *this* task's accumulated context must survive the event. That is
+> rarer than assumed here, and the lazy-suspend worry largely dissolves,
+> because the lazy option now costs a fresh run rather than a parked
+> one. `AskUser`'s own suspend/resume (`formats.md` §5) is unaffected —
+> a question mid-investigation is exactly the transcript-must-survive
+> case.
 
 **What**: the AskUser suspend/resume protocol (`formats.md` §5),
 with the wake condition generalized. V1's protocol is already "end

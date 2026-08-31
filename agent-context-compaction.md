@@ -44,7 +44,10 @@ Google Antigravity (leaked — a dual-context "Knowledge Items" system,
 no trigger/threshold captured; see §4 and §5 below), GitHub Copilot CLI
 (leaked — a 5-section structured Continuation Summary template plus a
 distinct SQL-queryable cross-session recovery mechanism; no numeric
-trigger threshold captured; see §1, §2, §5), Grok Build (leaked,
+trigger threshold captured; see §1, §2, §5), **OpenClaw** (read from
+source 2026-08-31, MIT — the only source here that **audits its own
+summary and fails closed** when it cannot pass; see §2 and the new §2a),
+Grok Build (leaked,
 partial — the existence claim ("unlimited context through automatic
 summarization") and a named post-compaction consumer-side contract are
 confirmed, but no summarization prompt, trigger threshold, or recovery
@@ -105,7 +108,77 @@ builds a second, independent recovery path for when they are.
 | **Structured template, 8-9 named sections with sub-bullets** — the most elaborate Markdown-shaped templates surveyed | Claude Code (9 sections: Primary Request and Intent, Key Technical Concepts, Files and Code Sections, Errors and fixes, Problem Solving, All user messages, Pending Tasks, Current Work, Optional Next Step), Copilot Chat (8 numbered sections: Conversation Overview → Technical Foundation → Codebase Status → Problem Resolution → Progress Tracking → Active Work State → Recent Operations → Continuation Plan, each with its own sub-bullets) |
 | **Structured XML tags, not Markdown** | Gemini CLI — `<state_snapshot>` with named child tags (`<overall_goal>`, `<active_constraints>`, `<key_knowledge>`, `<artifact_trail>`, `<file_system_state>`, `<recent_actions>`, `<task_state>` with `[DONE]`/`[IN PROGRESS]`/`[TODO]` markers) |
 | **Structured prose with named sections, but semi-structured rather than a rigid template** — a Jinja2-templated prompt producing guided paragraphs, not a fill-in-the-blank skeleton | OpenHands — `USER_CONTEXT`/`TASK_TRACKING`/`COMPLETED`/`PENDING`/`CURRENT_STATE` plus code-specific sections, with worked examples rather than a strict format contract |
+| **Five named sections, two of which are machine-audited afterwards** | OpenClaw's `safeguard` mode (the default for new configs) — `## Decisions`, `## Open TODOs`, `## Constraints/Rules`, `## Pending user asks`, `## Exact identifiers`. Shorter than Claude Code's nine or Copilot's eight, and the brevity is the point: the last two sections exist to be *checked*, not merely requested. See §2a. |
 | **A private reasoning scratchpad before the structured output**, stripped after generation | Claude Code (`<analysis>`, explicitly stripped — "a drafting scratchpad... has no informational value once the summary is written"), Goose (`<analysis>`), Gemini CLI (`<scratchpad>`), Copilot Chat (`<analysis>`/`<summary>` pair) — four independent sources converging on "think privately first, then emit the structured output," none of them showing the reasoning to the model in the post-compaction context |
+
+## 2a. The summary as an audited artifact, and the fail-closed path
+
+Every source in §2 *asks* for a shape. OpenClaw is the only one that
+**verifies it got one**, and the only one whose compaction can refuse to
+happen.
+
+The mechanism, from
+[`src/agents/agent-hooks/compaction-safeguard-quality.ts`](https://github.com/openclaw/openclaw/blob/v2026.8.1/src/agents/agent-hooks/compaction-safeguard-quality.ts):
+
+1. **The final summary budget is applied *before* validation**, so the
+   text being audited is the text that would actually be stored. This
+   ordering is the whole design — a summary that satisfies the contract
+   and then loses a section to truncation has satisfied nothing.
+2. **The five headings must appear, in order**, in the retained body.
+3. **Two sections are audited against the source**: pending user asks,
+   and exact identifiers extracted from the messages being summarised.
+   A rebuild plan protects exactly those two and lets the model's own
+   prose shrink around them, with the audited sections capped at a
+   0.25 content share so they cannot themselves eat the budget.
+4. **A bounded number of corrective attempts.** If none produces a
+   summary that validates, compaction **stops before writing a
+   transcript entry and keeps the original history.**
+
+Point 4 is the finding. Everywhere else in this survey, a bad summary is
+simply the context you now have — the failure is silent and unrecoverable,
+because the detail it replaced is gone (§5). OpenClaw's answer is that a
+compaction which cannot be verified is not performed, which trades a
+context-limit failure the operator will notice for a silent-quality
+failure they will not.
+
+**The in-flight request is protected by name**, which no other template
+here does. When a user request is still unresolved, the prompt adds:
+
+```text
+Make the exact request below the first item in ## Pending user asks.
+Its run owner will resume it after compaction, so summary prose cannot mark it complete.
+```
+
+with the request itself in an escaped `<untrusted-text>` block. The
+second sentence is doing real work: it tells the model that a fact it
+might reasonably infer from the transcript — "this was handled" — is
+wrong for a reason outside the transcript.
+
+**Operator input to the summariser is untrusted data, not prompt.**
+`/compact <focus>` text is capped at 800 code points and wrapped rather
+than spliced, as is a custom identifier-policy string. This collection
+has repeatedly found untrusted content interleaved into instruction
+text; a compaction focus string is an easy one to miss, because it comes
+from the operator and therefore *feels* trusted — but it reaches a model
+call that rewrites the agent's entire memory of the session.
+
+**Old summaries are demoted on re-embed.** When a summary is later
+included as supporting context, `nestRequiredSummaryHeadings` rewrites
+its five `##` headings to `###`, so a previous summary cannot be
+mistaken for the live contract by the next summariser. A small
+mechanism, and the only instance in this collection of a scaffold
+worrying about its own output being re-ingested as instructions.
+
+**Omitted non-text input is marked, with a budget on the markers.**
+Built-in summarisation receives text, not pixels, so images become
+`[image data omitted from summary input]` — but the marker policy is
+itself bounded: at most two fixed markers on each of the first eight
+affected messages, one aggregate statement thereafter, and a hard
+ceiling of **847 UTF-8 bytes** of added markers per summariser request.
+Compare §5's recovery discussion: the marker deliberately does not claim
+the model processed the data, so a later reader can tell the difference
+between "the summariser saw this and judged it unimportant" and "the
+summariser never saw it."
 
 ## 3. One mechanism vs. a layered pipeline vs. a pluggable strategy
 
@@ -140,6 +213,7 @@ top of the summary from the *first* compaction event?
 |---|---|
 | **Explicit incremental UPDATE mode — a genuinely separate prompt for "merge new information into the existing summary"** | Pi — `UPDATE_SUMMARIZATION_PROMPT` is a distinct prompt (from the fresh-summarize `SUMMARIZATION_PROMPT`) invoked when a prior summary exists: "PRESERVE all existing information... ADD new progress... UPDATE the Progress section: move items from 'In Progress' to 'Done'... you may remove [something] if it's no longer relevant." OpenCode — the `compaction` agent's own prompt instructs it, when a `<previous-summary>` block is present, to treat it as the anchor and update it in place (preserve still-true details, remove stale ones, merge in new facts) rather than re-deriving everything from the raw history again. Two unrelated codebases arriving at the same design independently. |
 | **The same anchor-and-update idea, one level up — corpus-level rather than session-level** | Google Antigravity (leaked) — its Knowledge Items (KI) system is generated by a background "Knowledge Subagent" that "distills... into new KIs or updates existing KIs as appropriate" — not updating one conversation's rolling summary, but incrementally updating a persistent, cross-conversation, per-topic knowledge base. A third data point for this pattern, structurally distinct from Pi's/OpenCode's single-session anchoring. |
+| **A prompted re-distill instruction, part of the required-section contract rather than a separate prompt** | OpenClaw — the same five-section instruction block ends with *"When prior compaction summaries are present, re-distill them with new messages and remove stale duplicate detail."* A third position: not a distinct UPDATE prompt (Pi), not an anchor block the model is told to edit in place (OpenCode), but a standing clause inside the one prompt, so the second and tenth compactions run the same call. Paired with the heading-demotion rule (§2a), which is what stops the prior summary's headings from competing with the live contract while it is being re-distilled. |
 | **Not confirmed either way** | Every other source in this survey — none of the other captured prompts explicitly address whether a second compaction event in the same session re-reads full history or anchors on the prior summary; this is a real gap in what's been investigated, not a confirmed "from scratch" finding |
 
 **Why this matters for token budgeting specifically**: incremental/
@@ -165,6 +239,7 @@ as a good candidate for a future deeper pass.
 | **Not compaction at all, but a structurally distinct answer to the same underlying problem** | Aider — a long-lived, ever-growing chat log is central to its UX, and no summarization/trimming mechanism was found in any captured file. Instead, every mode's prompt handles staleness by **additive correction**: "I have *added these files to the chat* so you can go ahead and edit them. *Trust this message as the true contents of these files!* Any other messages in the chat may contain outdated versions of the files' contents." Nothing is ever deleted or condensed; each turn just injects a fresh authoritative copy and tells the model to treat anything older in the log as potentially stale. No other source in this survey models "leave the old content in place, just outrank it" as an alternative to compaction. |
 | **Durable raw record, directly agent-reachable, with a curated index layered on top rather than a replacement for it — a fifth variant** | Google Antigravity (leaked) — the conversation log persists as `transcript.jsonl` on disk and is reachable via ordinary tools in the IDE, or literal `grep`/`head` shell commands in the CLI capture ("Find all subagents spawned: Grep for the `invoke_subagent` tool call"). Differs from OpenHands's append-only log (retained but not confirmed agent-reachable mid-conversation) and from Windsurf's externalize-to-memory strategy (a *write* path into a separate store, not a query path into the original record): here the raw record is both durable *and* directly queryable by the agent itself, with the Knowledge Item system (§4) as a curated index into it. A dangling "checkpoint" reference in the CLI capture ("history before the last checkpoint") implies some compaction-like event exists, but no trigger/mechanism accompanies it — flagged as a capture gap, not a documented feature. |
 | **Not addressed for conversation content, but a distinct, narrower recovery contract exists for task *state***: no pointer to a transcript, no "sole surviving record" framing, no externalize-to-memory strategy — just a named rule for reconstructing one specific artifact (the todo list) after the event | Grok Build (leaked) — "After a context compaction, if your prior todo list is no longer in conversation history, **reseed it** with a fresh `todo_write` call (`merge: false`) before continuing the task," triggered by a named system-reminder header the agent is told to watch for: "the harness signals this with a `## Pre-Compaction Todo List` system-reminder, your FIRST tool call after the reminder MUST be `todo_write` (`merge: false`) reconstructing the remaining phases from the pre-compaction snapshot." This is a genuinely different kind of "recovery" from every other row in this table — none of it is about the model's own lost conversational detail; it's a harness-enforced contract for rebuilding one specific piece of task-tracking state that would otherwise silently vanish across the compaction boundary. No pointer back to a full transcript and no externalization strategy for anything *other* than the todo list was found. |
+| **Recovery is not the answer — non-performance is.** The only source here where a compaction that cannot be verified simply does not happen | OpenClaw's `safeguard` mode (§2a): the audit runs against the post-budget text, and if no corrective attempt validates, *"compaction stops before writing a transcript entry, keeps the original history, and surfaces the existing recovery outcome."* Every other philosophy in this table is a way of living with a summary once it exists; this one declines to install a summary it cannot vouch for, which converts a silent quality failure into a loud context-limit one. It stacks with the ordinary recovery story rather than replacing it — the full conversation stays on disk, and compaction *"only changes what the model sees on the next turn."* |
 | **Not addressed** | Codex CLI, OpenCode, Goose, Pi |
 
 ## 6. Token budgeting — the numbers
@@ -212,6 +287,42 @@ design constraint, not an afterthought.
   summarization request before it's sent — the summarization call is
   deliberately excluded from the normal caching path rather than an
   attempt being made to keep it cache-compatible.
+- **OpenClaw** goes further than either, and in the other direction:
+  rather than managing the cache *around* compaction, it makes cache
+  boundaries a first-class feature of the system prompt itself, and then
+  makes prompt-state changes deferred so they cannot bust it
+  mid-session. Three mechanisms, all confirmed in source:
+  - The system prompt carries a **literal boundary marker in its own
+    text** — `SYSTEM_PROMPT_CACHE_BOUNDARY` is the string
+    `"\n<!-- OPENCLAW_CACHE_BOUNDARY -->\n"`. Everything above it is
+    memoised on a hash of its inputs (a 64-entry LRU) and is
+    byte-identical across turns and across sessions sharing a
+    workspace; everything below is rebuilt per turn. Section placement
+    is argued as a caching decision in code comments — temporal
+    context, channel guidance, the runtime line and watched sessions
+    all sit below the boundary specifically so a day rollover or a
+    channel change cannot invalidate the workspace prefix.
+  - **`ensureSystemPromptCacheBoundary`** appends the marker to any
+    prompt that lacks one — a hook that overrides the system prompt
+    would otherwise route every dynamic addition into the cached
+    prefix. The commit reference in the source names that as the bug
+    it fixes.
+  - **Prompt-state mutations default to deferred invalidation.** The
+    repository's own `AGENTS.md` states it as a rule:
+    *"Prompt-state mutations (skills/tools/memory) default to deferred
+    cache invalidation — effect next session; immediate invalidation is
+    an explicit opt-in."* So learning a skill or changing a tool policy
+    does **not** rewrite the cached prefix underneath a running
+    conversation. This collection has documented plenty of caching
+    tactics; this is the only instance of a scaffold constraining what
+    the *rest of the product* may change, in order to protect one.
+  - One more detail worth carrying, because it is the kind of thing
+    only a live deployment finds: the `## Runtime` line deliberately
+    renders a cron job's stable base session key and **drops the
+    volatile `:run:<id>` suffix**, because some providers' automatic
+    literal-prefix caches include that line before the tool catalogue,
+    and a per-run id there would defeat reuse across runs of the same
+    job.
 - **Not addressed**: every other source in this survey.
 
 ## 8. Sub-agent / multi-session isolation
