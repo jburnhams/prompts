@@ -657,6 +657,64 @@ whose *memory* search is a grep. Across all eleven, **nobody generates
 repository context programmatically**: skills are progressive disclosure
 of static files, not construction.
 
+**[→ `agent-submit-result-tool.md`](./agent-submit-result-tool.md)** — a
+further drill-down alongside `agent-self-verification.md` and
+`agent-turn-output.md`, but asking a narrower question than either:
+not *whether* an agent's work gets checked, but what the "I am done"
+tool itself looks like — its parameter schema, and what actually consumes
+those parameters afterward — across 24 sources. The same tool name turns
+out to hide incompatible contracts: `attempt_completion` has at least
+three different schemas (Cline's `result`/`command`, Roo Code's — whose
+own schema isn't captured locally, only prose referencing it — and
+CodeBuddy's variant, which drops the `result` field entirely in favor of
+wrapping the whole response in tags and repurposes its one real parameter
+as a Supabase-integration upsell channel), and `task_complete` is
+confirmed as a genuine shared convention — the same name, gated behind
+the identical `permissionLevel === 'autopilot'` concept — independently
+in two separately-leaked captures of the same Copilot product family
+(the standalone CLI and VS Code Chat's agent mode). Four sources in the
+SWE-bench lineage skip a tool entirely and detect completion by
+pattern-matching a magic string in ordinary shell output
+(mini-swe-agent's/Live-SWE-agent's `echo
+COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`, with two procedural rules not
+phrased this way anywhere else — the patch-creation and submission
+commands "MUST be separate," and re-verify after any post-check edit);
+Augment SWE-bench Agent's `complete_tool.py` shows the opposite extreme,
+a single free-text `answer` field whose only downstream effect is
+flipping an in-process `should_stop` boolean, with the actual scored
+diff extracted separately from repo state. Jules (leaked) has the
+richest traced handoff: its four-field `submit(branch_name,
+commit_message, title, description)` explicitly requires `title`/
+`description` to be "git-agnostic" — mapped to a separate PR object
+rather than the commit message — and requests human approval to push
+*after* the model has already declared the work complete, on top of a
+deliberately hidden mandatory pre-step. Replit's `report_progress`
+schema bakes a rendering spec (item counts, word limits, ✓/→ markers)
+directly into the parameter's own description and hands the actual
+accept/reject call to the user. Grok Build's `update_goal` schema does
+something no other source does — a bounded-retry threshold ("3+
+consecutive failed attempts") lives in the JSON Schema field description
+itself, not surrounding prose. The one genuine fourth category, not
+fitting "structured tool," "sentinel string," or "plain end-of-turn
+prose": Google Antigravity's completion signal is a persisted
+`walkthrough.md` artifact plus a call to a content-free generic
+channel-exit tool (`notify_user`, reused identically for questions and
+artifact-review requests) — no result field anywhere. Confirmed absences
+matter here too: Claude Code, Codex CLI, Gemini CLI, OpenCode, Lovable,
+and Claude for Chrome have no completion tool at all and simply end a
+turn with prose; Factory/Droid and Devin externalize "submission"
+entirely to git/PR state (a draft-PR flag, incremental pushes) rather
+than any chat-level tool call; and OpenHands's `finish` action is
+confirmed to exist (even in its most stripped-down `readonly_agent`
+config) but its actual parameter schema isn't recoverable from what this
+collection captured — a stated gap rather than a guess. The closing
+argument: a gate on the tool (does it require a checklist first, per
+`agent-self-verification.md`) and a contract for the tool (what shape is
+the payload, who reads it after) are independent design axes that don't
+correlate — SWE-agent gates hard on a nearly-empty payload, Jules's
+richest payload is gated twice over, and Cline's real payload sits behind
+no code-level gate at all.
+
 ## Sources so far
 
 | Folder | Project | Type | License |
