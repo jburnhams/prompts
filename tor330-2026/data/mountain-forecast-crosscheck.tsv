@@ -1,0 +1,193 @@
+peak	level_m	date	period	phrase	tmax_c	tmin_c	chill_c	rain_mm	snow_cm	freezing_level_m	wind
+Becca-di-Luseney	2000	2026-09-09	night	light rain	9	8	7	1.2	—	3300	5   N
+Becca-di-Luseney	2000	2026-09-10	AM	light rain	8	7	7	4	—	3250	5   SE
+Becca-di-Luseney	2000	2026-09-10	PM	rain shwrs	9	9	9	3	—	3250	5   ENE
+Becca-di-Luseney	2000	2026-09-10	night	rain shwrs	8	7	7	3	—	3250	5   NW
+Becca-di-Luseney	2000	2026-09-11	AM	some clouds	10	7	6	—	—	3400	5   NNW
+Becca-di-Luseney	2000	2026-09-11	PM	rain shwrs	11	11	11	0.1	—	3550	5   N
+Becca-di-Luseney	2000	2026-09-11	night	rain shwrs	9	8	8	0.4	—	3450	0   WNW
+Becca-di-Luseney	2000	2026-09-12	AM	clear	11	9	9	—	—	3600	0   N
+Becca-di-Luseney	2000	2026-09-12	PM	clear	13	13	13	—	—	3900	5   NNW
+Becca-di-Luseney	2000	2026-09-12	night	clear	10	10	9	—	—	4000	5   NW
+Becca-di-Luseney	2000	2026-09-13	AM	some clouds	12	10	10	—	—	3900	5   NW
+Becca-di-Luseney	2000	2026-09-13	PM	cloudy	13	12	11	—	—	3700	10   NW
+Becca-di-Luseney	2000	2026-09-13	night	rain shwrs	9	8	6	0.1	—	3450	10   NW
+Becca-di-Luseney	2000	2026-09-14	AM	clear	11	8	7	—	—	3600	0   NNE
+Becca-di-Luseney	2000	2026-09-14	PM	clear	13	13	13	—	—	3850	5   NNW
+Becca-di-Luseney	2000	2026-09-14	night	clear	11	10	10	—	—	3850	5   W
+Becca-di-Luseney	3000	2026-09-09	night	cloudy	2	2	-1	—	—	3300	5   ENE
+Becca-di-Luseney	3000	2026-09-10	AM	light snow	2	1	-1	—	2	3250	5   ESE
+Becca-di-Luseney	3000	2026-09-10	PM	snow shwrs	2	2	0	0.9	1	3250	5   NE
+Becca-di-Luseney	3000	2026-09-10	night	snow shwrs	2	1	-1	—	1	3250	0   NNW
+Becca-di-Luseney	3000	2026-09-11	AM	some clouds	3	2	0	—	—	3400	5   NW
+Becca-di-Luseney	3000	2026-09-11	PM	rain shwrs	4	3	1	0.1	—	3550	5   NNW
+Becca-di-Luseney	3000	2026-09-11	night	rain shwrs	3	2	0	0.4	—	3450	0   W
+Becca-di-Luseney	3000	2026-09-12	AM	clear	4	3	3	—	—	3600	5   NNW
+Becca-di-Luseney	3000	2026-09-12	PM	clear	6	5	4	—	—	3900	10   NNW
+Becca-di-Luseney	3000	2026-09-12	night	clear	6	5	3	—	—	4000	5   NW
+Becca-di-Luseney	3000	2026-09-13	AM	some clouds	6	6	5	—	—	3900	10   NW
+Becca-di-Luseney	3000	2026-09-13	PM	cloudy	6	5	2	—	—	3700	15   NW
+Becca-di-Luseney	3000	2026-09-13	night	rain shwrs	4	3	0	0.1	—	3450	10   NW
+Becca-di-Luseney	3000	2026-09-14	AM	clear	4	3	1	—	—	3600	5   NNW
+Becca-di-Luseney	3000	2026-09-14	PM	clear	5	5	3	—	—	3850	10   NNW
+Becca-di-Luseney	3000	2026-09-14	night	clear	5	5	3	—	—	3850	5   WNW
+Corno-Bianco	2000	2026-09-09	night	rain shwrs	9	7	7	1.3	—	3350	0   N
+Corno-Bianco	2000	2026-09-10	AM	light rain	8	7	7	4	—	3250	5   E
+Corno-Bianco	2000	2026-09-10	PM	rain shwrs	9	9	9	2	—	3250	5   E
+Corno-Bianco	2000	2026-09-10	night	rain shwrs	8	6	5	3	—	3250	5   NW
+Corno-Bianco	2000	2026-09-11	AM	some clouds	10	7	6	—	—	3450	0   NW
+Corno-Bianco	2000	2026-09-11	PM	rain shwrs	12	11	11	0.2	—	3550	0   ENE
+Corno-Bianco	2000	2026-09-11	night	rain shwrs	9	7	7	0.8	—	3400	0   NW
+Corno-Bianco	2000	2026-09-12	AM	clear	11	8	8	—	—	3600	0   SSW
+Corno-Bianco	2000	2026-09-12	PM	some clouds	12	12	12	—	—	3850	0   S
+Corno-Bianco	2000	2026-09-12	night	clear	10	9	9	—	—	4000	5   NW
+Corno-Bianco	2000	2026-09-13	AM	some clouds	12	9	9	—	—	3950	0   W
+Corno-Bianco	2000	2026-09-13	PM	cloudy	13	12	12	—	—	3800	5   WNW
+Corno-Bianco	2000	2026-09-13	night	rain shwrs	10	8	6	0.2	—	3500	10   NNW
+Corno-Bianco	2000	2026-09-14	AM	clear	11	8	7	—	—	3600	0   E
+Corno-Bianco	2000	2026-09-14	PM	some clouds	12	12	12	—	—	3800	0   NW
+Corno-Bianco	2000	2026-09-14	night	clear	10	9	9	—	—	3800	5   WNW
+Corno-Bianco	3000	2026-09-09	night	rain shwrs	3	2	2	0.6	—	3350	5   ENE
+Corno-Bianco	3000	2026-09-10	AM	light snow	2	2	0	—	1	3250	10   ENE
+Corno-Bianco	3000	2026-09-10	PM	snow shwrs	2	2	0	0.5	1	3250	5   ENE
+Corno-Bianco	3000	2026-09-10	night	snow shwrs	2	1	-1	—	1	3250	5   NNW
+Corno-Bianco	3000	2026-09-11	AM	some clouds	3	2	0	—	—	3450	5   NW
+Corno-Bianco	3000	2026-09-11	PM	rain shwrs	4	3	1	0.2	—	3550	5   NW
+Corno-Bianco	3000	2026-09-11	night	rain shwrs	3	2	2	0.8	—	3400	0   WNW
+Corno-Bianco	3000	2026-09-12	AM	clear	4	3	3	—	—	3600	5   NNW
+Corno-Bianco	3000	2026-09-12	PM	clear	5	5	3	—	—	3850	10   NNW
+Corno-Bianco	3000	2026-09-12	night	clear	6	5	3	—	—	4000	5   NW
+Corno-Bianco	3000	2026-09-13	AM	some clouds	6	6	5	—	—	3950	5   NW
+Corno-Bianco	3000	2026-09-13	PM	cloudy	6	5	2	—	—	3800	15   NW
+Corno-Bianco	3000	2026-09-13	night	rain shwrs	4	3	0	0.2	—	3500	10   NW
+Corno-Bianco	3000	2026-09-14	AM	clear	4	3	1	—	—	3600	5   NNW
+Corno-Bianco	3000	2026-09-14	PM	some clouds	5	4	2	—	—	3800	15   NNW
+Corno-Bianco	3000	2026-09-14	night	clear	5	4	4	—	—	3800	5   WNW
+Mont-Blanc	2000	2026-09-09	night	light rain	7	6	5	0.7	—	3400	5   NE
+Mont-Blanc	2000	2026-09-10	AM	rain shwrs	7	6	6	1	—	3150	5   E
+Mont-Blanc	2000	2026-09-10	PM	light rain	7	7	7	2	—	3150	5   NW
+Mont-Blanc	2000	2026-09-10	night	rain shwrs	7	6	6	0.2	—	3250	5   WNW
+Mont-Blanc	2000	2026-09-11	AM	some clouds	8	6	6	—	—	3400	5   NNW
+Mont-Blanc	2000	2026-09-11	PM	some clouds	11	10	9	—	—	3300	5   NW
+Mont-Blanc	2000	2026-09-11	night	clear	8	8	8	—	—	3600	5   ENE
+Mont-Blanc	2000	2026-09-12	AM	clear	11	8	8	—	—	3700	5   NNW
+Mont-Blanc	2000	2026-09-12	PM	clear	13	13	13	—	—	3800	5   NW
+Mont-Blanc	2000	2026-09-12	night	clear	11	9	9	—	—	4050	5   NNW
+Mont-Blanc	2000	2026-09-13	AM	clear	12	10	10	—	—	4000	5   NW
+Mont-Blanc	2000	2026-09-13	PM	cloudy	13	12	11	—	—	3700	10   NNW
+Mont-Blanc	2000	2026-09-13	night	clear	10	8	7	—	—	3400	5   N
+Mont-Blanc	2000	2026-09-14	AM	clear	11	8	7	—	—	3800	5   N
+Mont-Blanc	2000	2026-09-14	PM	clear	14	13	13	—	—	3800	5   NNW
+Mont-Blanc	2000	2026-09-14	night	clear	11	10	10	—	—	4000	0   ESE
+Mont-Blanc	3000	2026-09-09	night	some clouds	3	1	-2	—	—	3400	5   E
+Mont-Blanc	3000	2026-09-10	AM	some clouds	1	1	0	—	—	3150	5   ESE
+Mont-Blanc	3000	2026-09-10	PM	light snow	1	1	1	—	2	3150	5   NNW
+Mont-Blanc	3000	2026-09-10	night	some clouds	2	0	0	—	—	3250	5   WNW
+Mont-Blanc	3000	2026-09-11	AM	some clouds	3	3	1	—	—	3400	5   NW
+Mont-Blanc	3000	2026-09-11	PM	some clouds	2	2	0	—	—	3300	5   NNW
+Mont-Blanc	3000	2026-09-11	night	clear	4	2	1	—	—	3600	5   NE
+Mont-Blanc	3000	2026-09-12	AM	clear	4	4	4	—	—	3700	5   N
+Mont-Blanc	3000	2026-09-12	PM	clear	5	5	5	—	—	3800	5   NNW
+Mont-Blanc	3000	2026-09-12	night	clear	6	5	5	—	—	4050	5   NNW
+Mont-Blanc	3000	2026-09-13	AM	clear	6	6	4	—	—	4000	10   NNW
+Mont-Blanc	3000	2026-09-13	PM	cloudy	6	5	2	—	—	3700	15   NNW
+Mont-Blanc	3000	2026-09-13	night	clear	4	2	-1	—	—	3400	10   NNW
+Mont-Blanc	3000	2026-09-14	AM	clear	5	4	1	—	—	3800	10   NNE
+Mont-Blanc	3000	2026-09-14	PM	clear	5	5	4	—	—	3800	5   N
+Mont-Blanc	3000	2026-09-14	night	clear	5	5	5	—	—	4000	0   N
+Mont-Velan	2000	2026-09-09	night	light rain	7	6	6	0.8	—	3300	5   NE
+Mont-Velan	2000	2026-09-10	AM	rain shwrs	8	6	6	1	—	3200	5   SE
+Mont-Velan	2000	2026-09-10	PM	light rain	9	8	7	3	—	3150	10   NNW
+Mont-Velan	2000	2026-09-10	night	rain shwrs	7	6	5	2	—	3200	5   NW
+Mont-Velan	2000	2026-09-11	AM	some clouds	8	6	5	—	—	3400	5   NNW
+Mont-Velan	2000	2026-09-11	PM	some clouds	11	11	10	—	—	3400	10   NNW
+Mont-Velan	2000	2026-09-11	night	clear	8	7	7	—	—	3550	0   NNE
+Mont-Velan	2000	2026-09-12	AM	clear	11	8	8	—	—	3650	5   NNW
+Mont-Velan	2000	2026-09-12	PM	clear	14	13	13	—	—	3850	5   NNW
+Mont-Velan	2000	2026-09-12	night	clear	10	9	9	—	—	4050	5   NNW
+Mont-Velan	2000	2026-09-13	AM	clear	12	10	10	—	—	3950	5   NNW
+Mont-Velan	2000	2026-09-13	PM	cloudy	13	12	10	—	—	3550	15   NNW
+Mont-Velan	2000	2026-09-13	night	clear	9	7	6	—	—	3350	5   NNW
+Mont-Velan	2000	2026-09-14	AM	clear	11	8	7	—	—	3750	5   N
+Mont-Velan	2000	2026-09-14	PM	clear	14	13	13	—	—	3850	10   N
+Mont-Velan	2000	2026-09-14	night	clear	11	10	10	—	—	3950	0   S
+Mont-Velan	3000	2026-09-09	night	some clouds	2	1	-2	—	—	3300	5   E
+Mont-Velan	3000	2026-09-10	AM	some clouds	1	1	-1	—	—	3200	10   SE
+Mont-Velan	3000	2026-09-10	PM	light snow	1	1	1	—	1	3150	10   NNW
+Mont-Velan	3000	2026-09-10	night	snow shwrs	2	0	-3	—	1	3200	5   NNW
+Mont-Velan	3000	2026-09-11	AM	some clouds	3	2	-1	—	—	3400	10   NW
+Mont-Velan	3000	2026-09-11	PM	some clouds	3	2	0	—	—	3400	5   NW
+Mont-Velan	3000	2026-09-11	night	clear	3	2	0	—	—	3550	5   NNE
+Mont-Velan	3000	2026-09-12	AM	clear	4	3	3	—	—	3650	5   NNW
+Mont-Velan	3000	2026-09-12	PM	clear	5	5	5	—	—	3850	5   NNW
+Mont-Velan	3000	2026-09-12	night	clear	6	5	3	—	—	4050	5   NNW
+Mont-Velan	3000	2026-09-13	AM	clear	6	6	4	—	—	3950	10   NW
+Mont-Velan	3000	2026-09-13	PM	cloudy	5	4	0	—	—	3550	15   NNW
+Mont-Velan	3000	2026-09-13	night	clear	4	2	-2	—	—	3350	15   NNW
+Mont-Velan	3000	2026-09-14	AM	clear	4	3	0	—	—	3750	10   N
+Mont-Velan	3000	2026-09-14	PM	clear	5	5	3	—	—	3850	10   NNW
+Mont-Velan	3000	2026-09-14	night	clear	5	5	4	—	—	3950	5   NW
+Monte-Emilius	2000	2026-09-09	night	rain shwrs	9	7	7	1.8	—	3300	0   W
+Monte-Emilius	2000	2026-09-10	AM	light rain	8	7	7	1.6	—	3200	5   ESE
+Monte-Emilius	2000	2026-09-10	PM	rain shwrs	10	9	9	4	—	3300	0   NNE
+Monte-Emilius	2000	2026-09-10	night	rain shwrs	7	6	5	6	—	3250	5   WNW
+Monte-Emilius	2000	2026-09-11	AM	some clouds	10	7	6	—	—	3500	5   WNW
+Monte-Emilius	2000	2026-09-11	PM	some clouds	13	13	13	—	—	3550	5   NW
+Monte-Emilius	2000	2026-09-11	night	clear	9	7	7	—	—	3450	5   WNW
+Monte-Emilius	2000	2026-09-12	AM	clear	11	7	7	—	—	3650	0   WNW
+Monte-Emilius	2000	2026-09-12	PM	clear	14	13	13	—	—	3950	0   ENE
+Monte-Emilius	2000	2026-09-12	night	clear	10	9	8	—	—	4050	5   WNW
+Monte-Emilius	2000	2026-09-13	AM	clear	12	9	9	—	—	4000	5   WNW
+Monte-Emilius	2000	2026-09-13	PM	cloudy	15	14	13	—	—	3800	10   NW
+Monte-Emilius	2000	2026-09-13	night	clear	10	8	6	—	—	3550	10   NW
+Monte-Emilius	2000	2026-09-14	AM	clear	11	8	7	—	—	3700	0   NE
+Monte-Emilius	2000	2026-09-14	PM	clear	14	14	14	—	—	3950	0   N
+Monte-Emilius	2000	2026-09-14	night	clear	10	8	8	—	—	3850	5   WNW
+Monte-Emilius	3000	2026-09-09	night	rain shwrs	2	2	0	0.4	—	3300	5   ESE
+Monte-Emilius	3000	2026-09-10	AM	light snow	1	1	-2	—	1	3200	10   ESE
+Monte-Emilius	3000	2026-09-10	PM	rain shwrs	2	2	1	4	—	3300	5   N
+Monte-Emilius	3000	2026-09-10	night	snow shwrs	2	0	-3	—	3	3250	5   NW
+Monte-Emilius	3000	2026-09-11	AM	some clouds	3	3	0	—	—	3500	10   NW
+Monte-Emilius	3000	2026-09-11	PM	some clouds	4	3	0	—	—	3550	10   NW
+Monte-Emilius	3000	2026-09-11	night	clear	3	3	1	—	—	3450	0   NW
+Monte-Emilius	3000	2026-09-12	AM	clear	4	3	3	—	—	3650	5   NW
+Monte-Emilius	3000	2026-09-12	PM	clear	6	5	3	—	—	3950	10   NW
+Monte-Emilius	3000	2026-09-12	night	clear	6	5	3	—	—	4050	5   NW
+Monte-Emilius	3000	2026-09-13	AM	clear	6	6	4	—	—	4000	10   NW
+Monte-Emilius	3000	2026-09-13	PM	cloudy	6	6	3	—	—	3800	15   NW
+Monte-Emilius	3000	2026-09-13	night	clear	5	3	0	—	—	3550	15   NW
+Monte-Emilius	3000	2026-09-14	AM	clear	4	3	0	—	—	3700	5   NNW
+Monte-Emilius	3000	2026-09-14	PM	clear	6	5	3	—	—	3950	10   NW
+Monte-Emilius	3000	2026-09-14	night	clear	5	4	4	—	—	3850	5   WNW
+Punta-Tersiva	2000	2026-09-09	night	light rain	9	7	7	3	—	3300	0   NW
+Punta-Tersiva	2000	2026-09-10	AM	light rain	8	7	6	1.2	—	3200	5   ESE
+Punta-Tersiva	2000	2026-09-10	PM	risk tstorm	9	9	8	4	—	3300	5   ESE
+Punta-Tersiva	2000	2026-09-10	night	rain shwrs	7	7	6	6	—	3250	5   WNW
+Punta-Tersiva	2000	2026-09-11	AM	some clouds	10	7	6	—	—	3500	5   WNW
+Punta-Tersiva	2000	2026-09-11	PM	some clouds	12	12	12	—	—	3550	5   NW
+Punta-Tersiva	2000	2026-09-11	night	rain shwrs	9	7	7	0.1	—	3450	5   W
+Punta-Tersiva	2000	2026-09-12	AM	clear	11	7	7	—	—	3650	0   SSW
+Punta-Tersiva	2000	2026-09-12	PM	some clouds	12	12	12	—	—	3900	0   SE
+Punta-Tersiva	2000	2026-09-12	night	clear	10	9	9	—	—	4050	5   WNW
+Punta-Tersiva	2000	2026-09-13	AM	some clouds	12	9	9	—	—	4000	0   WNW
+Punta-Tersiva	2000	2026-09-13	PM	cloudy	14	14	14	—	—	3850	10   NW
+Punta-Tersiva	2000	2026-09-13	night	clear	10	8	6	—	—	3600	10   NW
+Punta-Tersiva	2000	2026-09-14	AM	clear	11	8	7	—	—	3650	0   SE
+Punta-Tersiva	2000	2026-09-14	PM	some clouds	13	13	13	—	—	3950	0   SE
+Punta-Tersiva	2000	2026-09-14	night	clear	10	9	9	—	—	3850	5   WNW
+Punta-Tersiva	3000	2026-09-09	night	light rain	3	2	2	1.1	—	3300	5   ESE
+Punta-Tersiva	3000	2026-09-10	AM	cloudy	1	1	-3	—	—	3200	10   ESE
+Punta-Tersiva	3000	2026-09-10	PM	risk tstorm	2	2	0	3	—	3300	0   NNE
+Punta-Tersiva	3000	2026-09-10	night	snow shwrs	2	1	-2	—	3	3250	5   NW
+Punta-Tersiva	3000	2026-09-11	AM	some clouds	3	3	0	—	—	3500	10   NW
+Punta-Tersiva	3000	2026-09-11	PM	some clouds	4	3	0	—	—	3550	10   NW
+Punta-Tersiva	3000	2026-09-11	night	rain shwrs	3	3	1	0.1	—	3450	0   WNW
+Punta-Tersiva	3000	2026-09-12	AM	clear	4	3	2	—	—	3650	5   NW
+Punta-Tersiva	3000	2026-09-12	PM	clear	6	5	3	—	—	3900	10   NW
+Punta-Tersiva	3000	2026-09-12	night	clear	6	5	2	—	—	4050	5   NW
+Punta-Tersiva	3000	2026-09-13	AM	some clouds	6	6	4	—	—	4000	10   NW
+Punta-Tersiva	3000	2026-09-13	PM	cloudy	6	6	3	—	—	3850	15   NW
+Punta-Tersiva	3000	2026-09-13	night	clear	5	3	0	—	—	3600	10   NW
+Punta-Tersiva	3000	2026-09-14	AM	clear	4	3	1	—	—	3650	5   NNW
+Punta-Tersiva	3000	2026-09-14	PM	clear	6	4	2	—	—	3950	15   NW
+Punta-Tersiva	3000	2026-09-14	night	clear	5	4	4	—	—	3850	5   W

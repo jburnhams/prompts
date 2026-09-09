@@ -1,0 +1,266 @@
+===== PAGE 1 =====
+                                                                                                                                                              Venerdì          Sabato         Domenica          Lunedì          Martedì        Mercoledì         Giovedì         Venerdì          Sabato
+                                                                                                                                                               Friday         Saturday         Sunday           Monday          Tuesday        Wednesday        Thursday          Friday         Saturday
+                                                                                                                                                              Vendredi         Samedi         Dimanche           Lundi           Mardi          Mercredi          Jeudi          Vendredi         Samedi
+
+                                                                                                                                                                D1               D2              D3               D4              D5              D6               D7              D8              D9
+                                                                                                                                                            TOR450 START                     TOR330 START                     TOR130 START    TOR100 START                                      TOR30 START
+                                                                                                   TOR330 - Tor des Géants®
+                                                                                                                                         Timetable
+
+
+                                                                                            Distance                           D+                                D-                                  FIRST WAVE                                                      SECOND WAVE
+                                           Altitude                        Distance      from previous         D+         from previous   D-                      from previous
+            Waypoint                         (m)          POI tipology*   from START         point        from START          point        from START          point           Fastest         Slowest                Cut off time              Fastest         Slowest                Cut off time
+                                                                              (km)            (km)             (m)             (m)             (m)              (m)           passage          passage                                          passage         passage
+                                                                                                                                                                                                                  IN             OUT                                                IN             OUT
+
+    Courmayeur START                      1,224 m          START            0.0 Km          0.0 Km            0 m             0 m              0 m              0 m          D3 10.00                                                          D3 12.00
+
+
+            Col ARP                        2,568 m            W             9.0 Km           9.0 Km          1,396 m         1,396 m           87 m             87 m
+
+
+         Baite Youlaz                     2,036 m             R            12.8 Km          3.8 Km          1,396 m           0 m             550 m           463 m          D3 11.42         D3 13.56                                         D3 13.57        D3 15.27
+
+
+           La Thuile                      1,468 m            R+A           19.0 Km          6.2 Km          1,495 m           99 m          1,187 m           637 m          D3 12.00         D3 15.10                         D3 15.30        D3 14.46        D3 17.30                         D3 17.30
+
+
+      Rifugio Deffeyes                    2,490 m             R            27.9 Km          8.9 Km          2,638 m         1,143 m         1,334 m           147 m          D3 13.40         D3 19.02                                         D3 16.00        D3 22.00
+
+
+         Col Passo Alto                    2,856 m            W             30.7 Km          2.8 Km          3,042 m          404 m          1,374 m            40 m
+
+
+      Bivacco Zappelli                    2,274 m            R+A           32.8 Km          2.1 Km          3,044 m           2 m           1,943 m           569 m          D3 14.34         D3 21.14                                         D3 17.19        D4 00.33
+
+
+        Col de la Crosatie                 2,823 m             A            36.0 Km          3.2 Km          3,748 m          704 m          2,092 m           149 m
+
+
+          Lac Du Fond                      2,441 m            W             37.6 Km          1.6 Km          3,766 m          18 m           2,484 m           392 m
+
+
+           Planaval                       1,562 m             R            42.8 Km          5.2 Km          3,814 m           48 m          3,353 m           869 m          D3 16.30         D4 01.28                                         D3 19.16        D4 05.53
+
+
+   BaseVita-Valgrisenche                  1,693 m         Base Vita        48.5 Km          5.8 Km          4,032 m          218 m          3,459 m           106 m          D3 17.01         D4 03.01         D4 5.00         D4 07.00        D3 19.59        D4 07.07         D4 7.00         D4 09.00
+
+
+  Rifugio Chalet de L'epée                2,370 m             R            54.9 Km          6.3 Km          4,805 m          773 m          3,569 m           110 m          D3 18.07         D4 08.52                                         D3 21.58        D4 11.38
+
+
+           Col Fenêtre                     2,844 m            W             58.0 Km          3.1 Km          5,244 m          439 m          3,575 m            6 m
+
+
+    Rhemes-Notre-Dame                     1,732 m            R+A           62.9 Km          4.9 Km          5,296 m           52 m          4,756 m          1,181 m         D3 19.18         D4 10.46                                         D3 23.39        D4 16.42
+
+
+           Col Entrelor                    3,004 m             A            68.3 Km          5.4 Km          6,583 m         1,287 m         4,791 m            35 m
+
+
+        Eaux Rousses                      1,679 m            R+A           78.3 Km         10.0 Km          6,663 m           80 m          6,126 m          1,335 m         D3 21.54         D4 18.12                         D4 19.30        D4 03.11        D4 20.49                         D4 21.30
+
+
+           Col Loson                       3,295 m             A            90.6 Km         12.3 Km          8,351 m         1,688 m         6,339 m           213 m
+
+
+    Rifugio Vittorio Sella                2,585 m             R            95.2 Km          4.6 Km          8,390 m           39 m          6,950 m           611 m          D4 01.05         D5 22.34                                         D4 07.05        D5 06.31
+
+
+            Valnontey                      1,670 m            W            100.9 Km          5.7 Km          8,445 m          55 m           7,760 m           810 m
+
+
+       BaseVita-Cogne                     1,536 m         Base Vita       104.0 Km          3.1 Km          8,488 m           43 m          7,912 m           152 m          D4 01.58         D5 01.13        D5 04.00         D5 06.00        D4 08.17        D5 05.50         D5 06.00        D5 08.00
+
+
+              Lillaz                       1,637 m            W            107.7 Km          3.7 Km          8,661 m          173 m          8,016 m           104 m
+
+
+       Goilles Dessous                    1,836 m             R           109.8 Km          2.1 Km          8,851 m          190 m          8,069 m            53 m          D4 03.11         D5 05.50                                         D4 09.58        D5 10.05
+
+
+     Finestra Di Champorcher               2,827 m            W            120.3 Km         10.6 Km          9,858 m         1,007 m         8,184 m           115 m
+
+
+       Rifugio Del Misérin                 2,583 m            W            122.4 Km          2.0 Km          9,862 m           4 m           8,352 m           168 m
+
+
+      Rifugio Dondena                     2,192 m             R           126.0 Km          3.6 Km          9,866 m           4 m           8,646 m           294 m          D4 06.27         D5 12.06                                         D4 13.15        D5 15.44
+
+Chardonney - Champorcher                  1,442 m            R+A          131.6 Km          5.7 Km          9,921 m           55 m          9,262 m           616 m          D4 06.57         D5 14.22                                         D4 14.13        D5 17.50
+
+
+          Pontboset                        782 m              R           139.4 Km          7.7 Km         10,077 m          156 m          9,997 m           735 m          D4 08.06         D5 16.42                                         D4 15.56        D5 20.19
+
+
+              Bard                          377 m             W            146.8 Km          7.4 Km         10,594 m          517 m          10,873 m          876 m
+
+
+      BaseVita-Donnas                      323 m          Base Vita       149.8 Km          3.0 Km         10,671 m           77 m          11,007 m          134 m          D4 09.27         D5 19.36        D6 00.00         D6 02.00        D4 18.05        D5 23.21         D6 02.00        D6 04.00
+
+            Perloz                         649 m              R           155.6 Km          5.8 Km         11,240 m          569 m          11,257 m          250 m          D4 10.32         D5 02.15                                         D4 21.04        D6 05.43
+
+
+         Tour d'Hereraz                     559 m             W            156.4 Km          0.9 Km         11,342 m          102 m          11,425 m          168 m
+
+
+           La Sassa                       1,440 m             R           162.9 Km          6.4 Km         12,351 m         1,009 m         11,615 m          190 m          D4 12.21         D6 05.28                                         D4 23.01        D6 09.02
+
+
+           Col Carisey                     2,125 m            W            166.4 Km          3.5 Km         13,005 m          654 m          11,645 m           30 m
+
+
+        Rifugio Coda                      2,252 m            R+A          167.3 Km          0.9 Km         13,142 m          137 m          11,662 m           17 m          D4 13.49         D6 08.02       MID-RACE                          D5 00.42        D6 12.05       MID-RACE
+
+
+              Crest                        1,915 m            W            172.5 Km          5.2 Km         13,412 m          270 m          12,229 m          567 m
+
+
+    Rifugio della Barma                   2,049 m             R           175.6 Km          3.1 Km         13,714 m          302 m          12,407 m          178 m          D4 15.42         D6 11.39                         D6 13.00        D5 03.38        D6 15.00                         D6 15.00
+
+
+       Col du Marmontana                   2,347 m            W            179.8 Km          4.2 Km         14,166 m          452 m          12,589 m          182 m
+
+
+         Lago Chiaro                      2,091 m             R           180.9 Km          1.1 Km         14,174 m           8 m           12,838 m          249 m          D4 17.00         D6 14.04                                         D5 06.15        D6 17.39
+
+
+          Crenna di Ley                    2,312 m            W            182.6 Km          1.7 Km         14,524 m          350 m          12,960 m          122 m
+
+
+     Colle Della Vecchia                  2,196 m            R+A          184.9 Km          2.3 Km         14,683 m          159 m          13,233 m          273 m          D4 18.00         D6 16.25                                         D5 07.36        D6 20.23
+
+
+   Niel - Dortoir La Gruba                1,557 m            R+A          190.5 Km          5.6 Km         15,002 m          319 m          14,166 m          933 m          D4 19.08         D6 19.00                         D6 19.30        D5 09.13        D6 21.30                         D6 21.30
+
+
+          Colle Lazoney                    2,395 m            W            193.9 Km          3.4 Km         15,800 m          798 m          14,173 m           7 m
+
+
+ Bleckene - Lòò Superiore                 2,061 m             R           196.7 Km          2.8 Km         15,800 m           0 m           14,452 m          279 m          D4 20.47         D6 20.39                                         D5 11.01        D7 00.39
+
+
+    BaseVita-Gressoney                    1,376 m         Base Vita       203.8 Km          7.1 Km         15,860 m           60 m          15,119 m          667 m          D4 21.42         D6 23.00        D6 23.00         D7 01.00        D5 12.27        D7 00.55         D7 01.00        D7 03.00
+
+
+       Rifugio Alpenzu                    1,776 m             R           208.9 Km          5.1 Km         16,296 m          436 m          15,199 m           80 m          D4 22.52         D7 03.01                                         D5 14.33        D7 04.32
+
+
+            Col Pinter                     2,782 m            W            213.4 Km          4.4 Km         17,221 m          925 m          15,218 m           19 m
+
+
+             Cuneaz                        2,051 m            W            217.1 Km          3.7 Km         17,281 m          60 m           15,949 m          731 m
+
+
+         Champoluc                        1,576 m            R+A          220.8 Km          3.7 Km         17,301 m           20 m          16,387 m          438 m          D5 01.27         D7 09.33                         D7 13.00        D5 17.40        D7 11.37                         D7 15.00
+
+
+          Saint-Jaques                     1,693 m            W            223.6 Km          2.8 Km         17,395 m          94 m           16,404 m           17 m
+
+
+  Rifugio Grand Tournalin                 2,552 m             R           228.6 Km          5.0 Km         18,123 m          728 m          16,416 m           12 m          D5 04.04         D7 13.59                                         D5 19.33        D7 15.24
+
+
+         Col de Nannaz                     2,775 m            W            230.2 Km          1.5 Km         18,358 m          235 m          16,441 m           25 m
+===== PAGE 2 =====
+                                                                                                                                                             Venerdì          Sabato         Domenica          Lunedì          Martedì         Mercoledì         Giovedì         Venerdì          Sabato
+                                                                                                                                                              Friday          Saturday         Sunday          Monday          Tuesday        Wednesday         Thursday          Friday         Saturday
+                                                                                                                                                             Vendredi         Samedi          Dimanche          Lundi            Mardi          Mercredi          Jeudi          Vendredi         Samedi
+
+                                                                                                                                                               D1               D2               D3              D4               D5              D6               D7              D8               D9
+                                                                                                                                                           TOR450 START                     TOR330 START                     TOR130 START     TOR100 START                                      TOR30 START
+                                                                                                 TOR330 - Tor des Géants®
+                                                                                                                                        Timetable
+
+
+                                                                                          Distance                            D+                                D-                                  FIRST WAVE                                                       SECOND WAVE
+                                         Altitude                         Distance     from previous          D+        from previous   D-                      from previous
+         Waypoint                          (m)          POI tipology*   from START          point        from START          point        from START          point           Fastest         Slowest                Cut off time               Fastest         Slowest                Cut off time
+                                                                            (km)            (km)             (m)              (m)             (m)              (m)            passage         passage                                           passage         passage
+                                                                                                                                                                                                                  IN             OUT                                                IN             OUT
+
+     Col Des Fontaines                   2,694 m            W            231.5 Km          1.4 Km          18,401 m          43 m           16,561 m          120 m
+
+
+          Cheneil                        2,110 m            W            234.5 Km          2.9 Km          18,405 m           4 m           17,100 m          539 m
+
+
+BaseVita-Valtournenche                  1,504 m         Base Vita       237.5 Km          3.0 Km          18,420 m           15 m          17,680 m          580 m           D5 05.39        D7 17.09         D7 19.00        D7 21.00         D5 21.33        D7 20.19         D7 21.00        D7 23.00
+
+
+   Rifugio Barmasse                     2,173 m             R           242.3 Km          4.9 Km          19,212 m          792 m          17,830 m          150 m           D5 07.02        D7 22.07                                          D6 00.06        D8 00.23
+
+
+       Fenetre D'ersaz                   2,290 m            W            246.3 Km          4.0 Km          19,511 m          299 m          17,989 m          159 m
+
+
+    Bivacco Vareton                     2,272 m             R           247.3 Km          1.0 Km          19,583 m           72 m          18,086 m           97 m           D5 08.05        D8 00.38                                          D6 02.20        D8 02.48
+
+
+      Fenetre Du Tsan                    2,739 m            W            252.1 Km          4.8 Km          20,144 m          561 m          18,208 m          122 m
+
+
+    Rifugio Lo Magià                    1,996 m             R           255.8 Km          3.7 Km          20,154 m           10 m          18,920 m          712 m           D5 09.44        D8 04.57                                          D6 04.35        D8 07.54
+
+
+     Rifugio Cuney                      2,655 m            R+A          259.3 Km          3.5 Km          20,802 m          648 m          18,934 m           14 m           D5 10.46        D8 08.40                                          D6 06.37        D8 10.06
+
+
+       Col de Chaleby                    2,684 m            W            261.6 Km          2.4 Km          20,951 m          149 m          19,075 m          141 m
+
+
+  Bivacco R. Clermont                   2,705 m             R           263.8 Km          2.2 Km          21,135 m          184 m          19,255 m          180 m           D5 11.44        D8 09.45                                          D6 08.09        D8 11.35
+
+
+      Col de Vessonaz                    2,788 m            W            264.2 Km          0.4 Km          21,219 m          84 m           19,258 m           3 m
+
+
+          Oyace                         1,351 m            R+A          274.7 Km          10.4 Km         21,370 m          151 m          20,804 m         1,546 m          D5 13.36        D8 12.00                         D8 12.00         D6 09.54        D8 14.03                         D8 14.00
+
+       Bruson Arp                       2,188 m             R           278.7 Km          4.0 Km          22,253 m          883 m          20,851 m           47 m           D5 14.27        D8 15.02                                          D6 11.43        D8 16.37
+
+
+        Col Brison                      2,519 m              A          280.3 Km          1.6 Km          22,615 m          362 m          20,888 m           37 m
+
+      Berrio Damon                      1,936 m             W           282.7 Km          2.4 Km          22,680 m           65 m          21,530 m          642 m
+
+
+   BaseVita-Ollomont                    1,384 m         Base Vita       286.5 Km          3.8 Km          22,735 m           55 m          22,151 m          621 m           D5 16.38        D8 16.49         D8 17.00        D8 19.00         D6 13.20        D8 18.50         D8 19.00        D8 21.00
+
+  Rifugio Champillon                    2,422 m             R           291.2 Km          4.6 Km          23,765 m         1,030 m         22,167 m           16 m           D5 18.31        D8 21.45                                          D6 15.30        D8 23.51
+
+
+     Col de Champillon                   2,711 m            W            292.3 Km          1.1 Km          24,049 m          284 m          22,167 m           0 m
+
+
+         Ponteille                      1,880 m             R           297.7 Km          5.5 Km          24,143 m           94 m          23,092 m          925 m           D5 20.05        D9 02.41                                          D6 17.10        D9 04.01
+
+
+        Saint Rhemy                      1,618 m            W            306.1 Km          8.4 Km          24,372 m          229 m          23,560 m          468 m
+
+
+          Bosses                        1,525 m            R+A          307.8 Km          1.8 Km          24,391 m           19 m          23,643 m           83 m           D5 21.32        D9 05.55                         D9 06.00         D6 18.27        D9 06.44                         D9 08.00
+
+
+          Merdeux                        2,272 m            W            315.5 Km          7.7 Km          25,151 m          760 m          23,725 m           82 m                          D9 08.00                                                          D9 10.00
+
+
+     Rifugio Frassati                   2,548 m             R           316.9 Km          1.4 Km          25,422 m          271 m          23,732 m            7 m           D6 00.01        D9 09.41                                          D6 20.50        D9 12.19
+
+
+         Col Malatrà                     2,921 m             A           319.0 Km          2.1 Km          25,793 m          371 m          23,752 m           20 m
+
+
+     Rifugio Bonatti                    2,025 m            R+A          324.6 Km          5.6 Km          25,798 m           5 m           24,575 m          823 m           D6 01.56        D9 12.37                                          D6 22.40        D9 16.07
+
+
+    Mont de la Saxe                     2,037 m             R           330.2 Km          5.6 Km          26,149 m          351 m          24,958 m          383 m           D6 03.00        D9 14.57                                          D7 00.19        D9 17.02
+
+
+  Courmayeur FINISH                     1,224 m            A+R          336.5 Km          6.3 Km          26,182 m           33 m          25,727 m          769 m           D6 04.08        D9 15.50         D9 16.00                         D7 01.13        D9 18.00         D9 18.00
+
+
+
+                                                                                 *POI Tipology        A = Aid station     R = Refreshment point        W = Simple waypoint         Base vita = all services are available
