@@ -31,6 +31,7 @@ data/
   forecast-open-meteo-raw.json  unmodified API response, 79 points x 168 hours
   mountain-forecast-crosscheck.tsv  independent second source, 6 peaks x 2 levels
   lying-snow-assessment.tsv     existing snow: aspect, melt history, freezing-level history
+  water-carries.tsv             all 49 gaps between water points, with pace and heat context
   snow-history-92day-raw.json   92 days of snowfall/snow depth/freezing level, 29 high points
 scripts/                        everything used to build the above, in dependency order
 tor330-cold-map.html            the rendered brief
@@ -123,6 +124,46 @@ The route crosses **no glacier** and no permanent snowfield; its high point is 3
 it comes from the model's own land-surface scheme on a ~7 km grid whose cell elevation is far below a
 2800 m col, and unlike temperature it is not elevation-corrected. The freezing-level and
 degree-day arguments above are the load-bearing ones.
+
+## Water carries (added 10 Sep)
+
+Which stretches go longest without a refill. The official timetable types every point:
+`R` refreshment, `A` aid station, `R+A`, `Base Vita`, and `W` — a **simple waypoint with no
+service**. 50 of the 79 points carry water; **29 are dry**, and they include almost every col.
+
+`data/water-carries.tsv` has all 49 carries. Two things are corrected for:
+
+- **Life-base dwell is removed.** The schedule ETA at a Base Vita is arrival, so the following gap
+  would otherwise include the hour or two spent inside with taps available. An assumed stop is
+  subtracted (Valgrisenche 0.5 h, Cogne 1.0, Donnas 1.75, Gressoney 1.75, Valtournenche 1.25,
+  Ollomont 1.0). Change these in `scripts/water.py` if your plan differs.
+- **Barrier pace is given alongside.** The same carry at cut-off pace runs roughly 25–30% longer.
+
+Median carry is 2.0 h; only 9 of 49 exceed 3 h and 2 exceed 4 h. The two that matter:
+
+| Carry | km | Climb | 115 h | Barrier | Crosses |
+|---|---|---|---|---|---|
+| Goilles Dessous → Rif. Dondena | 16.2 | 1015 m | **5.0 h** | 6.3 h | Finestra di Champorcher 2827 m, Rif. Miserin |
+| Rif. Alpenzu → Champoluc | 11.9 | 1005 m | **4.9 h** | 6.5 h | Col Pinter 2782 m, Cuneaz |
+
+The first is the one to plan for: it starts Monday 17:14 at 20 °C on the hottest leg of the race,
+and both intermediate landmarks are typed `W`.
+
+### Water estimates are modelled, not measured
+
+The `est_water_litres` column is a simple sweat model: 0.42 L/h baseline below 10 °C, plus
+0.045 L/h per °C above that, times 1.25 where the carry averages over 60 m of climb per km, applied
+to the mean temperature across the carry. It is a planning aid calibrated to nobody in particular —
+substitute your own known rate.
+
+### Uncertainty about the high-col aid points
+
+Five points typed `A` — Col de la Crosatie, Col Entrelor, Col Loson, Col Brison, Col Malatrà — are
+the only aid points in the whole table with **no published passage times**, which suggests they may
+be control points rather than staffed stations. Every other `R`/`R+A`/`Base Vita` point has times.
+If they turn out to carry no water, Rhêmes-Notre-Dame → Eaux Rousses over Col Entrelor becomes a
+15.4 km, 1367 m, **5.2 h** carry and the count of 4-hour-plus carries goes from two to three.
+Worth confirming at the briefing.
 
 ## Caveats
 

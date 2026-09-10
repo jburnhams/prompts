@@ -1,0 +1,50 @@
+km_from	km_to	from	to	from_type	to_type	dist_km	climb_m	moving_hours_115h_plan	moving_hours_barrier_pace	assumed_life_base_stop_h	t_min_c	t_max_c	high_point_m	est_water_litres	est_rate_l_per_h	leave_at	dry_waypoints_crossed
+0.0	12.8	Courmayeur START	Baite Youlaz	START	R	12.8	1396	2.83	3.93	0.0	12.4	17.4	2568	2.37	0.84	2026-09-13 10:00	Col Arp
+12.8	19.0	Baite Youlaz	La Thuile	R	R+A	6.2	99	0.77	1.23	0.0	17.4	21.5	2036	0.65	0.85	2026-09-13 12:49	
+19.0	27.9	La Thuile	Rifugio Deffeyes	R+A	R	8.9	1143	2.79	3.87	0.0	14.0	21.5	2490	2.68	0.96	2026-09-13 13:35	
+27.9	32.8	Rifugio Deffeyes	Bivacco Zappelli	R	R+A	4.9	406	1.57	2.2	0.0	10.0	14.0	2856	1.05	0.67	2026-09-13 16:23	Col Passo Alto
+32.8	36.0	Bivacco Zappelli	Col de la Crosatie	R+A	A	3.2	704	1.81		0.0	8.1	13.8	2823	1.05	0.58	2026-09-13 17:57	
+36.0	42.8	Col de la Crosatie	Planaval	A	R	6.8	66	1.32		0.0	8.1	15.1	2823	0.63	0.48	2026-09-13 19:46	Lac du Fond
+42.8	48.5	Planaval	BV Valgrisenche	R	BV	5.7	218	1.06	1.55	0.0	13.6	15.1	1693	0.65	0.62	2026-09-13 21:05	
+48.5	54.9	BV Valgrisenche	Rif. Chalet de l'Epee	BV	R	6.4	773	3.06	5.35	0.5	7.2	13.6	2370	1.68	0.55	2026-09-13 22:38	
+54.9	62.9	Rif. Chalet de l'Epee	Rhemes-Notre-Dame	R	R+A	8.0	491	1.58	1.9	0.0	3.9	11.4	2844	0.83	0.53	2026-09-14 01:42	Col Fenetre
+62.9	68.3	Rhemes-Notre-Dame	Col Entrelor	R+A	A	5.4	1287	3.25		0.0	3.2	11.4	3004	1.71	0.53	2026-09-14 03:17	
+68.3	78.3	Col Entrelor	Eaux Rousses	A	R+A	10.0	80	1.92		0.0	3.2	11.3	3004	0.81	0.42	2026-09-14 06:32	
+78.3	90.6	Eaux Rousses	Col Loson	R+A	A	12.3	1688	3.33		0.0	8.3	11.3	3295	1.75	0.53	2026-09-14 08:27	
+90.6	95.2	Col Loson	Rif. Vittorio Sella	A	R	4.6	39	0.57		0.0	8.3	12.4	3295	0.25	0.44	2026-09-14 11:47	
+95.2	104.0	Rif. Vittorio Sella	BV Cogne	R	BV	8.8	98	1.84	2.65	0.0	12.4	22.5	2585	1.47	0.79	2026-09-14 12:21	Valnontey
+104.0	109.8	BV Cogne	Goilles Dessous	BV	R	5.8	363	2.04	3.62	1.0	19.9	22.5	1836	2.34	1.15	2026-09-14 15:12	Lillaz
+109.8	126.0	Goilles Dessous	Rifugio Dondena	R	R	16.2	1015	4.96	6.27	0.0	8.9	19.9	2827	3.32	0.67	2026-09-14 17:14	Finestra di Champorcher; Rifugio Miserin
+126.0	131.6	Rifugio Dondena	Chardonney-Champorcher	R	R+A	5.6	55	1.47	2.27	0.0	12.0	14.1	2192	0.82	0.56	2026-09-14 22:12	
+131.6	139.4	Chardonney-Champorcher	Pontboset	R+A	R	7.8	156	1.82	2.33	0.0	14.1	18.9	1442	1.3	0.71	2026-09-14 23:40	
+139.4	149.8	Pontboset	BV Donnas	R	BV	10.4	594	2.26	2.9	0.0	18.9	21.4	782	2.0	0.89	2026-09-15 01:29	Bard
+149.8	155.6	BV Donnas	Perloz	BV	R	5.8	569	2.38	4.9	1.75	18.6	20.8	649	2.55	1.07	2026-09-15 05:30	
+155.6	162.9	Perloz	La Sassa	R	R	7.3	1111	2.68	3.22	0.0	16.6	19.2	1440	2.63	0.98	2026-09-15 07:52	Tour d'Hereraz
+162.9	167.3	La Sassa	Rifugio Coda	R	R+A	4.4	791	2.13	2.57	0.0	14.2	16.6	2252	1.73	0.81	2026-09-15 10:33	Col Carisey
+167.3	175.6	Rifugio Coda	Rifugio della Barma	R+A	R	8.3	572	2.91	3.62	0.0	14.2	16.7	2252	2.43	0.83	2026-09-15 12:41	Crest
+175.6	180.9	Rifugio della Barma	Lago Chiaro	R	R	5.3	460	1.97	2.42	0.0	13.2	15.6	2347	1.51	0.76	2026-09-15 15:36	Col du Marmontana
+180.9	184.9	Lago Chiaro	Colle della Vecchia	R	R+A	4.0	509	1.8	2.35	0.0	11.7	14.0	2312	1.22	0.68	2026-09-15 17:34	Crenna di Ley
+184.9	190.5	Colle della Vecchia	Niel	R+A	R+A	5.6	319	1.98	2.58	0.0	12.4	15.7	2196	1.2	0.6	2026-09-15 19:21	
+190.5	196.7	Niel	Bleckene-Loo Superiore	R+A	R	6.2	798	1.75	1.65	0.0	10.4	15.7	2395	1.2	0.69	2026-09-15 21:21	Colle Lazoney
+196.7	203.8	Bleckene-Loo Superiore	BV Gressoney	R	BV	7.1	60	1.76	2.35	0.0	12.5	16.6	2061	1.1	0.62	2026-09-15 23:05	
+203.8	208.9	BV Gressoney	Rifugio Alpenzu	BV	R	5.1	436	1.06	2.27	1.75	12.9	16.6	1776	0.84	0.79	2026-09-16 02:36	
+208.9	220.8	Rifugio Alpenzu	Champoluc	R	R+A	11.9	1005	4.94	6.53	0.0	4.7	13.6	2782	2.64	0.53	2026-09-16 03:39	Col Pinter; Cuneaz
+220.8	228.6	Champoluc	Rif. Grand Tournalin	R+A	R	7.8	822	3.76	4.43	0.0	10.4	13.6	2552	2.45	0.65	2026-09-16 08:35	Saint-Jacques
+228.6	237.5	Rif. Grand Tournalin	BV Valtournenche	R	BV	8.9	297	2.56	3.17	0.0	10.0	20.4	2775	1.47	0.57	2026-09-16 12:21	Col de Nannaz; Col des Fontaines; Cheneil
+237.5	242.3	BV Valtournenche	Rifugio Barmasse	BV	R	4.8	792	2.25	3.72	1.25	12.4	20.4	2173	1.99	0.89	2026-09-16 16:09	
+242.3	247.3	Rifugio Barmasse	Bivacco Vareton	R	R	5.0	371	1.95	2.52	0.0	8.7	12.4	2290	1.02	0.53	2026-09-16 18:24	Fenetre d'Ersaz
+247.3	255.8	Bivacco Vareton	Rifugio Lo Magia	R	R	8.5	571	3.28	4.32	0.0	4.4	8.8	2739	1.72	0.53	2026-09-16 20:21	Fenetre du Tsan
+255.8	259.3	Rifugio Lo Magia	Rifugio Cuney	R	R+A	3.5	648	2.64	3.72	0.0	0.3	8.1	2655	1.39	0.53	2026-09-16 23:38	
+259.3	263.8	Rifugio Cuney	Bivacco R. Clermont	R+A	R	4.5	333	1.11	1.08	0.0	0.3	0.7	2705	0.58	0.53	2026-09-17 02:17	Col de Chaleby
+263.8	274.7	Bivacco R. Clermont	Oyace	R	R+A	10.9	235	2.21	2.25	0.0	0.2	8.9	2788	0.93	0.42	2026-09-17 03:24	Col de Vessonaz
+274.7	278.7	Oyace	Bruson Arp	R+A	R	4.0	883	2.22	3.03	0.0	5.9	8.9	2188	1.17	0.53	2026-09-17 05:37	
+278.7	280.3	Bruson Arp	Col Brison	R	A	1.6	362	0.86		0.0	4.6	5.9	2519	0.45	0.53	2026-09-17 07:50	
+280.3	286.5	Col Brison	BV Ollomont	A	BV	6.2	120	1.22		0.0	4.6	13.0	2519	0.51	0.42	2026-09-17 08:42	Berrio Damon
+286.5	291.2	BV Ollomont	Rifugio Champillon	BV	R	4.7	1030	2.79	3.93	1.0	13.0	13.6	2422	1.98	0.71	2026-09-17 10:55	
+291.2	297.7	Rifugio Champillon	Ponteille	R	R	6.5	378	3.61	4.93	0.0	9.5	15.6	2711	1.99	0.55	2026-09-17 13:42	Col de Champillon
+297.7	307.8	Ponteille	Bosses	R	R+A	10.1	248	2.62	3.23	0.0	13.9	15.6	1880	1.65	0.63	2026-09-17 17:19	Saint-Rhemy
+307.8	316.9	Bosses	Rifugio Frassati	R+A	R	9.1	1031	3.45	3.77	0.0	5.2	14.5	2548	1.81	0.53	2026-09-17 19:56	Merdeux
+316.9	319.0	Rifugio Frassati	Col Malatra	R	A	2.1	371	1.34		0.0	0.0	5.2	2921	0.7	0.53	2026-09-17 23:23	
+319.0	324.6	Col Malatra	Rifugio Bonatti	A	R+A	5.6	5	1.3		0.0	0.0	5.6	2921	0.55	0.42	2026-09-18 00:43	
+324.6	330.2	Rifugio Bonatti	Mont de la Saxe	R+A	R	5.6	351	1.91	2.33	0.0	4.2	5.6	2037	1.0	0.53	2026-09-18 02:01	
+330.2	336.5	Mont de la Saxe	Courmayeur FINISH	R	A+R	6.3	33	1.07	0.88	0.0	4.2	8.2	2037	0.45	0.42	2026-09-18 03:56	
