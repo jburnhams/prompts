@@ -1,0 +1,30 @@
+km	point	alt_m	descent_faces	descent_bearing_deg	descent_gradient_pct	northness	summer_snowfall_cm_10jun_10sep	model_snow_depth_cm	min_freezing_level_m	min_freezing_level_during_precip_m	precip_hours_with_freezing_level_below_point
+9.0	Col Arp	2568	S	179	22	-1.0	0	0.0	2930	3200	0
+27.9	Rifugio Deffeyes	2490	NE	47	-4	0.68	0	0.0	2830	3070	0
+30.7	Col Passo Alto	2856	NE	44	35	0.72	0	0.0	2820	3020	0
+36.0	Col de la Crosatie	2823	S	183	23	-1.0	0	0.0	2910	3080	0
+37.6	Lac du Fond	2441	ENE	66	13	0.4	0	0.0	3010	3320	0
+54.9	Rif. Chalet de l'Epee	2370	E	79	-14	0.19	0	0.0	2770	3000	0
+58.0	Col Fenetre	2844	ESE	118	38	-0.47	0	0.0	2840	3110	0
+68.3	Col Entrelor	3004	NE	41	19	0.76	0	0.0	2870	3300	0
+90.6	Col Loson	3295	NE	46	20	0.69	0.49	0.0	3080	3320	0
+95.2	Rif. Vittorio Sella	2585	E	82	15	0.14	0	0.0	2970	3290	0
+120.3	Finestra di Champorcher	2827	E	83	15	0.12	0	0.0	2910	3270	0
+122.4	Rifugio Miserin	2583	NE	34	14	0.83	0	0.0	2900	3270	0
+179.8	Col du Marmontana	2347	N	352	22	0.99	0	0.0	3190	3230	0
+182.6	Crenna di Ley	2312	NNE	15	18	0.97	0	0.0	3190	3230	0
+193.9	Colle Lazoney	2395	WNW	304	7	0.55	0	0.0	3280	3290	0
+213.4	Col Pinter	2782	W	272	29	0.04	0	0.0	3120	3300	0
+228.6	Rif. Grand Tournalin	2552	WSW	243	-18	-0.45	0	0.0	3090	3250	0
+230.2	Col de Nannaz	2775	WNW	281	4	0.2	0	0.0	2790	3300	0
+231.5	Col des Fontaines	2694	WNW	293	23	0.39	0	0.0	2790	3300	0
+252.1	Fenetre du Tsan	2739	W	266	42	-0.08	0	0.0	2820	3260	0
+259.3	Rifugio Cuney	2655	S	172	14	-0.99	0	0.0	2950	3270	0
+261.6	Col de Chaleby	2684	WNW	286	15	0.28	0	0.0	2950	3340	0
+263.8	Bivacco R. Clermont	2705	W	273	-1	0.06	0	0.0	2900	3340	0
+264.2	Col de Vessonaz	2788	WNW	293	27	0.39	0	0.0	2900	3340	0
+280.3	Col Brison	2519	W	278	26	0.13	0	0.0	3000	3340	0
+291.2	Rifugio Champillon	2422	W	281	-29	0.19	0	0.0	3020	3330	0
+292.3	Col de Champillon	2711	SW	226	21	-0.69	0	0.0	2950	3350	0
+316.9	Rifugio Frassati	2548	SW	233	-12	-0.6	0	0.0	2580	3250	0
+319.0	Col Malatra	2921	WSW	250	15	-0.35	0	0.0	2650	3070	0

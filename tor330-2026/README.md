@@ -30,6 +30,8 @@ data/
   profile.json                  route sampled every 500 m: altitude, ETA, felt temp, day/night
   forecast-open-meteo-raw.json  unmodified API response, 79 points x 168 hours
   mountain-forecast-crosscheck.tsv  independent second source, 6 peaks x 2 levels
+  lying-snow-assessment.tsv     existing snow: aspect, melt history, freezing-level history
+  snow-history-92day-raw.json   92 days of snowfall/snow depth/freezing level, 29 high points
 scripts/                        everything used to build the above, in dependency order
 tor330-cold-map.html            the rendered brief
 ```
@@ -86,6 +88,41 @@ that radiates hard:
 
 Legs 1–4 are the opposite problem: 22 °C at Cogne, 26 °C at Donnas, and the Lillaz → Finestra di
 Champorcher climb in full afternoon sun. Water and sun protection, not insulation.
+
+## Lying snow (added 10 Sep)
+
+Separate question from forecast snowfall: is there **existing** snow on the ground at the high points?
+Assessed three ways, all pointing the same direction — essentially none.
+
+1. **No new snow this summer.** Over 10 June – 10 September the freezing level at route altitude never
+   dropped below 2930 m at any hour, and never below 3200 m *during a precipitation hour*. The route's
+   high point is Col Loson at 3295 m. Across all 29 points above 2300 m, total modelled snowfall for the
+   whole summer is 0.5 cm, all of it at Col Loson from the shower of 9 September — a trace.
+2. **No old snow either.** 2026 is the warmest melt season in the 12-year record at Col Loson: 539
+   positive degree-days against a 2015–2025 mean of 386 (+40%), mean temperature 6.2 °C against 4.3 °C,
+   and 0.0 cm summer snowfall against a mean of 8.6 cm. It ranks 1st of 12 for melt energy. Seasonal snow
+   from last winter will have stripped out well before September.
+3. **The forecast adds none.** Race-week freezing level stays between 3030 m and 4600 m, above the
+   route's high point throughout.
+
+Independent confirmation: Italian glaciological reporting for summer 2026 describes a freezing level
+stably above 4800–5000 m and minimal residual snow cover across the Alps.
+
+`data/lying-snow-assessment.tsv` carries the per-point numbers plus the aspect of the slope the route
+actually descends off each high col, computed from the GPX as the bearing over the first 800 m past the
+col. Shaded, high descents are the only places old névé could persist — Col Loson (3295 m, NE),
+Col Entrelor (3004 m, NE), Col Passo Alto (2856 m, NE) and Col de Vessonaz (2788 m, WNW) rank highest.
+Even there, expect isolated hard patches at worst, not continuous cover.
+
+The route crosses **no glacier** and no permanent snowfield; its high point is 3295 m and it spends
+18.3 km above 2700 m, 5.0 km above 2900 m and 1.6 km above 3100 m.
+
+### Caveat on model snow depth
+
+`snow_depth` from the forecast API reads 0.0 cm at every point, but that number is **not** evidence:
+it comes from the model's own land-surface scheme on a ~7 km grid whose cell elevation is far below a
+2800 m col, and unlike temperature it is not elevation-corrected. The freezing-level and
+degree-day arguments above are the load-bearing ones.
 
 ## Caveats
 
