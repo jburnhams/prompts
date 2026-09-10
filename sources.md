@@ -108,6 +108,18 @@ browser-safety block), `leaked/google-antigravity/`, `leaked/devin/Prompt.txt`,
 `leaked/same-dev/Prompt.txt`, `cline/system.ts`, `omp/tools/read.md` +
 `omp/system-prompt.md`.
 
+### The generative-output pass (read 2026-09-10)
+
+Sources for [`agent-generative-output.md`](./agent-generative-output.md).
+The fourth row of that pass is not a repo at all — see "Reading the
+shipped Claude Code binary" below.
+
+| Source | Repo / mount | Paths that matter | SHA / date read |
+|---|---|---|---|
+| **Anthropic Agent Skills** (read 2026-09-10 — the generative-output pass; prompt text stored in [`anthropic-skills/`](./anthropic-skills)) | `github.com/anthropics/skills` | `skills/<name>/SKILL.md` — one folder per skill. The ones that matter here: `web-artifacts-builder/` (`scripts/init-artifact.sh` scaffolds Vite+React+Tailwind+40 shadcn components, `scripts/bundle-artifact.sh` is Parcel + `html-inline` → one `bundle.html`), `algorithmic-art/` (`templates/viewer.html` — the FIXED/VARIABLE contract; `templates/generator_template.js`), `canvas-design/` (+ 5.4 MB of `canvas-fonts/`), `frontend-design/`, `webapp-testing/` (the black-box-script rule), `theme-factory/themes/`, `slack-gif-creator/core/`, `brand-guidelines/`. **Mixed licence — check per folder**: `LICENSE.txt` is Apache-2.0 in most, but `docx`/`pdf`/`pptx`/`xlsx` carry Anthropic Commercial Terms plus an ADDITIONAL RESTRICTIONS clause forbidding extraction, copying and derivative works. Their *shape* is still worth reading: ~1.1 MB each, dominated by `scripts/office/schemas/ISO-IEC29500-4_2016/*.xsd` and ~875-line `scripts/office/validators/`, vendored identically into all three Office skills | `41bbe19` (2026-09-03) |
+| ↳ same pass, **the container mount** | `/mnt/skills/` inside a claude.ai container | `public/` (7 skills) and `examples/` (33). **Twenty-three of `examples/` are not on GitHub at all** — `paint/` (Apache-2.0; `paintkit/toolkit.py` 1,469 lines, `reference.md` 66, `render.py` 76 — the code-drawn-watercolour skill), `pages/` (a two-sentence null skill that redirects to a `guide` tool), `deep-research/` (`references/{researcher,report-writer}.md`), `computer-use/`, `chrome-browser/`, `built-in-browser/`, `learn/`, `morning/`, `google-workspace/`, `setup-writing-style/`, and a consumer-task family. Six ship **no `LICENSE.txt`** and are described, never copied | read 2026-09-10 |
+| **LibreChat — the artifact channel** (read 2026-09-10; prompt text stored in [`librechat/`](./librechat)) | `github.com/danny-avila/LibreChat` | `api/app/clients/prompts/artifacts.js` (537 lines) — `artifactsPromptV1` (deprecated; a near-verbatim copy of Claude.ai's original Artifacts prompt), `artifactsPrompt` (Anthropic, XML-tagged), `artifactsOpenAIPrompt` (Markdown-headed, **plus a "Common mistakes to avoid" delimiter-recovery block the Anthropic variant has no counterpart for**), and `generateArtifactsPrompt({endpoint, artifacts})` which routes on provider family and appends `shadcn-docs/generate` in `SHADCNUI` mode. `api/server/services/Artifacts/update.js` — re-exports `ARTIFACT_START`/`ARTIFACT_END`/`findAllArtifacts`/`replaceArtifactContent` from `@librechat/api`, the server-side artifact update path. `client/src/common/artifacts.ts` — the `Artifact` and `ArtifactDownload` types (an artifact as a *view* of a code-interpreter file). Rendering is Sandpack with Monaco for the code tab. MIT | `b356c3d` (2026-09-10) |
+
 Already-stored captures used alongside the code (no fetch needed):
 `leaked/claude-code/Tools.json` (16 tools, full JSON Schemas),
 `leaked/claude-code/deferred-tools.md`, `leaked/manus/tools.json` (29 tools),
@@ -195,6 +207,24 @@ things learned this pass that are worth adding to that assessment:
   https://www.anthropic.com/engineering/code-execution-with-mcp
   (150,000 → 2,000 tokens of tool definitions, 98.7%; intermediate results
   flowing through context twice).
+- MCP Apps (SEP-1865), *Interactive User Interfaces for MCP* —
+  https://modelcontextprotocol.io/seps/1865-mcp-apps-interactive-user-interfaces-for-mcp
+  and the extension spec at
+  https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx
+  (the `ui://` scheme and `text/html;profile=mcp-app`; `_meta.ui.resourceUri`
+  and `_meta.ui.visibility`; `ui/notifications/tool-result` carrying the whole
+  `CallToolResult` into a sandboxed iframe; the `content` vs
+  `structuredContent` split — the latter *"not added to model context"* —
+  which is the first time the protocol specifies the projection
+  `agent-tool-result-transport.md` found it had left to clients;
+  `visibility: ["app"]` tools the host **MUST NOT** put in the model's tool
+  list; the view's own `tools/call`, `resources/read`, `ui/open-link`,
+  `ui/message`, `ui/request-display-mode` and `ui/update-model-context`.
+  Proposed 2025-11-21, shipped as the first official MCP extension
+  2026-01-26, folded into the extensions framework in the 2026-07-28 spec).
+- mcp-ui, the SDK for the above — https://github.com/idosal/mcp-ui
+  (the three content types `rawHtml` / `externalUrl` / `remoteDom`, and the
+  `postMessage` action set: `tool`, `prompt`, `link`, `intent`, `notify`).
 - MCP specification, *Tools* —
   https://modelcontextprotocol.io/specification/2025-06-18/server/tools
   (`content` vs `structuredContent`, `outputSchema`, `isError`,
@@ -317,13 +347,49 @@ things learned this pass that are worth adding to that assessment:
 
 ## Live-session sources
 
-Two things in this collection came from a Claude Code session's *own*
+Three things in this collection came from a Claude Code session's *own*
 runtime rather than from a repo or a leak, and are labelled as such where
 used: the live tool schemas visible to the running session (the
-`agent-git-vcs.md` worktree finding, and this pass's confirmation of the
+`agent-git-vcs.md` worktree finding, this pass's confirmation of the
 current `Read`/`Grep`/`Task` schemas and the `ToolSearch` deferred-tool
-mechanism), and the MCP server `instructions` block that a connected server
-injects into the system prompt.
+mechanism, and `agent-generative-output.md`'s reading of the
+`Artifact`/`ArtifactData`/`ArtifactComments` schemas), the MCP server
+`instructions` block that a connected server injects into the system
+prompt, and — new on 2026-09-10 — **the shipped binary itself**, see
+below.
+
+### Reading the shipped Claude Code binary (2026-09-10)
+
+`/opt/claude-code/bin/claude` is a 217 MB Bun single-file executable
+whose bundled skill assets are recoverable without any leak. This
+produced [`leaked/claude-code/artifact-skills/`](./leaked/claude-code/artifact-skills)
+(full recipe and caveats in that folder's README). Two storage forms,
+and the first one defeats the obvious tool:
+
+1. **Plain UTF-8, NUL-terminated.** `strings` treats newline as
+   non-printable, so it splits these into sub-40-char lines and drops
+   them — `strings -n 40 | grep 'name: dataviz'` finds nothing while the
+   text is sitting there in the clear. Scan the raw bytes for
+   `---\nname: <slug>\n` and read to the next `\x00`.
+2. **Zstandard frames.** 3,972 `28 b5 2f fd` magics; 138 decompress to
+   valid UTF-8 over 300 bytes (the rest are false positives or chained).
+   `zstandard.ZstdDecompressor().decompressobj().decompress(d[i:i+8_000_000])`
+   inside a `try` is enough.
+
+The module import lines are themselves evidence — `dataviz`'s names all
+nine of its files (`SKILL.md`, six `references/*.md`, and
+`validate_palette` in both `.js` and `.py`), and shows `palette.md` is
+the only one stored `.zst` with its own decompression helper.
+
+**Two gaps, stated rather than papered over**: `dataviz`'s `SKILL.md`
+and five of its six reference files sit in frames this method could not
+reach, and `artifact-capabilities` appears to have **no bundled body at
+all** — its description says it "serves this user's live capability
+roster", i.e. it is fetched per-user at runtime.
+
+Verify every recovered file ends at a sentence or tag boundary before
+keeping it; a naive NUL-stop or an undersized decompression window both
+truncate mid-token and the result looks plausible.
 
 ## Candidates not yet read as code
 
