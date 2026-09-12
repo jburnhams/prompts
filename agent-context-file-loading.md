@@ -522,6 +522,52 @@ attachment-creation time** rather than recomputing it, with the comment
 "so the rendered bytes are stable across turns (prompt-cache hit)" — a
 freshness timestamp in an envelope is a cache-buster, and they noticed.
 
+**A third harness has now thought about it, and gone furthest: Codex emits
+its `AGENTS.md` block only when the block has changed** (read 2026-09-12;
+see [`codex/model-catalog.md`](./codex/model-catalog.md)). `AgentsMdState` is
+one of sixteen named *world-state sections*, each of which implements
+`render_diff(previous)` against a SHA-1'd JSON snapshot of its own prior
+value and **returns nothing when the value is unchanged**. So the injection
+point in the table above is accurate for the turn the content first appears
+or changes, and for every other turn there is no injection at all.
+
+This is a structurally different answer from OpenHands's and Aider's. Those
+two keep repository text *out of* the cacheable prefix so that changing it
+does not invalidate the prefix. Codex keeps it in the history and never
+re-sends it, so the prefix that carried it stays byte-identical and stays
+cached — the history is append-only, and a stable section contributes zero
+bytes per turn after the first. The trade is that the harness now owns a
+consistency problem the others do not have: what the model believes about
+`AGENTS.md` is whatever the last emitted diff said, sitting an arbitrary
+distance back in the transcript, competing for attention with everything
+since.
+
+Two mechanisms in the same design exist to pay that bill, and both are
+instructive:
+
+- **A changed section must revoke its predecessor by name.** The clearest
+  example is not `AGENTS.md` but the sibling `git_attribution` section:
+  flipping it off renders *"Ignore any earlier instructions requiring Codex
+  attribution and do not add it"*, and flipping it on renders *"Ignore any
+  earlier instructions disabling Codex attribution; this policy reflects the
+  current workspace."* A re-rendering harness simply replaces the text; a
+  diffing one has to argue with its own history. Any design that adopts
+  diff-emission inherits that obligation for every section whose *absence*
+  is not self-evidently the new state.
+- **Each section carries a `with_legacy_matcher`** — a predicate that
+  recognises its own older rendered form in an existing history — so a
+  session resumed under a newer client can find and supersede fragments
+  written in a previous format. The prompt format is versioned in the
+  transcript rather than only in the code, which is the part most
+  implementations would discover they needed only after their first format
+  change.
+
+Worth noting what this costs in the *other* direction, since §16's staleness
+material assumes re-rendering: a harness that emits on change cannot rely on
+recency to signal authority. Codex's `AGENTS.md` block is not refreshed
+because the model has been ignoring it for thirty turns, only because the
+file changed.
+
 ---
 
 ## 12. Conditional and just-in-time loading
