@@ -841,10 +841,17 @@ pane.
 
 ## 13. Candidates for our own design
 
-Not adopted — this is the shortlist for the design discussion, ordered by
-confidence. See [`agent-design/`](./agent-design) for what exists today;
-[`agent-design/artifacts.md`](./agent-design/artifacts.md) already
-establishes the ref/handle address space this all plugs into.
+**Settled — see [`agent-design/generative.md`](./agent-design/generative.md)
+for what was actually adopted, rejected and deferred, with the schema
+changes and the supersessions.** This section is kept as the shortlist
+that fed that discussion, unedited, because the design folder's
+maintenance rule is that alternatives are recorded rather than
+reconstructed later: what follows is what the options looked like before
+anything was decided.
+
+Ordered by confidence at the time. See [`agent-design/`](./agent-design)
+for what exists today; [`agent-design/artifacts.md`](./agent-design/artifacts.md)
+already establishes the ref/handle address space this all plugs into.
 
 **High confidence — take these.**
 
