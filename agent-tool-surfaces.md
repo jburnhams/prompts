@@ -134,6 +134,7 @@ shell.
 |---|---|
 | Code execution is just shell commands (`python3 script.py`, etc.) — no dedicated code-exec tool | Nearly everyone with a shell tool (OpenHands, OpenCode, Cline, Roo Code, Augment SWE-bench Agent, mini-swe-agent, SWE-agent) |
 | **CodeAct**: a single tool runs a whole model-generated program per call, chaining multiple *other* tools together mid-script instead of one tool call per model turn | CodeAct+Hyperlight (`execute_code`, an in-sandbox `call_tool(name, **kwargs)` built-in) — the source this pattern is named after in this collection; OpenHands's `CodeActAgent` naming references the same underlying research but the prompt captured here doesn't show the mechanism itself. **Correction**: Codex CLI independently implements the same pattern natively — `tools/code_mode/` (`CodeModeService`, a `call_nested_tool()`-style mechanism, self-recursion explicitly blocked) — invisible to this collection until its prompt-text-only extraction was checked against the live source; see `codex/README.md`'s "Tool surface" section. Not one source built entirely around CodeAct plus one naming reference, but at least two independent working implementations. |
+| **CodeAct as the *only* tool surface — the registry is not exposed as tools at all, it is rendered into one tool's description** | Codex CLI at `tool_mode: "code_mode_only"` (read 2026-09-12), which is the setting for `gpt-6-astra` and the whole 5.6 family; `ToolMode` is `Direct \| CodeMode \| CodeModeOnly` and is a **per-model catalog field**, so whether an agent sees twenty tools or one is decided by the model entry, not the harness config. The single tool is a `ToolSpec::Freeform` carrying a **Lark grammar** (`// @exec:` pragma line, then arbitrary JS), so the dialect is enforced by provider-side constrained decoding rather than by JSON-schema validation — the same lever `agent-tool-call-dialects.md` §7 names as the main thing you forfeit by leaving the native channel, here spent on a whole tool surface rather than on one editing tool. Its description then absorbs the entire registry: per nested tool a `### name` heading, the tool's own description, and its input/output schema rendered as **TypeScript type signatures** rather than JSON Schema, grouped by namespace with each namespace's shared guidance emitted once. Deferred tools are omitted from the description but reachable: "still available on the global `tools` object and listed in `ALL_TOOLS`. To find one, filter `ALL_TOOLS` by `name` and `description`" — tool *discovery* becomes a `.filter()` the model writes rather than a search tool it calls, which is the same idea as its own `tool_search` meta-tool relocated inside the program. |
 | Notebook cell execution as its own tool, distinct from both shell and file-edit tools | Copilot Chat (`RunNotebookCell`, paired with `EditNotebook`/`GetNotebookSummary` — explicitly forbidden to use `EditFile` or shell out to `jupyter` for notebook work) |
 | Stdlib-only Python (no `pip`), no C/C++ compiler at all — code execution is real but deliberately capability-limited by the runtime itself | Bolt.new (WebContainer) |
 | The agent can **write and then execute its own new tools** mid-task (Python scripts invoked via bash), rather than being limited to pre-registered tools | Live-SWE-agent — unique in this collection; the "tool" that gets created is just a script the existing bash tool then runs, not a new entry in the model's function-calling schema |
@@ -144,6 +145,35 @@ one-tool-call-per-turn is a bad fit for "run several small computational
 steps and look at the combined result." Live-SWE-agent's self-authored
 tools are a third, cheaper way to get some of the same benefit without
 building a program-execution sandbox at all.
+
+**And Codex's `code_mode_only` collapses the distinction**: its runtime *is*
+a notebook. A long-running script returns `Script running with cell ID …`;
+the model then calls `wait` with that `cell_id`, receives only the output
+since the last yield, and may pass `terminate: true` to kill it. The script
+can call `yield_control()` to hand partial output back while still running,
+and `notify()` to inject an extra tool-call output mid-execution. So the
+CodeAct program and the notebook cell turned out to be the same object once
+either of them had to run longer than a turn.
+
+**The capability question this raises is worth separating from the
+ergonomics one.** CodeAct+Hyperlight gives the script a real Python
+interpreter and contains it with a microVM — the script has capabilities and
+the sandbox takes them away. Codex's V8 isolate is documented as "no Node,
+no file system, no network access, no console": the script has **no ambient
+authority at all**, and every effect it can have goes through `tools.*`,
+which routes back through the ordinary dispatcher and therefore back through
+sandboxing, approvals and the security reviewer, unchanged, per nested call.
+Those are opposite answers to "what stops a model-authored program doing
+something unintended". Containment is the more general mechanism and the one
+that survives a script wanting to `import requests`; zero-authority is the
+cheaper one and the only one where a composition layer cannot widen the
+agent's permissions by existing. A third property falls out of the
+zero-authority design for free: `store(key, value)` / `load(key)` persist
+values across `exec` calls in the same session, so a script can hand
+structured state to the next script **without it ever entering the model's
+context** — the cheapest context-economy mechanism found in this collection,
+and one that only works because the runtime is trusted to hold state it
+cannot act on.
 
 ## 4. Browser & web access
 

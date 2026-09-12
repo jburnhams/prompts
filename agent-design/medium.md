@@ -904,6 +904,85 @@ Mechanically this is harness config (model per `subagent_type`/role),
 zero prompt changes — which is what makes it medium-tier: the work is
 choosing and measuring, not building.
 
+#### 3d-i. The same axis in coding mode: strong for `plan`, cheap for `implement`
+
+Added 2026-09-12. §3d was scoped to the review pipeline; the coding side
+has the same opportunity and a sharper version of it, because this design
+*already* splits the work at exactly the right seam. `mode: plan` produces
+a spec that `formats.md` §3c requires to be decision-complete, and
+`mode: implement` receives it in a `<plan>` envelope tag. That is a clean
+capability boundary, not a guess about where a task gets hard.
+
+**The selection principle, stated so it generalises**: spend on the step
+whose output later steps cannot check. A plan is a commitment — every
+subsequent run inherits its framing, and nothing downstream re-derives the
+approach. An implementation is checked three times over: by the run's own
+verification step, by `Complete`'s completion audit, and by a review run
+that never saw the plan. On that reading the ranking is plan > validator >
+implement > finder, and it is not the same ranking as "which step writes
+the most code".
+
+**One counter-data-point from the field, worth sitting with rather than
+dismissing.** Codex's catalog sets `default_reasoning_level: low` and
+`multi_agent_reasoning_effort: "xhigh"` — it spends *more* per delegated
+child than per orchestrator turn, the reverse of the intuition that the
+planner is the expensive one. The two are reconcilable and the way they
+reconcile is the useful part: Codex's orchestrator routes, it does not
+produce a decision-complete artifact, so the judgment lives in the
+children. Ours is the other shape. The principle survives — spend where the
+irreducible judgment is — and "the planner is the clever one" turns out to
+be a fact about *this* pipeline rather than a law.
+
+**The real risk is not capability, it is instruction density.** `implement`
+is now the most rule-dense prompt in this design: a four-shape evidence
+table, the completion audit and its anti-shrinking rule, the persistence
+rule with its equivalence clause, the `blocked` / `budget_exhausted`
+distinction, the git-write ban, the don't-re-audit-a-successful-edit rule.
+Weaker models do not fail these by not knowing them; they fail by
+performing them — running the audit as a paragraph of prose rather than as
+a set of lookups, which produces a `done` report that reads correct and
+is not. The completion audit is unusually exposed here, because it is a
+self-check with no external witness. That is the specific thing to measure
+before this ships, and §3e's telemetry is not enough for it: the signal
+would be **findings-per-review-run on Forge's own PRs**, split by the model
+that implemented them.
+
+**Codex supplies the mitigation and the evidence for it.** Its GPT-6 entry
+**drops the whole `# Destructive Actions` section** that its 5.6 entries
+carry, because astra has a `guardian_v2` runtime classifier and 5.6 does
+not ([`../codex/model-catalog.md`](../codex/model-catalog.md)). The
+safety content did not disappear; it moved from prompt to runtime for the
+model that could afford to lose it from the prompt. Read backwards, that
+is the rule for going *cheaper*: **capability down means prompt up, or
+enforcement up.** So a cheap `implement` should get more prompt, not a
+trimmed one — and better, should have the rules it is least likely to hold
+moved into the harness. This design is already well placed for that: the
+git-write ban is enforced by capability absence rather than by trust, and
+`formats.md` §7's run bounding is harness-side. The completion audit is the
+one that cannot move, which is what makes it the gating question.
+
+**Mechanically, most of this is free and one part is not.** Model per mode
+is harness config exactly as §3d says — the dispatcher already picks the
+mode, so it can pick the model in the same decision, zero prompt changes.
+What is *not* free is the case where a cheaper model needs a different
+prompt rather than the same one. The cheapest mechanism for that is the one
+Codex actually ships: **subtraction by heading**. `without_update_plan_instructions`
+matches a line against four literal headings, scans to the next heading of
+equal-or-higher level, and drops the range. Adopting it here would mean
+(a) the coding prompt's headings become an interface with a rename cost —
+Codex needs a disambiguation guard on `## Planning` for precisely this
+reason — and (b) a section can be removed but not varied, which is the
+right constraint for a first version because it keeps one canonical text.
+
+**What to do, in order**: run `plan` on the strongest available model and
+`implement` on the same model as today, change nothing else, and measure
+review findings per run. Then try the cheap `implement` against that
+baseline. Do not trim its prompt to save tokens — if anything add to it.
+Treat a rise in findings-per-run as the cost side of the trade rather than
+as a failure, since a cheaper implementer that produces one more nit per PR
+may still be the right call, and a cheaper implementer that produces one
+more *silently wrong `done`* is not.
+
 ### 3e. Finding-outcome telemetry
 
 **What**: the harness records what happens to every posted finding —

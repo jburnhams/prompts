@@ -177,6 +177,63 @@ Not read: the ACP/ACPX bridge, `docs/specs/codex-supervision.md`, cloud
 workers and placement, `src/plugin-sdk/`, the Control UI (`ui/`), the
 native apps (`apps/`), and `taxonomy.yaml`.
 
+## Codex CLI at GPT-6 (re-read 2026-09-12)
+
+Read at `ee6814b` on `main`. This one wants a **deep** clone rather than
+the blobless-sparse recipe above, because most of what changed is only
+legible as change:
+
+```sh
+git clone --depth 400 https://github.com/openai/codex.git codex-src
+git -C codex-src fetch --shallow-since=<six months back> origin main
+```
+
+Depth 400 reaches about eight days of history on this repo — it lands
+roughly 6,600 commits per six months — so `--shallow-since` is the control
+that matters, not `--depth`.
+
+The prompt corpus is no longer a set of `.md` files. It is one JSON
+document, and the paths that matter are inside it:
+
+| Topic | Where |
+|---|---|
+| **The prompt corpus itself** | `codex-rs/models-manager/models.json` — nine models, each with a `model_messages` object holding `instructions_template`, `persistent_instructions`, `confirmation_policies`, `guardian_v2`, `token_budget`, `multi_agent.role.{root,subagent}`, `collaboration_modes`, `approvals`, `auto_review`. Extract with `json.load`, not grep — the strings carry embedded newlines |
+| How it is served | `models-manager/src/{lib,manager,cache}.rs` — `bundled_models_response()` (`include_str!`), `OpenAiModelsManager` ("bundled models, cache, and `/models`"), `MODEL_CACHE_FILE = "models_cache.json"`, `DEFAULT_MODEL_CACHE_TTL = 300s`, `refresh_ttl` at half-life |
+| Fallback base prompt | `models-manager/prompt.md` (`BASE_INSTRUCTIONS`, via `src/model_info.rs`) |
+| **Prompt assembly as a diff stream** | `core/src/context/world_state/mod.rs` — `render_diff(previous)`, the SHA-1'd snapshot, `with_legacy_matcher`; sixteen sections in the sibling modules. `core/src/session/world_state.rs` builds them per step |
+| Extension seams | `ext/extension-api/src/{contributors,contributors/prompt,turn_admission,session_isolation}.rs` — `PromptSlot::{DeveloperPolicy,DeveloperCapabilities,ContextWindow}`, `TurnStartAdmission`, `SessionIsolation` |
+| Guardian, tier 1 | `models.json` → `guardian_v2.classifier_instructions`; `ext/guardian-v2/src/{async_scorer,sync_reviewer}/` |
+| Guardian, tier 2 | `core/assets/guardian/{policy_template,policy,node_repl_policy}.md`; `core/src/guardian/` (`decision.rs`, `review_session*.rs`, `prompt.rs`); `ext/guardian-reviewer/src/{outcome,completion,circuit_breaker,deadline}.rs` (`REVIEW_TIMEOUT = 90s`; `MAX_CONSECUTIVE_GUARDIAN_DENIALS_PER_TURN = 3`, `…CYBER… = 1`, `MAX_RECENT_AUTO_REVIEW_DENIALS_PER_TURN = 10` over `AUTO_REVIEW_DENIAL_WINDOW_SIZE = 50`) |
+| Reviewer context construction | `guardian-context/src/` — `transcript.rs`, `truncation.rs`, `budget.rs`, `trusted_skills.rs` (`MAX_TRUSTED_SKILL_TOKENS = 768`), `trusted_tool.rs`, `verified_answers.rs`, `retained_instructions.rs` |
+| Code mode | `code-mode-protocol/src/description.rs` (`EXEC_DESCRIPTION_TEMPLATE`, `build_exec_tool_description`, `render_json_schema_to_typescript`, `CODE_MODE_PRAGMA_PREFIX`); `core/src/tools/code_mode/{execute_spec,wait_spec,delegate}.rs` (the Lark grammar is in `execute_spec.rs`); `code-mode-runtime/src/{v8_init,cell_actor}` |
+| Tool mode per model | `core/src/session/turn_context.rs`, `core/src/tools/router.rs`, `core/src/session/code_mode_warning.rs`; `ToolMode::{Direct,CodeMode,CodeModeOnly}` |
+| Multi-agent v2 | `core/src/tools/handlers/multi_agents_v2/{spawn,send_message,followup_task,wait,interrupt_agent,list_agents}.rs`; descriptions in `multi_agents_spec.rs`; `core/templates/agents/orchestrator.md` |
+| Notes/history (the non-summarising compaction path) | `ext/history-notes/src/{tools,backend,extension}.rs` — nine actions across two namespaces; `core/src/session/token_budget.rs`; `core/src/compact_token_budget.rs` |
+| Collaboration modes | `collaboration-mode-templates/templates/{plan,default}.md`; `core/src/context/world_state/collaboration_mode.rs` |
+| `/goal` | `ext/goal/src/{spec,steering,runtime,accounting}.rs`; `ext/goal/templates/goals/{continuation,budget_limit,objective_updated}.md` |
+| Persistent mode | `core/assets/persistent_mode.md`; `models.json` → `persistent_instructions`; `core/src/session/{time_reminder,turn_suspension}.rs` |
+| Memory v2 | `memories/write/templates/memories/{stage_one_system_v2,stage_one_input_v2,consolidation_v2}.md`; `ext/memories/templates/memories/read_path_v2.md`; `memories/write/src/phase1_output.rs` (the v1/v2 contract split) |
+| Permissions | `prompts/templates/permissions/{sandbox_mode,approval_policy}/*.md` (seven files) |
+| Review rubric | `prompts/templates/review/rubric.md` |
+| Personalities | `core/templates/personalities/gpt-5.2-codex_{friendly,pragmatic}.md`; `protocol/src/config_types.rs` (`enum Personality`) |
+
+Two findings that are only visible as *absences*, and both were checked
+rather than assumed:
+
+- The five per-model prompt files this collection stores in
+  [`codex/`](./codex) are still present at `codex-rs/core/` and are
+  **referenced by nothing** — a grep for each filename across the whole
+  tree (Rust, Bazel, Cargo, scripts) returns zero hits. They are
+  byte-identical to the copies here.
+- `prompt_with_apply_patch_instructions.md` was demoted to
+  `core/tests/fixtures/` and then deleted on 2026-09-09 (`eb7bd64`).
+  `agent_jobs.rs` and its CSV fan-out went on 2026-07-20 (`687f05c`).
+
+Not read: `cloud-tasks*`, `realtime-*`, `voice-host`, `windows-sandbox*`,
+`mxc-sandbox`, `bwrap`, `execpolicy`, the TUI beyond the files earlier
+passes named, and `skills/src/dynamic_skill_selector/` (covered by the
+2026-08-30 pass already recorded above).
+
 ## Caveat on the Claude Code source
 
 `tanbiralam/claude-code` claims to be the full leaked TypeScript source

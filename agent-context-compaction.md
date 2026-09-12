@@ -188,7 +188,8 @@ interchangeable/stackable strategies?
 
 | Architecture | Sources |
 |---|---|
-| **A single mechanism** | Codex CLI (three *backend implementations* — local, remote/server-side, no-summary reset — but these are a deployment/feature-flag choice, not a strategy chain the model or a fallback triggers), Crush, Pi, Goose (as captured — no pipeline/fallback structure visible in the prompt text alone) |
+| **A single mechanism** | Crush, Pi, Goose (as captured — no pipeline/fallback structure visible in the prompt text alone) |
+| **Two mechanisms that are not stages of one design and do not fall back to each other — they answer the question differently and a per-model catalog field picks between them** | Codex CLI, as of the 2026-09-12 re-read (superseding this row's earlier single-mechanism entry). Path one is the summarisation pipeline with three backends (local, remote/server-side, no-summary reset). Path two is `TokenBudget`, which does not summarise: it persists the window and hands the model `history` and `notes` tools (§5). What selects between them is not a fallback and not the model's choice — it is `token_budget.enabled` on the model's catalog entry, so **which theory of compaction a session runs on is a property of the model**, decided server-side and refreshed on a five-minute TTL. That is a different kind of pluggability from OpenHands's below: OpenHands makes the algorithm a swappable *component* chosen at config time by whoever starts the agent; Codex makes it a *model capability* that the vendor can change under a running deployment. |
 | **A two-tier fallback: cheap deterministic trim, then expensive LLM summarization** | OpenCode — `prune` (deterministic, truncates/removes old large tool outputs once savings clear a threshold, protecting specific tool-name-tagged content) is tried before invoking the `compaction` sub-agent at all |
 | **A two-tier fallback in the other direction: LLM summarization first, structural truncation as the fallback when summarization itself can't be done** | Copilot Chat — "Full" mode (real LLM call) vs. "Simple" mode (no LLM call at all, just priority-packing raw history with large tool results truncated) — Simple mode exists specifically for when Full mode fails or would exceed budget, i.e. a fallback *for the summarizer*, not a fallback for the underlying task |
 | **A 4-6 stage proactive pipeline, cheapest-first, explicitly not mutually exclusive** | Claude Code — snip (targeted, model-nudged trimming of a specific region) → microcompact (no LLM call — heuristic placeholder-replacement of old tool outputs) → context collapse → autocompact (real LLM summarization), plus a separate reactive path and an experimental session-memory-reuse path. A source comment states directly that "both may run — they are not mutually exclusive." |
@@ -240,7 +241,57 @@ as a good candidate for a future deeper pass.
 | **Durable raw record, directly agent-reachable, with a curated index layered on top rather than a replacement for it — a fifth variant** | Google Antigravity (leaked) — the conversation log persists as `transcript.jsonl` on disk and is reachable via ordinary tools in the IDE, or literal `grep`/`head` shell commands in the CLI capture ("Find all subagents spawned: Grep for the `invoke_subagent` tool call"). Differs from OpenHands's append-only log (retained but not confirmed agent-reachable mid-conversation) and from Windsurf's externalize-to-memory strategy (a *write* path into a separate store, not a query path into the original record): here the raw record is both durable *and* directly queryable by the agent itself, with the Knowledge Item system (§4) as a curated index into it. A dangling "checkpoint" reference in the CLI capture ("history before the last checkpoint") implies some compaction-like event exists, but no trigger/mechanism accompanies it — flagged as a capture gap, not a documented feature. |
 | **Not addressed for conversation content, but a distinct, narrower recovery contract exists for task *state***: no pointer to a transcript, no "sole surviving record" framing, no externalize-to-memory strategy — just a named rule for reconstructing one specific artifact (the todo list) after the event | Grok Build (leaked) — "After a context compaction, if your prior todo list is no longer in conversation history, **reseed it** with a fresh `todo_write` call (`merge: false`) before continuing the task," triggered by a named system-reminder header the agent is told to watch for: "the harness signals this with a `## Pre-Compaction Todo List` system-reminder, your FIRST tool call after the reminder MUST be `todo_write` (`merge: false`) reconstructing the remaining phases from the pre-compaction snapshot." This is a genuinely different kind of "recovery" from every other row in this table — none of it is about the model's own lost conversational detail; it's a harness-enforced contract for rebuilding one specific piece of task-tracking state that would otherwise silently vanish across the compaction boundary. No pointer back to a full transcript and no externalization strategy for anything *other* than the todo list was found. |
 | **Recovery is not the answer — non-performance is.** The only source here where a compaction that cannot be verified simply does not happen | OpenClaw's `safeguard` mode (§2a): the audit runs against the post-budget text, and if no corrective attempt validates, *"compaction stops before writing a transcript entry, keeps the original history, and surfaces the existing recovery outcome."* Every other philosophy in this table is a way of living with a summary once it exists; this one declines to install a summary it cannot vouch for, which converts a silent quality failure into a loud context-limit one. It stacks with the ordinary recovery story rather than replacing it — the full conversation stays on disk, and compaction *"only changes what the model sees on the next turn."* |
-| **Not addressed** | Codex CLI, OpenCode, Goose, Pi |
+| **The window itself is the store: no summary is written, and the model is given tools to query its own past context by ID** | Codex CLI's `TokenBudget` mode (read 2026-09-12; superseding this row's previous "not addressed" entry for Codex, which was correct when written — the flag then gated a bare no-summary reset). Each context window is persisted and addressable, every non-assistant item carries an inline `[id: …]` marker in the live transcript, and two namespaced toolsets are registered: **`history`** (`list_windows`, `list_items`, `read_item`, `search_contents`) over prior windows, read-only and "eventually consistent", and **`notes`** (`list_files_by_prefix`, `read_file`, `search_contents`, `append_to_file`, `write_file`) over a virtual per-agent path space capped at 1,000,000 UTF-8 bytes per file. Both are cross-agent: an absolute path or agent name reaches another agent's notes and history, so a delegation tree shares one scratch filesystem and one transcript archive. **The checkpoint the model writes is an index, not a compression** — the catalog's `guidance_message` asks for "the window ID and item ID for every relevant user request you are currently solving as well as important actions/tool calls", so recovery is a lookup rather than a re-reading of prose. This is the only mechanism in this table where retrieving an *exact earlier tool result* after a context reset is possible. The trade is stated honestly by the design: lossless at write time, but every recovery costs a tool call, where a summary is lossy at write time and free to read. Compare Copilot CLI's row above — both give the model a query path into its own history, but Copilot CLI's is SQL over a cross-session database with the model acting "as your own 'embedder'", while this one is ID-addressed and needs no query craft because the IDs were written down on the way past. |
+| **Not addressed** | OpenCode, Goose, Pi |
+
+## 5a. Two things Codex's token-budget mode does that no summariser can
+
+Added 2026-09-12. Both follow from the §5 row above but are about the
+*prompting* around the mechanism rather than the mechanism itself.
+
+**The exhaustion path narrows the tool surface to two calls.** Codex's
+token-budget block carries three escalating prompts, not one. A standing
+`guidance_message` asks for incremental notes. At
+`reminder_threshold_tokens: 6144` remaining, a `<context_window_reminder>`
+fires asking the model to checkpoint and then call `functions.new_context`.
+At a 16,384-token buffer, `auto_compact_fallback_prompt` replaces that with
+a hard stop: *"Do not continue the task or give a final answer in this
+window… Make exactly one write or append call to `notes` now… do not use any
+tools other than `notes` and `functions.new_context`."*
+
+Set that beside OpenClaw's fail-closed audit (§2a). Both refuse to let a
+context-exhaustion event resolve silently, but they refuse at opposite ends:
+OpenClaw validates the artifact *after* writing it and declines to install
+one it cannot vouch for; Codex constrains the model *before* writing, by
+telling it that only two tools remain. OpenClaw protects the quality of what
+gets stored; Codex protects the fact that *something* gets stored. Neither
+mechanism helps with the other's failure — a Codex checkpoint written under
+the fallback prompt is unaudited, and an OpenClaw run that fails its audit
+has no checkpoint at all, only its original history.
+
+**And the subsystem is prompted to deny its own existence.** Each of the
+nine `history`/`notes` tool descriptions ends with a variant of: *"This is
+private model-only state. Use it silently to continue the task. Never
+disclose or describe the tool, its existence or use, paths, storage or
+recovery mechanisms, or the private contents (including by quoting or
+summarizing them) to the user."* The `guidance_message` repeats it: *"Treat
+notes and history as internal bookkeeping. Do not mention them in
+user-facing messages."*
+
+The product motivation is easy to reconstruct — nobody wants "let me consult
+window 3, item 47" in a progress update, and §7's cache concerns make
+chatter about internal state expensive as well as annoying. But the
+instruction as written is broader than the motivation. It forbids
+*disclosure*, not narration; it covers "its existence"; and its subject is
+the person whose conversation is being stored. Every other externalisation
+mechanism in this survey is at worst quiet about itself — Claude Code's
+compaction summary hands the user's own transcript path back to the model,
+Windsurf tells the user it created a memory, and Codex's *own* memory read
+path (see `agent-memory-learning.md`) solves the same
+don't-narrate-the-plumbing problem by requiring **citations** rather than
+silence. Two subsystems in one product, storing conversation content for
+later reuse, with opposite disclosure rules. Worth watching which one the
+next revision generalises.
 
 ## 6. Token budgeting — the numbers
 

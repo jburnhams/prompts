@@ -522,6 +522,81 @@ attachment-creation time** rather than recomputing it, with the comment
 "so the rendered bytes are stable across turns (prompt-cache hit)" — a
 freshness timestamp in an envelope is a cache-buster, and they noticed.
 
+**And a third answer has appeared, which is §12a's delta mechanism turned
+on the standing prompt itself** (read 2026-09-12; see
+[`codex/model-catalog.md`](./codex/model-catalog.md)). Codex emits its
+`AGENTS.md` block **only when the block has changed**. `AgentsMdState` is
+one of sixteen named *world-state sections*, each of which implements
+`render_diff(previous)` against a SHA-1'd JSON snapshot of its own prior
+value and returns nothing when the value is unchanged. So the injection
+point in the table above is accurate for the turn the content first appears
+or changes, and for every other turn there is no injection at all.
+
+**"Changes" is narrower than it sounds, and checking it matters**, because
+a diffing assembler looks at first glance like it has solved §18's
+re-resolution absence. It has not. `agents_md_manager.rs`'s cache
+invalidates on exactly two things — the turn's environment `selections`,
+and `active_project_trust_level` — and **not on the file's mtime**. So a
+session whose `AGENTS.md` is edited on disk mid-run goes on seeing the
+version it loaded at the start, exactly as every other harness in §18 does.
+What the machinery is built to carry is a change in *which* file applies,
+not a change in what the applying file says. The absence survives; it has
+just acquired a harness where filling it would be plumbing rather than
+architecture.
+
+**The mechanism is not new here — the scope is.** Claude Code's
+`mcpInstructionsDelta` (§12a) does exactly this, down to the details:
+diff against what the conversation has already been told, emit only the
+difference, and retract additively rather than retroactively because
+rewriting history would destroy the cache the delta exists to protect.
+§18's eleventh takeaway already names Claude Code and Codex as the two
+harnesses that thought about late-arriving context and reached the same
+answer. What changes is what the mechanism is pointed at. In Claude Code
+it handles context that *arrives late* — an MCP server connecting mid-
+session, a JIT memory attachment, a deferred tool — while the standing
+prompt is still a rebuilt prefix. Codex applies it to the standing prompt:
+`AGENTS.md`, the permission templates, the collaboration mode, and **the
+model's own instructions** are all sections in the same diffing machinery.
+Nothing is a prefix that gets rebuilt, because nothing is a prefix.
+
+Against OpenHands's and Aider's answers it is a different axis entirely.
+Those two keep repository text *out of* the cacheable prefix so changing it
+cannot invalidate the prefix. Codex keeps it in the history and never
+re-sends it, so the prefix stays byte-identical — a stable section costs
+zero bytes per turn after the first. The trade is a consistency problem
+neither of the others has: what the model believes about `AGENTS.md` is
+whatever the last emitted diff said, sitting an arbitrary distance back in
+the transcript, competing for attention with everything since. Claude Code
+pays that bill for one subsystem, where the blast radius of getting it
+wrong is an MCP server's usage notes. Codex pays it for the whole prompt,
+where the blast radius includes the safety rules.
+
+Two mechanisms in the same design exist to pay that bill, and both are
+instructive:
+
+- **A changed section must revoke its predecessor by name.** The clearest
+  example is not `AGENTS.md` but the sibling `git_attribution` section:
+  flipping it off renders *"Ignore any earlier instructions requiring Codex
+  attribution and do not add it"*, and flipping it on renders *"Ignore any
+  earlier instructions disabling Codex attribution; this policy reflects the
+  current workspace."* A re-rendering harness simply replaces the text; a
+  diffing one has to argue with its own history. Any design that adopts
+  diff-emission inherits that obligation for every section whose *absence*
+  is not self-evidently the new state.
+- **Each section carries a `with_legacy_matcher`** — a predicate that
+  recognises its own older rendered form in an existing history — so a
+  session resumed under a newer client can find and supersede fragments
+  written in a previous format. The prompt format is versioned in the
+  transcript rather than only in the code, which is the part most
+  implementations would discover they needed only after their first format
+  change.
+
+Worth noting what this costs in the *other* direction, since §16's staleness
+material assumes re-rendering: a harness that emits on change cannot rely on
+recency to signal authority. Codex's `AGENTS.md` block is not refreshed
+because the model has been ignoring it for thirty turns, only because the
+file changed.
+
 ---
 
 ## 12. Conditional and just-in-time loading
@@ -995,7 +1070,34 @@ gets to fill cheaply:
   cache-boundary marker, and the workspace files sit above it. A design
   wanting mid-session re-resolution should notice that the thing
   standing in its way is a caching decision, not an architectural one.
-- **Nobody pins a revision**, or records one alongside the path.
+  **Sharpened 2026-09-12, not overturned**: Codex now assembles the whole
+  standing prompt as per-section diffs (§11), so the delivery half of
+  mid-session re-resolution is built and working — a changed `AGENTS.md`
+  section would reach the model as a delta with no prefix rebuild. It is
+  the *detection* half that is still absent: the manager's cache keys on
+  environment selections and trust level, never on mtime, so no file edit
+  ever produces a changed value to deliver. Two harnesses now have the
+  expensive part of this and neither has wired the cheap part, which is
+  worth more than the original observation — it says the blocker was never
+  the mechanism.
+- **Nobody serves the instructions from a server, except Codex, and only
+  for the vendor's own layer.** Added 2026-09-12. Every context file in
+  this document is repository- or user-resident: the text is on disk where
+  someone can read it, and changing it means changing a file or shipping a
+  client. Codex's model catalog is the one exception, and it sits *above*
+  the tiers this document covers rather than replacing them — the agent's
+  own base instructions, its permission templates and its reviewer prompts
+  are fetched from `/models` and cached for 300 seconds
+  ([`codex/model-catalog.md`](./codex/model-catalog.md)), while
+  `AGENTS.md` continues to work exactly as §§1–17 describe. The nearest
+  relative already in this document is an MCP server's handshake
+  `instructions` string (§12a), and the difference is the point: that is a
+  *server describing its own tools*, immutable for the life of a
+  connection, contributing one section. This is the vendor rewriting the
+  agent's core instructions under a running client, with no file on disk,
+  no client release, and no revision recorded anywhere the user can see.
+  Worth stating plainly for anyone reasoning about provenance: it means a
+  captured Codex prompt is evidence about the fallback, not about what ran.
 - **Nobody tells the model when a file was truncated or dropped.** Codex
   logs it; the model is not told. Gemini CLI's `<!-- Import failed -->` is
   the closest anyone gets, and it covers imports only.

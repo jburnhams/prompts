@@ -402,3 +402,80 @@ re-litigated later.
   result — which is a coherent answer, and worth revisiting only if a
   run ever needs to hand back an artifact (a chart, a profile, a
   screenshot) that isn't prose.
+- **Emit standing context as a diff, not as a per-turn re-render.** The
+  envelope (`formats.md` §1) is assembled fresh for every run, and within
+  a run the conventions corpus sits in the prompt unchanged from first
+  turn to last. That is correct and cheap at v1's scale, where a run is
+  one task and the corpus does not change under it. It stops being
+  obviously correct the moment a run gets long enough for the corpus to
+  change mid-flight — the just-in-time section reveal (`formats.md` §8b)
+  is already the thin end of that wedge, and `medium.md` §4's long-horizon
+  waiting is the thick end.
+  Codex's answer is worth tracking as the most developed one in the
+  collection: sixteen named world-state sections, each rendering only its
+  own diff against a hashed snapshot of its prior value, so a stable
+  section contributes zero bytes after the first turn and the whole
+  standing prompt becomes an append-only change stream
+  (`../codex/model-catalog.md`; `../agent-context-file-loading.md` §11).
+  Two obligations come with it and are the reason this is *not* a v1
+  change, because both are real work rather than plumbing:
+  - **A changed section has to revoke its predecessor by name.** The old
+    text is still in the transcript. Codex's git-attribution section is
+    the honest illustration: flipping the policy renders "Ignore any
+    earlier instructions requiring Codex attribution", because
+    replacement is not available when nothing is being replaced. Every
+    section whose *absence* does not obviously mean the new state needs
+    that sentence written for it, and getting one wrong leaves two
+    contradictory instructions in context with the stale one earlier and
+    therefore cheaper to attend to.
+  - **The rendered form needs a recogniser, so a resumed or re-dispatched
+    run can find and supersede fragments written by an older format.**
+    Codex carries a `with_legacy_matcher` per section for exactly this.
+    This design versions its formats in prose today; diff emission turns
+    that into a runtime requirement.
+  Worth noting what it would buy here specifically, which is *not*
+  tokens: this design's conventions blocks are nonce-wrapped and
+  byte-identical to disk (`context-files.md` §4), so they are already
+  cache-stable within a run. The gain is in the second-order case —
+  a resumed run (`formats.md` §5) inherits the suspended run's transcript
+  *and* re-renders the envelope, so the corpus currently appears twice.
+  That is the concrete defect a diffing assembler would fix, and it is
+  also fixable far more cheaply by having resume omit the blocks the
+  inherited transcript already carries. Do the cheap fix first; treat the
+  general mechanism as gated on a run shape that does not exist yet.
+- **A hand-off tier: work the agent must not do even with approval.**
+  Every gate in this design is passable — `AskUser` suspends and a human
+  answer resumes the run, and the git-write ban (`system-prompts.md`)
+  is the one true prohibition, enforced by the absence of the capability
+  rather than by a policy tier. Codex's computer-use policy enumerates a
+  fourth confirmation mode this collection has no other instance of:
+  *hand-off required*, where "the agent must not perform the final action.
+  It must ask the user to take over and the user must perform the action"
+  — credential entry, bypassing a security interstitial, consequential
+  financial actions, and eligibility decisions about other people
+  (`../agent-permissions-approval.md` §1b).
+  The distinction is worth having and is not the same as "always ask": a
+  user who says yes to an always-ask prompt gets the action performed,
+  and the point of the category is that they should not. v1 does not need
+  it, because v1's tool surface cannot reach any of the enumerated
+  classes — no browser, no payments, no credential entry, and `AddComment`
+  is the only outbound write. It becomes live the moment the surface
+  widens in a direction `medium.md` §2 contemplates, and the cheapest
+  place to put it is where the git-write ban already lives: a named class
+  the prompt states and the harness makes unreachable, rather than a
+  policy the model is trusted to apply.
+- **Per-segment evaluation of `Bash` command strings.** `tools.md` treats a
+  `Bash` call as one unit for its read-only-git and no-git-write rules.
+  Codex splits the command string at shell control operators — pipes,
+  `&&`, `||`, `;`, `(...)`, `$(...)` — evaluates each segment
+  independently, and then declines to rule-match at all on commands
+  containing redirection, substitution, environment assignment or globs,
+  "to limit the scope of what an approved rule allows"
+  (`../agent-permissions-approval.md` §5). v1's ban is prompt-level and
+  its enforcement story is the harness refusing git writes, so the gap is
+  narrow today — but it is exactly the gap that widens if the harness ever
+  implements the ban as a pattern match, since `git status && git commit`
+  and `$(echo git) commit` both defeat a naive one. Record the rule now,
+  adopt it with any enforcement layer that matches on command text: match
+  per segment, and treat the shell-feature forms as unmatchable rather
+  than as matching nothing.

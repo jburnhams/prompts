@@ -341,6 +341,43 @@ explicitly since the vocabulary ("thinking," "reasoning") overlaps:
   addition even within Codex's own prompt history, not something every
   Codex capture in this collection shows.
 
+  **Confirmed from open source, 2026-09-12, and the leaked capture was
+  right.** `gpt-6-astra`'s `instructions_template` in the model catalog
+  ([`codex/gpt-6-astra_instructions.md`](./codex/gpt-6-astra_instructions.md))
+  carries the split verbatim: "You share updates in the `commentary`
+  channel… You yield back to the user and end your turn by sending a final
+  message to the `final` channel." So the vocabulary is native to OpenAI's
+  own harness, the leaked supplement was reporting a real mechanism ahead of
+  this collection's coverage, and Amp's use of it on a Claude model stands
+  as a genuine borrowing. Three rules come with it that the leaked capture
+  did not carry, and each one names a distinct failure of this pattern:
+  **a self-containment requirement with a stated reason** — "The final
+  answer must always be fully self-contained: users should never need to
+  read earlier commentary updates, since they are collapsed after the final
+  answer is shown to users" (the UI collapses commentary, so a final answer
+  that references it is broken, not merely terse); **a channel-purity rule
+  in both directions** — "Do NOT send user facing questions in intermediate
+  commentary messages. Do NOT put a final response in the commentary
+  channel"; and **a latency budget** — "should not be left without a
+  commentary update for more than 60 seconds during ongoing work", which is
+  the first numeric narration cadence in this document that is expressed as
+  a *silence ceiling* rather than as a frequency.
+
+  It also carries an anti-pattern rule aimed at narration specifically:
+  "Never praise your plan by contrasting it with an implied worse
+  alternative. For example, never use platitudes like 'I will do <this good
+  thing> rather than <this obviously bad thing>'." That is one instance of a
+  much longer style block in the same prompt — an explicit ban list covering
+  "delve", "foster", "leverage", "it's worth noting", "importantly",
+  "Bottom Line:", "Question? Answer.", hyphenated compound descriptions,
+  invented compound labels, and **contrastive framing of the form "X, not
+  Y"** on the grounds that it "introduces an unprompted alternative that the
+  user didn't ask about". No other prompt in this collection legislates
+  register at that resolution; whether it works is not something a source
+  read can answer, but the *choice* to spend ~800 words of a system prompt
+  on prose style is itself a finding about where this vendor thinks the
+  remaining quality is.
+
 - **A seventh mechanism: a dedicated, standalone narration *tool call*,
   distinct from both a required field on another tool (Windsurf) and a
   channel-name convention layered on ordinary prose (Amp)** — GitHub

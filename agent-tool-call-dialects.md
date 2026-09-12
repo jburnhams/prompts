@@ -230,6 +230,41 @@ deliberately exposes nothing else: "programs can inspect only its `name`,
 `toolName`, and human-readable `message`, not internal error codes or a
 failure union."
 
+**Codex's `code_mode_only` is the same shape moved one layer down, and the
+move is the finding** (read 2026-09-12; see
+[`codex/README.md`](./codex/README.md)). It renders the same thing —
+per-tool TypeScript input *and* output signatures, grouped by namespace,
+plus a shared MCP `CallToolResult` preamble when any nested tool returns one
+— but it puts the whole block inside the **description of a single
+registered tool** rather than in the system prompt. Three consequences that
+DeepSeek's placement does not have:
+
+- The catalogue rides the **native tool channel**, so it is tool metadata to
+  the provider rather than prose. Codex pairs that with a Lark grammar on
+  the same tool (`// @exec:` pragma, then JS), which means the one thing §7
+  says you forfeit by leaving the native channel — provider-side constrained
+  decoding — is retained for a full CodeAct surface.
+- The fixed per-turn cost becomes **elastic**. Deferred tools are left out
+  of the description but stay callable and enumerable through a global
+  `ALL_TOOLS`, so the model filters that array at runtime instead of the
+  harness paying for every schema in every turn. DeepSeek's ~28 KB is the
+  price of admission; Codex's equivalent block is whatever the enabled set
+  costs, with the tail reachable on demand.
+- Namespace-level guidance is emitted **once per namespace** rather than
+  repeated per tool, which is the same de-duplication argument
+  `agent-tool-implementations.md` §1 makes about three-consumer tool
+  descriptions, applied to the advertisement rather than the description.
+
+The two also diverge on what comes back. DeepSeek's rule is *"ONLY what you
+print or return comes back to you."* Codex adds two escape hatches in the
+other direction: `yield_control()` pushes accumulated output to the model
+*while the script keeps running*, and `notify()` injects an extra
+`custom_tool_call_output` mid-call. So the program is not a single
+request/response after all — it is a stream the model can be interrupted by,
+which is what makes long-running cells (`wait`, `cell_id`, `terminate`)
+workable inside a tool-call protocol that has no other notion of partial
+results.
+
 ---
 
 ## 5. Results: correlation, envelope, and whether an error can be seen
