@@ -107,6 +107,23 @@ rather than a call, which is what lets it say the sentence the rest of
 this collection's context-management docs are circling: intermediate
 tool results never enter the conversation.
 
+**[→ `codex/model-catalog.md`](./codex/model-catalog.md)** — read this if
+you take one thing from the 2026-09-12 Codex re-read. Codex CLI no longer
+compiles a prompt file per model. The whole corpus — per-model
+instructions plus per-subsystem fragments for approvals, delegation,
+compaction, collaboration mode and the security reviewer — is a JSON
+**model catalog**, fetched from `/models` and cached for **300 seconds**,
+with an `include_str!`-ed copy in the binary as the offline floor. Two
+consequences change what a prompt capture from that repo means: the
+committed text is what a client falls back to rather than what a session
+ran on, and a prompt edit reaches every running client inside the TTL
+without a release. On top of it, the assembled prompt is a **diff
+stream** — sixteen named world-state sections that render only when their
+own value changed, which makes a stable section free after the first turn
+and forces a changed one to revoke its predecessor by name. The flagship
+entry, `gpt-6-astra`, is also the first model here whose entire tool
+surface is one JavaScript-execution tool (`tool_mode: "code_mode_only"`).
+
 **[→ `coding-agent-approaches.md`](./coding-agent-approaches.md)** — the
 companion doc, one level down: a comparison of the *full* coding-agent
 system prompts themselves (identity, per-model variants, environment
@@ -669,7 +686,7 @@ of static files, not construction.
 | [`opencode/`](./opencode) | [OpenCode](https://github.com/anomalyco/opencode) | Coding agent (terminal, multi-provider) | MIT |
 | [`roocode/`](./roocode) | [Roo Code](https://github.com/RooCodeInc/Roo-Code) | Coding agent (VS Code extension, Cline fork) | Apache-2.0 |
 | [`copilot-chat/`](./copilot-chat) | [GitHub Copilot Chat](https://github.com/microsoft/vscode-copilot-chat) | Coding agent (VS Code agent mode + CLI) | MIT |
-| [`codex/`](./codex) | [Codex CLI](https://github.com/openai/codex) | Coding agent (OpenAI's terminal agent) | Apache-2.0 |
+| [`codex/`](./codex) | [Codex CLI](https://github.com/openai/codex) | Coding agent (OpenAI's terminal agent) — re-read 2026-09-12 at GPT-6; the prompt corpus is now a served catalog, see [`codex/model-catalog.md`](./codex/model-catalog.md) | Apache-2.0 |
 | [`goose/`](./goose) | [Goose](https://github.com/block/goose) | Coding agent (Block, CLI + desktop) | Apache-2.0 |
 | [`crush/`](./crush) | [Crush](https://github.com/charmbracelet/crush) | Coding agent (Charm, terminal) | FSL-1.1-MIT |
 | [`bolt/`](./bolt) | [Bolt.new](https://github.com/stackblitz/bolt.new) | AI app-building agent (browser) | MIT |

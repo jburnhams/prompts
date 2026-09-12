@@ -446,7 +446,7 @@ Everything in §§1–6 assumes a two-party relationship: one orchestrator,
 one sub-agent it delegates to (or, at most, OpenHands's `workflow` DSL
 fanning out to many copies of the *same* kind of relationship).
 Microsoft's Agent Framework — the same upstream project
-[`codeact-hyperlight/`](../codeact-hyperlight) sources from, but a
+[`codeact-hyperlight/`](./codeact-hyperlight) sources from, but a
 completely separate installable package
 (`agent-framework-orchestrations`) with no code cross-references to the
 CodeAct material — implements something structurally different: five
