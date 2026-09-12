@@ -377,6 +377,47 @@ and its adoption test is exactly the one `medium.md` §6b already builds from
 backed by a three-way thread verdict promotes on first sight, while a
 `repo_fact` from our own run still waits for recurrence.
 
+### 4b-i. Claim strength: the gate decides whether, the wording decides how far
+
+Added 2026-09-12. The gates above are all *admission* tests — is this worth
+recording at all. They say nothing about how broadly the admitted record may
+be *worded*, and that is a separate leak with the same consequence. A
+`repo_fact` promoted on a single pinned-SHA read is admissible; written as
+"this service always validates at the handler boundary" it is a false
+general claim that will be injected into runs where it is wrong, and no
+gate in §4b catches it, because the observation was real.
+
+Codex's v2 memory extractor is the only prompt in the collection that
+teaches this, and it teaches it by example rather than by rule
+(`../agent-memory-learning.md` §6). Its case is user preferences — "the user
+asked to show a plan before editing" versus "the user prefers the agent to
+show plans before editing" — and the generalising verb is the whole
+difference. Ours is repository facts, where the same move looks like
+`observed once here` becoming `is how this repo does it`.
+
+So the learnings run's prompt carries the constraint, in the same shape:
+
+> **Write what you observed, at the scope you observed it.** A thing seen
+> once is "X does Y here"; a thing seen across distinct runs is "X does Y".
+> Do not promote a single observation into a rule by wording — the
+> `evidence` field records what you saw, and the `body` must not claim more
+> than it. If a stronger claim is the useful one, say what would establish
+> it rather than asserting it.
+
+This is cheap, it is checkable after the fact (the `evidence` field and the
+`body` are both in the record, and disagreement between them is a review
+finding against the learnings run), and it composes with `observed_once` /
+`observed_repeatedly` rather than duplicating them: the gate decides whether
+a record exists, this decides how far it is allowed to reach. The
+corresponding reading-side rule already exists in §5 — a retrieved record is
+evidence, not fact — and the two are the same discipline from opposite ends.
+
+One thing deliberately *not* imported. Codex pairs this with "ordinary
+behaviour is not a personal preference", guarding against a model mistaking
+its own uncorrected conduct for a user's wish. This design has no user-model
+channel at all (§7 keeps it out), so that hazard does not exist here, and
+the rule would be a sentence the model has to read and never apply.
+
 ### 4c. `CreateMemory`, revised
 
 The learnings run's single write, unchanged in posture from §6c —
