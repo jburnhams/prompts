@@ -667,6 +667,56 @@ regression-hunting a first-class review role — OpenClaw's protocol is
 the specification to adopt wholesale, and `unknown` comes back with it
 as the required answer when the parents are unavailable.
 
+**The wider question this sits inside now has both poles in the
+collection, and the decision here is unchanged but no longer unopposed**
+(recorded 2026-09-12). OpenClaw states the starved position outright —
+*"The review sandbox is intentionally empty"* — and this design's
+no-`Bash` review roles were adopted partly on that precedent. Codex's
+approval reviewer takes the opposite one and argues it: it "shares the
+execution environment with the agent" under read-only, no-network
+restrictions, with a spend rule — *"Only call tools when they would flip
+an allow/deny decision, and the decision depends on local state which is
+not available from your context"* — and a worked example, inspecting an
+`rm -rf` target before ruling on it (`../codex/guardian-policy.md`).
+
+That is a real argument and it does not transfer, for a reason worth
+writing down rather than leaving as taste. **The two reviewers are
+reviewing different kinds of object.** Codex's rules on a *command*: a
+string whose consequences are almost entirely a function of local state
+the string does not contain, so a reviewer without the filesystem is
+guessing. Ours rules on a *diff*: the evidence is in the payload, the
+envelope already carries the surrounding context the finding needs
+(§1's ladder), and the residual questions a finder cannot answer are
+mostly historical rather than present-state — which §4a has just
+narrowed to three values precisely because they cannot be answered.
+
+Two things follow. First, the starved default stands: adding `Bash` to
+finders would buy little on diff review and would cost the two
+properties that make the fan-out affordable — bounded, comparable context
+per lens (§6a) and a reviewer that cannot be steered into running
+something by the PR it is reading. Second, the exception is now named
+rather than implicit: **if a lens is ever given a reason to ask about
+present state rather than about the diff** — a `history` lens as above, or
+a hypothetical lens ruling on a command in CI config — Codex's spend rule
+is the one to adopt with it, because "would this flip the finding?" is a
+better gate on a reviewer's tool budget than a per-turn cap.
+
+**One mechanism does transfer now, and it is cheap.** Codex renders
+*"Codex-verified invoked user-owned skill paths"* into its reviewer's
+context — the host attesting which guidance actually applied and that it
+belongs to the user, so the reviewer never has to take the transcript's
+word for provenance. The equivalent here is the conventions corpus: a
+finder is told which sections were resolved for this run, and by §4a it
+may cite them, but nothing in the brief distinguishes *the harness
+resolved this at the base SHA* from *the diff introduced it*. The base-SHA
+rule (`context-files.md`) already prevents the attack; what is missing is
+the finder being able to say so. Adding the resolution's ref to each
+`<conventions>` block's attributes — which the block already carries as
+`rev=` — and one line in the brief stating that the listed sections are
+harness-resolved at the base SHA closes it. Recorded here, not specified
+as a v1 change, because it is a one-line brief edit rather than a
+mechanism, and belongs in whichever pass next touches the finder brief.
+
 ---
 
 ## 5. The validator brief — exact payload

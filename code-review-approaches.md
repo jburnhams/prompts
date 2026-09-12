@@ -229,6 +229,7 @@ this on" onto the model actually running the right `git diff` invocation.
 | Context source | Sources |
 |---|---|
 | `CLAUDE.md`/`AGENTS.md` compliance | [`agent37/local-review`](./skills/agent37/local-review), [`anthropic/code-review`](./skills/anthropic/code-review), [`turingmind`](./skills/turingmind), `codex-review` (implicitly, via normal CLI behavior) |
+| **`AGENTS.md` compliance with an attribution contract** — the rule file is not just context, a finding that leans on it must *cite* it | Codex CLI's `ReviewTask` rubric (read 2026-09-12; [`codex/review-rubric.md`](./codex/review-rubric.md)). Precedence is stated (`AGENTS.override.md`, then `AGENTS.md`, then configured fallbacks, more-specific wins) and the format is deliberately loose — "Guidance may use headings, checklists, bullets, tables, or concise prose; do not require formal IDs or schemas." Then the contract: a finding is **rule-supported** "only when applicable guidance materially contributes repository-specific scope, an invariant, remedy, convention, or confirmation behavior **beyond generic correctness advice**", and every rule-supported finding must carry "the applicable project instruction file that supplies the rule and its **smallest supporting line range**", with "Do not fabricate citations." See §11a. |
 | Linked issue-tracker ticket (Jira/Linear-shaped: title, requirements, DoD) | `pr-agent` |
 | Spec/story file + frontmatter-referenced docs, for acceptance-criteria checking | [`bmad-code-review`](./skills/bmad-code-review) (gates a whole extra "Acceptance Auditor" review layer) |
 | Org-wide review standards / injected "skills" text | `pr-agent` (`skills_context`, `repo_context`) |
@@ -524,6 +525,57 @@ that didn't fit in a skill:
   and re-requested review — and guards the one backward transition on the
   latest status event having been written by the automation actor, so
   automation can never overwrite a human-owned status.
+
+## 11a. Repository rules as a citation obligation, not a context blob
+
+Added 2026-09-12. §11 is about where review criteria *come from* over time;
+this is the adjacent question of what a reviewer owes the reader when a
+finding rests on a repository's own written rule. Codex's rubric is the only
+source here that answers it, and the answer is three constraints that only
+make sense together.
+
+**One: a rule has to earn the label.** Rule-supported means the guidance
+"materially contributes repository-specific scope, an invariant, remedy,
+convention, or confirmation behavior beyond generic correctness advice." A
+repo whose `AGENTS.md` says "write clear code" has not supplied a rule; a
+repo that says "all DB writes go through `withTx`" has. Without this test,
+every finding becomes nominally rule-supported the moment a rule file exists
+anywhere in the tree, and the label stops carrying information.
+
+**Two: the citation must be minimal and real.** "Verify the applicable
+project instruction file that supplies the rule and its **smallest
+supporting line range**, then include one compact Markdown or local-file
+reference in the finding body. Do not fabricate citations or add hidden
+metadata or output fields." Pointing at a 400-line conventions document is
+not a citation — it is a dare. The smallest-range rule is the same discipline
+the rubric already applies to `code_location` ("avoid ranges longer than
+5–10 lines"), turned on the reviewer's own evidence.
+
+**Three, and this is the one most implementations would miss: the presence
+of a rule file must not change the finding set in either direction.** "Do
+not omit ordinary findings or invent findings solely because a rule file
+exists." Both failure modes are real and they pull opposite ways. A reviewer
+handed a style guide drifts into enforcing it and stops hunting bugs; a
+reviewer told that rule-supported findings are the valuable ones starts
+quietly dropping the correctness findings it cannot attribute. One sentence
+closes both.
+
+The rubric pairs this with **P0–P3 priority tags**, mirrored as a numeric
+`priority` field in the JSON, and the P0 definition is worth quoting because
+it defines severity by the *absence of preconditions* rather than by impact:
+"Drop everything to fix. Blocking release, operations, or major usage. **Only
+use for universal issues that do not depend on any assumptions about the
+inputs.**" Compare `autoreview`'s threshold-as-preamble in §6, which uses P0
+as a filter; here P0 is a claim about how the bug triggers, which is
+checkable by the author in a way that "how bad is it" is not.
+
+One more line, added in the same pass, belongs with §6's attention-collapse
+material: **"Do not stop at the first qualifying finding. Continue until
+you've listed every qualifying finding."** `autoreview` spends a paragraph
+building an explicit second sweep for the same reason; this is the one-sentence
+version, and it sits directly beside the opposite instruction ("If there is
+no finding that a person would definitely love to see and fix, prefer
+outputting no findings"), which is the pairing that makes either safe.
 
 ## Design takeaways
 

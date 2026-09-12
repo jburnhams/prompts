@@ -655,6 +655,96 @@ OpenCode's `doom_loop` in `agent-permissions-approval.md` §5 — same
 detection, opposite response: OpenCode escalates to the human, DeepSeek
 escalates to the model.
 
+## 13. The completion audit: shifting the burden of proof
+
+Added 2026-09-12 from Codex's `/goal` continuation prompt
+([`codex/goal-prompts.md`](./codex/goal-prompts.md)). Every mechanism in
+§§1–12 answers "did the agent check?" This one answers a question the rest
+of the document circles without naming: **what standard does a claim of
+completion have to meet**, when there is no deterministic gate to meet it
+for you.
+
+The context matters for reading it. `/goal` is a harness loop: when a turn
+ends with the goal unfinished, the harness injects the continuation prompt
+and samples again. So the model does not decide whether to keep going — it
+decides whether to *declare done*, by calling `update_goal` with status
+`complete`. That makes the completion claim the single load-bearing
+judgment in the system, and the prompt is built around defending it.
+
+The governing sentence: **"The audit must prove completion, not merely fail
+to find obvious remaining work."**
+
+That is the inversion. §7's prompted-only instructions all read as "check
+your work"; a model that looks, sees nothing wrong, and stops has complied.
+Here the null result is explicitly not sufficient, and the procedure makes
+the difference operational:
+
+- **Derive requirements from the artifact, not from memory.** "Derive
+  concrete requirements from the objective and any referenced files, plans,
+  specifications, issues, or user instructions" — then, per item, "identify
+  the authoritative evidence that would prove it" *before* looking.
+- **Four outcomes per requirement, not two.** Evidence can "prove
+  completion, contradict completion, show incomplete work, be too weak or
+  indirect to verify completion, or be missing" — and "Treat uncertain or
+  indirect evidence as not achieved."
+- **Scope-match the check to the claim.** "Match the verification scope to
+  the requirement's scope; do not use a narrow check to support a broad
+  claim." And, closing the metric-is-not-the-property gap §12 records from
+  DeepSeek: "Treat tests, manifests, verifiers, green checks, and search
+  results as evidence **only after confirming they cover the relevant
+  requirement**."
+- **Named non-evidence**: "Do not rely on intent, partial progress, memory
+  of earlier work, or a plausible final answer as proof of completion."
+- **Current state beats transcript.** "Use the current worktree and external
+  state as authoritative. Previous conversation context can help locate
+  relevant work, but inspect the current state before relying on it."
+
+Two companion mechanisms in the same prompt keep the audit from being gamed
+from the other end, and both are worth stealing independently.
+
+**Against shrinking the objective to fit.** "Ending this turn does not
+require shrinking the objective to what fits now… do not redefine success
+around a smaller or easier task", and "Do not substitute a narrower, safer,
+smaller, merely compatible, or easier-to-test solution because it is more
+likely to pass current tests." This is the failure mode where an agent
+passes its own audit by quietly editing the requirements, and it is the one
+a completion audit alone makes *more* attractive rather than less. The
+accompanying definition is unusually crisp: "An edit is aligned only if it
+makes the requested final state more true; useful-looking behavior that
+preserves a different end state is misaligned."
+
+**A blocked audit with a threshold and an anti-gaming clause.** `blocked`
+may only be declared after "the same blocking condition has repeated for at
+least three consecutive goal turns, counting the original/user-triggered
+turn and any automatic goal continuations" — and then the clause that makes
+the threshold real: **"Treat equivalent blockers as the same condition
+across turns even when their wording or stated next step changes."** Without
+it, any counting rule is defeated by rephrasing. Two more balancing rules:
+a resumed goal starts a fresh audit, and "Once the blocked threshold is
+satisfied, do not keep reporting that you are still blocked while leaving
+the goal active" — so the threshold cannot be used as a place to hide
+either. Plus the boundary: "Never use status `blocked` merely because the
+work is hard, slow, uncertain, incomplete, or would benefit from
+clarification."
+
+**And a three-way classification of the previous turn** that gives
+"still waiting" a definition instead of leaving it as a mood: progress, a
+**verified wait**, or no progress — where "a verified wait polls a specific
+process, session, job, or tool handle confirmed live now. Conversation,
+intent, prior output, or a lock or state file alone is insufficient. Treat
+work as stopped only when authoritative state says it is terminal or its
+handle is missing. An observation timeout or transient polling failure is
+not terminal: re-poll the same handle or inspect other authoritative state;
+never restart solely because observation expired." The last sentence is
+guarding a real and expensive mistake — killing and restarting a long job
+because the *watcher* timed out.
+
+Set beside §2's deterministic gates: those are cheaper and stronger wherever
+they apply, and nothing here replaces them. What this adds is a discipline
+for the residue — the requirements no gate covers — and a way to tell,
+from the transcript, whether the agent actually did it, since every step of
+the audit names an artifact it had to look at.
+
 ## Absences
 
 - **OpenCode**: no hidden self-review agent (confirmed absence — the

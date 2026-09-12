@@ -927,6 +927,51 @@ skill creation... **Default to NO SKILL**," with a five-question STOP
 gate and per-run caps ("Prefer 0-5 memory patches and 0-2 skills per
 run").
 
+**Claim strength as its own gate, taught with a worked example.** Added
+2026-09-12 from Codex's v2 Phase 1 prompt
+([`codex/memory-prompts-v2.md`](./codex/memory-prompts-v2.md)). Every other
+gate in this section filters on *whether* something is worth writing; this
+one filters on *how strongly it may be written*, and it is the only place in
+the collection that teaches the distinction by showing the same fact three
+ways:
+
+> For example, if the user says "show me the plan before editing this", you
+> can write "the user asked to show a plan before editing", but should not
+> write "the user prefers the agent to show plans before editing". To be
+> clear about your confidence, if the user said "I prefer you to show plans
+> before editing", you can write "the user explicitly stated that they
+> prefer the agent to show plans before editing".
+
+The failure mode being closed is specific and, once named, obviously the
+common one: a single in-context request laundered into a standing
+preference, which then arrives in every future session as settled fact. The
+generalising word ("prefers") is doing damage that no inclusion gate would
+catch, because the underlying observation *was* worth recording. Supporting
+rules in the same prompt: "Avoid wording that implies a preference applies
+across tasks unless the user stated that broader scope"; "Preserve the
+user's stated preferences and any scope or conditions they expressed,
+without implying repetition beyond the evidence"; and the summary line that
+settles what the artifact is at all — **"Write task history, not a user
+profile."**
+
+The consolidation prompt enforces the same boundary from the other end. `##
+User preferences` admits only things "stated as a default or supported
+across distinct tasks", everything else stays with its task, and —
+disposing of the other direction of the same error — **"Ordinary behavior is
+not a personal preference."** An agent that did something reasonable and was
+not corrected has learned nothing about what the user wants.
+
+Two more rules from the v2 pair that belong with §9's governance material
+but are cheaper to state here. **Bounded evidence**: the consolidator is
+told "Do not open original rollout transcripts", so Phase 2 can only work
+from what Phase 1 chose to write down and cannot quietly re-derive claims
+the extraction step declined to make. And **deletion is honoured
+transitively**: "Remove claims supported only by deleted sources, preserve
+claims with remaining support, and do not restore corrected or deleted
+claims from older summaries" — without that last clause, a consolidation
+pass reading an older summary resurrects what a user asked to forget, which
+is the quiet way a forget feature stops working.
+
 **A style guide with deletion rules, not just inclusion gates.**
 OpenClaw's shared `SKILL_AUTHORING_STANDARDS_PROMPT` is the only writer
 contract here that tells the model what to *remove* on every pass:
@@ -1565,7 +1610,28 @@ the repository's own instruction files, which is the gap
 
 Two vendors moved *away* from a dedicated memory mechanism during the
 period this collection covers, which is worth recording as carefully as
-the additions:
+the additions. A third moved away from a *prompt*, not a mechanism, and
+that is the more useful of the three:
+
+- **Codex's memory prompts shrank by an order of magnitude, and dropped an
+  output field** (read 2026-09-12). A `MemoryVersion` enum now selects
+  between two template pairs. V1's stage-one system prompt is 569 lines and
+  its consolidation prompt 880; v2's are **53 and 52**. V2 also removes the
+  separate `raw_memory` field this document quotes in §6's empty-output
+  contract — `phase1_output.rs`' doc comment is "Version-specific extraction
+  contracts; **v2 never decodes raw memory**" — folding the long account
+  into `rollout_summary` under a 9,000-byte truncation, so the pipeline now
+  carries one artifact per rollout instead of two. The pieces that survived
+  a 90% cut are the signal worth keeping: the claim-strength example and
+  "write task history, not a user profile" (§6), the untrusted-evidence
+  framing, the deletion-is-transitive rule, and the retrieval-pointer format
+  with "never guess, reconstruct, normalize, or create a pointer". What did
+  *not* survive is most of the taxonomy and formatting instruction. Read
+  against §6's observation that "every mature writer prompt is mostly a
+  filter": this is the same filter, with the worked examples kept and the
+  enumeration thrown away. Whether it performs as well is not something the
+  source can answer, and the dual-version machinery suggests OpenAI is not
+  certain either — both pairs ship.
 
 - **Cursor appears to have removed Memories.** The 2025-era leaked
   captures in `leaked/cursor/` contain both halves of a real feature: a
