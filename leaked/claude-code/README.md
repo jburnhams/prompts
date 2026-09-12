@@ -71,6 +71,23 @@ authenticity notes:
   `Task{Create,Get,List,Output,Stop,Update}`, `Team{Create,Delete}`,
   `WebFetch`, `WebSearch`) — confirmed, tool-for-tool almost exactly,
   against this live session's own deferred-tool list.
+**A capture of a different kind** (2026-09-10) — not a leak at all:
+- [`artifact-skills/`](./artifact-skills) — sixteen files extracted
+  **directly from the shipped Bun executable** (`/opt/claude-code/bin/claude`,
+  217 MB) in the session that added them, with the extraction recipe
+  recorded in that folder's README. The `artifact-*` page-type family
+  (dashboard, report, data-table, explainer, diagramming, components,
+  pr-review), the bidirectional artifact skills (`workshop`,
+  `whiteboard`, `prototype`), the design-canvas pair (`design`,
+  `design-sync`), the `plan` artifact template with its harness-side
+  fill contract, and two of `dataviz`'s files including a runnable
+  palette validator. Provenance here is stronger than anything else in
+  this folder: nothing was transcribed from a model's context or sourced
+  from an aggregator. Analysed in
+  [`../../agent-generative-output.md`](../../agent-generative-output.md).
+  Note `artifact-skills/artifact-design-v2.md` supersedes
+  `bundled-skills/artifact-design.md` below — keep both for the diff.
+
 - `bundled-skills/` — 18 of Claude Code's actual internal skill
   prompts (`init.md`, `compact.md`, `verify.md`, `security-review.md`,
   `keybindings-help.md`, `loop.md`, `code-review.md`, `schedule.md`,
