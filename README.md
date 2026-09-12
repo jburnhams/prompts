@@ -120,7 +120,11 @@ ran on, and a prompt edit reaches every running client inside the TTL
 without a release. On top of it, the assembled prompt is a **diff
 stream** — sixteen named world-state sections that render only when their
 own value changed, which makes a stable section free after the first turn
-and forces a changed one to revoke its predecessor by name. The flagship
+and forces a changed one to revoke its predecessor by name. Both of those
+are about *delivery*: the per-model instruction blob is a constant string
+(the field is called `instructions_template` and the source's own doc
+comment says it is "literal text"), so what is programmatic is which blobs
+appear, not how any of them is written. The flagship
 entry, `gpt-6-astra`, is also the first model here whose entire tool
 surface is one JavaScript-execution tool (`tool_mode: "code_mode_only"`).
 
