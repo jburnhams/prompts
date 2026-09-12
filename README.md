@@ -721,6 +721,75 @@ built-but-not-switched-on pattern turns up on the way: an `Artifact`
 widths and returns screenshots plus a mechanical checklist, present in
 the binary and absent from the live tool schema.
 
+**[→ `agent-data-analysis.md`](./agent-data-analysis.md)** — the second
+doc about an agent whose output is not a code change, and the first
+about one whose *input* is not a repository: thirteen harnesses read
+from source into [`data-agents/`](./data-agents), organised around the
+four things that actually differ (the work product has to be rendered;
+the interesting state lives in a process the agent cannot see; the data
+never fits, so every read is a projection; and running it proves
+nothing). Two pieces of ecological context frame the pass: **Open
+Interpreter's `main` is now a Rust coding agent** — the archetypal
+"chat with your data by running code" project last shipped its Python
+interpreter in `v0.4.2` — and **Positron Assistant has left Posit's
+open-source tree**, leaving only the call site
+(`positron.ai.generateAssistantPrompt`). The centre of gravity moved
+from agents to substrate in the same window that Microsoft Research,
+Datalayer, E2B, marimo and MathWorks shipped readable infrastructure.
+The headline finding is a four-way convergence nobody appears to have
+noticed: jupyter-mcp's `execute_code` vs `insert_execute_code_cell`,
+marimo's scratchpad vs `cm.get_context()`, Data Formulator's
+"inspection tools" vs "actions", and the claude.ai container's
+`/home/claude` vs `/mnt/user-data/outputs` are **the same boundary**,
+enforced twice by mechanism and twice by a sentence — and the
+jupyter-mcp sentence (*"Under no circumstances should you use this tool
+to … perform variable assignments that affect subsequent Notebook
+execution"*) is about reproducibility, not safety: a notebook whose
+state was established off-document is a lie. §3 is the doc's centre,
+on the fork that decides everything downstream — Open Interpreter's
+*"it's critical not to try to do everything in one code block"* and
+Data Formulator's *"combine related steps into a single script"* are
+both correct, for opposite execution models, and a harness that changes
+one without the other gets silent `NameError`s. It tabulates the only
+four known answers to the problem a persistent kernel creates (the
+agent's transcript and the kernel's namespace diverge and the agent
+cannot see it), including MetaGPT's expensive one — **prompt a second
+model call to write a probe cell, run it, inject the output** — which is
+the only one that works when the harness cannot introspect the runtime.
+§7 lays out the whole spectrum of who draws the chart, from free code
+through **LIDA's under-used scaffold** (the model completes `<imports>`
+and `<stub>` and nothing else) to Data Formulator banning matplotlib
+outright, and adds E2B's answer, which is the one the collection had
+been circling: two custom Jupyter MIME types, `e2b/data` (a DataFrame
+as columns) and `e2b/chart` (a matplotlib `Figure` **deconstructed back
+into data** — title, axis labels, units parsed out of the label by
+regex, tick positions, scale type, and every plotted point with its
+series label), so *"which series peaks first"* becomes exact rather
+than a vision guess. Set against marimo's `ctx.screenshot()`, which
+drives headless Chromium at 2× DPI against the live notebook, the two
+are complements: one tells you what the numbers were, the other whether
+the legend collided. Also: btw's four named projections of a data frame
+with the best statement anywhere of what *"show me the data"* means
+(column summaries answer *what is in this table* in O(columns); rows
+answer *what does a record look like* and are needed rarely);
+Vanna's `run_sql`, which writes a CSV, hands the model a 1,000-character
+preview **plus** the filename **plus** an instruction not to summarise
+it, and hands the UI a `DataFrameComponent` with a text fallback — four
+projections of one call; Positron's `convert_to_code`, which turns a
+grid's filter/sort state into pandas, polars, data.table or dplyr and is
+the missing piece in every "chat with a dashboard" design; Postgres MCP
+changing its **tool description and MCP annotations**, not just its
+driver, between access modes; MATLAB MCP factoring the four annotation
+flags into four named constructors with the consequence of misuse
+written into the comment (*"the read-only hint tells hosts they may skip
+user confirmation, so misusing it lets writes through silently"*); and
+§11, which checks the "MCP can't do binaries" premise against the spec
+(it can, as base64 `blob`s — which is exactly the wrong thing to do) and
+finds that **jupyter-mcp already ships the ref-with-metadata pattern
+inside plain MCP**, addressing individual cell *outputs* as resources
+with cache TTLs, audience annotations and a comment that is the clearest
+statement of the principle in this collection.
+
 ## Sources so far
 
 | Folder | Project | Type | License |
@@ -832,6 +901,29 @@ commands, or the top-level folders' standalone CLI/IDE agents). See
 **Copilot: nothing found.** GitHub's actual hosted Copilot code-review bot
 has no published prompt/diff-formatting logic anywhere — closed-source,
 server-side. See `github-pr-bots/README.md` for what was checked.
+
+## Data-analysis agents
+
+A fifth category: harnesses whose task is **answering a question about
+data** rather than editing a repository. See
+[`data-agents/README.md`](./data-agents/README.md) for the index and
+[`agent-data-analysis.md`](./agent-data-analysis.md) for the synthesis.
+
+| Folder | Project | Type | License |
+|---|---|---|---|
+| [`data-agents/open-interpreter/`](./data-agents/open-interpreter) | [Open Interpreter](https://github.com/OpenInterpreter/open-interpreter) `v0.4.2` | One `execute(language, code)` over ten backends — the archetype. `main` is now a Rust coding agent | AGPL-3.0 |
+| [`data-agents/jupyter-mcp/`](./data-agents/jupyter-mcp) | [Jupyter MCP Server](https://github.com/datalayer/jupyter-mcp-server) | 18 MCP tools over a live Jupyter server; cells and individual outputs as resources | BSD-3-Clause |
+| [`data-agents/data-formulator/`](./data-agents/data-formulator) | [Data Formulator](https://github.com/microsoft/data-formulator) | Chart-first analyst; inspection tools vs committing actions; the model may not draw | MIT |
+| [`data-agents/marimo/`](./data-agents/marimo) | [marimo](https://github.com/marimo-team/marimo) | Reactive notebook; four AI modes; a transactional agent API over the user's live kernel, and cell screenshots | Apache-2.0 |
+| [`data-agents/vanna/`](./data-agents/vanna) | [Vanna 2.0](https://github.com/vanna-ai/vanna) | Text-to-SQL as an agent framework; the dual-channel `ToolResult` | MIT |
+| [`data-agents/metagpt-di/`](./data-agents/metagpt-di) | [MetaGPT Data Interpreter](https://github.com/FoundationAgents/MetaGPT) | Plan of typed tasks into one kernel; per-task-type guidance; a generated state-probe cell | MIT |
+| [`data-agents/lida/`](./data-agents/lida) | [LIDA](https://github.com/microsoft/lida) | summarise → goals → scaffold → six-dimension self-eval → repair | MIT |
+| [`data-agents/e2b/`](./data-agents/e2b) | [E2B Code Interpreter](https://github.com/e2b-dev/code-interpreter) | The sandbox; `e2b/data` and `e2b/chart` custom MIME types | Apache-2.0 / MIT |
+| [`data-agents/pandasai/`](./data-agents/pandasai) | [PandasAI](https://github.com/sinaptik-ai/pandas-ai) | A typed `result = {"type", "value"}` contract with per-invariant repair prompts | MIT |
+| [`data-agents/postgres-mcp/`](./data-agents/postgres-mcp) | [Postgres MCP Pro](https://github.com/crystaldba/postgres-mcp) | Access mode changes the tool description and annotations, not just the driver | MIT |
+| [`data-agents/matlab-mcp/`](./data-agents/matlab-mcp) | [MATLAB MCP Server](https://github.com/matlab/matlab-mcp-server) | MathWorks' own; session lifecycle as tools; JSON-declared custom tools over MATLAB functions | Apache-2.0 |
+| [`data-agents/btw/`](./data-agents/btw) | [btw](https://github.com/posit-dev/btw) | Posit's R toolkit: 25 introspection tools on, `run_r` off by default | MIT |
+| [`data-agents/positron/`](./data-agents/positron) | [Positron](https://github.com/posit-dev/positron) | Not an agent — the Data Explorer OpenRPC protocol, i.e. what a viewer exposes | Elastic-2.0 |
 
 ## Papers
 

@@ -126,6 +126,46 @@ Already-stored captures used alongside the code (no fetch needed):
 `leaked/windsurf/tools-wave-11.txt`, `leaked/grok-build/`,
 `leaked/cursor/`, `leaked/github-copilot-cli/`.
 
+### The data-analysis pass (read 2026-09-12)
+
+Sources for [`agent-data-analysis.md`](./agent-data-analysis.md); prompt
+and tool text stored per folder under [`data-agents/`](./data-agents).
+
+| Source | Repo | Paths that matter | SHA / tag / date read |
+|---|---|---|---|
+| **Open Interpreter** (legacy) | `github.com/OpenInterpreter/open-interpreter` | `interpreter/core/default_system_message.py`; `interpreter/core/llm/run_tool_calling_llm.py` (the `execute` schema, runtime-filled `language` enum); `interpreter/core/computer/terminal/terminal.py` (the ten-backend registry); `.../terminal/languages/jupyter_language.py` (the IOPub → message projection, the `Agg` comment at ~line 59, the dispatch at 220–292); `.../languages/r.py` (the `##active_line` rewrite); `interpreter/core/utils/truncate_output.py`. **Clone the tag, not `main`** — `main` is a different program | tag `v0.4.2` = `13061d2` (2024-10-24) |
+| ↳ same repo, **the pivot** | same | `README.md` and the tree at `main` — Rust, Bazel, `.codex/skills/`. Recorded as a finding, nothing stored | `2885d0d` (2026-09-08) |
+| **Jupyter MCP Server** | `github.com/datalayer/jupyter-mcp-server` | `jupyter_mcp_server/server.py` (18 `@mcp.tool`s with annotations; the three `@mcp.resource` templates at ~427–520; `capabilities_resource`); `resources.py` (`output_mime`, `output_text`, `cell_document`, TTLs); `results.py` (the one-file wire shape, `CACHE_META_KEY`, `META_NAMESPACE`); `utils.py` (`extract_output`, `safe_extract_outputs`, `normalize_cell_source`). Also `docs/docs/code-sandboxes/` — ten backends behind one tool surface | `a259155`, tag `v2.1.15` (2026-09-12) |
+| **Data Formulator** | `github.com/microsoft/data-formulator` | `py-src/data_formulator/analyst/agent.py` (`SYSTEM_PROMPT` at 175–266); `analyst/tools.py` (151 lines, all of it); `analyst/skills/core/SKILL.md` (314 lines) and `skills/report/`; `sandbox/{base,local_sandbox,docker_sandbox,not_a_sandbox}.py`; `agents/agent_simple.py` (the STYLE/DATA router, the NL→filter agent). Note `agents/agent_data_loading_chat.py` is 112 KB and was not read | `5477f0e`, `0.8b1` (2026-08-15) |
+| **marimo** | `github.com/marimo-team/marimo` | `marimo/_server/ai/prompts.py` (477 lines — `_get_mode_intro_message`, `_format_variables`, `_format_schema_info`, the two `language_rules` dicts); `_server/ai/tools/code_mode.py`; `_server/ai/skills/marimo-pair/SKILL.md` + `references/{gotchas,rich-representations,notebook-improvements}.md`; `marimo/_code_mode/` (`screenshot.py`, `screenshot_meta.py`, `_context.py`) | `1793fe5` (2026-09-11) |
+| **Vanna 2.0** | `github.com/vanna-ai/vanna` | `src/vanna/tools/run_sql.py` (the whole `execute`); `src/vanna/core/tool/models.py` (`ToolResult`, `ToolSchema`, `ToolRejection`); `src/vanna/core/components.py` (`UiComponent`); `src/vanna/components/rich/data/dataframe.py`; `src/vanna/components/rich/specialized/artifact.py`; `src/vanna/capabilities/sql_runner/`. **1.x was a different program** (RAG over schema + example queries) | `365d061`, tag `v2.0.2` (2026-02-02) |
+| **MetaGPT — Data Interpreter** | `github.com/FoundationAgents/MetaGPT` | `metagpt/prompts/task_type.py` (the six guidance fragments); `metagpt/strategy/task_type.py` (the `TaskType` enum binding them); `metagpt/prompts/di/write_analysis_code.py` (`INTERPRETER_SYSTEM_MSG`, `STRUCTUAL_PROMPT`, `REFLECTION_*`, `CHECK_DATA_PROMPT`, `DATA_INFO`); `metagpt/prompts/di/data_analyst.py` | `11cdf46` (2026-01-21) |
+| **LIDA** | `github.com/microsoft/lida` | `lida/components/summarizer.py` (`get_column_properties` + the annotation prompt); `components/goal.py`; `components/scaffold.py` (the five per-library templates); `components/viz/{vizgenerator,vizevaluator,vizrepairer,vizexplainer,vizrecommender,vizeditor}.py`. Unchanged since 2024 | `d892e20` (2024-03-02) |
+| **E2B Code Interpreter** | `github.com/e2b-dev/code-interpreter` | `template/startup_scripts/0002_data.py` (the two custom formatters); `template/server/api/models/result.py`; `chart_data_extractor/e2b_charts/charts/{base,planar,bars,pie}.py` and `utils/`. The `chart_data_extractor/` tree is MIT and separately licensed from the SDK | `f56a1ed` (2026-09-10) |
+| **PandasAI** | `github.com/sinaptik-ai/pandas-ai` | `pandasai/core/prompts/templates/` — `generate_python_code_with_sql.tmpl`, `shared/{output_type_template,sql_functions,dataframe}.tmpl`, `correct_output_type_error_prompt.tmpl`, `correct_execute_sql_query_usage_error_prompt.tmpl`; `pandasai/core/response/` (the five response classes); `pandasai/helpers/sql_sanitizer.py` | `bbbb771` (2025-10-28) |
+| **Postgres MCP Pro** | `github.com/crystaldba/postgres-mcp` | `src/postgres_mcp/server.py` (the nine tools; `AccessMode`; the mode-dependent `mcp.add_tool(execute_sql, …)` at ~605–625; `explain_query`'s `hypothetical_indexes` schema at ~330–355); `src/postgres_mcp/sql/safe_sql.py` (`ALLOWED_STMT_TYPES`, `ALLOWED_FUNCTIONS`) | `15c8e33` (2026-08-15) |
+| **MATLAB MCP Server** | `github.com/matlab/matlab-mcp-server` | Go. `internal/adaptors/mcp/tools/{singlesession,multisession}/*/definition.go` (name/title/description per tool); `internal/adaptors/mcp/tools/annotations/annotations.go` (the four factories); `guides/custom-tools.md` (the `tools`/`signatures` split). A companion `matlab/matlab-mcp-core-server` exists and was not read | `2e44b0a`, tag `v0.13.0` (2026-09-01) |
+| **btw** | `github.com/posit-dev/btw` | R. `R/tool-env-df.R` (the four formats, the roxygen guidance, the `ellmer::tool` registration at ~200–250); `R/tool-run.R` (the security section and the four opt-in paths); `R/tool-ide.R` (the `consent` argument); `R/aaa-tools.R`, `R/mcp.R`, `R/btw-config.R` (`btw.md`) | `473d1d8`, `v1.5.0` (2026-09-09) |
+| **Positron** | `github.com/posit-dev/positron` | `positron/comms/` — `data_explorer-backend-openrpc.json` (15 methods; `row_filter_type`, `column_profile_type` enums; the `*_features` support-status objects), `data_explorer.md` (the special-value integer codes), `variables-backend-openrpc.json`, `plot-*`, `connections-*`. Also `extensions/copilot/src/extension/prompts/node/base/positronAssistant.tsx` — **the call site only**; `extensions/positron-assistant` is not in the OSS tree | `340c418` (2026-09-12) |
+| **smolagents** (read, not stored) | `github.com/huggingface/smolagents` | `src/smolagents/prompts/{code_agent,structured_code_agent,toolcalling_agent}.yaml`; `src/smolagents/local_python_executor.py` (`BASE_BUILTIN_MODULES`, `DANGEROUS_MODULES`, `DANGEROUS_FUNCTIONS`, `MAX_OPERATIONS`, `MAX_WHILE_ITERATIONS`, `MAX_EXECUTION_TIME_SECONDS`, `DEFAULT_MAX_LEN_OUTPUT`); `remote_executors.py` | `30bb116` (2026-08-22) |
+| **Jupyter AI** (nothing retrievable) | `github.com/jupyterlab/jupyter-ai` | The repo is now a shell over git submodules; no prompt-bearing file was reachable in this pass. Worth re-checking with `--recurse-submodules` | `c961b89` (2026-09-11) |
+
+Also checked against the **MCP specification** revision `2025-06-18`
+(`modelcontextprotocol.io/specification/2025-06-18/server/tools`, re-read
+2026-09-12) for the tool-result content types — `text`, `image`, `audio`,
+`resource_link`, embedded `resource` with `text` **or** base64 `blob`, plus
+`structuredContent` and `outputSchema`. Used in
+[`agent-data-analysis.md`](./agent-data-analysis.md) §11a to check the
+"MCP can't carry binaries" premise, which is not quite right — it can, in
+the way you should not want.
+
+Two commercial systems are referenced from documentation only, because the
+semantic-layer shape is the thing the open sources lack (§8): **Snowflake
+Cortex Analyst** (`docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-analyst`
+and `.../cortex-analyst/verified-query-repository`) and **Databricks
+Genie**. Neither is stored; neither is quoted beyond the published
+description of the semantic-model YAML and verified-query repository.
+
 ## OpenClaw 2.0 (read 2026-08-31)
 
 `github.com/openclaw/openclaw` at `5f714ef` (`main`, 2026-08-31). MIT.

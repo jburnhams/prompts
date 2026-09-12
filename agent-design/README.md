@@ -88,7 +88,14 @@ session itself uses for `subscribe_pr_activity`) when a reply lands.
         2 modes: plan · implement
 ```
 
-Both entrypoints are the *same* model running under a different system
+**A third entrypoint, `analyse`, is added by
+[`data.md`](./data.md) §2g** — same core, same eleven tools, modes
+`explore` and `answer`. It is separate from coding for the same reason
+review is: not a different tool surface, a different completion
+contract. A coding run ends with a branch whose tests pass; an analysis
+run ends with a claim and its provenance.
+
+All entrypoints are the *same* model running under a different system
 prompt (`system-prompts.md`), sharing the identical tool schemas
 (`tools.md`). The difference is orchestration philosophy, matching the
 brief's "dynamic for coding, multi-agent for review":
@@ -359,6 +366,24 @@ does not need lifecycle folders or a format gate):
    rejections with reasons. Supersedes two narrow things:
    `AddComment.body`-always-required and `formats.md` §5's bare-text
    `<resumed_answer>`.
+14. `data.md` — what this design takes from
+   [`../agent-data-analysis.md`](../agent-data-analysis.md), the
+   research pass on agents whose input is a question about data rather
+   than a repository. **Zero new tools**, which is what the ref system
+   bought: a table is a thing at a ref, profiling it is a read, querying
+   it is a read with a selector, and charting it is a validating write.
+   Six v1 adoptions — a `table://` scheme, a `table` artifact kind whose
+   stub defaults to column summaries and always states null counts,
+   `:rows:`/`:cols:`/`:sql:` selectors, tabular spills minting
+   `table://`, a chart-spec validating write path with its own refusal
+   vocabulary, and a provenance half for the completion gate — plus the
+   **probe/commit rule** (four harnesses enforce the same boundary; the
+   one Forge tool that fails it is `Bash`) and a third entrypoint,
+   `analyse`, with modes `explore` and `answer`. Five rejections with
+   reasons, including the two that look most obviously right —
+   a `Describe` tool and a `Chart` tool — both subsumed by contracts
+   the design already has. Narrows one thing: `artifacts.md` §4a's
+   "a read carrying a selector never spills" gains a `:sql:` exception.
 
 Per-source notes — what one harness does and whether it transfers —
 live in that harness's own folder, not here. `../deepseek-harness/`
