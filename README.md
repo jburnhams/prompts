@@ -678,6 +678,70 @@ whose *memory* search is a grep. Across all eleven, **nobody generates
 repository context programmatically**: skills are progressive disclosure
 of static files, not construction.
 
+**[→ `agent-generative-output.md`](./agent-generative-output.md)** — the
+first doc here about an agent that makes a **thing** rather than a code
+change: an image, a chart, a dashboard, a poster, a deck, a working
+prototype, a report someone reads. Written against three new source
+sets — [`anthropic-skills/`](./anthropic-skills) (the Apache-2.0
+creative skills from `anthropics/skills`, plus `paint` from the
+claude.ai container mount), [`librechat/`](./librechat) (the one
+readable open-source artifact channel), and
+[`leaked/claude-code/artifact-skills/`](./leaked/claude-code/artifact-skills)
+— the last of which is a **new kind of capture for this collection**:
+sixteen files read directly out of the 217 MB Bun executable the
+session was running, with the extraction recipe recorded, rather than
+from an aggregator. It opens on the four delivery channels an artefact
+can take from agent to person and the observation that the in-band
+delimiter lane (LibreChat's `:::artifact{…}`, Bolt's `<boltArtifact>`)
+is the only one that charges the payload to context twice — and the
+only one whose prompt has to teach fence arithmetic, in a *"Common
+mistakes to avoid"* block LibreChat ships to its OpenAI-family models
+and not its Anthropic ones. §2 records the near-total vendor split on
+where pixels come from: Anthropic's nine published creative skills
+contain **zero image-model calls** and draw everything by writing a
+program (`paint`'s first sentence is *"by writing code, not by calling
+an image model"*), while every app-builder in `leaked/` ships a
+diffusion tool and no drawing toolkit — a split that turns out to be
+about content versus information, not capability. §4 is the doc's
+centre and answers the question it was written for — how an agent
+graphs a large MCP result without bloating context — with **five**
+answers that cut the pipeline at different points, including
+`artifact-dashboard`'s *"The chart slot takes a JSON spec, not markup:
+you emit data + a few knobs; the template's `renderChart()` owns the
+pixels"*, and MCP Apps' `content`/`structuredContent` split, whose
+spec text (*"structured data optimized for UI rendering **(not added to
+model context)**"*) is the first time the protocol specifies the
+projection that
+[`agent-tool-result-transport.md`](./agent-tool-result-transport.md)
+found it had left entirely to clients. Also: `ArtifactData`'s matching
+pair of context escapes (`out_dir` turns a read into a manifest of
+filenames, `file_path` sends a large document to a write without it
+*"passing through the conversation"*); the honesty rules that ship
+inside a *layout* skill (never invent a time axis, colour deltas by
+meaning not direction, name a truncated y-axis in the caption, and
+*"the page must never present inferred state as computed state"*); the
+publish path as a **verifier with named refusal codes**
+(`script-not-blessed` on a sha256 mismatch, `unknown-data-island`,
+`island-sentinel-ambiguity`, `banner-state-mismatch`) with its escape
+hatch priced in read-back capability; stored XSS **in a page the agent
+itself authored**, where `</` inside a JSON string island ends the
+script element for every later viewer; three bidirectional artifacts
+(`whiteboard`, `workshop`, `artifact-pr-review`) that turn a published
+page into the `AskUser` channel a hands-off agent otherwise has no way
+to open; four independent arrivals at generating a **design brief as a
+separate artefact before any pixels** (including v0's tool-shaped
+`GenerateDesignInspiration`, *"If you generate a design brief, you MUST
+follow it"*); and `dataviz`'s `validate_palette.py`, which converts a
+taste question into an exit code — OKLCH lightness bands, a chroma
+floor, OKLab ΔE under Machado-2009 severity-1.0 protan/deutan
+simulation, a normal-vision floor and WCAG contrast — while documenting
+both its own coverage gap and the calibration swap that would silently
+invalidate its thresholds. A third instance of this collection's
+built-but-not-switched-on pattern turns up on the way: an `Artifact`
+`preview` action that renders a page locally in light and dark at two
+widths and returns screenshots plus a mechanical checklist, present in
+the binary and absent from the live tool schema.
+
 ## Sources so far
 
 | Folder | Project | Type | License |
@@ -703,6 +767,8 @@ of static files, not construction.
 | [`pi-agent/`](./pi-agent) | [Pi](https://github.com/badlogic/pi-mono) | Coding agent (minimal terminal harness) | MIT |
 | [`zed/`](./zed) | [Zed](https://github.com/zed-industries/zed) | Coding agent (AI-native code editor's Agent Panel) | GPL-3.0-or-later / Apache-2.0 |
 | [`omp/`](./omp) | [OMP / Oh My Pi](https://github.com/can1357/oh-my-pi) | Coding agent (terminal; fork of `pi-agent/` with LSP/DAP wired in) | MIT |
+| [`librechat/`](./librechat) | [LibreChat](https://github.com/danny-avila/LibreChat) | Self-hosted chat UI + agent framework — stored for its **artifact channel** only | MIT |
+| [`anthropic-skills/`](./anthropic-skills) | [Anthropic Agent Skills](https://github.com/anthropics/skills) | General-purpose **creative** skills (image, art, GIF, page, deck) — not coding agents | Apache-2.0 (the four document skills are source-available and are **not** stored here) |
 
 Note: Roo Code and Copilot Chat's source repos were both archived
 (read-only) shortly before this collection was put together — files are

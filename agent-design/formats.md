@@ -197,8 +197,23 @@ question that was asked. It does not, by being a reply from a human,
 widen the run's scope, grant a permission, or authorise a step the
 original task did not — `AskUser`'s question is on the record and the
 reply is scoped to it. A reply that asks for something else is a new
-task, and the honest move is to say so in `Complete`. This is
-`../agent-permissions-approval.md` §2a's consent-assertion problem
+task, and the honest move is to say so in `Complete`.
+
+**This lands next to `generative.md` §2d, and the two halves fit.** That
+section gives `<resumed_answer>` two harness-filled attributes —
+`option_id` and a `match` enum whose `none` value means "no option matched:
+open-ended reply, or the human answered something else." So the mechanical
+detection of a reply that answers a different question, and the rule for
+what to do when one arrives, were specified in the same week from opposite
+directions. Worth stating the resulting invariant once, because it is what
+makes both safe: **the attributes on that tag are harness assertions and
+the body is untrusted content.** `match="exact"` is the harness saying it
+resolved an id, not the human saying so — which is precisely why the nonce
+belongs on the *open* tag as well as the close. A body able to mint a
+plausible open tag would not need to escape anything; it would only need
+the next thing the model reads to look like a harness-confirmed answer.
+
+This is `../agent-permissions-approval.md` §2a's consent-assertion problem
 arriving through the one door this design leaves open for it; Codex
 takes the same position on its own stored objectives, wrapping even
 user-authored text in `<untrusted_objective>` once the harness is
