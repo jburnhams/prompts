@@ -332,6 +332,21 @@ claim with no trace back to a query is an assertion.
 What it deliberately does not do: check that the numbers are *right*.
 Nothing can. See §5.
 
+**And the prompted half comes free from a pass that landed the same day.**
+The Codex re-read added a **completion audit** to the coding prompt
+(`README.md`'s *Claiming `done`* row; `../agent-self-verification.md`
+§13) — derive the task's requirements, name the evidence that would prove
+each, then look, with uncertain and indirect counted as not done. The
+`analyse` entrypoint inherits it unchanged, and the half of it that
+matters most here is the anti-shrinking clause: *quietly narrowing what
+`done` meant to fit what got finished* is the characteristic failure of
+an analysis run whose question turned out to be harder than it looked.
+"I couldn't get revenue by cohort, so here is revenue by month" is a
+completed-looking run that answered a different question, and no
+provenance check catches it — the refs all resolve. The two halves
+divide cleanly: the audit tests whether the claim matches the question,
+the gate tests whether the numbers trace to data.
+
 ### 2g. A third entrypoint: `analyse`
 
 `README.md`'s "two entrypoints, one core" becomes three. The core tool
