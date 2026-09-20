@@ -893,3 +893,61 @@ cannot appear in `git status`). It is not persisted, not read by
 anything after the run ends, and never needs cleaning up — it's simply
 discarded. See the coding system prompt's workflow step 2 for what goes
 there.
+
+---
+
+## 7. Capability block (`{{CAPABILITY_BLOCK}}`)
+
+**Generated, not written** ([`cloudflare.md`](./cloudflare.md) §2a).
+Appended after `{{ENV_BLOCK}}` in all three entrypoint prompts.
+
+The prompt bodies above state *behaviour* — how to decide, what `done`
+means, when to stop, how to report. They must not enumerate the tool
+surface in prose, because `tools.md`'s *"the tool set is configuration,
+not a constant"* is already true of this design: a deployment may drop
+`Task`, or wire a data surface that another does not. A prompt that
+names tools in prose is a prompt that can be wrong about the agent it
+is running.
+
+So the capability statements are computed from the turn's actual tool
+set. One line per capability that is present, nothing for one that is
+not, and a closing line that is the point of the whole block:
+
+```
+<capabilities>
+- You can read and edit files in the working directory with the file tools available to you.
+- You can delegate open-ended search or investigation to a sub-agent.
+- You can ask the user a question, which suspends the run until they reply.
+- Treat tool descriptions and schemas as the source of truth for what each tool does.
+- Do not claim access to capabilities that are not exposed as tools in this turn.
+</capabilities>
+```
+
+Each line is conditional on a set-membership test against the registered
+tool names, in the shape Cloudflare's `_buildThinkCapabilityBlock` uses:
+a file-tool line if any of `Read`/`Edit`/`Write`/`Grep`/`List` is
+present, a delegation line if `Task` is, a question line if `AskUser`
+is. The final line is unconditional.
+
+Three properties this has that writing the same text by hand does not:
+
+- **Nothing to drift.** The condition is checked by the same registry
+  that wires the tool. `README.md`'s per-model-prompt-variation row
+  adopts Codex's subtraction-*by-heading* as the variation mechanism and
+  prices its cost honestly — headings become an interface, and a rename
+  silently stops removing anything. A set-membership test has no name to
+  rename.
+- **The two mechanisms compose and divide cleanly.** Generation covers
+  capability statements, which are keyed on a tool's presence.
+  Subtraction by heading covers *behavioural* sections — a planning
+  section, a destructive-actions section — which are not. That row is
+  narrowed by this, not replaced.
+- **The closing line is a safety property, not a token saving.** An
+  agent narrating an action it has no tool for is a failure this
+  collection keeps finding, and one sentence is the whole fix.
+
+**Prefix stability is the obvious cost and it is already paid**: the
+tool set is fixed for the duration of a run, so the generated block is
+constant within the run and sits in the cached prefix exactly like the
+hand-written text it replaces. It varies between deployments, which is
+the point.

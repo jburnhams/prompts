@@ -811,6 +811,135 @@ inside plain MCP**, addressing individual cell *outputs* as resources
 with cache TTLs, audience annotations and a comment that is the clearest
 statement of the principle in this collection.
 
+**[→ `agent-local-compute.md`](./agent-local-compute.md)** — the
+follow-on, written against one question: if the harness is already
+TypeScript, can the data tools be TypeScript too, and does the
+computation still need a server? It separates three decisions that
+usually get made as one — *where the bytes are scanned*, *what language
+the engine is written in*, *what the model emits* — and is about the
+combination the Python world cannot reach: an engine in the harness's own
+language, moved to wherever the data is, with the model's tool surface
+unchanged between deployments. The pass found the idea already shipped:
+**[Hyperparam](./data-agents/hyperparam)**, a pure-JS stack (squirreling
+~13 KB and **zero dependencies**, hyparquet ~9.7 KB gz, icebird) with a
+paper behind it ([*A Query Engine for the Agents*](https://arxiv.org/html/2605.27785),
+arXiv:2605.27785, May 2026) and `squirreling-mcp` wrapping the same
+engine for server-side use. §2 argues the pure-JS-versus-WASM gap is
+**architectural, not tuning**: cold start is 0.6 s against DuckDB-WASM's
+19 s because one ships 70 KB of JS and the other instantiates a
+multi-megabyte module, and — the load-bearing half — a vectorized WASM
+engine *cannot* host an `await` inside a scalar UDF, because "scalar UDF
+calls still cross the WASM boundary synchronously from the engine's
+perspective." So `SELECT llm('classify', content) FROM traces LIMIT 5`
+making **exactly five API calls** is available to an AsyncGenerator
+engine and structurally unavailable to a compiled one. (The cost and
+throughput numbers are **vendor-run and unreplicated**; the mechanisms
+are checkable, the numbers are not.) §3 records that **Code Mode has
+converged from four directions** — Cloudflare, Anthropic, Codex and
+DeepSeek, all four now covered in [`code-mode/`](./code-mode) — and that
+the two discovery answers are one idea bound to different substrates:
+Anthropic's filesystem of `.ts` wrappers makes **the tool catalogue a
+repository** a coding agent already knows how to read, while Cloudflare's
+`search()`/`describe()` is what you use in a browser, where there is no
+filesystem. §4 re-derives the sandbox question under a **blast-radius
+threat model** (the model is careless, not hostile) and gets a different
+answer from the adversarial literature: five tiers, with Cloudflare's
+shipped ~200-line browser executor — `sandbox="allow-scripts"` and *no*
+`allow-same-origin`, plus `default-src 'none'` in a CSP `<meta>` injected
+into the `srcdoc`, which kills `connect-src` with it — as the sweet spot,
+and the gap it leaves named by its own vendor: a timeout "cannot preempt
+tight synchronous loops like `while (true) {}` because those block the
+browser event loop." §5 is the fork worth arguing about — **SQL-as-data
+versus JS-as-code** — and finds the seam already in the engine contract:
+a UDF is *registered by the harness and merely named by the model*, so
+the capability surface inside the query language needs no sandbox at all,
+which also makes an `llm()` UDF a governance question rather than a
+feature. Also: the cheapest control in the pass is not a sandbox but
+**walking the query plan before execution** (`squirreling-mcp` already
+resolves `FROM`-clause identifiers from plan scan nodes, so what a query
+will touch is known before a byte is read); the `FROM` clause used as a
+ref namespace across five source types; pushdown negotiated per call with
+two honest booleans (`appliedWhere`, `appliedLimitOffset`); and §7 on
+what breaks when compute moves into the tab, where the sharpest conflict
+is that **artifacts become tab-local and mortal** while the hands-off
+completion gate needs refs that resolve.
+
+**[→ `cloudflare-agents/`](./cloudflare-agents)** — read in full
+alongside that pass, and a different *kind* of source from the rest of
+the collection: every other harness here is a **process**, and this one
+is a **Durable Object** — a named, persistent, single-threaded object
+with its own SQLite that the platform evicts and revives underneath you.
+The substrate forces answers to questions a process-shaped harness never
+has to ask. The headline is `agents/context`, which assembles the system
+prompt from labelled blocks where **the storage provider's shape decides
+both the rendering and which tools the model gets** — `get()` is
+read-only text, `get()`+`set()` adds a `set_context` tool, `get()`+
+`search()` renders a summary and adds `search_context`, and *"the checks
+are structural, not nominal"*, so **an agent with only read-only blocks
+gets no tools at all**. Nothing else in this collection generates the
+prompt and the tool surface from one declaration. Alongside it:
+`freezeSystemPrompt()`, which renders once and **persists the rendered
+bytes** so *"a cold wake reuses the exact prompt string the model already
+cached instead of re-rendering a subtly different one"* — the third
+distinct answer here to prefix-cache stability, after OpenClaw's
+in-text boundary marker and Codex's render-nothing-when-unchanged diff
+stream, and the only one that survives the process dying. Eviction is
+documented as a numbered hazard (**~70–140 s inactivity; code updates
+1–2× a day; 15 min alarm cap**) with two mechanisms and a one-line
+statement of the difference — *"`keepAlive()` reduces the chance of
+eviction. `runFiber()` makes eviction survivable."* Also: **compaction as
+a non-destructive read-time overlay** that leaves the original rows
+alone, gated on an O(1) token aggregate stamped at write time so the
+trigger *"never reads the transcript to decide whether to compact"*, and
+failing **open** where OpenClaw's fails closed — a difference that
+follows from the storage being non-destructive in the first place;
+**recovery-aware delivery**, which replays an answer if the restart
+landed before streaming began and posts an interruption notice if it
+landed after, because whether a retry is safe depends on whether a human
+already saw the partial; dynamic agents (facets) as the far end of the
+sub-agent axis, with **their own isolate and their own database** and
+`abort` separated from `delete` so a failed run's storage survives for
+inspection; and **six human-in-the-loop patterns with a decision tree**.
+On approval inside a generated program the SDK turns out to have two
+paths that disagree: an AI-SDK tool marked `needsApproval` is **silently
+filtered out** of the Code Mode surface, while a connector tool marked
+`requiresApproval` **pauses the run and resumes it by replaying a durable
+tool-call log**. So program-shaped tool use and human-in-the-loop *do*
+compose — reached by a wiring decision the model cannot see, which is
+`agent-permissions-approval.md`'s recurring complaint in a new place. A second pass brought it to parity with the other
+large sources here. **`@cloudflare/think`** ships
+`read/write/edit/list/find/grep/delete/bash` — Claude Code's surface,
+reached on a completely different substrate — with the only documented
+**tool-precedence order** in the collection (seven sources, later wins),
+client tools identified by *the absence of an `execute` function*, and
+**actions**, which add the four things a consequential tool needs beyond
+a schema: idempotency by stable key, inline *or* durable approval ("even
+from a dashboard with no live socket"), per-turn authorization grants,
+and delivery metadata recorded "without changing what the model sees".
+Its eleven lifecycle hooks fire **on every entry path**, so a policy in
+`beforeToolCall` cannot be bypassed by arriving over RPC instead of
+WebSocket. **Skills** are the third implementation here and the first
+where a script runs with a *gated capability context* — `workspace`
+throws unless enabled, `tools` resolves only what the runner was given —
+with `allowedTools` declared in frontmatter and scripts **precompiled
+because the runtime ships no bundler**, so what runs is what was
+reviewed. **Browser tools are Code Mode over raw CDP** rather than a
+click/type/screenshot verb set, with `cdp.spec()` for live protocol
+discovery and a **base64 redactor** that is the most complete
+implementation yet of `agent-vision-multimodal.md`'s strip-and-say-so
+rule — it verifies a string really is base64 before redacting, states
+the media type and both char and byte counts, and bounds its own
+traversal, with a comment explaining why `Uint8Array` must be skipped
+(walking it rebuilds a 900 KB buffer as an index-keyed object, strictly
+worse than the base64). And [`interop.md`](./cloudflare-agents/interop.md)
+opens two categories this collection had no coverage of at all: **A2A**,
+where discovery is a `/.well-known/agent-card.json` and the unit is a
+task with a lifecycle rather than a call with a return value, and
+**x402**, where `wrapFetchWithPayment(fetch)` makes an agent able to pay
+— which is the first time cost is a runtime value here, and the sharpest
+version of the permission question, because it wraps the least-gated
+primitive an agent has.
+
 ## Sources so far
 
 | Folder | Project | Type | License |
@@ -837,6 +966,7 @@ statement of the principle in this collection.
 | [`zed/`](./zed) | [Zed](https://github.com/zed-industries/zed) | Coding agent (AI-native code editor's Agent Panel) | GPL-3.0-or-later / Apache-2.0 |
 | [`omp/`](./omp) | [OMP / Oh My Pi](https://github.com/can1357/oh-my-pi) | Coding agent (terminal; fork of `pi-agent/` with LSP/DAP wired in) | MIT |
 | [`librechat/`](./librechat) | [LibreChat](https://github.com/danny-avila/LibreChat) | Self-hosted chat UI + agent framework — stored for its **artifact channel** only | MIT |
+| [`cloudflare-agents/`](./cloudflare-agents) | [Cloudflare Agents SDK](https://github.com/cloudflare/agents) | Agent framework on Durable Objects — context blocks, a file+git sandbox API, skills with gated capabilities, Code Mode over raw CDP, fibers, dynamic agents, A2A and x402 — plus a source-led fourth pass covering what the docs do not say. **10 files** | MIT |
 | [`anthropic-skills/`](./anthropic-skills) | [Anthropic Agent Skills](https://github.com/anthropics/skills) | General-purpose **creative** skills (image, art, GIF, page, deck) — not coding agents | Apache-2.0 (the four document skills are source-available and are **not** stored here) |
 
 Note: Roo Code and Copilot Chat's source repos were both archived
@@ -945,6 +1075,24 @@ data** rather than editing a repository. See
 | [`data-agents/matlab-mcp/`](./data-agents/matlab-mcp) | [MATLAB MCP Server](https://github.com/matlab/matlab-mcp-server) | MathWorks' own; session lifecycle as tools; JSON-declared custom tools over MATLAB functions | Apache-2.0 |
 | [`data-agents/btw/`](./data-agents/btw) | [btw](https://github.com/posit-dev/btw) | Posit's R toolkit: 25 introspection tools on, `run_r` off by default | MIT |
 | [`data-agents/positron/`](./data-agents/positron) | [Positron](https://github.com/posit-dev/positron) | Not an agent — the Data Explorer OpenRPC protocol, i.e. what a viewer exposes | Elastic-2.0 |
+| [`data-agents/hyperparam/`](./data-agents/hyperparam) | [Hyperparam / HypStack](https://github.com/hyparam) | Pure-JS data stack built for browsers *and* agent sandboxes — squirreling (SQL, 0 deps), hyparquet, icebird, `squirreling-mcp` | MIT |
+| [`data-agents/arquero/`](./data-agents/arquero) | [Arquero](https://github.com/uwdata/arquero) | The verb-based counter-case: dataframes in JS, expressions as a restricted DSL that ends in codegen | BSD-3-Clause |
+
+## Code Mode
+
+A sixth category: harnesses that replace a **tool list** with a **typed
+API and a sandbox**, so the model writes a program and intermediate
+results never enter the conversation. All four known implementations are
+now covered — two as full sources elsewhere. See
+[`code-mode/README.md`](./code-mode/README.md).
+
+| File | Implementation | Read from source? |
+|---|---|---|
+| [`code-mode/cloudflare.md`](./code-mode/cloudflare.md) | `@cloudflare/codemode` — the only one shipping a **browser** executor | yes — `cloudflare/agents` @ `c076e4c`, MIT |
+| [`code-mode/anthropic-pattern.md`](./code-mode/anthropic-pattern.md) | Anthropic's "code execution with MCP" — MCP tools as `.ts` files on a filesystem | no — published description only |
+| [`code-mode/webmcp.md`](./code-mode/webmcp.md) | `navigator.modelContext` — a *page* registering tools with the browser. **Assessed and parked**, with re-check triggers recorded | yes — the adapter and example in `cloudflare/agents` |
+| [`codex/README.md`](./codex) | Codex `tool_mode: "code_mode_only"` | yes, in the Codex re-read |
+| [`deepseek-harness/`](./deepseek-harness) | DeepSeek Code Mode — tools as compiling `.d.ts` | yes, in that folder |
 
 ## Papers
 

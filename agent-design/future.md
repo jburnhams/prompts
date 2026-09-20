@@ -479,3 +479,96 @@ re-litigated later.
   adopt it with any enforcement layer that matches on command text: match
   per segment, and treat the shell-feature forms as unmatchable rather
   than as matching nothing.
+- **Code Mode, as the escape hatch focused tools cannot reach.**
+  `tools.md`'s not-configurable list rules out a general `execute(code)`
+  on the data surface, for reasons that are about what the harness can
+  see before execution rather than about expressiveness
+  ([`local.md`](./local.md) §2f). The cases it genuinely cannot express
+  are reshaping beyond SQL, joining a query result to a non-tabular
+  tool's output, and multi-step orchestration where each step depends on
+  the last. **The trigger is the first task where a data run needs two
+  tool results combined in a way no selector expresses** — not a
+  judgement that programs are nicer than tools. If it lands, two things
+  are already decided. The sandbox is the tier-2 shape
+  (`../agent-local-compute.md` §4): an opaque-origin iframe with
+  `default-src 'none'` in an injected CSP, providers passed as function
+  parameters rather than globals so a program cannot enumerate
+  `globalThis` for capabilities it was not handed, and a Worker inside
+  the frame so a synchronous loop is terminable — Cloudflare's own
+  executor documents the gap this last part closes, a timeout that
+  "cannot preempt tight synchronous loops". And approval inside a
+  program is a solved problem rather than an open one: a durable
+  tool-call log plus abort-and-replay, with an explicit `step()`
+  side-effect boundary (`../code-mode/cloudflare.md`). That is
+  substantial machinery this design does not have, which is the argument
+  for the trigger rather than for building it speculatively.
+- **A pure-TS engine as the `table://` resolver.** An implementation
+  note rather than a design change — the ref contract is already
+  substrate-neutral, which is the whole point of `data.md` §2a — but it
+  is the concrete thing to build against, and worth recording so the
+  interface is not re-derived. `../data-agents/hyperparam/`'s
+  `AsyncDataSource`/`ScanOptions`/`ScanResults` is about forty lines of
+  type and carries the part most resolver interfaces get wrong: **two
+  honest push-down booleans**, `appliedWhere` and `appliedLimitOffset`,
+  so a parquet source that pushed projection, a CSV source that pushed
+  nothing and a Postgres source that pushed everything all report what
+  they actually did through one interface. The engine is pure JS with no
+  dependencies and no `eval`/`new Function` (verified, not claimed —
+  `../agent-local-compute.md` §3), so model-written SQL never becomes
+  JavaScript, and the same code runs server-side behind MCP or in a tab.
+- **Running Forge's loop in a browser at all.** Deferred rather than
+  rejected. `artifacts.md` §6a already specifies the cache tier, so the
+  artifact contract is ready for it; nothing else in this design assumes
+  a server — except `Bash`, which assumes a machine, and that is the
+  whole of the remaining gap.
+- **Non-destructive compaction — summaries as read-time overlays.** This
+  design has no compaction, and the note is about what to build if it
+  ever does. Cloudflare stores a compaction as a row
+  (`from_message_id`, `to_message_id`, `summary`) and applies it when
+  *reading* the path, so the original messages survive
+  (`../cloudflare-agents/implementation.md` §5). Every compaction
+  implementation in `../agent-context-compaction.md` is a destructive
+  rewrite of the message list. Overlays buy three things that shape
+  cannot: a compaction is reversible, two read policies can disagree
+  about the same stored history, and the originals stay available to an
+  audit after the model has stopped seeing them — and reversibility is
+  nearly free at write time and impossible to retrofit. **Two further
+  rules come with it, and they are the non-obvious half.** Compaction
+  needs *two* triggers, because a between-turns check cannot save a
+  long tool-heavy turn that overflows mid-flight; the in-flight one
+  should key on the provider's reported token usage rather than on its
+  error strings, falling back to total tokens when input tokens are
+  missing — over-approximating, so it compacts slightly early rather
+  than missing the threshold. And the two triggers need **separate
+  budgets**: a compaction that frees nothing does not fail the turn, so
+  a retry budget scoped to failed turns will not bound it, and it
+  repeats on every step. The trigger for all of this is acquiring
+  compaction at all.
+- **An idempotency ledger for consequential tools.** Cloudflare's
+  `action()` wraps a tool with the four things a *consequential* call
+  needs beyond a schema: idempotency by stable key, approval that is
+  inline **or** durable ("even from a dashboard with no live socket"),
+  per-turn authorization grants, and delivery metadata recorded
+  "without changing what the model sees". The first is the one this
+  design will need first. `AddComment` is its only outbound write, and
+  `adk.md` §4 already records that a transport-level retry re-executes
+  the tool — `tools.md`'s tool-call-id-derived spill filename is the
+  half-measure that exists today, and it makes the two mechanisms agree
+  without making the write idempotent. Note the ledger is a different
+  mechanism from Code Mode's abort-and-replay for the same hazard: at
+  the tool level rather than the program level. **Trigger:** a second
+  outbound write, or the first duplicate comment observed in production.
+- **A stated tool-precedence order.** Cloudflare documents seven tool
+  sources and the rule that later overrides earlier, with extension
+  tools namespaced and client tools winning — and it is the only source
+  in this collection that documents one at all, though Claude Code
+  merges built-ins, MCP servers and skills, and OpenClaw merges 159
+  plugins. v1 has one source, so there is nothing to order and this
+  would be ceremony. **Trigger:** the second source — MCP tools, a
+  skill surface, or per-deployment additions. Record now that the
+  answer is an explicit order *plus* namespacing for the least trusted
+  source, because the alternative is discovering the order from a
+  collision in production, and because Cloudflare's own ordering has
+  the lesson in it: the one source it namespaces is the one whose
+  authors it controls least, and the source that wins outright is the
+  one that sends its schemas in the request body.

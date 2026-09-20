@@ -267,6 +267,14 @@ The default is one turn (`artifacts.md` §5.6), so nothing accumulates and no
 eviction pass is needed. `pin` is the only way to hold an image, it is
 explicit, and the tool description states its cost.
 
+**The exception is an image that arrived inside a tool result**, which
+is in the transcript rather than loaded into one request and so is not
+covered by the one-turn default. `artifacts.md` §5.6 evicts those to a
+ref once they age past the recent window. **A pinned image is exempt
+from that pass** — pinning is precisely the statement that this payload
+is still being looked at, so the two mechanisms agree rather than
+racing.
+
 **A budget, not a rule.** More than `vision.max_pinned_images` (default
 **2**) pinned at once is refused with an error naming which to release —
 a pinned mockup and a pinned annotated flow is a plausible spec; five is a

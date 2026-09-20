@@ -228,6 +228,28 @@ spill is a pointer into state with a lifetime of its own:
   A path on its own defers the decision without informing it. `formats.md`
   §8e specifies the wording for `Bash`, the only v1 tool that spills.
 
+**A transport cap and a context cap are two numbers, not one**
+([`cloudflare.md`](./cloudflare.md) §2d). How much a tool may *fetch or
+produce* and how much of it may *reach the model* are separate
+decisions, and collapsing them cannot express the normal case: a 900 KB
+image that must be retrieved in full and must never be serialised into
+context. Where a tool has both, both are configured and both
+self-describe when hit — a result withheld by the context cap says so
+and names the ref that holds the rest, which is a different sentence
+from a payload the transport cap refused to fetch at all.
+
+**A cap on money is a cap, and it binds before execution, not during.**
+Where a data tool exposes a model-backed function inside a query — a
+`llm()`-style UDF the harness registers and the model merely names
+([`local.md`](./local.md) §2f) — **the function is a spend ceiling, not
+a feature.** `LIMIT 5` really is five inferences, and the unbounded
+query is textually identical to the cheap one, so nothing in the query
+string distinguishes the call costing cents from the one costing
+thousands. The cap belongs where the plan is walked, before anything is
+issued, and over it is a refusal naming the cap rather than a partial
+result — the same reasoning as the paragraph above, with the
+irreversible half being spend rather than tokens.
+
 **Some reads are refused before any I/O, by name *and* by type.** A cap can
 only bound a read that *finishes*, so anything unbounded has to be refused
 up front, and that takes two independent checks:
@@ -590,6 +612,29 @@ one has tested:
 - **The refused-path list**, which a deployment may extend and may never
   empty — it is the only defence against a read that never returns, and a
   configurable-to-zero denial of service is not a tunable.
+- **The fetch host allowlist**, which a deployment may narrow and may
+  never empty, and which fails loudly rather than open when
+  unconfigured ([`cloudflare.md`](./cloudflare.md) §2d). Same shape as
+  the rule above and the same reason: an empty allowlist is not a
+  permissive configuration, it is an un-reviewed one. Alongside it,
+  **the set of request headers the model may influence is closed** —
+  `accept`, `accept-language`, `range` — because `range` is what makes
+  a bounded partial fetch expressible and everything outside the three
+  is a way to make the harness's request into someone else's.
+- **The data surface is focused tools — list, describe, fetch — never a
+  general `execute(code)`** ([`local.md`](./local.md) §2f). The
+  deciding property is that a model-backed function inside a query is
+  *registered by the harness and merely named by the model*, so the
+  capability surface inside the query language is exactly what the
+  deployment chose to expose and **no sandbox is required, because no
+  model-authored code runs**. It also keeps the property
+  `artifacts.md` §8 depends on: with focused tools the harness sees what
+  the model asked for as structured arguments, where a program is opaque
+  until it runs. A deployment that added `execute` would inherit the
+  iframe, the injected CSP, the unpreemptable `while(true)`, and the
+  loss of pre-execution gating, none of which the rest of this contract
+  is written against. Code Mode is tracked in `future.md` with its
+  trigger named, which is the supported way to revisit this.
 
 The line between the two lists is exactly the model channel versus the
 harness channel: numbers are facts the model is told at the moment they
@@ -791,6 +836,36 @@ canonical-forms table.
   }
 }
 ```
+
+**One ordered repair, and it is the last one before the error**
+([`cloudflare.md`](./cloudflare.md) §2b). On **zero** exact matches —
+never on one, never on several — the harness retries once with runs of
+spaces and tabs collapsed to a single space and CRLF normalised to LF,
+on both the file and `old_string`. Three conditions bound it:
+
+- **The normalised match must also be unique.** Normalisation can merge
+  two previously distinct regions; two normalised matches is the
+  multiple-match refusal, not a choice between them.
+- **The replacement is written back at the original byte offsets**, so
+  the file's real surrounding whitespace is preserved and the damage
+  from a wrong match is bounded to the replaced span.
+- **The result says the retry fired.** A normalised edit is reported as
+  such, `eval.md` counts it, and the counter is this repair's kill
+  switch.
+
+The failure this fixes is the harness's own: `Read` returns `cat -n`
+output and `formats.md` §8a normalises line endings on the way through,
+so an `old_string` copied faithfully out of a read result can still miss
+on whitespace the model never saw. Retrying is cheaper than another
+`Read`. It is deliberately not fuzzy matching — no edit distance, no
+scoring, no threshold — because the set of strings that match after
+whitespace normalisation is small and describable, and the set that
+matches under a similarity score is not.
+
+**The residual risk is indentation**, and it is recorded rather than
+argued away: in a whitespace-significant language a normalised span can
+match at a different nesting depth. Hence the unique-match condition,
+the flag, and the per-file-type split on the metric.
 
 ---
 

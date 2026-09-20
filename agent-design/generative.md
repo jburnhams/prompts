@@ -188,6 +188,17 @@ Three rules govern it, and they are the part worth arguing about:
 - **Success is not coded.** There is no `ok`. A `refusal` field present
   at all means something did not happen as asked, which makes "did this
   run hit any degradation" a field test rather than a text search.
+- **The prose states what was *not* damaged**
+  ([`cloudflare.md`](./cloudflare.md) §2e). A fourth rule, and the
+  cheapest one: a degradation that names only what failed reads as
+  total loss. Cloudflare's hydration failure is the model to copy —
+  *"The agent is starting with an empty in-memory message view;
+  **persisted history is untouched.**"* One clause, and it is the
+  difference between a model retrying and a model concluding the run is
+  unrecoverable and giving up. It applies wherever a refusal is
+  partial: a spilled payload still exists at its ref, a blocked git
+  write left the working tree alone, an unusable anchor did not lose
+  the comment.
 
 The immediate payoff is in [`eval.md`](./eval.md): "how often does anchor
 derivation fail on this fixture set" becomes a count instead of a

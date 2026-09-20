@@ -166,6 +166,53 @@ and `.../cortex-analyst/verified-query-repository`) and **Databricks
 Genie**. Neither is stored; neither is quoted beyond the published
 description of the semantic-model YAML and verified-query repository.
 
+### The local-compute pass (read 2026-09-20)
+
+Sources for [`agent-local-compute.md`](./agent-local-compute.md); stored
+under [`data-agents/hyperparam/`](./data-agents/hyperparam),
+[`data-agents/arquero/`](./data-agents/arquero) and
+[`code-mode/`](./code-mode).
+
+| Source | Repo | Paths that matter | SHA / version / date read |
+|---|---|---|---|
+| **Squirreling** | `github.com/hyparam/squirreling` | `README.md` is the primary artifact — the `QueryResults`/`AsyncRow`/`AsyncCell` types, the UDF contract, the `AsyncDataSource`/`ScanOptions`/`ScanResults` interfaces with the two pushdown booleans, and the supported-SQL list. In `src/`: `parse/`, `plan/`, `execute/`, `expression/`. **Verify the no-codegen claim with** `grep -rn "new Function\|eval(" src` — hits are JSDoc `import(` only | `4652ffc`, `0.16.6` (2026-09-17) |
+| **squirreling-mcp** | `github.com/hyparam/squirreling-mcp` | `src/mcpHandler.js` (the three tool definitions verbatim), `src/runSqlQuery.js` (`maxRows = 100`, `collect()`, `scanTables(plan)` — plan-walking to resolve `FROM` identifiers), `src/sources/{parquet,csv,jsonl,iceberg,postgres}/` | `5b62736`, `0.1.0` (2026-04-30) — **older than the rest of the stack** |
+| **hyparquet** | `github.com/hyparam/hyparquet` | `README.md` — `asyncBufferFromUrl`, `parquetReadObjects`, `parquetMetadataAsync`/`parquetSchema` (schema and row count without reading data), the `AsyncBuffer` interface | `3c8626b`, `1.31.1` (2026-09-17) |
+| **icebird / hyparquet-writer / hightable** | `github.com/hyparam/{icebird,hyparquet-writer,hightable}` | `README.md` each — `icebergRead`/`icebergMetadata` + time travel + `s3Lister`/`urlResolver` auth; the writer; the virtualized grid with async per-cell loading | `3a0c5fb` (2026-09-18) / `0998a1d` (2026-09-05) / `0989abd` (2026-03-10) |
+| **Arquero** | `github.com/uwdata/arquero` | `README.md` (the verb example), `src/expression/parse-expression.js` (the `ERROR_*` constants are the expression grammar's spec; `ERROR_CLOSURE`, `ERROR_ESCAPE`), `src/expression/codegen.js` (`Unsupported expression construct`) | `e8003b4`, `8.0.3` (2025-05-29) |
+| **Cloudflare Agents SDK** (the wider read; stored in [`cloudflare-agents/`](./cloudflare-agents)) | `github.com/cloudflare/agents` | `docs/agents/context.md` (blocks, provider-shape table, capability markers, `freezeSystemPrompt`), `docs/agents/durable-execution.md` (the three eviction reasons and their numbers, `keepAlive`/`keepAliveWhile`, `runFiber`/`stash`/`onFiberRecovered`), `docs/agents/sessions.md` §Compaction (overlays, the O(1) `compactAfter` gate, head/tail/boundary rules, fail-open), `docs/think/messengers.md` §Delivery and Recovery, `docs/agents/sub-agents.md` (facets), `docs/agents/agent-tools.md`, `docs/agents/human-in-the-loop.md` (the six-pattern table and decision tree), `docs/agents/readonly-connections.md`. Deepened 2026-09-21: all six `docs/codemode/` pages (`runtime.md` for abort-and-replay and the sandbox `codemode.*` API, `approvals.md` for `requiresApproval`, `snippets.md`, `connectors.md`), `docs/shell/index.md`, `docs/agents/{observability,scheduling,queue,tasks,retries,state,mcp-client,mcp-transports,securing-mcp-servers}.md`. In source: `packages/shell/src/prompt.ts` (`STATE_SYSTEM_PROMPT`, `STATE_TYPES` — the filesystem API as a Code Mode declaration) and `packages/shell/src/git/provider.ts` (14 git methods); `packages/codemode/src/{resolve,proxy-tool,runtime}.ts` — **grep both `needsApproval` and `requiresApproval`; they are different layers with different behaviour**; `packages/think/src/think.ts` (the `getSystemPrompt()`-is-a-fallback warning at ~5435). Third pass same day closed the gaps: `packages/agents/src/skills/` (all 9 files — the three generated tools in `registry.ts`, the gated `SkillRunContext` in `types.ts`, `validateSkillResourcePath`), `packages/agents/src/browser/ai.ts` (`browser_screenshot` typing and the `base64Redaction` / `redactBase64Payloads` pair with its thresholds), `docs/agents/browse-the-web.md`, `docs/think/{tools,client-tools,actions,lifecycle-hooks}.md`, `docs/agents/{channels,email,webhooks}.md`, `examples/{a2a,x402}/README.md`. **Fourth pass 2026-09-21, source-led** — the first three were documentation-led, which under-samples: `packages/think/src/tools/workspace.ts` (the eight built-in tools' real descriptions and control flow — **the docs' "fuzzy matching" is whitespace normalisation with an ambiguity guard and a `fuzzyMatch: true` flag; read the source before repeating the doc line**), `packages/think/src/media-eviction.ts` (in full — aged-media eviction, the marker format, the deprecated-into-a-no-op drop mode), `packages/think/src/tools/fetch.ts` (per-target `fetch_<name>` tools, `DEFAULT_MODEL_HEADER_ALLOWLIST`, the two caps, `FetchErrorCode`), `packages/think/src/think.ts` (`_buildThinkCapabilityBlock`, `getSystemPrompt`, `ensureValidContinueCheckpoint`, `ContextOverflowConfig` and `CONTEXT_OVERFLOW_PATTERN`), `packages/agents/src/sessions/core.ts` (non-destructive compaction overlays), `packages/agents/src/mcp/client/index.ts` (the SSRF block-list — `IPV6_LINK_LOCAL` and its documented historical bug, issue #1325). **Folder README lists what remains unread** (transport mechanics, migration guides, getting-started pages, and the root-level `agent-think/`) | `c076e4c` (2026-09-18) |
+| **Cloudflare codemode** | `github.com/cloudflare/agents` | `packages/codemode/src/browser-tool.ts` (`DEFAULT_DESCRIPTION`, the `codemode` tool schema), `iframe-executor.ts` (`DEFAULT_CSP`, `iframe.sandbox.add("allow-scripts")`, `buildSrcdoc`), `iframe-runtime.ts` (the `new Function(...providerNames, ...)` calling convention, nonce checks), `docs/agents/codemode.md` §Security considerations + §Current limitations, `examples/codemode-browser/`, `examples/webmcp/src/client.tsx`, `packages/agents/src/experimental/webmcp.ts` | `c076e4c` (2026-09-18) |
+
+Read as documentation, not source:
+
+- **Hyperparam, *A Query Engine for the Agents*** —
+  [arXiv:2605.27785v1](https://arxiv.org/html/2605.27785) (Kenny Daniel,
+  27 May 2026). The DuckDB-WASM comparison, the AsyncGenerator/per-cell
+  laziness argument, and the cold-start and cost figures. **Vendor-run
+  and vendor-reported, by the author of the libraries measured; no
+  independent replication found.** The mechanisms are checkable against
+  the source above; the numbers are not.
+- **Cloudflare**, [`blog.cloudflare.com/code-mode`](https://blog.cloudflare.com/code-mode/)
+  and [`/code-mode-mcp`](https://blog.cloudflare.com/code-mode-mcp/),
+  plus [`developers.cloudflare.com/agents/tools/codemode/how-it-works/`](https://developers.cloudflare.com/agents/tools/codemode/how-it-works/)
+  (the generated `declare const github: {...}` shape, `codemode.search`/
+  `.describe`, the Dynamic Worker Loader, the 1,000,000-character durable
+  replay limit and the `Promise.all` replay-divergence caveat).
+- **Anthropic**, [*Code execution with MCP*](https://www.anthropic.com/engineering/code-execution-with-mcp)
+  (Nov 2025) — the `servers/<name>/<tool>.ts` layout, the
+  `callMCPTool` wrapper, the 150,000 → 2,000 token figure. No repository
+  ships it; quoted as a pattern description.
+- **WebMCP / `navigator.modelContext`** — W3C Community Group; Chrome 146
+  Canary behind a flag (2026-02-10), Chrome 149 origin trial (May 2026);
+  `provideContext()`/`clearContext()` removed in the March 2026 revision.
+  Status read from secondary sources 2026-09-20; the API shape was read
+  from the Cloudflare adapter and example above.
+
+**Not read as source, and named so the gap is visible**: DuckDB-WASM
+(the measured comparison throughout §2 — everything said about it here
+comes from the paper and its own docs, not from its code), Perspective
+(FINOS), tidy.js, Danfo.js, Data-Forge, hypgrep, hypvector, hypaware.
+
 ## OpenClaw 2.0 (read 2026-08-31)
 
 `github.com/openclaw/openclaw` at `5f714ef` (`main`, 2026-08-31). MIT.

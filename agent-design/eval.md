@@ -117,6 +117,46 @@ Accuracy alone hides most of what this eval is for. Every task records:
   proxy, so re-derive the baseline on the model actually under test
   before calling a deviation a defect.
 
+Three more once `table://` and the ref lifetime rules are live
+([`local.md`](./local.md) §2a–§2e). All three are diagnostics rather
+than scores — each is a number whose *drift* names a specific
+misconfiguration:
+
+- **expired-ref-hit rate on `persist` artifacts** — how often a
+  resolution returns the self-describing expiry error rather than
+  bytes. A high rate means the sliding window (`artifacts.md` §5.5) is
+  too short, and it is the only signal that would catch that, because
+  the failure is recoverable and so does not show up as an error rate.
+  Split by whether the ref was cited in a `Complete` report, since a
+  miss there is a reproducibility failure and a miss on a working ref
+  is merely a re-fetch.
+- **local cache hit rate** (`artifacts.md` §6a), recorded only where a
+  browser deployment exists. Near zero means the cache is costing
+  storage for nothing; it also bounds how much the keep-alive-on-hit
+  rule is actually carrying.
+- **fan-out ratio on local joins** — output rows over the larger input.
+  This is the metric `data.md` §2c's no-joins position exists to make
+  observable: a ratio materially above 1 is a duplicated key, and the
+  whole argument for fetching per table is that this number exists at
+  all. Log the distribution, not the mean; the interesting case is the
+  tail.
+
+Two more from [`cloudflare.md`](./cloudflare.md) §4, both of which exist
+to kill a mechanism if it misbehaves rather than to score a run:
+
+- **normalised-edit rate** — the fraction of `Edit` calls that succeeded
+  only after the whitespace-normalised retry (`tools.md`), **split by
+  file type**. This is that repair's kill switch, and the split is what
+  makes it diagnostic: a rise concentrated in Python, YAML or Makefiles
+  is the indentation risk the rule admits to, and the repair goes. A
+  rise spread evenly across file types is a `Read` round-trip problem to
+  fix upstream instead, and the repair is doing its job.
+- **evicted bytes, and the re-read rate on evicted refs**
+  (`artifacts.md` §5.6). Bytes evicted is the saving; the fraction of
+  evicted refs that get read back is the cost. A high re-read rate means
+  the retention window is too short and the pass is buying context space
+  with tool calls.
+
 Efficiency aggregates are **per-task means, never sums**. Errored runs
 score 0 and stay in the accuracy denominator but are **excluded from
 efficiency means**, so a crash cannot flatter the token numbers.

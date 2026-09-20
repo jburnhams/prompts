@@ -365,6 +365,32 @@ artifact is referenced by something that outlives the run — named in a
 never sets it; it falls out of the reference, which keeps the store from
 becoming a place things are kept just in case.
 
+**`persist` is transitive along `produced_by` and `inputs`**
+([`local.md`](./local.md) §2a). Marking an artifact `persist` marks its
+provenance closure `persist` too. The governing rule is that *a ref's
+lifetime must be at least as long as the lifetime of the claims that
+depend on it*, and one hop is not a provenance graph: under a one-hop
+rule, `data.md` §2f's completion gate — which requires every cited
+`table://` to have a `produced_by` that resolves, checked at end-of-run
+when everything is still alive — verifies a property this section then
+immediately stops preserving. The closure is a walk over refs minted
+during the run, which that gate already performs, so this is garbage
+collection with `Complete.evidence` and `AddComment` bodies as the roots
+and the provenance edges as reachability. It widens *what* persists
+along a graph already tracked; it does not weaken the condition under
+which anything persists at all.
+
+**A `persist` artifact expires a configurable period after its last use,
+not after minting** (§2b of the same). `expires="run"` is unchanged — a
+run is short, and last-use expiry inside one means nothing. Two clauses
+are load-bearing rather than incidental: **any resolution counts as a
+use**, including one that reads only the stub, because a ref passed
+between tools without being read would otherwise expire mid-chain and
+fail silently; and **minting a derived artifact counts as a use of its
+inputs**, because otherwise the closure above decays from the leaves
+inward. Sliding rather than fixed because the access pattern is the
+signal — something being returned to is live, and a dead end is not.
+
 **The backing store is durable object storage** (GCS or equivalent, which is
 one of ADK's `ArtifactService` backends — nothing to build, per
 `future.md`'s original note). Confirmed 2026-08-30, and it matters in three
@@ -387,6 +413,32 @@ guidance, and right:
 The `origin` attribute is what makes that recovery statable, and is why it
 is on the stub.
 
+**For `kind="table"`, the error carries shape and provenance as well as
+the address** ([`local.md`](./local.md) §2c). The example above works
+because an ingested attachment *has* a source to re-fetch. A derived
+table does not: its `origin` is a `bash:` call from a run that is over,
+re-running it is not recovery, and it may not be reproducible at all if
+the upstream data has moved. So:
+
+```
+<error tool="Read" ref="table://tbl_9c4e21a0">
+! Expired 2026-11-04 (persist, last used 2026-09-12). The rows are gone; the shape is not.
+! 1840293 rows, 7 cols: order_id int64 · region string · ordered_at timestamp
+!   · revenue float64 (422 null) · currency string · is_refunded bool · channel string (737408 null)
+! produced_by artifact://txt_0a19bb4c (expired) · inputs table://tbl_1188ef40 (expired), file:///data/regions.csv
+! Not re-derivable: its inputs have expired too.
+</error>
+```
+
+A few hundred bytes, and it buys three things the shorter form cannot:
+**"expired" is distinguishable from "never existed"**, which is
+otherwise a confusing failure months later; the audit question *what was
+this number computed from* stays answerable after the bytes are gone;
+and **whether re-derivation is possible is stated** rather than left to
+be discovered by trying. The tier and the last-use date are in the text
+for the same reason §2c echoes resolved refs — the difference between
+what was asked for and what was got should never be silent.
+
 ### 5.6 Whether loading is permanent
 
 **No.** ADK's `LoadArtifactsTool` appends a loaded artifact to *that request
@@ -398,6 +450,34 @@ the most work: **a look is one turn by default**, which dissolves the
 screenshot-accumulation problem `../agent-vision-multimodal.md` §8 found
 nobody solving, rather than building an eviction pass for it. `vision.md` §4
 covers pinning, the exception.
+
+**The case this does not reach is a large payload that arrived inside a
+tool result**, and is therefore already in the transcript rather than
+loaded into one request. For that one, an eviction pass is needed after
+all ([`cloudflare.md`](./cloudflare.md) §2c):
+
+> **A transcript payload that has aged past the recent window is
+> replaced, in place, by a ref and its metadata** — media type, size,
+> and the ref that resolves it, which is a stub (§5.3) in all but name.
+
+Four rules come with it, each preventing a failure the source it is
+taken from had already hit:
+
+- **Bytes are never dropped, only moved.** There is no
+  discard-without-storing mode, because an evicted payload that is
+  merely gone turns a recoverable read into a null, which §5.5 forbids
+  everywhere else.
+- **The retention window is clamped against its own misconfiguration** —
+  never shorter than the window replayed at full fidelity, so a bad
+  value cannot strip content the model can still see.
+- **The marker format is a wire contract.** Old markers must keep
+  resolving across a storage change, which makes the wording a
+  compatibility surface rather than a rendering choice.
+- **Text is never evicted; it is the conversation.** Without this the
+  pass is lossy compaction wearing a ref's clothes.
+
+A pinned image (`vision.md` §4) is exempt from the pass — pinning is the
+statement that this payload is still being looked at.
 
 ---
 
@@ -420,14 +500,63 @@ credentials:
 - **Redirects followed manually, revalidating each hop** against the host
   allowlist and an IP block-list (loopback, private, link-local, multicast,
   reserved), with a hop cap. Automatic redirect following is how a host
-  check gets bypassed.
-- **Size cap enforced on the response stream**, before decode.
+  check gets bypassed. **Redirect policy is a three-value choice**, not a
+  boolean — `allowlisted`, `same-origin`, `none` — because "follow
+  redirects" and "follow them anywhere the allowlist permits" are
+  different postures and a deployment should be able to pick the
+  narrower one ([`cloudflare.md`](./cloudflare.md) §2d).
+- **The block-list has two traps that are silent when got wrong**, both
+  from a shipped implementation that had already hit them
+  (`../cloudflare-agents/implementation.md` §8). `startsWith("fe80")`
+  matches only `fe80::/16` and lets `fe81::`–`febf::` through; the /10
+  boundary means the correct test is `/^fe[89ab][0-9a-f]/`. And
+  IPv4-mapped IPv6 has a hex form the WHATWG URL parser does **not**
+  canonicalise, so `::ffff:10.0.0.1` and `::ffff:a00:1` are the same
+  address and both forms must be handled. **A URL that fails to parse is
+  blocked**, never passed through — fail closed.
+- **Size cap enforced on the response stream**, before decode — and it
+  is the *transport* cap. What reaches the model is a second, smaller
+  number (`tools.md`, two-caps rule): a payload may be fetched in full
+  and largely withheld, which is the normal case for an image.
+- **Blocks are as observable as successes.** One event per fetch,
+  whether it was served, failed or refused. A refusal that logs nothing
+  is the case most worth seeing.
 - **Content type from magic bytes**, not the extension or the
   `Content-Type` header — Crush's finding
   (`../agent-vision-multimodal.md` §6): attachment pipelines routinely
   produce JPEG bytes named `.png`, and providers reject on mismatch. The
   stub's `mime` is the sniffed value, with a `!` note when it disagrees with
   the filename.
+
+### 6a. A local cache tier, keyed on the ref
+
+Where Forge runs in a browser, resolved bytes may be cached locally
+([`local.md`](./local.md) §2d). **The cache is never authoritative.** Its
+key is the ref itself. A local hit still registers a use against the
+store (§5.5).
+
+Three constraints, each following from a decision already made or a fact
+about the platform:
+
+- **The key is the ref, not a content hash.** §5.2 rules out
+  content-derived ids because they leak equality across artifacts; a
+  content-addressed cache reintroduces exactly that equality inside the
+  browser, where §7's `trust` boundary is weakest. Refs are immutable
+  and unique, so they are a perfectly good key and the leak does not
+  arise.
+- **Immutability makes it correct for free** (§2c). An artifact never
+  changes, so no revalidation is ever needed and the only failure mode
+  is a miss.
+- **Local is a cache because the browser enforces it.** Default web
+  storage is best-effort and evicted under pressure;
+  `navigator.storage.persist()` opts out but is granted on vendor
+  heuristics. Treating it as authoritative would be a bug waiting for a
+  low-disk laptop.
+
+The keep-alive on a hit is what stops the tiers disagreeing: without it
+the store can GC an artifact the tab still holds, and the model reads a
+ref locally and then gets an expiry error passing the same ref to a
+remote tool.
 
 ---
 
@@ -452,6 +581,10 @@ text stream, and pixels are not in it. Mitigations are specified in
 For text artifacts the nonce still applies and is used: a spilled build log
 from `Bash` is `generated`; a file read from `git://` at an unpinned branch
 of a repo Forge does not own is `external`, and is framed accordingly.
+
+A cached artifact (§6a) keeps the `trust` it was minted with. **Caching
+is a transport optimisation and never a trust upgrade** — the tier the
+bytes were served from says nothing about where they came from.
 
 ---
 
