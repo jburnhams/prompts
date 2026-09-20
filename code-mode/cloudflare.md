@@ -249,6 +249,204 @@ of thing usually left implicit:
 The declarations the model reasons against are documentation. Nothing
 validates the arguments a program actually passes.
 
+## The Runtime: approvals, replay, rollback, snippets
+
+The single most important thing a first read of this package misses.
+`docs/codemode/runtime.md` and `docs/codemode/approvals.md` describe a
+layer above the executor, and it changes the conclusion about whether
+approval composes with a program.
+
+> The **Executor** is a simple, stateless sandbox: it runs a block of code
+> once and dispatches tool calls back. The **Runtime** wraps an executor
+> and makes execution durable.
+>
+> **Why this exists:** approvals can take minutes or hours, and agents
+> hibernate. A model may write a script that reads data, asks to create an
+> issue, and continues after the user approves — possibly in a different
+> request, after the Durable Object restarted.
+
+|          | Executor                                         | Runtime                                  |
+| -------- | ------------------------------------------------ | ---------------------------------------- |
+| What     | Code sandbox                                     | Durable execution engine                 |
+| Lifetime | One `execute()` call                             | Whole conversation (DO facet)            |
+| State    | None                                             | Tool-call log, pending actions, snippets |
+| Examples | `DynamicWorkerExecutor`, `IframeSandboxExecutor` | `CodemodeRuntime`                        |
+
+### Abort and replay
+
+> When the model's code runs, every tool call is recorded in a durable log:
+>
+> 1. **Read** (no annotation) → executes, result recorded in the log.
+> 2. **Approval-required action** → recorded as `pending`, and the run **aborts**.
+> 3. On **continue** → the same code re-runs. Every call already in the log
+>    is served from it (a noop replay — reads return their recorded result,
+>    applied actions return theirs). The newly-approved action executes for
+>    real. The run proceeds to the next pause or to completion.
+
+```
+run 1:  search() ──exec──> "results"        [logged: applied]
+        list_prs() ──exec──> [pr1, pr2]      [logged: applied]
+        create_issue() ──PAUSE──             [logged: pending]
+        ✗ run aborts
+
+user approves
+
+run 2:  search() ──replay──> "results"       (from log, no re-exec)
+        list_prs() ──replay──> [pr1, pr2]     (from log, no re-exec)
+        create_issue() ──exec──> { number }   (approved, runs for real)
+        post_comment() ──exec──> ok            (continues)
+        ✓ run completes
+```
+
+> The log is the replay spine. Everything — replay, rollback, audit —
+> reads off it.
+
+And the model is insulated from all of it:
+
+> The model writes code as if the call returns normally. It doesn't see a
+> provisional result — the run simply pauses and resumes transparently
+> across the approval.
+
+**This is the best answer in the collection to "one approval decision
+inside a program with five consequences."** The program is not paused
+mid-execution and resumed from a continuation; it is *re-run*, with
+history served from a log. No coroutine, no serialized stack — just
+determinism plus a log.
+
+### The determinism requirement, and the error it produces
+
+> Replay only works if the code is **deterministic up to tool calls**. The
+> Nth tool call on run 1 must be the Nth tool call on run 2, with the same
+> arguments.
+
+```ts
+{
+  status: "error",
+  executionId: "exec_...",
+  error: "Codemode replay divergence at step 2: arguments changed since the original run. Wrap nondeterministic work in codemode.step()."
+}
+```
+
+> Returning the divergence as data (instead of throwing across the RPC
+> boundary) keeps the agent loop intact and lets the model self-correct.
+
+Two things to copy here. **The error names its own remedy** — it does not
+say "divergence detected", it says wrap it in `codemode.step()`, which is
+`agent-tool-implementations.md` §6a's "every truncation states the next
+call" applied to a failure. And **outcomes are returned, not thrown**:
+
+> Execution outcomes are returned, not thrown — a sandbox error or a
+> replay divergence comes back as `{ status: "error" }` … so the agent
+> loop is never broken by an exception
+
+The explicit side-effect boundary:
+
+> `codemode.step` is the explicit side-effect boundary that makes
+> abort-and-replay correct: the closure runs inside the sandbox, the
+> result is recorded in the log, and on replay the closure is skipped.
+
+```ts
+const id = await codemode.step("gen-id", () => crypto.randomUUID());
+const data = await codemode.step("fetch", async () => (await fetch(url)).json());
+```
+
+And the `Promise.all` caveat, now in its proper context — it is a
+constraint of a *working* approval system, not a caveat on a broken one:
+
+> **Issue tool calls sequentially.** The replay cursor assigns each call
+> its sequence number when the call reaches the host, so `await a(); await
+> b();` is stable across runs but `await Promise.all([a(), b()])` is not …
+> Await connector calls one at a time in any run that might pause for
+> approval.
+
+### Marking a tool, and resolving
+
+```ts
+protected tools() {
+  return {
+    create_issue: {
+      description: "Create a GitHub issue.",
+      requiresApproval: true,
+      execute: (args) => this.client.createIssue(args)
+    }
+  };
+}
+```
+
+> `requiresApproval: true` is the entire surface. Mark only what needs a
+> human — everything else executes immediately and is still recorded in
+> the durable log for replay and audit.
+
+| Handle method | Purpose |
+|---|---|
+| `runtime.pending(executionId?)` | Actions awaiting approval; no id aggregates all paused runs |
+| `runtime.approve({ executionId })` | Approve and continue via replay |
+| `runtime.reject({ seq, executionId })` | Reject; ends the execution |
+| `runtime.rollback({ executionId })` | **Revert applied actions in reverse order via each tool's `revert`** |
+| `runtime.expirePaused({ maxAgeMs? })` | Expire stale awaiting-approval runs |
+| `runtime.executions(limit?)` | All executions, newest first — the audit trail |
+| `runtime.saveSnippet(name, opts?)` | Promote an execution's script to a reusable snippet |
+
+Three details that only show up in a careful read:
+
+- **Reject is not undo.** *"Does NOT undo actions already applied earlier
+  in the same run; call `rollback()` for that."* Rollback runs each
+  tool's own `revert` in reverse order — compensating transactions,
+  declared per tool.
+- **Reject reports a race.** *"Returns `false` if the action was no
+  longer pending (approved/rejected elsewhere) — check it before telling
+  the user the run was rejected, because the action may have executed."*
+  Two humans in an approval queue is a real situation and this is the
+  only place in the collection that handles it.
+- **Paused runs expire.** Approval that never arrives is a resource leak
+  with a pending side effect attached; `expirePaused` is the reaper.
+
+### Discovery happens inside the running code
+
+> **Why discovery lives in the sandbox:** the alternative is generating
+> types for every tool and putting them all in the tool description, which
+> floods the context as the tool count grows. `search` and `describe`
+> return results **into the running code**, not into the prompt — the
+> model pays for exactly the type information it asks for.
+
+That is a sharper statement of progressive disclosure than the
+`{{types}}` substitution in the browser path, and the two coexist: inline
+the catalogue when it is small, search it when it is not. The ranking is
+documented — *"fields are scored by weight (path 12, method 10, connector
+8, description 5) … results are capped at 50 — when `truncated` is true
+the model should search again with a more specific query"* — which is a
+truncation notice that names the next call, again.
+
+### Snippets: learned procedures with a human gate
+
+> A **snippet** is a saved sandbox script — a reusable pattern that
+> already ran and worked. … Connectors provide raw capability. Snippets
+> are recipes that worked. The split is deliberate: **the model writes and
+> reuses scripts; the developer decides which ones are worth keeping.
+> Promotion is a curation decision — wire it to a "save this script"
+> button, an eval, or your own heuristics, not to the model's judgement.**
+
+`codemode.run(name, input)` executes one. This is a **procedural memory**
+with the promotion gate held by a human — the same position
+`../deepseek-harness/` reaches from the opposite direction, where 426
+human feedback items over 62 merged PRs produced **zero** rule changes
+and the operator doc frames that as the workflow working. Both say the
+hard part of learning is refusing to extract, and both put a person on
+the gate. See `../agent-memory-learning.md`.
+
+### Connectors: everything about a tool in one place
+
+> A connector answers three questions: what global name does the model use
+> (`name`), what guidance does the model get (`instructions`), and what
+> tools exist (`tools`). Each tool carries its own docs, schema, approval
+> requirement, execution, and optional revert — **everything about a tool
+> lives in one place**.
+
+Docs, schema, approval requirement, execution *and* the compensating
+revert, colocated. Compare MCP, where the annotation lives on the tool,
+the enforcement lives in the server, and there is no revert concept at
+all.
+
 ## The argument, in the vendor's words
 
 From [the blog](https://blog.cloudflare.com/code-mode/):

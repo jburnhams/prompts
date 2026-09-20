@@ -899,10 +899,14 @@ landed after, because whether a retry is safe depends on whether a human
 already saw the partial; dynamic agents (facets) as the far end of the
 sub-agent axis, with **their own isolate and their own database** and
 `abort` separated from `delete` so a failed run's storage survives for
-inspection; and **six human-in-the-loop patterns with a decision tree**,
-of which exactly zero compose with Code Mode — the clearest available
-evidence that program-shaped tool use and human-in-the-loop are an
-unsolved combination rather than one vendor's gap.
+inspection; and **six human-in-the-loop patterns with a decision tree**.
+On approval inside a generated program the SDK turns out to have two
+paths that disagree: an AI-SDK tool marked `needsApproval` is **silently
+filtered out** of the Code Mode surface, while a connector tool marked
+`requiresApproval` **pauses the run and resumes it by replaying a durable
+tool-call log**. So program-shaped tool use and human-in-the-loop *do*
+compose — reached by a wiring decision the model cannot see, which is
+`agent-permissions-approval.md`'s recurring complaint in a new place.
 
 ## Sources so far
 

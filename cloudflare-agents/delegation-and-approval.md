@@ -124,10 +124,10 @@ And one honest limitation:
 > available during an agent-tool turn** unless you model that interaction
 > as server-side state or a separate parent-mediated workflow.
 
-A delegated child cannot reach the user's browser. Which is the same
-boundary [`../code-mode/cloudflare.md`](../code-mode/cloudflare.md) hits
-with `needsApproval`, from a different direction: **human interaction
-does not compose through a delegation layer.**
+A delegated child cannot reach the user's browser. **Anything requiring
+the human has to be hoisted to the parent**, which is a real constraint
+on how deep a delegation chain can go before it stops being able to ask
+a question.
 
 ## Six human-in-the-loop patterns, and a decision tree
 
@@ -175,12 +175,32 @@ Compliance and safety demand a *blocking* gate; quality and trust are
 satisfied by a *visible* one. Conflating them produces a design that
 blocks on everything, which is how approval fatigue starts.
 
-**And the gap:** none of the six composes with Code Mode. Cloudflare
-excludes `needsApproval` tools from codemode entirely rather than pausing
-mid-program. So an SDK with six approval patterns has **zero** that work
-inside a generated program — which is the clearest statement available
-that *program-shaped tool use and human-in-the-loop are an unsolved
-combination*, not an implementation gap in one vendor's SDK.
+## Approval inside a generated program: it works, on one of two paths
+
+**A correction to an earlier reading of this SDK.** `docs/agents/codemode.md`
+lists under *Current limitations*: *"Tool approval (`needsApproval`) is not
+supported yet … excluded from codemode instead of pausing execution for
+approval."* Taken alone that says approval and Code Mode do not compose.
+It is true of one path and false of the other, and the two use different
+field names:
+
+| Path | Field | Behaviour |
+|---|---|---|
+| **AI-SDK tools** (`createCodeTool`, `createBrowserCodeTool`) | `needsApproval` | tool is **filtered out** of the codemode surface — `resolve.ts` "filter out tools with needsApproval and return a clean copy" |
+| **Connector + Runtime** (`CodemodeConnector`, `createCodemodeRuntime`) | `requiresApproval` | the run **pauses and resumes via replay** — [`../code-mode/cloudflare.md`](../code-mode/cloudflare.md) |
+
+So the accurate statement is: **approval composes with Code Mode if you
+write a connector and drive it through the runtime, and is silently
+dropped if you hand in AI-SDK tools.** Silently is the operative word —
+the filter returns "a clean copy" and nothing tells the model a
+capability was removed, which is the more troubling half of the finding.
+`agent-permissions-approval.md`'s recurring complaint is exactly this:
+a capability that is present, absent, or degraded depending on a wiring
+decision the model cannot see.
+
+The mechanism itself is the strongest answer to program-shaped approval
+found anywhere in this collection, and is documented with the Code Mode
+material rather than here.
 
 ## Readonly connections: permissioning the transport
 

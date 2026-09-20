@@ -145,10 +145,15 @@ Two caveats that recur and are worth carrying into any design:
 - **Schemas are documentation, not enforcement.** Cloudflare's browser
   path says it outright: *"JSON Schema is used for prompt/type generation
   only and is not enforced at runtime."*
-- **Approval and Code Mode are currently exclusive.** Cloudflare
-  *excludes* any tool with `needsApproval` from codemode rather than
-  pausing mid-program. A program that calls five tools is one approval
-  decision with five consequences, and nobody has a UI for that.
+- **Approval composes with a program, via replay — on one path.**
+  Cloudflare's connector layer marks a tool `requiresApproval`; the run
+  aborts at that call, the action is recorded pending, and on approval
+  the *same code re-runs* with every prior call served from a durable
+  log. Tools handed in through the AI-SDK path carrying `needsApproval`
+  are instead silently filtered out. So the hard problem — one approval
+  decision inside a program with five consequences — has a shipped
+  answer, and which answer you get depends on how you wired the tools.
+  [`code-mode/cloudflare.md`](./code-mode/cloudflare.md).
 
 ---
 

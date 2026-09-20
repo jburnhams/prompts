@@ -71,10 +71,12 @@ the model is told.
 
 Each implementation names its own limits, and they rhyme:
 
-- **Approval flows do not survive the boundary.** Cloudflare excludes any
-  tool with `needsApproval` from codemode entirely rather than pausing
-  mid-program. A program that calls five tools is one approval decision
-  with five consequences, and nobody has solved presenting that.
+- **Approval flows survive the boundary on exactly one of Cloudflare's
+  two paths.** AI-SDK tools carrying `needsApproval` are silently
+  filtered out of the codemode surface; a connector tool marked
+  `requiresApproval` pauses the run and resumes it via durable replay.
+  The capability exists and is reached by a wiring decision the model
+  cannot see. See [`cloudflare.md`](./cloudflare.md).
 - **Schemas are for the prompt, not the runtime.** Cloudflare's browser
   path says so outright: *"JSON Schema is used for prompt/type generation
   only and is not enforced at runtime."*

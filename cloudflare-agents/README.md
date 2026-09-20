@@ -31,13 +31,47 @@ this folder exists:
 | File | What it is |
 |---|---|
 | [`context-blocks.md`](./context-blocks.md) | `agents/context` — the system prompt assembled from labelled blocks, where the **provider's shape decides both the rendering and which tools the model gets**. The most transferable thing in the SDK |
+| [`tools-and-workspace.md`](./tools-and-workspace.md) | `@cloudflare/shell` — a 24-method filesystem and a 14-method **git client as typed sandbox APIs**, `STATE_SYSTEM_PROMPT` verbatim, transactional multi-file edits with `dryRun`, and the Workspace spill threshold. The coding-agent surface |
 | [`durability.md`](./durability.md) | Fibers (`runFiber`/`stash`/`onFiberRecovered`), the eviction numbers, recovery-aware delivery, frozen prompts, and compaction as a **non-destructive read-time overlay** |
-| [`delegation-and-approval.md`](./delegation-and-approval.md) | Dynamic agents (facets), agent tools, and the six human-in-the-loop patterns with the vendor's own decision tree |
+| [`delegation-and-approval.md`](./delegation-and-approval.md) | Dynamic agents (facets), agent tools, the six human-in-the-loop patterns with the vendor's own decision tree, and the two approval paths that disagree |
+| [`operations.md`](./operations.md) | Thirteen observability channels (read the event names as a list of production failure modes), four kinds of "do something later", scheduling, retries, state sync, and MCP in both directions |
 
 Code Mode lives in [`../code-mode/cloudflare.md`](../code-mode/cloudflare.md)
-— the `codemode` tool, the iframe sandbox and the CSP — because it is one
-instance of a pattern with four implementations, and is indexed there
-alongside the other three.
+— the `codemode` tool, the iframe sandbox and the CSP, **plus the Runtime
+layer**: durable tool-call log, approvals via abort-and-replay, rollback
+through per-tool `revert`, and snippets as curated procedural memory. It
+is indexed there because it is one instance of a pattern with four
+implementations.
+
+## Coverage, stated honestly
+
+`docs/agents/` has **44 pages**; there are 8 packages and ~60 examples.
+This folder is built from roughly half of that, chosen for what is novel
+against the rest of the collection:
+
+**Read properly** — `context`, `durable-execution`, `sessions`
+(compaction), `sub-agents`, `agent-tools`, `human-in-the-loop`,
+`readonly-connections`, `observability`, `scheduling`, `queue`, `tasks`,
+`retries`, `state`, `mcp-client`, `mcp-transports`, `securing-mcp-servers`;
+all six `docs/codemode/` pages; `docs/shell/index.md`;
+`docs/think/{index,messengers}.md`; and in source
+`packages/shell/src/{prompt.ts,git/provider.ts}`,
+`packages/codemode/src/*`, `packages/think/src/think.ts` (partially).
+
+**Not read** — `chat-sdk`, `channels`, `voice`, `email`, `webhooks`,
+`push-notifications`, `x402` (payments), `a2a` (agent-to-agent),
+`browse-the-web` and `packages/agents/src/browser/`, `streams`,
+`resumable-streaming`, `server-driven-messages`, `routing`, `lifecycle`,
+`cross-domain-authentication`, the two AI-SDK migration guides,
+`packages/agents/src/skills/`, and most of `docs/think/`.
+
+The largest known gaps, in the order they would be worth closing:
+**`packages/agents/src/skills/`** (a skills system with
+`compile`/`frontmatter`/`manifest`/`registry`/`runner` — directly
+relevant to `../agent-context-file-loading.md` and `../skills/`),
+**`browse-the-web`** (relevant to `../agent-vision-multimodal.md`), and
+**`a2a`** (agent-to-agent, a category this collection has no coverage of
+at all).
 
 ## The packages
 
@@ -102,7 +136,15 @@ the only route to reach them. `agent-subagent-architectures.md` catalogues
 sub-agents that are stateless one-shot calls; this is the other end of
 that axis.
 
-**5. Compaction is a read-time overlay, not a rewrite.**
+**5. Approval composes with a generated program.** A connector tool
+marked `requiresApproval` aborts the run, records the action pending, and
+on approval **re-runs the same code with every prior call served from a
+durable log**. Corrected from an earlier reading of this SDK that took
+`docs/agents/codemode.md`'s *Current limitations* at face value; that
+text describes the AI-SDK path, where approval-gated tools are silently
+filtered out instead. Both are true, of different paths.
+
+**6. Compaction is a read-time overlay, not a rewrite.**
 
 > Compaction overlays replace a range at read time without deleting the
 > original rows
