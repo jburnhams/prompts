@@ -451,6 +451,34 @@ screenshot-accumulation problem `../agent-vision-multimodal.md` §8 found
 nobody solving, rather than building an eviction pass for it. `vision.md` §4
 covers pinning, the exception.
 
+**The case this does not reach is a large payload that arrived inside a
+tool result**, and is therefore already in the transcript rather than
+loaded into one request. For that one, an eviction pass is needed after
+all ([`cloudflare.md`](./cloudflare.md) §2c):
+
+> **A transcript payload that has aged past the recent window is
+> replaced, in place, by a ref and its metadata** — media type, size,
+> and the ref that resolves it, which is a stub (§5.3) in all but name.
+
+Four rules come with it, each preventing a failure the source it is
+taken from had already hit:
+
+- **Bytes are never dropped, only moved.** There is no
+  discard-without-storing mode, because an evicted payload that is
+  merely gone turns a recoverable read into a null, which §5.5 forbids
+  everywhere else.
+- **The retention window is clamped against its own misconfiguration** —
+  never shorter than the window replayed at full fidelity, so a bad
+  value cannot strip content the model can still see.
+- **The marker format is a wire contract.** Old markers must keep
+  resolving across a storage change, which makes the wording a
+  compatibility surface rather than a rendering choice.
+- **Text is never evicted; it is the conversation.** Without this the
+  pass is lossy compaction wearing a ref's clothes.
+
+A pinned image (`vision.md` §4) is exempt from the pass — pinning is the
+statement that this payload is still being looked at.
+
 ---
 
 ## 6. Fetching bytes
@@ -472,8 +500,27 @@ credentials:
 - **Redirects followed manually, revalidating each hop** against the host
   allowlist and an IP block-list (loopback, private, link-local, multicast,
   reserved), with a hop cap. Automatic redirect following is how a host
-  check gets bypassed.
-- **Size cap enforced on the response stream**, before decode.
+  check gets bypassed. **Redirect policy is a three-value choice**, not a
+  boolean — `allowlisted`, `same-origin`, `none` — because "follow
+  redirects" and "follow them anywhere the allowlist permits" are
+  different postures and a deployment should be able to pick the
+  narrower one ([`cloudflare.md`](./cloudflare.md) §2d).
+- **The block-list has two traps that are silent when got wrong**, both
+  from a shipped implementation that had already hit them
+  (`../cloudflare-agents/implementation.md` §8). `startsWith("fe80")`
+  matches only `fe80::/16` and lets `fe81::`–`febf::` through; the /10
+  boundary means the correct test is `/^fe[89ab][0-9a-f]/`. And
+  IPv4-mapped IPv6 has a hex form the WHATWG URL parser does **not**
+  canonicalise, so `::ffff:10.0.0.1` and `::ffff:a00:1` are the same
+  address and both forms must be handled. **A URL that fails to parse is
+  blocked**, never passed through — fail closed.
+- **Size cap enforced on the response stream**, before decode — and it
+  is the *transport* cap. What reaches the model is a second, smaller
+  number (`tools.md`, two-caps rule): a payload may be fetched in full
+  and largely withheld, which is the normal case for an image.
+- **Blocks are as observable as successes.** One event per fetch,
+  whether it was served, failed or refused. A refusal that logs nothing
+  is the case most worth seeing.
 - **Content type from magic bytes**, not the extension or the
   `Content-Type` header — Crush's finding
   (`../agent-vision-multimodal.md` §6): attachment pipelines routinely

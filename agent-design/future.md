@@ -521,3 +521,54 @@ re-litigated later.
   artifact contract is ready for it; nothing else in this design assumes
   a server — except `Bash`, which assumes a machine, and that is the
   whole of the remaining gap.
+- **Non-destructive compaction — summaries as read-time overlays.** This
+  design has no compaction, and the note is about what to build if it
+  ever does. Cloudflare stores a compaction as a row
+  (`from_message_id`, `to_message_id`, `summary`) and applies it when
+  *reading* the path, so the original messages survive
+  (`../cloudflare-agents/implementation.md` §5). Every compaction
+  implementation in `../agent-context-compaction.md` is a destructive
+  rewrite of the message list. Overlays buy three things that shape
+  cannot: a compaction is reversible, two read policies can disagree
+  about the same stored history, and the originals stay available to an
+  audit after the model has stopped seeing them — and reversibility is
+  nearly free at write time and impossible to retrofit. **Two further
+  rules come with it, and they are the non-obvious half.** Compaction
+  needs *two* triggers, because a between-turns check cannot save a
+  long tool-heavy turn that overflows mid-flight; the in-flight one
+  should key on the provider's reported token usage rather than on its
+  error strings, falling back to total tokens when input tokens are
+  missing — over-approximating, so it compacts slightly early rather
+  than missing the threshold. And the two triggers need **separate
+  budgets**: a compaction that frees nothing does not fail the turn, so
+  a retry budget scoped to failed turns will not bound it, and it
+  repeats on every step. The trigger for all of this is acquiring
+  compaction at all.
+- **An idempotency ledger for consequential tools.** Cloudflare's
+  `action()` wraps a tool with the four things a *consequential* call
+  needs beyond a schema: idempotency by stable key, approval that is
+  inline **or** durable ("even from a dashboard with no live socket"),
+  per-turn authorization grants, and delivery metadata recorded
+  "without changing what the model sees". The first is the one this
+  design will need first. `AddComment` is its only outbound write, and
+  `adk.md` §4 already records that a transport-level retry re-executes
+  the tool — `tools.md`'s tool-call-id-derived spill filename is the
+  half-measure that exists today, and it makes the two mechanisms agree
+  without making the write idempotent. Note the ledger is a different
+  mechanism from Code Mode's abort-and-replay for the same hazard: at
+  the tool level rather than the program level. **Trigger:** a second
+  outbound write, or the first duplicate comment observed in production.
+- **A stated tool-precedence order.** Cloudflare documents seven tool
+  sources and the rule that later overrides earlier, with extension
+  tools namespaced and client tools winning — and it is the only source
+  in this collection that documents one at all, though Claude Code
+  merges built-ins, MCP servers and skills, and OpenClaw merges 159
+  plugins. v1 has one source, so there is nothing to order and this
+  would be ceremony. **Trigger:** the second source — MCP tools, a
+  skill surface, or per-deployment additions. Record now that the
+  answer is an explicit order *plus* namespacing for the least trusted
+  source, because the alternative is discovering the order from a
+  collision in production, and because Cloudflare's own ordering has
+  the lesson in it: the one source it namespaces is the one whose
+  authors it controls least, and the source that wins outright is the
+  one that sends its schemas in the request body.

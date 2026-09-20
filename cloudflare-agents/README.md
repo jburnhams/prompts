@@ -39,6 +39,7 @@ this folder exists:
 | [`skills.md`](./skills.md) | The third skills implementation in this collection, and the first where **a skill script runs with a gated capability context** and declares its own `allowedTools`. Three generated tools, the catalog prompt, the tagged envelope |
 | [`browser.md`](./browser.md) | Code Mode over **raw CDP** — the protocol, not a verb set — with `cdp.spec()` for live discovery, and a **base64 redactor** that is the most complete implementation yet of `../agent-vision-multimodal.md`'s strip-and-say-so rule |
 | [`interop.md`](./interop.md) | How an agent is addressed and how it reaches peers: **A2A** (agent cards, tasks, SSE), **x402** (an agent that pays), channels, email reply routing, per-source webhook agents |
+| [`implementation.md`](./implementation.md) | **What the source says that the docs do not.** Retracts this folder's fuzzy-matching claim; aged-media eviction (the screenshot problem, shipped in 340 lines); the system prompt assembled from the turn's tool set; two-layer context-overflow handling; non-destructive compaction overlays; the fetch tool's two caps and three-header allowlist; an SSRF block-list with its own historical bug documented |
 
 Code Mode lives in [`../code-mode/cloudflare.md`](../code-mode/cloudflare.md)
 — the `codemode` tool, the iframe sandbox and the CSP, **plus the Runtime
@@ -50,11 +51,29 @@ implementations.
 ## Coverage
 
 `docs/agents/` has **44 pages**, plus `docs/think/` (11), `docs/codemode/`
-(6), `docs/shell/`, `docs/voice/`, 8 packages and ~60 examples. This
-folder now covers the material relevant to what this collection
-analyses — prompts, tool surfaces, context handling, delegation,
-approval, durability and interop — at parity with the other large
-sources here.
+(6), `docs/shell/`, `docs/voice/`, 8 packages and ~60 examples.
+
+**The first three passes were documentation-led, and that was the wrong
+default for this collection.** The two best findings in this folder —
+the base64 redactor ([`browser.md`](./browser.md)) and the gated
+`SkillRunContext` ([`skills.md`](./skills.md)) — were both things the
+docs did not mention and the source did. A fourth pass read source
+directly and produced [`implementation.md`](./implementation.md), which
+retracts one claim made here on the docs' authority and adds six
+mechanisms the prose never describes.
+
+The lesson generalises past this source: documentation says what an SDK
+*offers*; source is where the **failure modes it has already hit** are
+written down, usually in a comment beside the line that fixes them. For
+a collection about what goes wrong in agent harnesses, that is the
+higher-yield read.
+
+Scale, for calibration on what "read the source" can and cannot mean
+here: `packages/agents/src` is ~100k lines and `packages/think/src`
+~28k excluding tests, of which `think.ts` alone is **16,962**. The
+fourth pass read targeted parts, chosen where implementation decides
+something the prose leaves open — not the whole tree, and this section
+should not be read as claiming otherwise.
 
 **Read** — `context`, `durable-execution`, `sessions`, `sub-agents`,
 `agent-tools`, `human-in-the-loop`, `readonly-connections`,
@@ -68,6 +87,16 @@ tools, client-tools, actions, lifecycle-hooks, messengers}.md`;
 `packages/agents/src/browser/ai.ts`, `packages/shell/src/{prompt.ts,
 git/provider.ts}`, `packages/codemode/src/*`,
 `packages/think/src/think.ts` (partially).
+
+**Fourth pass, source-led** — `packages/think/src/tools/workspace.ts`
+(the eight built-in tools' real descriptions, schemas and control
+flow), `packages/think/src/tools/fetch.ts`,
+`packages/think/src/media-eviction.ts` (in full),
+`packages/think/src/think.ts` (`_buildThinkCapabilityBlock`,
+`getSystemPrompt`, `ensureValidContinueCheckpoint`,
+`ContextOverflowConfig`, the startup degradation path),
+`packages/agents/src/sessions/core.ts` (compaction overlays),
+`packages/agents/src/mcp/client/index.ts` (the SSRF block-list).
 
 **Deliberately not read**, as low signal for this collection: the two
 AI-SDK migration guides, `getting-started`,

@@ -141,6 +141,22 @@ misconfiguration:
   all. Log the distribution, not the mean; the interesting case is the
   tail.
 
+Two more from [`cloudflare.md`](./cloudflare.md) §4, both of which exist
+to kill a mechanism if it misbehaves rather than to score a run:
+
+- **normalised-edit rate** — the fraction of `Edit` calls that succeeded
+  only after the whitespace-normalised retry (`tools.md`), **split by
+  file type**. This is that repair's kill switch, and the split is what
+  makes it diagnostic: a rise concentrated in Python, YAML or Makefiles
+  is the indentation risk the rule admits to, and the repair goes. A
+  rise spread evenly across file types is a `Read` round-trip problem to
+  fix upstream instead, and the repair is doing its job.
+- **evicted bytes, and the re-read rate on evicted refs**
+  (`artifacts.md` §5.6). Bytes evicted is the saving; the fraction of
+  evicted refs that get read back is the cost. A high re-read rate means
+  the retention window is too short and the pass is buying context space
+  with tool calls.
+
 Efficiency aggregates are **per-task means, never sums**. Errored runs
 score 0 and stay in the accuracy denominator but are **excluded from
 efficiency means**, so a crash cannot flatter the token numbers.

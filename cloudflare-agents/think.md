@@ -37,12 +37,15 @@ worth noting against `../agent-tool-implementations.md`:
 - **`read` is multimodal by contract** — "pass images and PDFs to
   multimodal models" is in the one-line description, so the model knows
   it can read a screenshot without a separate `InspectImage`.
-- **`edit` supports fuzzy matching.** That doc's §4 catalogues the
-  exact-match-or-fail discipline most harnesses use, and the OMP hashline
-  work exists precisely because exact match is brittle. Fuzzy matching is
-  the other answer, and it is the one with no published failure analysis
-  — a fuzzy edit that matches the *wrong* region is a silent corruption,
-  where an exact-match failure is a retry.
+- **`edit` "supports fuzzy matching" — and the docs undersell it in a way
+  that matters.** Read from source (`packages/think/src/tools/workspace.ts`),
+  it is not fuzzy matching in the edit-distance sense at all. See
+  [`implementation.md`](./implementation.md) §1 for the mechanism; the
+  short version is that exact-and-unique is tried first, the fallback is
+  **whitespace normalisation only**, it has its own ambiguity guard, and
+  it **flags itself in the result** (`fuzzyMatch: true`). That is the
+  narrow, defensible subset rather than the silent-corruption risk this
+  line previously claimed.
 - **`bash` runs "against workspace files"**, i.e. against a virtual
   filesystem, not a machine. So there is a shell, and it cannot run the
   project's test suite — which is the same limit

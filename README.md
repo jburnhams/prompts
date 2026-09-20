@@ -966,7 +966,7 @@ primitive an agent has.
 | [`zed/`](./zed) | [Zed](https://github.com/zed-industries/zed) | Coding agent (AI-native code editor's Agent Panel) | GPL-3.0-or-later / Apache-2.0 |
 | [`omp/`](./omp) | [OMP / Oh My Pi](https://github.com/can1357/oh-my-pi) | Coding agent (terminal; fork of `pi-agent/` with LSP/DAP wired in) | MIT |
 | [`librechat/`](./librechat) | [LibreChat](https://github.com/danny-avila/LibreChat) | Self-hosted chat UI + agent framework — stored for its **artifact channel** only | MIT |
-| [`cloudflare-agents/`](./cloudflare-agents) | [Cloudflare Agents SDK](https://github.com/cloudflare/agents) | Agent framework on Durable Objects — context blocks, a file+git sandbox API, skills with gated capabilities, Code Mode over raw CDP, fibers, dynamic agents, A2A and x402. **9 files** | MIT |
+| [`cloudflare-agents/`](./cloudflare-agents) | [Cloudflare Agents SDK](https://github.com/cloudflare/agents) | Agent framework on Durable Objects — context blocks, a file+git sandbox API, skills with gated capabilities, Code Mode over raw CDP, fibers, dynamic agents, A2A and x402 — plus a source-led fourth pass covering what the docs do not say. **10 files** | MIT |
 | [`anthropic-skills/`](./anthropic-skills) | [Anthropic Agent Skills](https://github.com/anthropics/skills) | General-purpose **creative** skills (image, art, GIF, page, deck) — not coding agents | Apache-2.0 (the four document skills are source-available and are **not** stored here) |
 
 Note: Roo Code and Copilot Chat's source repos were both archived
