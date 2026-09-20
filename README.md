@@ -906,7 +906,39 @@ filtered out** of the Code Mode surface, while a connector tool marked
 `requiresApproval` **pauses the run and resumes it by replaying a durable
 tool-call log**. So program-shaped tool use and human-in-the-loop *do*
 compose — reached by a wiring decision the model cannot see, which is
-`agent-permissions-approval.md`'s recurring complaint in a new place.
+`agent-permissions-approval.md`'s recurring complaint in a new place. A second pass brought it to parity with the other
+large sources here. **`@cloudflare/think`** ships
+`read/write/edit/list/find/grep/delete/bash` — Claude Code's surface,
+reached on a completely different substrate — with the only documented
+**tool-precedence order** in the collection (seven sources, later wins),
+client tools identified by *the absence of an `execute` function*, and
+**actions**, which add the four things a consequential tool needs beyond
+a schema: idempotency by stable key, inline *or* durable approval ("even
+from a dashboard with no live socket"), per-turn authorization grants,
+and delivery metadata recorded "without changing what the model sees".
+Its eleven lifecycle hooks fire **on every entry path**, so a policy in
+`beforeToolCall` cannot be bypassed by arriving over RPC instead of
+WebSocket. **Skills** are the third implementation here and the first
+where a script runs with a *gated capability context* — `workspace`
+throws unless enabled, `tools` resolves only what the runner was given —
+with `allowedTools` declared in frontmatter and scripts **precompiled
+because the runtime ships no bundler**, so what runs is what was
+reviewed. **Browser tools are Code Mode over raw CDP** rather than a
+click/type/screenshot verb set, with `cdp.spec()` for live protocol
+discovery and a **base64 redactor** that is the most complete
+implementation yet of `agent-vision-multimodal.md`'s strip-and-say-so
+rule — it verifies a string really is base64 before redacting, states
+the media type and both char and byte counts, and bounds its own
+traversal, with a comment explaining why `Uint8Array` must be skipped
+(walking it rebuilds a 900 KB buffer as an index-keyed object, strictly
+worse than the base64). And [`interop.md`](./cloudflare-agents/interop.md)
+opens two categories this collection had no coverage of at all: **A2A**,
+where discovery is a `/.well-known/agent-card.json` and the unit is a
+task with a lifecycle rather than a call with a return value, and
+**x402**, where `wrapFetchWithPayment(fetch)` makes an agent able to pay
+— which is the first time cost is a runtime value here, and the sharpest
+version of the permission question, because it wraps the least-gated
+primitive an agent has.
 
 ## Sources so far
 
@@ -934,7 +966,7 @@ compose — reached by a wiring decision the model cannot see, which is
 | [`zed/`](./zed) | [Zed](https://github.com/zed-industries/zed) | Coding agent (AI-native code editor's Agent Panel) | GPL-3.0-or-later / Apache-2.0 |
 | [`omp/`](./omp) | [OMP / Oh My Pi](https://github.com/can1357/oh-my-pi) | Coding agent (terminal; fork of `pi-agent/` with LSP/DAP wired in) | MIT |
 | [`librechat/`](./librechat) | [LibreChat](https://github.com/danny-avila/LibreChat) | Self-hosted chat UI + agent framework — stored for its **artifact channel** only | MIT |
-| [`cloudflare-agents/`](./cloudflare-agents) | [Cloudflare Agents SDK](https://github.com/cloudflare/agents) | Agent framework on Durable Objects — context blocks, fibers, dynamic agents, six HITL patterns. Read for **mechanism**, not prompt text | MIT |
+| [`cloudflare-agents/`](./cloudflare-agents) | [Cloudflare Agents SDK](https://github.com/cloudflare/agents) | Agent framework on Durable Objects — context blocks, a file+git sandbox API, skills with gated capabilities, Code Mode over raw CDP, fibers, dynamic agents, A2A and x402. **9 files** | MIT |
 | [`anthropic-skills/`](./anthropic-skills) | [Anthropic Agent Skills](https://github.com/anthropics/skills) | General-purpose **creative** skills (image, art, GIF, page, deck) — not coding agents | Apache-2.0 (the four document skills are source-available and are **not** stored here) |
 
 Note: Roo Code and Copilot Chat's source repos were both archived

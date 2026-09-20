@@ -35,6 +35,10 @@ this folder exists:
 | [`durability.md`](./durability.md) | Fibers (`runFiber`/`stash`/`onFiberRecovered`), the eviction numbers, recovery-aware delivery, frozen prompts, and compaction as a **non-destructive read-time overlay** |
 | [`delegation-and-approval.md`](./delegation-and-approval.md) | Dynamic agents (facets), agent tools, the six human-in-the-loop patterns with the vendor's own decision tree, and the two approval paths that disagree |
 | [`operations.md`](./operations.md) | Thirteen observability channels (read the event names as a list of production failure modes), four kinds of "do something later", scheduling, retries, state sync, and MCP in both directions |
+| [`think.md`](./think.md) | `@cloudflare/think` — the chat agent: a built-in `read/write/edit/list/find/grep/delete/bash` surface, a **seven-source tool merge order**, client tools identified by the absence of `execute`, **actions** (idempotency, approvals, authorization, reply attachments), and eleven lifecycle hooks that fire on every entry path |
+| [`skills.md`](./skills.md) | The third skills implementation in this collection, and the first where **a skill script runs with a gated capability context** and declares its own `allowedTools`. Three generated tools, the catalog prompt, the tagged envelope |
+| [`browser.md`](./browser.md) | Code Mode over **raw CDP** — the protocol, not a verb set — with `cdp.spec()` for live discovery, and a **base64 redactor** that is the most complete implementation yet of `../agent-vision-multimodal.md`'s strip-and-say-so rule |
+| [`interop.md`](./interop.md) | How an agent is addressed and how it reaches peers: **A2A** (agent cards, tasks, SSE), **x402** (an agent that pays), channels, email reply routing, per-source webhook agents |
 
 Code Mode lives in [`../code-mode/cloudflare.md`](../code-mode/cloudflare.md)
 — the `codemode` tool, the iframe sandbox and the CSP, **plus the Runtime
@@ -43,35 +47,42 @@ through per-tool `revert`, and snippets as curated procedural memory. It
 is indexed there because it is one instance of a pattern with four
 implementations.
 
-## Coverage, stated honestly
+## Coverage
 
-`docs/agents/` has **44 pages**; there are 8 packages and ~60 examples.
-This folder is built from roughly half of that, chosen for what is novel
-against the rest of the collection:
+`docs/agents/` has **44 pages**, plus `docs/think/` (11), `docs/codemode/`
+(6), `docs/shell/`, `docs/voice/`, 8 packages and ~60 examples. This
+folder now covers the material relevant to what this collection
+analyses — prompts, tool surfaces, context handling, delegation,
+approval, durability and interop — at parity with the other large
+sources here.
 
-**Read properly** — `context`, `durable-execution`, `sessions`
-(compaction), `sub-agents`, `agent-tools`, `human-in-the-loop`,
-`readonly-connections`, `observability`, `scheduling`, `queue`, `tasks`,
-`retries`, `state`, `mcp-client`, `mcp-transports`, `securing-mcp-servers`;
-all six `docs/codemode/` pages; `docs/shell/index.md`;
-`docs/think/{index,messengers}.md`; and in source
-`packages/shell/src/{prompt.ts,git/provider.ts}`,
-`packages/codemode/src/*`, `packages/think/src/think.ts` (partially).
+**Read** — `context`, `durable-execution`, `sessions`, `sub-agents`,
+`agent-tools`, `human-in-the-loop`, `readonly-connections`,
+`observability`, `scheduling`, `queue`, `tasks`, `retries`, `state`,
+`mcp-client`, `mcp-servers`, `mcp-transports`, `securing-mcp-servers`,
+`browse-the-web`, `channels`, `email`, `webhooks`; all six
+`docs/codemode/` pages; `docs/shell/index.md`; `docs/think/{index,
+tools, client-tools, actions, lifecycle-hooks, messengers}.md`;
+`examples/{a2a,x402,codemode-browser,webmcp}`. In source:
+`packages/agents/src/skills/` (all 9 files),
+`packages/agents/src/browser/ai.ts`, `packages/shell/src/{prompt.ts,
+git/provider.ts}`, `packages/codemode/src/*`,
+`packages/think/src/think.ts` (partially).
 
-**Not read** — `chat-sdk`, `channels`, `voice`, `email`, `webhooks`,
-`push-notifications`, `x402` (payments), `a2a` (agent-to-agent),
-`browse-the-web` and `packages/agents/src/browser/`, `streams`,
-`resumable-streaming`, `server-driven-messages`, `routing`, `lifecycle`,
-`cross-domain-authentication`, the two AI-SDK migration guides,
-`packages/agents/src/skills/`, and most of `docs/think/`.
+**Deliberately not read**, as low signal for this collection: the two
+AI-SDK migration guides, `getting-started`,
+`adding-to-existing-project`, `configuration`, `agent-class`,
+`callable-methods`, `get-current-agent`, `http-websockets`,
+`client-sdk`, `chat-sdk`, `cross-domain-authentication`, `routing`,
+`lifecycle`, `voice`, `push-notifications`, `streams` /
+`resumable-streaming` / `server-driven-messages` (transport mechanics),
+and the remaining `docs/think/` pages
+(`getting-started`, `channels`, `programmatic-submissions`,
+`sub-agents`, `workflows`) whose substance is covered from the pages
+above.
 
-The largest known gaps, in the order they would be worth closing:
-**`packages/agents/src/skills/`** (a skills system with
-`compile`/`frontmatter`/`manifest`/`registry`/`runner` — directly
-relevant to `../agent-context-file-loading.md` and `../skills/`),
-**`browse-the-web`** (relevant to `../agent-vision-multimodal.md`), and
-**`a2a`** (agent-to-agent, a category this collection has no coverage of
-at all).
+Note that `agent-think/` also exists at the repo root, separate from
+`packages/think/`, and was not read.
 
 ## The packages
 
