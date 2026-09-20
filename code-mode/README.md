@@ -16,6 +16,9 @@ here, one documented from its published description.
 | **DeepSeek** Code Mode | [`../deepseek-harness/`](../deepseek-harness) | Every tool advertised as a compiling `.d.ts` with declared return types; asks for a program, not a call |
 | **Anthropic** "code execution with MCP" | [`anthropic-pattern.md`](./anthropic-pattern.md) — published description, no source | MCP tools become TypeScript files on a filesystem the model imports |
 
+The SDK Cloudflare's implementation lives in is read in full in
+[`../cloudflare-agents/`](../cloudflare-agents).
+
 Also here: [`webmcp.md`](./webmcp.md) — `navigator.modelContext`, the
 W3C Community Group API that lets a **page** register tools with the
 browser. Not Code Mode, but the other half of the same question for an

@@ -864,6 +864,46 @@ what breaks when compute moves into the tab, where the sharpest conflict
 is that **artifacts become tab-local and mortal** while the hands-off
 completion gate needs refs that resolve.
 
+**[→ `cloudflare-agents/`](./cloudflare-agents)** — read in full
+alongside that pass, and a different *kind* of source from the rest of
+the collection: every other harness here is a **process**, and this one
+is a **Durable Object** — a named, persistent, single-threaded object
+with its own SQLite that the platform evicts and revives underneath you.
+The substrate forces answers to questions a process-shaped harness never
+has to ask. The headline is `agents/context`, which assembles the system
+prompt from labelled blocks where **the storage provider's shape decides
+both the rendering and which tools the model gets** — `get()` is
+read-only text, `get()`+`set()` adds a `set_context` tool, `get()`+
+`search()` renders a summary and adds `search_context`, and *"the checks
+are structural, not nominal"*, so **an agent with only read-only blocks
+gets no tools at all**. Nothing else in this collection generates the
+prompt and the tool surface from one declaration. Alongside it:
+`freezeSystemPrompt()`, which renders once and **persists the rendered
+bytes** so *"a cold wake reuses the exact prompt string the model already
+cached instead of re-rendering a subtly different one"* — the third
+distinct answer here to prefix-cache stability, after OpenClaw's
+in-text boundary marker and Codex's render-nothing-when-unchanged diff
+stream, and the only one that survives the process dying. Eviction is
+documented as a numbered hazard (**~70–140 s inactivity; code updates
+1–2× a day; 15 min alarm cap**) with two mechanisms and a one-line
+statement of the difference — *"`keepAlive()` reduces the chance of
+eviction. `runFiber()` makes eviction survivable."* Also: **compaction as
+a non-destructive read-time overlay** that leaves the original rows
+alone, gated on an O(1) token aggregate stamped at write time so the
+trigger *"never reads the transcript to decide whether to compact"*, and
+failing **open** where OpenClaw's fails closed — a difference that
+follows from the storage being non-destructive in the first place;
+**recovery-aware delivery**, which replays an answer if the restart
+landed before streaming began and posts an interruption notice if it
+landed after, because whether a retry is safe depends on whether a human
+already saw the partial; dynamic agents (facets) as the far end of the
+sub-agent axis, with **their own isolate and their own database** and
+`abort` separated from `delete` so a failed run's storage survives for
+inspection; and **six human-in-the-loop patterns with a decision tree**,
+of which exactly zero compose with Code Mode — the clearest available
+evidence that program-shaped tool use and human-in-the-loop are an
+unsolved combination rather than one vendor's gap.
+
 ## Sources so far
 
 | Folder | Project | Type | License |
@@ -890,6 +930,7 @@ completion gate needs refs that resolve.
 | [`zed/`](./zed) | [Zed](https://github.com/zed-industries/zed) | Coding agent (AI-native code editor's Agent Panel) | GPL-3.0-or-later / Apache-2.0 |
 | [`omp/`](./omp) | [OMP / Oh My Pi](https://github.com/can1357/oh-my-pi) | Coding agent (terminal; fork of `pi-agent/` with LSP/DAP wired in) | MIT |
 | [`librechat/`](./librechat) | [LibreChat](https://github.com/danny-avila/LibreChat) | Self-hosted chat UI + agent framework — stored for its **artifact channel** only | MIT |
+| [`cloudflare-agents/`](./cloudflare-agents) | [Cloudflare Agents SDK](https://github.com/cloudflare/agents) | Agent framework on Durable Objects — context blocks, fibers, dynamic agents, six HITL patterns. Read for **mechanism**, not prompt text | MIT |
 | [`anthropic-skills/`](./anthropic-skills) | [Anthropic Agent Skills](https://github.com/anthropics/skills) | General-purpose **creative** skills (image, art, GIF, page, deck) — not coding agents | Apache-2.0 (the four document skills are source-available and are **not** stored here) |
 
 Note: Roo Code and Copilot Chat's source repos were both archived

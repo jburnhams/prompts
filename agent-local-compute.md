@@ -8,8 +8,9 @@ need a server?**
 The answer is yes and no respectively, and the interesting part is not
 either answer but what falls out of them. Sources read for this pass:
 [`data-agents/hyperparam/`](./data-agents/hyperparam),
-[`data-agents/arquero/`](./data-agents/arquero) and
-[`code-mode/`](./code-mode).
+[`data-agents/arquero/`](./data-agents/arquero),
+[`code-mode/`](./code-mode) and — for the SDK Cloudflare's Code Mode
+ships inside — [`cloudflare-agents/`](./cloudflare-agents).
 
 **Contents**
 

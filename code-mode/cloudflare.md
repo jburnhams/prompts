@@ -10,6 +10,11 @@
   [code-mode-mcp](https://blog.cloudflare.com/code-mode-mcp/),
   [developers.cloudflare.com/agents/tools/codemode](https://developers.cloudflare.com/agents/tools/codemode/how-it-works/)
 
+The wider SDK this ships inside is read separately in
+[`../cloudflare-agents/`](../cloudflare-agents) — Durable-Object agents,
+context blocks, fibers, dynamic agents and six approval patterns. This
+file is the Code Mode slice only.
+
 The most complete readable implementation of Code Mode, and the only one
 in this collection that ships a **browser** executor alongside a
 server one. `examples/codemode-browser/` is a working app where the
