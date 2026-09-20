@@ -811,6 +811,59 @@ inside plain MCP**, addressing individual cell *outputs* as resources
 with cache TTLs, audience annotations and a comment that is the clearest
 statement of the principle in this collection.
 
+**[→ `agent-local-compute.md`](./agent-local-compute.md)** — the
+follow-on, written against one question: if the harness is already
+TypeScript, can the data tools be TypeScript too, and does the
+computation still need a server? It separates three decisions that
+usually get made as one — *where the bytes are scanned*, *what language
+the engine is written in*, *what the model emits* — and is about the
+combination the Python world cannot reach: an engine in the harness's own
+language, moved to wherever the data is, with the model's tool surface
+unchanged between deployments. The pass found the idea already shipped:
+**[Hyperparam](./data-agents/hyperparam)**, a pure-JS stack (squirreling
+~13 KB and **zero dependencies**, hyparquet ~9.7 KB gz, icebird) with a
+paper behind it ([*A Query Engine for the Agents*](https://arxiv.org/html/2605.27785),
+arXiv:2605.27785, May 2026) and `squirreling-mcp` wrapping the same
+engine for server-side use. §2 argues the pure-JS-versus-WASM gap is
+**architectural, not tuning**: cold start is 0.6 s against DuckDB-WASM's
+19 s because one ships 70 KB of JS and the other instantiates a
+multi-megabyte module, and — the load-bearing half — a vectorized WASM
+engine *cannot* host an `await` inside a scalar UDF, because "scalar UDF
+calls still cross the WASM boundary synchronously from the engine's
+perspective." So `SELECT llm('classify', content) FROM traces LIMIT 5`
+making **exactly five API calls** is available to an AsyncGenerator
+engine and structurally unavailable to a compiled one. (The cost and
+throughput numbers are **vendor-run and unreplicated**; the mechanisms
+are checkable, the numbers are not.) §3 records that **Code Mode has
+converged from four directions** — Cloudflare, Anthropic, Codex and
+DeepSeek, all four now covered in [`code-mode/`](./code-mode) — and that
+the two discovery answers are one idea bound to different substrates:
+Anthropic's filesystem of `.ts` wrappers makes **the tool catalogue a
+repository** a coding agent already knows how to read, while Cloudflare's
+`search()`/`describe()` is what you use in a browser, where there is no
+filesystem. §4 re-derives the sandbox question under a **blast-radius
+threat model** (the model is careless, not hostile) and gets a different
+answer from the adversarial literature: five tiers, with Cloudflare's
+shipped ~200-line browser executor — `sandbox="allow-scripts"` and *no*
+`allow-same-origin`, plus `default-src 'none'` in a CSP `<meta>` injected
+into the `srcdoc`, which kills `connect-src` with it — as the sweet spot,
+and the gap it leaves named by its own vendor: a timeout "cannot preempt
+tight synchronous loops like `while (true) {}` because those block the
+browser event loop." §5 is the fork worth arguing about — **SQL-as-data
+versus JS-as-code** — and finds the seam already in the engine contract:
+a UDF is *registered by the harness and merely named by the model*, so
+the capability surface inside the query language needs no sandbox at all,
+which also makes an `llm()` UDF a governance question rather than a
+feature. Also: the cheapest control in the pass is not a sandbox but
+**walking the query plan before execution** (`squirreling-mcp` already
+resolves `FROM`-clause identifiers from plan scan nodes, so what a query
+will touch is known before a byte is read); the `FROM` clause used as a
+ref namespace across five source types; pushdown negotiated per call with
+two honest booleans (`appliedWhere`, `appliedLimitOffset`); and §7 on
+what breaks when compute moves into the tab, where the sharpest conflict
+is that **artifacts become tab-local and mortal** while the hands-off
+completion gate needs refs that resolve.
+
 ## Sources so far
 
 | Folder | Project | Type | License |
@@ -945,6 +998,24 @@ data** rather than editing a repository. See
 | [`data-agents/matlab-mcp/`](./data-agents/matlab-mcp) | [MATLAB MCP Server](https://github.com/matlab/matlab-mcp-server) | MathWorks' own; session lifecycle as tools; JSON-declared custom tools over MATLAB functions | Apache-2.0 |
 | [`data-agents/btw/`](./data-agents/btw) | [btw](https://github.com/posit-dev/btw) | Posit's R toolkit: 25 introspection tools on, `run_r` off by default | MIT |
 | [`data-agents/positron/`](./data-agents/positron) | [Positron](https://github.com/posit-dev/positron) | Not an agent — the Data Explorer OpenRPC protocol, i.e. what a viewer exposes | Elastic-2.0 |
+| [`data-agents/hyperparam/`](./data-agents/hyperparam) | [Hyperparam / HypStack](https://github.com/hyparam) | Pure-JS data stack built for browsers *and* agent sandboxes — squirreling (SQL, 0 deps), hyparquet, icebird, `squirreling-mcp` | MIT |
+| [`data-agents/arquero/`](./data-agents/arquero) | [Arquero](https://github.com/uwdata/arquero) | The verb-based counter-case: dataframes in JS, expressions as a restricted DSL that ends in codegen | BSD-3-Clause |
+
+## Code Mode
+
+A sixth category: harnesses that replace a **tool list** with a **typed
+API and a sandbox**, so the model writes a program and intermediate
+results never enter the conversation. All four known implementations are
+now covered — two as full sources elsewhere. See
+[`code-mode/README.md`](./code-mode/README.md).
+
+| File | Implementation | Read from source? |
+|---|---|---|
+| [`code-mode/cloudflare.md`](./code-mode/cloudflare.md) | `@cloudflare/codemode` — the only one shipping a **browser** executor | yes — `cloudflare/agents` @ `c076e4c`, MIT |
+| [`code-mode/anthropic-pattern.md`](./code-mode/anthropic-pattern.md) | Anthropic's "code execution with MCP" — MCP tools as `.ts` files on a filesystem | no — published description only |
+| [`code-mode/webmcp.md`](./code-mode/webmcp.md) | `navigator.modelContext` — a *page* registering tools with the browser | yes — the adapter and example in `cloudflare/agents` |
+| [`codex/README.md`](./codex) | Codex `tool_mode: "code_mode_only"` | yes, in the Codex re-read |
+| [`deepseek-harness/`](./deepseek-harness) | DeepSeek Code Mode — tools as compiling `.d.ts` | yes, in that folder |
 
 ## Papers
 
