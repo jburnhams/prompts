@@ -1,144 +1,107 @@
 # WebMCP — `navigator.modelContext`
 
-- **Type**: browser API for a **page** to register tools with an agent ·
-  **Vendor**: W3C Community Group (Google, Microsoft, Mozilla, Apple
-  participating)
-- **Status at time of reading (2026-09-20)**: shipped in Chrome 146
-  Canary behind a flag (2026-02-10); Chrome 149 origin trial (May 2026);
-  stable rollout expected Q4 2026. **Early preview, not a cross-browser
-  standard.**
-- **Source read**: `cloudflare/agents` @ `c076e4c` —
-  `packages/agents/src/experimental/webmcp.ts`, `examples/webmcp/`
+> **Status: PARKED. Not useful to this project today. Do not spend time
+> here unless one of the re-check triggers below fires.**
+>
+> Assessed 2026-09-20. Kept as a placeholder so the question does not get
+> re-opened from scratch.
 
-Not Code Mode, but the other half of the same question. Code Mode asks
-*how does the model invoke a capability*; WebMCP asks *where do the
-capabilities come from when there is no server*.
+## What it is, in three sentences
 
-## The API
-
-From `examples/webmcp/src/client.tsx`:
-
-```tsx
-function registerInPageTools(
-  tools: InPageToolDef[]
-): { name: string; controller: AbortController }[] {
-  if (!navigator.modelContext) return [];
-  const registered: { name: string; controller: AbortController }[] = [];
-  for (const tool of tools) {
-    const controller = new AbortController();
-    navigator.modelContext.registerTool(
-      {
-        name: tool.name,
-        description: tool.description,
-        ...(tool.inputSchema ? { inputSchema: tool.inputSchema } : {}),
-        execute: async (input) => tool.execute(input)
-      },
-      { signal: controller.signal }
-    );
-    registered.push({ name: tool.name, controller });
-  }
-  return registered;
-}
-```
-
-And a worked in-page tool from the adapter's own docstring:
+A browser API that lets a **web page register tools with the browser's
+agent**, so an agent can call into whatever the page can do. The tool
+object is MCP-shaped — `name`, `description`, `inputSchema`, `execute` —
+and registration is scoped to an `AbortSignal`, so tools appear and
+disappear with the UI that owns them.
 
 ```ts
-navigator.modelContext?.registerTool({
-  name: "scroll_to_section",
-  description: "Scroll the page to a named section",
-  inputSchema: {
-    type: "object",
-    properties: { id: { type: "string" } },
-    required: ["id"]
+navigator.modelContext.registerTool(
+  {
+    name: "scroll_to_section",
+    description: "Scroll the page to a named section",
+    inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+    async execute({ id }) {
+      document.getElementById(String(id))?.scrollIntoView({ behavior: "smooth" });
+      return "ok";
+    }
   },
-  async execute({ id }) {
-    document.getElementById(String(id))?.scrollIntoView({ behavior: "smooth" });
-    return "ok";
-  }
-});
+  { signal: controller.signal }
+);
 ```
 
-Three design points:
+W3C **Community Group** work, with Google, Microsoft, Mozilla and Apple
+participating. Shipped in Chrome 146 Canary behind a flag (2026-02-10);
+Chrome 149 origin trial (May 2026); stable rollout expected Q4 2026. The
+March 2026 revision removed `provideContext()`/`clearContext()`, leaving
+`registerTool()`/`unregisterTool()` as the only way to declare tools.
 
-**The tool shape is MCP's.** `name`, `description`, `inputSchema` (JSON
-Schema), `execute`. A page tool and a server tool are the same object;
-only the transport differs — which is the property that makes "one tool
-definition, two deployments" plausible in the first place.
+## Why it is not useful to us
 
-**Registration is `AbortSignal`-scoped.** `{ signal: controller.signal }`
-ties a tool's lifetime to a controller, so a React component can register
-on mount and unregister on unmount without a separate teardown API. The
-tool surface becomes a function of what is currently on screen.
+**1. It solves a problem we do not have.** WebMCP's actual value is
+letting a page *you do not control* offer tools to an agent — a browsing
+story. Our agent runs its own loop in the page and already has a
+TypeScript MCP client against a real MCP server. For tools that live in
+our own page, the agent can simply **call the functions**. WebMCP would
+add a browser-mediated indirection between our code and our code.
 
-**`execute` is an ordinary in-page closure.** It has the DOM, the
-session, the user's sign-in. That is the capability a server-side MCP
-tool cannot have, and also the reason the security model is contentious.
+**2. It is one vendor's preview wearing a standards badge.** A Community
+Group report is not a W3C Recommendation, and participation is not
+implementation. Chromium behind a flag is the only shipping engine.
 
-Per the March 2026 spec revision, `provideContext()` and `clearContext()`
-were removed; `registerTool()` / `unregisterTool()` are the only way to
-declare tools.
-
-## The adapter, and its warning
-
-`packages/agents/src/experimental/webmcp.ts` opens with the loudest
-comment in anything read for this collection:
+**3. The tooling authors say not to.** Cloudflare's adapter
+(`packages/agents/src/experimental/webmcp.ts`, read at `c076e4c`) opens
+with:
 
 ```
- * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  * !! WARNING: EXPERIMENTAL — DO NOT USE IN PRODUCTION                  !!
- * !!                                                                   !!
  * !! This API is under active development and WILL break between       !!
  * !! releases. Google's WebMCP API (navigator.modelContext) is still   !!
  * !! in early preview and subject to change.                           !!
- * !!                                                                   !!
  * !! If you use this, pin your agents version and expect to rewrite    !!
  * !! your code when upgrading.                                         !!
- * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ```
 
-> WebMCP adapter for Cloudflare Agents SDK.
->
-> Bridges tools registered on an McpAgent server to Chrome's native
-> navigator.modelContext API, so browser-native agents can discover
-> and call them without extra infrastructure.
+**4. "The page can register tools" is also the threat model.** A tool
+surface assembled from whatever the current page declares is one an
+untrusted page can influence — names, descriptions and schemas all
+become attacker-controlled text reaching the model. Bounded for a
+first-party internal app by who can publish to the origin; not bounded
+for an agent that browses. Adopting it would pull
+`../agent-context-file-loading.md`'s untrusted-input handling into a
+place it currently does not need to reach.
 
-```ts
-const handle = await registerWebMcp({ url: "/mcp" });
-// Later, to clean up:
-await handle.dispose();
-```
+## The one thing worth borrowing now
 
-The recommended pattern in the docstring is a **mix**: bridge the remote
-MCP server's tools into the page, then register page-local tools
-alongside them, so the agent sees one surface.
+**`AbortSignal`-scoped registration.** Tying a tool's lifetime to a
+controller — so the tool surface is a function of what is currently on
+screen, and a component unregisters on unmount without a separate
+teardown path — is a good pattern and needs **none** of this API. It
+works against a plain in-page tool registry today.
 
-> @example Mix in-page tools with bridged tools (recommended pattern)
->
-> 1. Register page-local tools — things only the page can do
+## Re-check triggers
 
-## What it changes, and what to be careful about
+Revisit only if one of these is true:
 
-For a browser-resident agent this removes the last piece of required
-infrastructure: the page can hand the agent its own capabilities
-directly, and a remote MCP server's tools can be bridged in next to
-them without the agent knowing which is which.
+- **We need an agent to drive third-party pages.** This is the one that
+  actually changes the answer — at that point WebMCP is the difference
+  between scraping a DOM and calling a declared tool.
+- **It reaches Baseline / cross-browser stable** — two independent
+  engines shipping unflagged, and a Recommendation rather than a CG
+  report.
+- **A first-party surface we do not control starts offering tools** and
+  we want to consume them.
 
-Two cautions worth writing down before building on it.
+Until then: the TS MCP client against a real server is the right shape,
+and in-page tools are ordinary function calls.
 
-**It is one vendor's preview with a standards label.** A W3C *Community
-Group* report is not a W3C Recommendation, participation is not
-implementation, and the only shipping engine is Chromium behind a flag.
-The adapter's own authors pin their version and expect to rewrite. Any
-design that depends on it needs a path that works without it — which,
-for an agent that already has its own tool loop in the page, is simply
-calling the functions directly.
+## Where the detail lives
 
-**"The page can register tools" is also the threat model.** A tool
-surface assembled from whatever the current page declares is a tool
-surface an untrusted page can influence — tool names, descriptions and
-schemas all become attacker-controlled text reaching the model.
-`../agent-context-file-loading.md` treats exactly this class of input as
-untrusted and the collection's nonce-wrapper pattern applies unchanged.
-For a first-party internal application the risk is bounded by who can
-publish to the origin; for an agent that browses, it is not.
+Read from source in `cloudflare/agents` @ `c076e4c` —
+`packages/agents/src/experimental/webmcp.ts` and `examples/webmcp/`,
+`examples/webmcp-react/`. Status facts above are from secondary sources
+as of 2026-09-20 and will age; the API shape is from the adapter and
+example.
+
+Related, and *not* parked: [`cloudflare.md`](./cloudflare.md) (the Code
+Mode browser executor, which is directly useful) and
+[`../cloudflare-agents/`](../cloudflare-agents).

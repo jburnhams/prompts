@@ -1054,7 +1054,7 @@ now covered — two as full sources elsewhere. See
 |---|---|---|
 | [`code-mode/cloudflare.md`](./code-mode/cloudflare.md) | `@cloudflare/codemode` — the only one shipping a **browser** executor | yes — `cloudflare/agents` @ `c076e4c`, MIT |
 | [`code-mode/anthropic-pattern.md`](./code-mode/anthropic-pattern.md) | Anthropic's "code execution with MCP" — MCP tools as `.ts` files on a filesystem | no — published description only |
-| [`code-mode/webmcp.md`](./code-mode/webmcp.md) | `navigator.modelContext` — a *page* registering tools with the browser | yes — the adapter and example in `cloudflare/agents` |
+| [`code-mode/webmcp.md`](./code-mode/webmcp.md) | `navigator.modelContext` — a *page* registering tools with the browser. **Assessed and parked**, with re-check triggers recorded | yes — the adapter and example in `cloudflare/agents` |
 | [`codex/README.md`](./codex) | Codex `tool_mode: "code_mode_only"` | yes, in the Codex re-read |
 | [`deepseek-harness/`](./deepseek-harness) | DeepSeek Code Mode — tools as compiling `.d.ts` | yes, in that folder |
 

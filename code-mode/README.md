@@ -23,6 +23,10 @@ Also here: [`webmcp.md`](./webmcp.md) — `navigator.modelContext`, the
 W3C Community Group API that lets a **page** register tools with the
 browser. Not Code Mode, but the other half of the same question for an
 in-browser agent: where do the tools come from when there is no server.
+**Assessed and parked** — it solves a browsing problem, not an
+internal-tooling one, and an agent already running its own loop in the
+page can just call the functions. That file records the re-check
+triggers so the question does not get re-opened from scratch.
 
 ## Why it is a category and not a footnote
 
