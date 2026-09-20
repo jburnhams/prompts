@@ -346,13 +346,19 @@ a browsing problem, not an internal-tooling one.
 
 ## 7. Supersessions and decision rows
 
+**All of these are applied in the target documents**, not left as a
+patch against them — this document is the argument, and the amended
+sections are the design. Each target cross-links back to the section
+here that changed it.
+
 | Document | Change |
 |---|---|
 | `artifacts.md` §5.5 | `persist` becomes **transitive** along `produced_by`/`inputs` (§2a); **sliding expiry from last use** on the `persist` tier, with "any resolution counts, and minting counts as a use of inputs" (§2b); the expiry error for `kind="table"` carries shape and provenance (§2c) |
-| `artifacts.md` §6 | a local cache tier, keyed on the ref, never authoritative, a hit registers a use (§2d) |
+| `artifacts.md` §6a | a local cache tier, keyed on the ref, never authoritative, a hit registers a use (§2d) — a new subsection under **6. Fetching bytes** |
+| `artifacts.md` §7 | one sentence: a cached artifact keeps the `trust` it was minted with (§6) |
 | `data.md` §2c | **`:sql:` binds one table**; joins are not expressible; an artifact ref may appear as a filter operand with a pre-issue cap (§2e) |
 | `data.md` §2f | the provenance gate is unchanged, but is only *sound* given §2a — recorded here because the gap was in this design, not in the research |
-| `tools.md` | the data surface is focused tools, not `execute(code)`; the model-backed UDF cap (§2f) |
+| `tools.md` | the data surface is focused tools, not `execute(code)` — in **What is deliberately *not* configurable**, since it is a contract other things depend on rather than a tunable; and the model-backed UDF spend ceiling, in the implementation contract next to the existing cap rules (§2f) |
 | `future.md` | Code Mode with its trigger and sandbox tier; the pure-TS resolver as the implementation note (§4) |
 | `eval.md` | metrics: expired-ref-hit rate on `persist` artifacts (a high rate means the sliding window is too short); local cache hit rate; fan-out ratio on local joins |
 | `README.md` | decision rows for §2a, §2e and §2f |

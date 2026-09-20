@@ -230,6 +230,52 @@ implementation: **allowlist statement node types, and allowlist
 functions**, because `SELECT pg_read_file('/etc/passwd')` is a perfectly
 good `SelectStmt`.
 
+**`:sql:` binds exactly one table, and that is a decision rather than an
+implementation limit** ([`local.md`](./local.md) §2e). A join across two
+`table://` refs is not expressible; joining happens locally, over
+artifacts already fetched.
+
+The DoS argument for this is the weaker half — a single-table query
+DoSes perfectly well (`SELECT *`, a non-sargable predicate, an
+`ORDER BY` on an unindexed column), and the things that actually bound
+cost are needed either way. What is true is that **one table is easy to
+bound and a join is vastly harder**, so a join raises the *variance* of
+cost past what a cap can hold.
+
+The correctness argument is the strong one, and it is the reason this
+starts closed. **A join failure is silent.** Fan-out on a duplicated key
+inflates every downstream `SUM`; an inner join on a nullable key drops
+rows; a `VARCHAR`/`BIGINT` key mismatch coerces. All of them execute and
+return a plausible number. Fetching per table makes the failure visible
+for free — if the inputs are 1,840 and 12 rows and the local join
+produces 4,201, the fan-out is a number in a stub at the moment it
+happens, which `../agent-data-analysis.md` §9d records that no harness
+does. One large query destroys that evidence before anyone can look at
+it. And it is the shape a person would use anyway: fetch what you need,
+look at it, then combine.
+
+**The push-down this costs is recovered by one addition**, which fits
+the ref system rather than working around it:
+
+> An artifact ref may appear as a **filter operand**:
+> `:sql:SELECT … WHERE customer_id IN table://tbl_1188ef40#customer_id`
+>
+> The harness resolves the ref to a key list and inlines it. The list
+> length is checked against a cap **before** anything is issued; over
+> the cap is a refusal (§2e's vocabulary) naming the cap and telling the
+> model to narrow the first fetch.
+
+That is a client-driven semi-join. It gets the selectivity that makes a
+400M-row fact table tractable without the model writing a join, and it
+is bounded in the way a join is not, because the key count is a number
+the harness can see in advance. It deliberately does not cover
+many-to-many fact-to-fact, which is the case you least want written
+blind.
+
+**The relaxation path, in order:** joins on a declared primary key, then
+on any indexed column, each gated on the plan walk being able to bound
+the result before execution.
+
 ### 2d. Tabular results spill to `table://`, not to text
 
 `artifacts.md` §4 says any non-write result over `spill_threshold_chars`
@@ -331,6 +377,18 @@ claim with no trace back to a query is an assertion.
 
 What it deliberately does not do: check that the numbers are *right*.
 Nothing can. See §5.
+
+**This gate is only sound given transitive persistence**, which
+[`local.md`](./local.md) §2a adds to `artifacts.md` §5.5 and which was
+not in the design when this section was first written. The gate is
+checked at end-of-run, when everything the run minted is still alive, so
+it passes under either rule. But under the original one-hop rule the
+cited table then persists and *its inputs do not* — so a week later the
+report cites a table whose derivation has expired, and the gate that
+was supposed to make the run reproducible passed on a run that is not.
+The reproducibility claim above is the thing that fails, not the check.
+Transitivity is the minimum fix and costs nothing here: the closure is
+the same graph walk this gate already performs.
 
 **And the prompted half comes free from a pass that landed the same day.**
 The Codex re-read added a **completion audit** to the coding prompt
@@ -613,3 +671,12 @@ a programmatic consumer.
 | `future.md` | kernel-backed sessions, the semantic layer, cost governance, big data, partition order (§4a) |
 | `eval.md` | metrics: fraction of analysis runs passing the provenance gate; mean rows read per `table://` ref (a high number means the default projection is wrong) |
 | `README.md` | the two-entrypoint diagram becomes three (§2g) |
+
+**Amended since, by [`local.md`](./local.md).** Two of this document's
+decisions were narrowed by the local-compute pass and the changes are
+folded into the sections above rather than kept as a patch:
+
+| This document | Amendment |
+|---|---|
+| §2c | **`:sql:` binds exactly one table.** Joins across `table://` refs are not expressible — a join failure is silent, where separate fetches make fan-out a visible number. A ref may appear as a filter operand for a capped semi-join. Start-closed, with a named relaxation path (`local.md` §2e) |
+| §2f | The provenance gate is unchanged, but is only *sound* given `persist` becoming transitive along `produced_by`/`inputs` (`local.md` §2a). Recorded because the gap was in this document, not in the research |

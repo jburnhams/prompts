@@ -228,6 +228,18 @@ spill is a pointer into state with a lifetime of its own:
   A path on its own defers the decision without informing it. `formats.md`
   §8e specifies the wording for `Bash`, the only v1 tool that spills.
 
+**A cap on money is a cap, and it binds before execution, not during.**
+Where a data tool exposes a model-backed function inside a query — a
+`llm()`-style UDF the harness registers and the model merely names
+([`local.md`](./local.md) §2f) — **the function is a spend ceiling, not
+a feature.** `LIMIT 5` really is five inferences, and the unbounded
+query is textually identical to the cheap one, so nothing in the query
+string distinguishes the call costing cents from the one costing
+thousands. The cap belongs where the plan is walked, before anything is
+issued, and over it is a refusal naming the cap rather than a partial
+result — the same reasoning as the paragraph above, with the
+irreversible half being spend rather than tokens.
+
 **Some reads are refused before any I/O, by name *and* by type.** A cap can
 only bound a read that *finishes*, so anything unbounded has to be refused
 up front, and that takes two independent checks:
@@ -590,6 +602,20 @@ one has tested:
 - **The refused-path list**, which a deployment may extend and may never
   empty — it is the only defence against a read that never returns, and a
   configurable-to-zero denial of service is not a tunable.
+- **The data surface is focused tools — list, describe, fetch — never a
+  general `execute(code)`** ([`local.md`](./local.md) §2f). The
+  deciding property is that a model-backed function inside a query is
+  *registered by the harness and merely named by the model*, so the
+  capability surface inside the query language is exactly what the
+  deployment chose to expose and **no sandbox is required, because no
+  model-authored code runs**. It also keeps the property
+  `artifacts.md` §8 depends on: with focused tools the harness sees what
+  the model asked for as structured arguments, where a program is opaque
+  until it runs. A deployment that added `execute` would inherit the
+  iframe, the injected CSP, the unpreemptable `while(true)`, and the
+  loss of pre-execution gating, none of which the rest of this contract
+  is written against. Code Mode is tracked in `future.md` with its
+  trigger named, which is the supported way to revisit this.
 
 The line between the two lists is exactly the model channel versus the
 harness channel: numbers are facts the model is told at the moment they
