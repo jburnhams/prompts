@@ -734,6 +734,9 @@ push the other two into the model's context by default.
    array — return N text blocks. If the payload is code or a diff, frame
    it with a line-number prefix rather than escaping it
    (`agent-design/formats.md` §8a; ~1.13× and it keeps byte-exactness).
+   For **rows**, see [`agent-tabular-results.md`](./agent-tabular-results.md):
+   tab-delimited with a header and a preamble line; array-of-objects JSON
+   costs 2.3–3× as much and measured no more accurate.
 3. **Never double-encode.** If you are proxying a JSON API, parse it and
    re-render; don't pass its JSON through as a string.
 4. **Pick one of `content` / `structuredContent` per tool and say why.**

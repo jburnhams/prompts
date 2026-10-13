@@ -3,7 +3,7 @@ Same rows, nine renderings, deterministic questions with computed answers.
 Run: python3 bench/tabular-accuracy.py PROVIDER:MODEL [SEEDS] [ROWS] [FIRST_SEED]
   gemini:gemini-3.8-flash   (GEMINI_API_KEY)     openrouter:google/gemma-4-31b-it:free (OPENROUTER_API_KEY)
   groq:openai/gpt-oss-120b  (GROQ_API_KEY)       ollama:gpt-oss:120b (OLLAMA_API_KEY, ollama.com cloud)
-  cohere:command-a-03-2025  (COHERE_API_KEY)
+  cohere:command-a-03-2025  (COHERE_API_KEY)     zai:glm-5.3 (ZAI_API_KEY)
 BATCHED: one request per (format, dataset) carrying all 24 questions, because the free tier
 allows only ~20 requests per model per day. 9 formats x 1 dataset = 9 requests per model.
 Key is read from the environment only. Results go to bench/results-<provider>-<model>-s<first seed>.json.
@@ -15,7 +15,7 @@ SLUG = re.sub(r"[^A-Za-z0-9.-]+", "_", PROVIDER + "-" + MODEL)
 SEEDS = int(sys.argv[2]) if len(sys.argv) > 2 else 2
 NROWS = int(sys.argv[3]) if len(sys.argv) > 3 else 120
 FIRST = int(sys.argv[4]) if len(sys.argv) > 4 else 1
-BASES = {"openrouter": "https://openrouter.ai/api/v1", "groq": "https://api.groq.com/openai/v1", "ollama": "https://ollama.com/v1", "cohere": "https://api.cohere.ai/compatibility/v1"}
+BASES = {"openrouter": "https://openrouter.ai/api/v1", "groq": "https://api.groq.com/openai/v1", "ollama": "https://ollama.com/v1", "cohere": "https://api.cohere.ai/compatibility/v1", "zai": "https://api.z.ai/api/paas/v4"}
 KEY = os.environ[PROVIDER.upper() + "_API_KEY"]
 import threading
 _lock = threading.Lock(); _next = [0.0]

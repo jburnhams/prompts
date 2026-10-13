@@ -742,6 +742,22 @@ built-but-not-switched-on pattern turns up on the way: an `Artifact`
 widths and returns screenshots plus a mechanical checklist, present in
 the binary and absent from the live tool schema.
 
+**[→ `agent-tabular-results.md`](./agent-tabular-results.md)** — the
+narrow question under the transport doc's "put a compact rendering in
+`content`": which rendering, for rows. Two measurements and a survey. Token
+cost of the same rows in eleven formats (array-of-objects JSON is **2.3–3×**
+TSV, and two of the MCP reference servers return it; quoted CSV is *not*
+costlier than sanitised TSV, which corrects a claim made earlier in the
+session that produced the doc), the **null literal as a bigger lever than
+the delimiter** (empty cells are up to 2× cheaper on sparse tables because
+consecutive delimiters merge into one token), and a 9-format accuracy
+benchmark that, on three free-tier models, found **no detectable format
+effect and a total failure at counting** — every two-filter count over 120
+rows was wrong, 125 of 125. The recommendation is tab-delimited with a
+header and a preamble line, empty = null stated, and aggregation moved to a
+tool. Most free-tier keys supplied did not yield data and the doc says
+which and why. Scripts in [`bench/`](./bench).
+
 **[→ `agent-data-analysis.md`](./agent-data-analysis.md)** — the second
 doc about an agent whose output is not a code change, and the first
 about one whose *input* is not a repository: thirteen harnesses read

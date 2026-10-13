@@ -187,9 +187,19 @@ resolver. Deferred to `future.md`.
 
 | Selector | Meaning |
 |---|---|
-| `:rows:1-20` | rows by position, as delimited text |
+| `:rows:1-20` | rows by position, as tab-delimited text (see below) |
 | `:cols:region,revenue` | restrict the summary (or the rows) to named columns |
 | `:sql:SELECT region, sum(revenue) FROM t GROUP BY 1 ORDER BY 2 DESC LIMIT 10` | a query over this table, bound as `t` |
+
+**The `:rows:` rendering is fixed, not left to the resolver**
+([`agent-tabular-results.md`](../agent-tabular-results.md) §6): a preamble
+line (`20 of 1840293 rows · tab-separated · empty = null · next: :rows:21-40`),
+a header line, then one row per line. Cells are sanitised — tab becomes a
+space, a newline becomes `⏎` — never escaped. A null is an empty cell on the
+sparse columns the stub already flags and the preamble says so; a real empty
+string renders as `""`. The cap is on cells, not rows. Array-of-objects JSON
+is never used (2.3–3× the tokens, measured); where the row text must also be
+machine-readable, columnar JSON is the only shape allowed (1.04–1.07×).
 
 `:sql:` is the important one and it needs defending, because it looks
 like a tool smuggled in as a string.
