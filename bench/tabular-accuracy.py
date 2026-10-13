@@ -6,7 +6,7 @@ Run: python3 bench/tabular-accuracy.py PROVIDER:MODEL [SEEDS] [ROWS] [FIRST_SEED
   cohere:command-a-03-2025  (COHERE_API_KEY)     zai:glm-5.3 (ZAI_API_KEY)
   nvidia:mistralai/mistral-large-2-instruct (NVIDIA_API_KEY, build.nvidia.com)
 BATCHED: one request per (format, dataset) carrying all 24 questions, because the free tier
-allows only ~20 requests per model per day. 9 formats x 1 dataset = 9 requests per model.
+allows only ~20 requests per model per day. 10 formats x 1 dataset = 10 requests per model (FORMATS=a,b limits it).
 Key is read from the environment only. Results go to bench/results-<provider>-<model>-s<first seed>.json.
 """
 import sys, os, re, json, io, csv, random, time, urllib.request, urllib.error, concurrent.futures as cf
@@ -54,11 +54,14 @@ def render(rows, f):
     if f == "md_table": return "| " + " | ".join(cols) + " |\n|" + "|".join("---" for _ in cols) + "|\n" + "\n".join("| " + " | ".join(san(r[c]) for c in cols) + " |" for r in rows)
     if f == "json_min": return json.dumps(rows, separators=(",", ":"), ensure_ascii=False)
     if f == "json_columnar": return json.dumps({"columns": cols, "rows": [[r[c] for c in cols] for r in rows]}, separators=(",", ":"), ensure_ascii=False)
+    if f == "jsonl_arrays": return "\n".join(json.dumps(x, separators=(",", ":"), ensure_ascii=False) for x in [cols] + [[r[c] for c in cols] for r in rows])
     if f == "kv_blocks": return "\n\n".join("\n".join(f"{c}: {san(r[c], 'null')}" for c in cols) for r in rows)
     if f == "aligned":
         w_ = [max(len(c), *(len(san(r[c])) for r in rows)) for c in cols]
         return "  ".join(c.ljust(x) for c, x in zip(cols, w_)) + "\n" + "\n".join("  ".join(san(r[c]).ljust(x) for c, x in zip(cols, w_)) for r in rows)
-FORMATS = ["tsv_dash", "tsv_empty", "csv", "pipe", "md_table", "json_min", "json_columnar", "kv_blocks", "aligned"]
+FORMATS = ["tsv_dash", "tsv_empty", "csv", "pipe", "md_table", "json_min", "json_columnar", "jsonl_arrays", "kv_blocks", "aligned"]
+if os.environ.get("FORMATS"):   # e.g. FORMATS=jsonl_arrays to run one format; results get a suffix
+    FORMATS = os.environ["FORMATS"].split(","); SLUG += "-" + "+".join(FORMATS)
 
 def questions(rows, seed):
     rnd = random.Random(seed * 99); qs = []

@@ -80,6 +80,7 @@ Relative to TSV (50 rows, dirty text):
 | TSV (tab, sanitised, `-` for null) | 1,789 | 1.00 |
 | CSV (RFC 4180 quoting, empty null) | 1,758 | **0.98** |
 | columnar JSON `{"columns":[…],"rows":[[…]]}` | 1,908 | 1.07 |
+| **JSONL, header array then one array per row** (`["a","b"]` newline `[1,2]` …) | 1,916 | 1.07 |
 | pipe-delimited | 1,854 | 1.04 |
 | Markdown table | 2,092 | 1.17 |
 | fixed-width, space-padded | 1,993 | 1.11 |
@@ -210,7 +211,7 @@ that is recorded here rather than hidden:
 | NVIDIA: **`google/gemma-4-31b-it`** | **9/9** — same model as the Ollama run, different host |
 | NVIDIA: `mistral-large-2-instruct`, `nemotron-70b-instruct`, `nemotron-3-super-120b`, `deepseek-v4.1-flash`, `gpt-oss-20b` | no usable reply |
 
-Result files for the usable runs (six) are in `bench/`. Runs that returned
+Result files for the usable runs are in `bench/`. Runs that returned
 nothing were not kept.
 
 ### Results
@@ -231,6 +232,18 @@ models, the last two are strong reasoning models.
 | kv_blocks | 12 | 15 | 15 | 11 | 24 | 24 |
 | aligned | 12 | 14 | 14 | 14 | — | 24 |
 | **all answered cells** | 50% | 62% | 62% | 46% | **97.5%** | **96%** |
+
+**Added after the table above: JSONL with a header array and one array per
+row** (`jsonl_arrays`), run on the three NVIDIA-hosted models that had
+answered (one batch each, same dataset and questions): `kimi-k3` 21/24,
+`gemma-4-31b-it` 15/24, `glm-5.3-flash` no reply. That is level with every
+other layout for gemma (14–16) and in the lower group for kimi (21, with
+`tsv` empty-null and `pipe`; the other layouts 23–24). The three kimi
+misses — the two-filter count 9→8, the argmax 4668→4088 and the bool count
+1→0 — are **the same three items it missed in `tsv` empty-null and in
+`pipe`, with the same wrong answers**. Four layouts, one set of errors: those
+items are hard for that model on this table, and the layout is not what
+decides it.
 
 By question type (summed over the formats each model answered):
 
@@ -327,9 +340,14 @@ For a tool that returns rows to a model in a `content` text block:
    what to call instead, and prefer returning the aggregate. This is the
    same shape as `agent-design/data.md`: the default view is column
    summaries and `:sql:` is the reducing operation.
-7. **If `content` must double as machine data, columnar JSON** is the
-   cheapest parseable form (1.04–1.07× TSV, §3). It is the only JSON shape
-   worth emitting for rows.
+7. **If `content` must double as machine data, use a columnar JSON shape**:
+   either one `{"columns":…,"rows":…}` object or **JSONL with a header
+   array and one array per row**. They cost the same (1.06–1.08× TSV, §3),
+   and neither is an array of objects. The JSONL form is the better of the
+   two for a tool result: every line parses on its own, a truncation at a
+   line boundary still leaves valid JSON, nulls are explicit (`null`), and a
+   cell can never be mistaken for a delimiter. Its one cost over TSV is the
+   ~7% above and quotes around every string.
 8. **Write it as a named function**, not inline in each tool. The
    alternatives differ by 2–3× in tokens and by nothing in accuracy; that is
    a decision to make once.

@@ -31,6 +31,7 @@ def fmts(rows):
     out["json_pretty"]=json.dumps(rows,indent=2,ensure_ascii=False)
     out["json_min"]=json.dumps(rows,separators=(",",":"),ensure_ascii=False)
     out["jsonl"]="\n".join(json.dumps(r,separators=(",",":"),ensure_ascii=False) for r in rows)
+    out["jsonl_arrays"]="\n".join(json.dumps(x,separators=(",",":"),ensure_ascii=False) for x in [cols]+[[r[c] for c in cols] for r in rows])
     out["json_columnar"]=json.dumps({"columns":cols,"rows":[[r[c] for c in cols] for r in rows]},separators=(",",":"),ensure_ascii=False)
     b=io.StringIO(); w=csv.writer(b,lineterminator="\n"); w.writerow(cols)
     for r in rows: w.writerow([s(r[c]) for c in cols])
