@@ -1,13 +1,21 @@
 """Does the text format of a table change how well a model reads it?
 Same rows, nine renderings, deterministic questions with computed answers.
-Run: GEMINI_API_KEY=... python3 bench/tabular-accuracy.py MODEL [SEEDS] [ROWS]
-Key is read from the environment only. Results go to bench/results-<model>.json.
+Run: GEMINI_API_KEY=... python3 bench/tabular-accuracy.py MODEL [SEEDS] [ROWS] [FIRST_SEED]
+Paced to ~14 requests/minute (the free-tier limit is 15 per model); 429s wait out the server's retryDelay.
+Key is read from the environment only. Results go to bench/results-<model>-s<first seed>.json.
 """
-import sys, os, re, json, io, csv, random, time, urllib.request, concurrent.futures as cf
+import sys, os, re, json, io, csv, random, time, urllib.request, urllib.error, concurrent.futures as cf
 
 MODEL = sys.argv[1]; SEEDS = int(sys.argv[2]) if len(sys.argv) > 2 else 2
 NROWS = int(sys.argv[3]) if len(sys.argv) > 3 else 120
+FIRST = int(sys.argv[4]) if len(sys.argv) > 4 else 1
 KEY = os.environ["GEMINI_API_KEY"]
+import threading
+_lock = threading.Lock(); _next = [0.0]
+def pace(gap=4.4):
+    with _lock:
+        now = time.time(); wait = max(0.0, _next[0] - now); _next[0] = max(now, _next[0]) + gap
+    time.sleep(wait)
 REG = ["EMEA", "NA", "APAC", "LATAM"]; CUR = ["USD", "EUR", "GBP"]
 NAMES = ["Acme, Inc.", "Smith & Sons", "O'Brien Ltd", 'Zoë "Z" Café', "Müller GmbH", "Tokyo Trading Co.", "Nguyen Bros", "Plain Co"]
 NOTES = [None, "", "rush order", "call back: ask for J. Lee, re: invoice #4412", "line1\nline2", "tab\there", 'said "no", twice']
@@ -62,13 +70,18 @@ def questions(rows, seed):
 def ask(prompt):
     body = json.dumps({"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0, "maxOutputTokens": 4096}}).encode()
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={KEY}"
-    for attempt in range(6):
+    for attempt in range(8):
+        pace()
         try:
             req = urllib.request.Request(url, body, {"Content-Type": "application/json"})
             d = json.load(urllib.request.urlopen(req, timeout=120))
             p = d["candidates"][0]["content"]["parts"]
             return "".join(x.get("text", "") for x in p), d.get("usageMetadata", {}).get("promptTokenCount")
-        except Exception as e:
+        except urllib.error.HTTPError as e:
+            msg = e.read().decode("utf8", "replace")
+            m = re.search(r"retry in ([\d.]+)s", msg)
+            time.sleep(float(m.group(1)) + 1 if m else 2 ** attempt)
+        except Exception:
             time.sleep(2 ** attempt + random.random())
     return None, None
 
@@ -82,7 +95,7 @@ def correct(kind, ans, gold):
     except ValueError: return False
 
 jobs = []
-for seed in range(1, SEEDS + 1):
+for seed in range(FIRST, FIRST + SEEDS):
     rows = make(seed); qs = questions(rows, seed)
     for f in FORMATS:
         table = render(rows, f)
@@ -95,11 +108,13 @@ def run(j):
     return {"format": f, "seed": seed, "kind": kind, "gold": gold, "ans": ans, "ok": correct(kind, ans, gold), "ptok": ptok}
 
 out = []
-with cf.ThreadPoolExecutor(8) as ex:
+with cf.ThreadPoolExecutor(4) as ex:
     for i, r in enumerate(ex.map(run, jobs)):
         out.append(r)
-        if i % 50 == 0: print(i, "/", len(jobs), flush=True)
-json.dump(out, open(f"bench/results-{MODEL}.json", "w"), ensure_ascii=False)
+        if i % 10 == 0:
+            print(i, "/", len(jobs), flush=True)
+            json.dump(out, open(f"bench/results-{MODEL}-s{FIRST}.json", "w"), ensure_ascii=False)
+json.dump(out, open(f"bench/results-{MODEL}-s{FIRST}.json", "w"), ensure_ascii=False)
 print(f"\n{MODEL}  {SEEDS} seeds x {NROWS} rows; n per cell = {len(out)//len(FORMATS)}")
 kinds = sorted({r['kind'] for r in out})
 print(f"{'format':14}{'acc':>6}{'ptok':>8}  " + " ".join(f"{k:>10}" for k in kinds) + "   errors")
