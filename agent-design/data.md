@@ -187,9 +187,14 @@ resolver. Deferred to `future.md`.
 
 | Selector | Meaning |
 |---|---|
-| `:rows:1-20` | rows by position, as delimited text |
+| `:rows:1-20` | rows by position, as tab-delimited text (see below) |
 | `:cols:region,revenue` | restrict the summary (or the rows) to named columns |
 | `:sql:SELECT region, sum(revenue) FROM t GROUP BY 1 ORDER BY 2 DESC LIMIT 10` | a query over this table, bound as `t` |
+
+**The `:rows:` rendering is fixed, not left to the resolver**, and it is
+the general value-rendering rule of §2h applied to a table: a header line,
+tab-separated rows, bare scalars, compact JSON for anything nested or
+unsafe, an empty cell for null. The cap is on cells, not rows.
 
 `:sql:` is the important one and it needs defending, because it looks
 like a tool smuggled in as a string.
@@ -451,6 +456,160 @@ generate→evaluate→repair is the nearest thing, and its evaluator scores
 of the analysis. Until there is a reason to believe a second analyst
 catches what the first missed, the dynamic `Task` delegation the coding
 entrypoint uses is the right default, and it is already there.
+
+---
+
+### 2h. One rendering rule for every structured result
+
+§2c fixed how `:rows:` looks. The same question arises for every tool that
+returns structured values — a SQL result, a parsed config, an API response
+the harness unwraps, a nested record, a list of file stats — and answering
+it per tool is how a harness ends up with seven formats. This is the one
+rule. It applies to **any value a tool returns as data**, from a bare number
+to a list of records with nested lists. It does not apply to payloads that
+are *text* (a file, a diff, command output): those keep `formats.md` §8a's
+verbatim framing, which is unchanged.
+
+*Evidence behind it, and its limits.* The choice is made on accuracy first
+and tokens second. On accuracy the layouts that were tested are
+indistinguishable at this scale
+([`agent-tabular-results.md`](../agent-tabular-results.md) §5): lookups were
+right in every layout, counting tracked the model not the layout, and the
+nested-value check below found the rule's layout level with minified and
+with pretty JSON. Where accuracy is equal, tokens decide, and tokens
+separate the layouts by a factor of two to three (§3 of that document). Two
+claims the rule leans on are **measured only on a small sample** (one
+dataset, a few models, 14–24 questions per cell) and one is **not measured**:
+a quoted string inside a tab-separated cell was read correctly in the nested
+check, but the 'bare unless unsafe' string rule itself has not been tested
+against 'always quote'.
+
+**The rule has two layers.**
+
+1. **The outer structure is line-oriented text.** A table is a header line
+   and one row per line, tab-separated. A single record is `key: value`
+   lines. A list of scalars is one per line. Nothing else — no indentation
+   to track, no brackets around the whole result.
+2. **Every cell is a bare scalar or compact JSON.** There is no third form
+   and no per-tool escaping.
+
+**What a cell looks like.** The renderer is
+[`bench/render.py`](../bench/render.py); every example below is its output.
+
+| Value | Rendered | Why |
+|---|---|---|
+| `null` / absent | *(empty cell)* | cheapest, and the convention is stated once in the tool description |
+| `""` (empty string) | `""` | the one place an empty string must be distinguishable from null |
+| `true`, `false` | `true`, `false` | |
+| integer, float | `42`, `3.0`, `1e+21` | no thousands separators, no currency symbols, full precision. `NaN`, `Infinity`, `-Infinity` bare |
+| date, timestamp | `2026-09-01T09:15:00Z` | ISO 8601, UTC, always with the zone |
+| string, plain | `Acme, Inc.` | **bare — no quotes**, commas and apostrophes included |
+| string that would be misread as another type | `"7"`, `"true"`, `"null"` | JSON-quoted (rules below) |
+| string with a tab, newline or other control character | `"line1\nline2"` | JSON-quoted: the escape is lossless, standard, and the model reads `\n` correctly |
+| list, object, anything nested | `["a","b"]`, `{"tier":2,"regions":["EMEA","NA"]}` | compact JSON, no spaces; JSON already escapes tab and newline inside strings, so a nested value is delimiter-safe without a second pass |
+| bytes / a blob | *never inline* | return a ref (`artifacts.md`) |
+
+**A string is bare unless that would be ambiguous or unsafe.** It is
+JSON-quoted (`json.dumps` with `ensure_ascii=False`) when it is empty;
+has leading or trailing whitespace; contains a tab, newline, carriage
+return or other control character; starts with `[`, `{` or `"` (so it cannot
+be mistaken for nested JSON or an already-quoted string); or would parse as
+a JSON number or one of `true false null NaN Infinity -Infinity` (so the
+string `"7"` and the integer `7`, `"true"` and `true`, `"null"` and a null
+cell are always distinguishable). Everything else — including commas,
+apostrophes, double quotes in the middle of a string, non-ASCII, and
+number-looking IDs with leading zeros such as `007` — is bare.
+
+**Examples** (verbatim output of `python3 bench/render.py`):
+
+Scalars, one per line — what each string rule does:
+
+```
+plain                 <- bare
+""                    <- empty string (a null would be a blank line)
+007                   <- bare: a leading zero is not a JSON number
+"7"                   <- would read as an integer, so quoted
+"true"                <- would read as a boolean, so quoted
+"null"                <- would read as a null, so quoted
+" padded "            <- surrounding whitespace is invisible, so quoted
+"[not json"           <- starts like nested JSON, so quoted
+say "hi"              <- an inner double quote is fine bare
+a,b                   <- a comma is fine bare (the delimiter is a tab)
+"tab\there"           <- a tab would break the row, so quoted + escaped
+"two\nlines"          <- a newline would break the row, so quoted + escaped
+naïve ☕               <- non-ASCII stays as typed
+```
+
+A table whose cells are nested (tab-separated; shown here with the tabs):
+
+```
+id	name	tags	meta	note
+1	Acme, Inc.	["a","b"]	{"tier":2,"regions":["EMEA","NA"]}	
+2	Zoë "Z" Café	[]	{}	"line1\nline2"
+3	007	[["x",1],["y",2]]		""
+```
+
+Row 1's `note` is null (empty cell); row 3's `meta` is null and its `note` is the
+empty string `""`; row 3's `tags` is a nested array of arrays, kept as one
+JSON cell rather than flattened to columns.
+
+A single record — `key: value`, nulls omitted, nested values stay one line:
+
+```
+order_id: 4001
+customer: Acme, Inc.
+lines: [{"sku":"A1","qty":2},{"sku":"B7","qty":1}]
+ship: {"city":"Leeds","geo":[53.8,-1.55]}
+refunded: false
+```
+
+**Choosing the outer shape.**
+
+| The result is | Render as | Reason |
+|---|---|---|
+| a scalar | the cell | |
+| a list of scalars | one cell per line | |
+| a list of records with mostly the same keys (≥ 50% of cells present) | a table; union of keys as the header | the repeated key names are where JSON loses 2–3× |
+| a list of records with **different** keys | `key: value` blocks separated by a blank line, absent keys omitted | a table of mostly-empty cells costs tokens and a model loses track of the columns |
+| one record, or a wide table (≳ 10 columns) read for single lookups | `key: value` lines | one external study (a small model) found `key: value` the most accurate layout for single-field lookup, at roughly 1.4–2.7× the tokens. Our own lookups were already at ceiling in every layout, so this is a hedge, not a finding: use it for one record or a lookup-shaped question, not for scanning many rows |
+| nested or irregular structure (a parsed config, an API tree) | `key: value` lines at the top level, **each value a cell** — so nested parts are one-line compact JSON | the outer layer stays scannable; depth is handled by JSON, which models read well |
+| a tree deeper than about three levels that must be navigated | compact JSON, whole | no measurement supports anything else; **indented JSON costs ~45% more and, in the nested check below, scored the same** — use it only if a human reads the transcript |
+
+**Preamble.** One line before the data: counts and the way to get more —
+`60 of 5,400 rows · next: offset=60`. State the cell convention **once**, in
+the tool description or system prompt (`empty = null · bare text, or JSON
+when quoted or bracketed · tab-separated`), not in every result.
+Truncated cells are cut inside the quotes with the amount lost
+(`"xxxxxxxxxxxxxxxxxxxx…[+40 chars]"`) and the preamble says so.
+
+**What is deliberately not done.**
+- **No CSV-style quoting**, and no doubling of quotes. The only escaping
+  anywhere in a result is JSON's, applied to a whole cell.
+- **No type annotations in the header.** Untested; the cell forms already
+  distinguish the types that are confusable.
+- **No unquoted JSON-lookalike strings**, even if a column is "known" to be
+  text: the model sees only the cell.
+- **No second parallel structure.** A tool returns this text, or a ref to it
+  (§2d), not this text plus `structuredContent` carrying the same rows
+  (`agent-tool-result-transport.md` §4).
+
+*Nested-value check* (`bench/nested-accuracy.py`: 60 orders, each with a
+list of line-item objects, a tag list, a shipping object with a coordinate
+pair, and a note that is sometimes null, empty, quoted, multi-line or
+tab-containing; 14 questions with computed answers, including "does this
+note contain a line break?"). Correct out of 14, and prompt tokens:
+
+| Model | the rule (TSV, JSON cells) | minified JSON | indented JSON |
+|---|---:|---:|---:|
+| `kimi-k3` | 14 · 4,114 tok | 14 · 4,599 | 14 · 8,553 |
+| `glm-5.3-flash` | 14 · 4,098 | 13 · 4,524 | 14 · 8,520 |
+| `gemma-4-31b-it` | 7 · 4,496 | 8 · 4,881 | 7 · 10,210 |
+
+Equal on accuracy, including on the escaped-newline and tab questions; 8–11%
+fewer tokens than minified JSON and about half of indented JSON. (The gap
+over minified JSON is smaller than on flat tables because nesting is where
+JSON is least wasteful.) One batch per cell; three models; free-tier APIs;
+none is an Anthropic model.
 
 ---
 

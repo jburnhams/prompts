@@ -742,6 +742,23 @@ built-but-not-switched-on pattern turns up on the way: an `Artifact`
 widths and returns screenshots plus a mechanical checklist, present in
 the binary and absent from the live tool schema.
 
+**[→ `agent-tabular-results.md`](./agent-tabular-results.md)** — the
+narrow question under the transport doc's "put a compact rendering in
+`content`": which rendering, for rows. Two measurements and a survey. Token
+cost of the same rows in eleven formats (array-of-objects JSON is **2.3–3×**
+TSV, and two of the MCP reference servers return it; quoted CSV is *not*
+costlier than sanitised TSV, which corrects a claim made earlier in the
+session that produced the doc), the **null literal as a bigger lever than
+the delimiter** (empty cells are up to 2× cheaper on sparse tables because
+consecutive delimiters merge into one token), and a 9-format accuracy
+benchmark that, on six free-tier model runs, found **no reliable format
+effect** and a **model-shaped split on counting** — three mid-tier models (four runs; one model on two hosts) got
+every two-filter count over 120 rows wrong (170 of 170), two strong
+reasoning models got 67 of 70. The recommendation is tab-delimited with a
+header and a preamble line, empty = null stated, and aggregation moved to a
+tool unless the model is known to count. The general rule for *every* structured result — nested values, escaping, which shape for which data — is `agent-design/data.md` §2h. Most free-tier keys supplied did not yield data and the doc says
+which and why. Scripts in [`bench/`](./bench).
+
 **[→ `agent-data-analysis.md`](./agent-data-analysis.md)** — the second
 doc about an agent whose output is not a code change, and the first
 about one whose *input* is not a repository: thirteen harnesses read
