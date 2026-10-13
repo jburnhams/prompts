@@ -1,15 +1,21 @@
 """Does the text format of a table change how well a model reads it?
 Same rows, nine renderings, deterministic questions with computed answers.
-Run: GEMINI_API_KEY=... python3 bench/tabular-accuracy.py MODEL [SEEDS] [ROWS] [FIRST_SEED]
-Paced to ~14 requests/minute (the free-tier limit is 15 per model); 429s wait out the server's retryDelay.
-Key is read from the environment only. Results go to bench/results-<model>-s<first seed>.json.
+Run: python3 bench/tabular-accuracy.py PROVIDER:MODEL [SEEDS] [ROWS] [FIRST_SEED]
+  gemini:gemini-3.8-flash   (GEMINI_API_KEY)     openrouter:google/gemma-4-31b-it:free (OPENROUTER_API_KEY)
+  groq:openai/gpt-oss-120b  (GROQ_API_KEY)       ollama:gpt-oss:120b (OLLAMA_API_KEY, ollama.com cloud)
+BATCHED: one request per (format, dataset) carrying all 24 questions, because the free tier
+allows only ~20 requests per model per day. 9 formats x 1 dataset = 9 requests per model.
+Key is read from the environment only. Results go to bench/results-<provider>-<model>-s<first seed>.json.
 """
 import sys, os, re, json, io, csv, random, time, urllib.request, urllib.error, concurrent.futures as cf
 
-MODEL = sys.argv[1]; SEEDS = int(sys.argv[2]) if len(sys.argv) > 2 else 2
+PROVIDER, MODEL = sys.argv[1].split(":", 1)
+SLUG = re.sub(r"[^A-Za-z0-9.-]+", "_", PROVIDER + "-" + MODEL)
+SEEDS = int(sys.argv[2]) if len(sys.argv) > 2 else 2
 NROWS = int(sys.argv[3]) if len(sys.argv) > 3 else 120
 FIRST = int(sys.argv[4]) if len(sys.argv) > 4 else 1
-KEY = os.environ["GEMINI_API_KEY"]
+BASES = {"openrouter": "https://openrouter.ai/api/v1", "groq": "https://api.groq.com/openai/v1", "ollama": "https://ollama.com/v1"}
+KEY = os.environ[PROVIDER.upper() + "_API_KEY"]
 import threading
 _lock = threading.Lock(); _next = [0.0]
 def pace(gap=4.4):
@@ -67,57 +73,87 @@ def questions(rows, seed):
     for g in rnd.sample(REG, 3): qs.append(("count_bool", f"How many rows with region {g} are refunded (is_refunded true)? Answer with an integer.", sum(1 for r in rows if r["region"] == g and r["is_refunded"])))
     return qs
 
-def ask(prompt):
-    body = json.dumps({"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0, "maxOutputTokens": 4096}}).encode()
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={KEY}"
-    for attempt in range(8):
-        pace()
+PACE_GAP = 4.4
+def ask_openai_compat(prompt):
+    body = json.dumps({"model": MODEL, "messages": [{"role": "user", "content": prompt}], "temperature": 0, "max_tokens": 8192}).encode()
+    for attempt in range(3):
+        pace(PACE_GAP)
         try:
-            req = urllib.request.Request(url, body, {"Content-Type": "application/json"})
-            d = json.load(urllib.request.urlopen(req, timeout=120))
-            p = d["candidates"][0]["content"]["parts"]
-            return "".join(x.get("text", "") for x in p), d.get("usageMetadata", {}).get("promptTokenCount")
+            req = urllib.request.Request(BASES[PROVIDER] + "/chat/completions", body, {"Content-Type": "application/json", "Authorization": f"Bearer {KEY}"})
+            d = json.load(urllib.request.urlopen(req, timeout=300))
+            if "error" in d: raise RuntimeError(str(d["error"])[:200])
+            u = d.get("usage", {})
+            return d["choices"][0]["message"].get("content") or "", {"promptTokenCount": u.get("prompt_tokens")}
         except urllib.error.HTTPError as e:
             msg = e.read().decode("utf8", "replace")
-            m = re.search(r"retry in ([\d.]+)s", msg)
-            time.sleep(float(m.group(1)) + 1 if m else 2 ** attempt)
+            if "per-day" in msg.lower() or "per day" in msg.lower(): return "DAILY_QUOTA: " + msg[:200], {}
+            time.sleep(15)
         except Exception:
-            time.sleep(2 ** attempt + random.random())
-    return None, None
+            time.sleep(10)
+    return None, {}
+
+def ask(prompt):
+    if PROVIDER != "gemini": return ask_openai_compat(prompt)
+    body = json.dumps({"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0, "maxOutputTokens": 8192}}).encode()
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={KEY}"
+    for attempt in range(3):
+        pace(PACE_GAP)
+        try:
+            req = urllib.request.Request(url, body, {"Content-Type": "application/json"})
+            d = json.load(urllib.request.urlopen(req, timeout=300))
+            p = d["candidates"][0]["content"]["parts"]
+            return "".join(x.get("text", "") for x in p if not x.get("thought")), d.get("usageMetadata", {})
+        except urllib.error.HTTPError as e:
+            msg = e.read().decode("utf8", "replace")
+            if "PerDay" in msg or "per day" in msg.lower(): return "DAILY_QUOTA: " + msg[:200], {}
+            m = re.search(r"retry in ([\d.]+)s", msg)
+            time.sleep(float(m.group(1)) + 1 if m else 5)
+        except Exception:
+            time.sleep(5)
+    return None, {}
 
 def correct(kind, ans, gold):
     if ans is None: return False
-    a = ans.strip().splitlines()[-1] if ans.strip() else ""
-    m = re.findall(r"-?\d[\d,]*\.?\d*", a.replace(",", "") if kind != "lookup_cat" else a)
-    if kind == "lookup_cat": return gold.lower() in a.lower().split() or a.strip(" .*`").upper() == gold
+    a = ans.strip()
+    if kind == "lookup_cat": return a.strip(" .*`\"").upper() == gold
+    m = re.findall(r"-?\d[\d,]*\.?\d*", a.replace(",", ""))
     if not m: return False
-    try: return abs(float(m[-1] if kind != "argmax" else m[0]) - float(gold)) < 0.006
+    try: return abs(float(m[0]) - float(gold)) < 0.006
     except ValueError: return False
+
+def parse(text, n):
+    got = {}
+    for line in (text or "").splitlines():
+        m = re.match(r"\W*Q?(\d+)\s*[:.)-]\s*(.+)$", line.strip())
+        if m and 1 <= int(m.group(1)) <= n: got[int(m.group(1))] = m.group(2)
+    return got
 
 jobs = []
 for seed in range(FIRST, FIRST + SEEDS):
     rows = make(seed); qs = questions(rows, seed)
     for f in FORMATS:
-        table = render(rows, f)
-        for kind, q, gold in qs:
-            jobs.append((f, seed, kind, gold, f"Below is the result of a database query tool call.\n\n{table}\n\nQuestion: {q}\nReply with just the answer on the last line."))
+        qtext = "\n".join(f"Q{i+1}. {q}" for i, (_, q, _) in enumerate(qs))
+        prompt = (f"Below is the result of a database query tool call.\n\n{render(rows, f)}\n\n"
+                  f"Answer every question below using only that table.\n{qtext}\n\n"
+                  f"Reply with exactly one line per question, in the form `Q<number>: <answer>`, and nothing else.")
+        jobs.append((f, seed, qs, prompt))
 
 def run(j):
-    f, seed, kind, gold, prompt = j
-    ans, ptok = ask(prompt)
-    return {"format": f, "seed": seed, "kind": kind, "gold": gold, "ans": ans, "ok": correct(kind, ans, gold), "ptok": ptok}
+    f, seed, qs, prompt = j
+    text, usage = ask(prompt); got = parse(text, len(qs))
+    return [{"format": f, "seed": seed, "kind": k, "gold": g, "ans": got.get(i + 1), "ok": correct(k, got.get(i + 1), g),
+             "ptok": usage.get("promptTokenCount"), "raw_ok": text is not None and not str(text).startswith("DAILY_QUOTA")}
+            for i, (k, _, g) in enumerate(qs)] + [{"format": f, "seed": seed, "kind": "_raw", "raw": text}]
 
-out = []
-with cf.ThreadPoolExecutor(4) as ex:
+res = []
+with cf.ThreadPoolExecutor(2) as ex:
     for i, r in enumerate(ex.map(run, jobs)):
-        out.append(r)
-        if i % 10 == 0:
-            print(i, "/", len(jobs), flush=True)
-            json.dump(out, open(f"bench/results-{MODEL}-s{FIRST}.json", "w"), ensure_ascii=False)
-json.dump(out, open(f"bench/results-{MODEL}-s{FIRST}.json", "w"), ensure_ascii=False)
-print(f"\n{MODEL}  {SEEDS} seeds x {NROWS} rows; n per cell = {len(out)//len(FORMATS)}")
+        res.extend(r); print(i + 1, "/", len(jobs), flush=True)
+        json.dump(res, open(f"bench/results-{SLUG}-s{FIRST}.json", "w"), ensure_ascii=False)
+out = [r for r in res if r["kind"] != "_raw"]
+print(f"\n{PROVIDER}:{MODEL}  {SEEDS} dataset(s) x {NROWS} rows; questions per format = {len(out)//len(FORMATS)}")
 kinds = sorted({r['kind'] for r in out})
-print(f"{'format':14}{'acc':>6}{'ptok':>8}  " + " ".join(f"{k:>10}" for k in kinds) + "   errors")
+print(f"{'format':14}{'acc':>6}{'ptok':>8}  " + " ".join(f"{k:>10}" for k in kinds) + "   unanswered")
 for f in FORMATS:
     rs = [r for r in out if r["format"] == f]; pt = [r["ptok"] for r in rs if r["ptok"]]
     print(f"{f:14}{100*sum(r['ok'] for r in rs)/len(rs):>5.1f}%{(sum(pt)//len(pt) if pt else 0):>8}  " +
