@@ -17,10 +17,10 @@ tools and MCP servers do.
 values sanitised so a tab or newline never appears inside a cell, **an empty
 cell for null** with the convention stated in a one-line preamble, a row
 count and a "next call" line on truncation, and — the finding that matters
-more than any of the above — **do not ask the model to count or aggregate
-over rows it can read; give it a tool that does.** Section 6 has the whole
-recommendation; section 5 explains why format turned out to be the smaller
-lever.
+more than any of the above — **do not rely on the model to count or aggregate
+over rows it can read unless you know the model can; give it a tool that
+does.** Section 6 has the whole recommendation; section 5 explains why
+format turned out to be the smaller lever.
 
 ---
 
@@ -205,67 +205,88 @@ that is recorded here rather than hidden:
 | **Cohere `command-a-03-2025`** | **9/9 batches** |
 | **Ollama cloud `gemma4:31b`** | **8/9** (one format returned no reply) |
 | **OpenRouter free `poolside/laguna-s-2.1`** | **8/9** (Markdown table batch returned no reply) |
+| NVIDIA build.nvidia.com (`integrate.api.nvidia.com`), added late: **`moonshotai/kimi-k3`** | **9/9 batches** |
+| NVIDIA: **`z-ai/glm-5.3-flash`** | **5/9** (four batches returned nothing) |
+| NVIDIA: **`google/gemma-4-31b-it`** | **9/9** — same model as the Ollama run, different host |
+| NVIDIA: `mistral-large-2-instruct`, `nemotron-70b-instruct`, `nemotron-3-super-120b`, `deepseek-v4.1-flash`, `gpt-oss-20b` | no usable reply |
 
-Result files for the three usable runs are in `bench/`. Runs that returned
+Result files for the usable runs (six) are in `bench/`. Runs that returned
 nothing were not kept.
 
 ### Results
 
-Correct out of 24 per cell (one dataset, one run per cell, temperature 0):
+Correct out of 24 per cell (one dataset, one run per cell, temperature 0).
+`—` is a batch that returned no reply. The first two columns are weaker
+models, the last two are strong reasoning models.
 
-| Format | command-a-03-2025 | gemma4:31b | laguna-s-2.1 |
-|---|---:|---:|---:|
-| tsv, `-` null | 10 | 15 | 10 |
-| tsv, empty null | 13 | — | 10 |
-| csv | 13 | 15 | 11 |
-| pipe | 15 | 15 | 11 |
-| md_table | 12 | 15 | — |
-| json_min | 10 | 14 | 12 |
-| json_columnar | 11 | 15 | 10 |
-| kv_blocks | 12 | 15 | 11 |
-| aligned | 12 | 14 | 14 |
+| Format | command-a-03 | gemma-4-31b (NVIDIA) | gemma4:31b (Ollama) | laguna-s-2.1 | **glm-5.3-flash** | **kimi-k3** |
+|---|---:|---:|---:|---:|---:|---:|
+| tsv, `-` null | 10 | 15 | 15 | 10 | 23 | 23 |
+| tsv, empty null | 13 | 15 | — | 10 | 24 | 21 |
+| csv | 13 | 14 | 15 | 11 | — | 24 |
+| pipe | 15 | 15 | 15 | 11 | 23 | 21 |
+| md_table | 12 | 15 | 15 | — | — | 24 |
+| json_min | 10 | 14 | 14 | 12 | — | 24 |
+| json_columnar | 11 | 16 | 15 | 10 | 23 | 24 |
+| kv_blocks | 12 | 15 | 15 | 11 | 24 | 24 |
+| aligned | 12 | 14 | 14 | 14 | — | 24 |
+| **all answered cells** | 50% | 62% | 62% | 46% | **97.5%** | **96%** |
 
 By question type (summed over the formats each model answered):
 
-| Question | command-a-03-2025 | gemma4:31b | laguna-s-2.1 |
-|---|---:|---:|---:|
-| numeric lookup | 52 / 54 | 48 / 48 | 48 / 48 |
-| categorical lookup | 36 / 36 | 32 / 32 | 31 / 32 |
-| argmax in a group | 6 / 27 | 16 / 24 | 8 / 24 |
-| count of nulls in a group | 5 / 27 | 14 / 24 | 1 / 24 |
-| filtered bool count | 9 / 27 | 8 / 24 | 1 / 24 |
-| **two-filter count** | **0 / 45** | **0 / 40** | **0 / 40** |
+| Question | command-a-03 | gemma-4-31b (NV) | laguna-s-2.1 | glm-5.3-flash | kimi-k3 |
+|---|---:|---:|---:|---:|---:|
+| numeric lookup | 52/54 | 54/54 | 48/48 | 30/30 | 54/54 |
+| categorical lookup | 36/36 | 36/36 | 31/32 | 20/20 | 36/36 |
+| argmax in a group | 6/27 | 18/27 | 8/24 | 15/15 | 25/27 |
+| count of nulls in a group | 5/27 | 16/27 | 1/24 | 14/15 | 27/27 |
+| filtered bool count | 9/27 | 9/27 | 1/24 | 13/15 | 25/27 |
+| **two-filter count** | **0/45** | **0/45** | **0/40** | 25/25 | 42/45 |
+
+(The Ollama-hosted gemma4:31b is not repeated: 62% overall, two-filter
+count 0/40 — the same as the NVIDIA-hosted copy.)
 
 ### What this does and does not show
 
 **Shows**
 
-1. **Reading a single cell is solved in every format.** 247 of 250 lookup
-   answers were correct across all formats and all three models, including
-   empty-null TSV and minified JSON. At 120 rows × 8 columns the delimiter,
-   the null literal and the quoting did not make a cell unreadable.
-2. **Counting and aggregating over 120 rows by reading does not work, in
-   any format.** The two-filter count was wrong **125 out of 125** times;
-   the models undercounted by roughly half (answers of 5–6 against true
-   counts of 8–11). This is not a rendering problem and no rendering fixes
-   it.
+1. **Reading a single cell is solved in every format and every model.**
+   Lookups were right 100% of the time for the strong models and 98–100% for
+   the weak ones, including empty-null TSV and minified JSON. At 120 rows ×
+   8 columns the delimiter, null literal and quoting did not make a cell
+   unreadable.
+2. **Counting over 120 rows by reading splits models cleanly in two, and
+   format does not move the line.** `command-a-03`, `gemma-4-31b` (both
+   hosts) and `laguna-s-2.1` got the two-filter count wrong **170 of 170**
+   times, undercounting by about half (answers of 5–6 against true counts of
+   8–11). `kimi-k3` got 42 of 45 and `glm-5.3-flash` 25 of 25. The same
+   table, the same question, a different model: the result is a property of
+   the model, not of the rendering. **An earlier draft of this doc said
+   "no model counts"; that was written before the two strong models
+   returned and is withdrawn.**
+3. **Where a strong model does err, the errors are off-by-one counts and
+   one repeated misread, not format-shaped failures.** kimi-k3's seven
+   misses: counts one too low (8→7, 9→8, 1→0) and the same wrong argmax
+   (4088 for 4668) in two formats — `tsv` (empty null) and `pipe`. Both are
+   the minimal-framing, unpadded delimited layouts, which is suggestive,
+   but it is a 3-question gap on n = 24 and the same layouts score 24/24
+   and 23/24 elsewhere in the table.
 
 **Does not show**
 
-- **No format effect is detectable.** The spread across formats within one
-  model (10–15 for command-a, 14–15 for gemma, 10–14 for laguna) is driven
-  by the counting questions, which are noise at this n, and does not follow
-  any pattern across models: pipe is best for command-a and tied for gemma;
-  the aligned layout is best for laguna and unremarkable for the others.
-  Gemma4 scoring 62% on 8 of 9 formats says the model, not the format, set
-  the score.
+- **No reliable format effect.** The spread within a model is 0–3
+  questions for the strong models and driven entirely by the counting
+  questions for the weak ones; there is no format that wins or loses
+  consistently across models (pipe: best for command-a, level for gemma,
+  lower for kimi; aligned: best for laguna, level elsewhere). The one
+  hint — kimi's two 21s are both TSV-empty-null and pipe — is a hypothesis
+  to test with more datasets, not a finding. In particular, **it does not
+  establish that empty-null is risky**: glm-5.3-flash scored 24/24 on it.
 - Nothing about Claude. None of these is an Anthropic model.
-- Nothing about the empty-null question: the one run that has both `tsv`
-  variants (command-a: 10 vs 13) is a 3-question difference, on a null-count
-  question type the model got 5 of 27 right.
-- 24 questions × 1 dataset × 1 run per cell. A real comparison needs several
-  datasets, repeated runs, and a larger model population, which the free
-  tiers used could not supply.
+- 24 questions × 1 dataset × 1 run per cell. Strong models are near ceiling
+  (96–97.5%), which leaves almost no room to see a format effect in either
+  direction; a harder task (larger table, more columns, multi-step) is what
+  would. The free tiers used could not supply that.
 
 ---
 
@@ -295,14 +316,17 @@ For a tool that returns rows to a model in a `content` text block:
    and the next call named. Wide tables: score and drop columns, or switch to
    `key: value` for a *few* records (the 1.6–1.9× premium buys nothing on
    lookup, which §5 shows is already saturated).
-6. **Move counting, summing, ranking and grouping out of the model's head.**
-   This is the finding that the experiment supports most strongly: every
-   model failed every two-filter count over 120 rows. The design implication
-   is already in `agent-design/data.md` — the default view is column
-   summaries, and `:sql:` is the reducing operation — and this is the
-   measurement that says why. A tool that returns rows invites the model to
-   answer aggregate questions from them; say in the tool description what
-   to call instead.
+6. **Move counting, summing, ranking and grouping out of the model's head
+   unless you know the model can do it.** The experiment's clearest result
+   is that the ability to answer aggregate questions from 120 visible rows
+   is a property of the model: three mid-tier models (four runs; one model on two hosts) got the two-filter
+   count wrong 170 of 170 times, two strong reasoning models got it right
+   67 of 70. Format did not change which side a model was on. A tool that
+   returns rows invites the model to answer aggregate questions from them;
+   if the harness may run on a weaker model, say in the tool description
+   what to call instead, and prefer returning the aggregate. This is the
+   same shape as `agent-design/data.md`: the default view is column
+   summaries and `:sql:` is the reducing operation.
 7. **If `content` must double as machine data, columnar JSON** is the
    cheapest parseable form (1.04–1.07× TSV, §3). It is the only JSON shape
    worth emitting for rows.
@@ -353,6 +377,7 @@ OLLAMA_API_KEY=…      python3 bench/tabular-accuracy.py ollama:gemma4:31b
 COHERE_API_KEY=…      python3 bench/tabular-accuracy.py cohere:command-a-03-2025
 GROQ_API_KEY=…        python3 bench/tabular-accuracy.py groq:openai/gpt-oss-120b
 ZAI_API_KEY=…         python3 bench/tabular-accuracy.py zai:glm-5.3
+NVIDIA_API_KEY=…      python3 bench/tabular-accuracy.py nvidia:moonshotai/kimi-k3
 ```
 
 Keys are read from the environment only. The script makes 9 requests per

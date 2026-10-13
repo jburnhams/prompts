@@ -751,11 +751,12 @@ costlier than sanitised TSV, which corrects a claim made earlier in the
 session that produced the doc), the **null literal as a bigger lever than
 the delimiter** (empty cells are up to 2× cheaper on sparse tables because
 consecutive delimiters merge into one token), and a 9-format accuracy
-benchmark that, on three free-tier models, found **no detectable format
-effect and a total failure at counting** — every two-filter count over 120
-rows was wrong, 125 of 125. The recommendation is tab-delimited with a
+benchmark that, on six free-tier model runs, found **no reliable format
+effect** and a **model-shaped split on counting** — three mid-tier models (four runs; one model on two hosts) got
+every two-filter count over 120 rows wrong (170 of 170), two strong
+reasoning models got 67 of 70. The recommendation is tab-delimited with a
 header and a preamble line, empty = null stated, and aggregation moved to a
-tool. Most free-tier keys supplied did not yield data and the doc says
+tool unless the model is known to count. Most free-tier keys supplied did not yield data and the doc says
 which and why. Scripts in [`bench/`](./bench).
 
 **[→ `agent-data-analysis.md`](./agent-data-analysis.md)** — the second
