@@ -14,7 +14,7 @@ with two measurements of its own and a survey of what other data-analysis
 tools and MCP servers do.
 
 **Short answer.** A header line, then one row per line, **tab-delimited**,
-values sanitised so a tab or newline never appears inside a cell, **an empty
+cells that are bare scalars or compact JSON (a tab or newline inside a string makes it a JSON-quoted cell, so it can never break a row), **an empty
 cell for null** with the convention stated in a one-line preamble, a row
 count and a "next call" line on truncation, and — the finding that matters
 more than any of the above — **do not rely on the model to count or aggregate
@@ -313,9 +313,14 @@ For a tool that returns rows to a model in a `content` text block:
    guarantee than correct quoting and fails more softly. If your values
    already come through a CSV writer and you trust it, CSV is equally
    defensible; **do not use pretty or array-of-objects JSON** (2.3–3×).
-2. **Sanitise, don't escape.** Replace a tab with a space; replace a newline
-   inside a cell with a visible marker (`⏎`) or lift a long multi-line field
-   out of the table into its own block, keyed by the row's id.
+2. **A cell is a bare scalar or compact JSON — nothing else.** This
+   supersedes an earlier draft of this item ("replace a newline with `⏎`"):
+   the specified rule is in [`agent-design/data.md`](./agent-design/data.md)
+   §2h. A string with a tab or newline is JSON-quoted (`"line1\nline2"`),
+   which is lossless and was read correctly by every model that was tested;
+   nested lists and objects are compact JSON in the cell; a string that
+   would be mistaken for a number, boolean, null or JSON is quoted. Nothing
+   is escaped except by JSON, and only whole cells.
 3. **State the conventions in one preamble line**, the same place you put the
    count: `120 of 5,400 rows · tab-separated · empty = null · next:
    offset=120`. A convention the model is told costs nothing; one it has to
@@ -354,9 +359,9 @@ For a tool that returns rows to a model in a `content` text block:
 
 ### Changes this implies in the design
 
-- `agent-design/data.md` §2c: `:rows:` output is specified as above
-  (tab-delimited, header, preamble line, sanitised cells, empty = null
-  stated). Done in this pass.
+- `agent-design/data.md` §2h (new) states the rendering rule for every structured
+  result, tables included; §2c: `:rows:` output is that rule applied to a table. The old wording of this line follows, kept for the record: `:rows:` output is specified as above
+  (tab-delimited, header, preamble line, bare-or-JSON cells, empty = null). Done in this pass.
 - `agent-design/artifacts.md` line 163 ("the sheet as delimited text"): same
   rule applies to the xlsx/csv/tsv row.
 - No tool-surface change.

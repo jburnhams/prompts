@@ -756,7 +756,7 @@ effect** and a **model-shaped split on counting** — three mid-tier models (fou
 every two-filter count over 120 rows wrong (170 of 170), two strong
 reasoning models got 67 of 70. The recommendation is tab-delimited with a
 header and a preamble line, empty = null stated, and aggregation moved to a
-tool unless the model is known to count. Most free-tier keys supplied did not yield data and the doc says
+tool unless the model is known to count. The general rule for *every* structured result — nested values, escaping, which shape for which data — is `agent-design/data.md` §2h. Most free-tier keys supplied did not yield data and the doc says
 which and why. Scripts in [`bench/`](./bench).
 
 **[→ `agent-data-analysis.md`](./agent-data-analysis.md)** — the second
