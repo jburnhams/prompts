@@ -34,7 +34,9 @@ from the findings, and the findings are the wrong evidence for it:
   agent's own instructions. A bug hunt doesn't measure that.
 - **The measure that matters is downstream.** Anthropic's target is the
   least human review time that doesn't increase reverts or incidents
-  (§12). Findings can't be calibrated against that; a tier can.
+  (§12). Findings can't be calibrated against that; a tier can. In a team
+  that fixes forward rather than reverting, the downstream signal is the
+  **follow-up fix** (§8a), not the revert.
 
 So review mode gains a second output, the **attention block**. It is
 separate from findings and computed partly without the model.
@@ -80,7 +82,7 @@ Added to the review-mode `Complete` report (`formats.md` §3b) as
     "status": "shown | tests_only | none | not_applicable",
     "path": "shipped_entry_point | in_process_harness | unit_only | none"
   },
-  "reversibility": "flagged | revertable | hard_to_reverse",
+  "reversibility": "flagged | fix_forward_safe | hard_to_reverse",
   "look_here": [
     { "file": "string", "line": 0, "line_end": 0,
       "why": "string — what a human must judge here that the review could not" }
@@ -111,7 +113,10 @@ Field by field, with where each came from:
   `filtered`. CodeRabbit puts a reason on every priority for the same
   reason: an unexplained rank is one people learn to ignore.
 - **`reversibility`**: `flagged` means behind a feature flag that can be
-  turned off without a deploy; `hard_to_reverse` means a data or schema
+  turned off without a deploy; `fix_forward_safe` means a later change
+  fully restores correct behaviour, with no lasting effect left behind
+  (nothing persisted, sent, or published in the meantime); `hard_to_reverse`
+  means a data or schema
   migration, a published API or wire format, a deleted resource, or an
   external side effect. Anthropic's low tier is defined partly by this
   ("additive changes behind a flag"), and its PR template asks for a
@@ -354,8 +359,9 @@ AI reviewer runs in shadow mode until trust is established.
 What has to be measured, extending `medium.md` §3e (finding-outcome
 telemetry) from findings to PRs:
 
-- **PR outcomes:** reverted within 14 days; linked to an incident;
-  review rounds; human comments; time from first review to merge.
+- **PR outcomes:** follow-up fixes (§8a), with their severity and the
+  time to the first one; linked incidents; review rounds; human comments;
+  time from first review to merge.
 - **Resolution reasons on findings** (Copilot's *Addressed / Won't fix /
   Incorrect*, §12) where the platform has them. Otherwise inferred, as
   §3e already plans: anchored lines changed in a later commit means
@@ -363,16 +369,69 @@ telemetry) from findings to PRs:
   inferred version is Atlassian's **code resolution rate**, the one
   production metric in the field with a published human baseline (§12,
   pattern 7).
-- **The calibration test:** revert and incident rates by tier. The low
-  tier earns its relaxed column only when its revert rate over a sustained
-  window is no worse than the v1 baseline for comparable PRs. That makes
-  Anthropic's guardrail ("without increasing reverts") an explicit
-  threshold.
+- **The calibration test:** the follow-up-fix rate by tier, weighted by
+  severity (§8a). The low tier earns its relaxed column only when its
+  rate over a sustained window is no worse than the v1 baseline for
+  comparable PRs. That is Anthropic's guardrail ("without increasing
+  reverts or incidents") restated for fix-forward.
 - **Evaluation sets** (`eval.md`): a **known-clean PR set**, scored for
   findings that shouldn't exist and for tiers that are too high; and a
-  **reverts-and-incidents set**, the PRs that went wrong, scored for
-  whether the tier would have been `medium` or above. Both run on every
+  **needed-a-fix set**, PRs that later needed a follow-up fix, scored for
+  whether the tier would have been `medium` or above and whether
+  `look_here` pointed at the lines the fix changed. Both run on every
   change to the triage prompt, the review policy defaults or the model.
+
+### 8a. The outcome label when nobody reverts
+
+A team that fixes forward almost never produces a revert, so "reverted
+within N days" labels nothing. The label is instead the **follow-up
+fix**: a later change that repairs something this PR got wrong. This is
+the SZZ approach from defect-prediction research (find fixing commits,
+blame the lines they change back to the commits that introduced them),
+which is how the public ApacheJIT dataset behind DRS-OSS is labelled.
+Meta's own labels are expert-attributed incidents rather than reverts,
+so its method carries over unchanged.
+
+A PR *P* gets a **follow-up fix** from a later merged PR *F* when, within
+a window (default 30 days):
+
+1. **F changes lines P introduced**, found by blaming F's removed and
+   modified lines against the merge-base of F. Whitespace-only and
+   pure-move changes are ignored, as are lines P only re-formatted.
+2. **F has fix intent**, from at least one of: a linked Jira issue of
+   type Bug or Incident; a `fix`/`hotfix` branch or title convention; a
+   Forge fix or responder run (`medium.md` §1b–1c), which already records
+   which finding or thread it addresses; or an explicit "fixes behaviour
+   from #P" link.
+
+And separately, by **direct attribution**: an incident or bug ticket
+whose "caused by" (or equivalent) link names P counts whether or not
+blame finds it.
+
+Each label carries a **severity**, highest first: incident-linked;
+customer-facing Bug ticket; hotfix outside the normal release path;
+ordinary fix. Calibration (§8, 12b) weights by it, so one incident-linked
+fix outweighs several cosmetic ones.
+
+**Known noise, and what to do about it:**
+- **Refactors touching the same lines** look like fixes. Requiring fix
+  intent (2) removes most of them.
+- **"Fixes" that are really the next feature** on the same lines. A
+  feature-type ticket on F excludes it.
+- **Lines P introduced but that only became wrong later**, because
+  something else changed. The window limits this, and severity weighting
+  keeps the noise cheap.
+- **Fixes in other files**, such as a config or caller elsewhere. Blame
+  misses these. Direct attribution catches the important ones, and
+  CodeScene's change-coupling data (§12a) is the eventual way to extend
+  blame to coupled files.
+
+Two measures fall out of this for free:
+- **Time to first follow-up fix**, which shows how long a problem lived
+  in the codebase.
+- **Whether the review pointed at it**: was F's changed region inside
+  P's `look_here` or a finding? A tier that was right but pointed humans
+  at the wrong lines didn't buy anything.
 
 ---
 
@@ -413,7 +472,7 @@ telemetry) from findings to PRs:
 | Gate (§6) | Commit status, v1 column, SHA-bound, fail-closed | Prompter rule, sibling guard, human-review override | Calibrated column for `low` |
 | Measurement (§8) | PR outcomes recorded | Resolution reasons; both eval sets | Actionability classifier (`future.md`) |
 | Snapshot binding (§11a) | `bound_to` recorded; mismatch treated as missing | Floor recomputed on push; base policy changes invalidate open tiers | — |
-| Typed drivers (§11b) | `dimension` fixed list; default domain set | Repo-defined domains in the review policy | Domains derived from mined reverts and incidents |
+| Typed drivers (§11b) | `dimension` fixed list; default domain set | Repo-defined domains in the review policy | Domains derived from mined follow-up fixes and incidents (§8a) |
 | Required decisions (§11c) | `product_direction`, `security_boundary` | All five kinds, with `options` | — |
 | Proof axis (§11d) | `proof.path` reported | Proof rules raise tier | — |
 | Authority lens (§11e) | — | Authority-chain `<focus>` on `authority` drivers | — |
@@ -557,10 +616,10 @@ of incidents for 5–10% of diffs), and that a *logistic regression on a
 dozen cheap features* got most of the way. Forge gains an optional
 **`predicted` driver source**:
 
-- **Features**, computed by the harness from git and the incident/revert
-  tracker, never by the model: lines and files changed, number of
-  directories, the author's prior commits to these files, each file's
-  revert history and change frequency (CodeScene's hotspots), and
+- **Features**, computed by the harness from git and the issue tracker,
+  never by the model: lines and files changed, number of directories, the
+  author's prior commits to these files, each file's follow-up-fix
+  history (§8a) and change frequency (CodeScene's hotspots), and
   **absent change coupling**, meaning files that historically change
   together where only some changed this time.
 - **Output** is a percentile against the repository's own history,
@@ -570,15 +629,17 @@ dozen cheap features* got most of the way. Forge gains an optional
   configured percentile (default P90) it raises to `medium`. A
   low-percentile prediction never lowers anything.
 - **Phase:** later. It needs labels, which §8's telemetry starts
-  collecting. Until a repository has a few hundred reverts it stays off,
+  collecting. Until a repository has a few hundred labelled follow-up
+  fixes it stays off,
   and the harness reports "insufficient history" rather than a number.
 
 ### 12b. Calibrate by "share of bad outcomes caught for share of PRs escalated"
 
-Meta's metric replaces the vaguer "revert rate by tier" in §8. For each
-tier boundary, report **the share of later-reverted (or incident-linked)
-PRs that sat at or above it** next to **the share of all PRs at or above
-it**. Escalating 20% of PRs should catch well over 20% of reverts. If it
+Meta's metric sharpens §8's rate-by-tier test. For each tier boundary,
+report **the severity-weighted share of PRs that later needed a
+follow-up fix (§8a) that sat at or above it** next to **the share of all
+PRs at or above it**. Escalating 20% of PRs should catch well over 20% of
+the fix-needing ones. If it
 doesn't, the tier is no better than chance, and `low` may not relax
 anything (§6). This curve goes into `eval.md`'s ship log on every policy,
 prompt or model change.
@@ -606,8 +667,8 @@ risk signal sends it to a human. Forge's triage (§3b) adopts this as the
 RADAR skips per-diff review only for **vetted generators**, and holds AI
 sources to a 60-day clean record, daily caps and a denylist. Forge's own
 PRs come from configurations: a prompt version, a model and a task type.
-The harness keeps a **per-configuration record** (reverts, incident
-links, rejections, volume). Only a configuration with a clean record
+The harness keeps a **per-configuration record** (follow-up fixes by
+severity, incident links, rejections, volume). Only a configuration with a clean record
 above a minimum volume is eligible for the calibrated `low` relaxation
 in §6. A new prompt or model version starts with no record. This
 replaces the vaguer "trusted authors only" in §6.

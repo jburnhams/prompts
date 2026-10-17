@@ -1009,14 +1009,16 @@ were worth making. That makes this item a prerequisite for the review
 half of cross-run learning, not just a measurement nicety.
 
 **Extended 2026-10-17 from findings to PRs** (`risk.md` §8). The same
-recorder also captures, per PR: reverted within 14 days, linked to an
-incident, review rounds, human comments, time from first review to merge,
+recorder also captures, per PR: follow-up fixes (`risk.md` §8a, the
+fix-forward label: a later fix-intent PR changing lines this PR
+introduced, or an incident or bug ticket attributed to it) with severity
+and time to first fix, review rounds, human comments, time from first review to merge,
 and the attention tier each session reported. Where the platform offers
 resolution reasons (Copilot's *Addressed / Won't fix / Incorrect*) they
 are recorded; elsewhere "anchored lines changed in a later commit" stands
 in for *addressed*, which is Atlassian's published **code resolution
 rate** metric (38.7% for their bot against 44.45% for humans —
-`../code-review-approaches.md` §12). The revert-rate-by-tier series is
+`../code-review-approaches.md` §12). The follow-up-fix-rate-by-tier series is
 the third consumer, and it is the one that gates relaxing any human
 requirement.
 

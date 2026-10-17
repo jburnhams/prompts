@@ -91,8 +91,10 @@ detection rate.
 
 **Added 2026-10-17 — attention calibration** (`risk.md` §8). Two further
 sets: a *known-clean* set scored for over-tiering as well as for spurious
-findings, and a *reverts-and-incidents* set — PRs that went wrong — scored
-for whether the attention tier would have been `medium` or above. The
+findings, and a *needed-a-fix* set (PRs that later needed a follow-up
+fix, `risk.md` §8a), scored for whether the attention tier would have
+been `medium` or above and whether `look_here` covered the lines the fix
+changed. The
 second is the one that decides whether `low` may ever relax a human
 requirement; it is re-run on every change to the triage prompt, the
 default review policy, or the model.
@@ -217,8 +219,8 @@ design that can retire one.
 
 ## Open questions this is built to close
 
-0. *(Added 2026-10-17.)* Is the attention tier calibrated — is the revert
-   rate of `low`-tier PRs no worse than the human-reviewed baseline over a
+0. *(Added 2026-10-17.)* Is the attention tier calibrated: is the
+   follow-up-fix rate (`risk.md` §8a) of `low`-tier PRs no worse than the human-reviewed baseline over a
    sustained window? (`risk.md` §8; the gate's relaxed column stays off
    until this is answered yes.)
 

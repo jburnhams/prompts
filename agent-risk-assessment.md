@@ -274,9 +274,9 @@ things: none of the incidents that did occur would have been caught by a
 human reviewer, and automating review may cost knowledge transfer.
 
 **What carries over to a smaller team.**
-- **The evaluation metric**, "share of reverts or incidents caught for
+- **The evaluation metric**, "share of bad outcomes (reverts, or follow-up fixes where a team fixes forward) caught for
   share of PRs given extra attention", is the right calibration test for
-  any tier. It needs nothing more than revert and incident labels on
+  any tier. It needs nothing more than outcome labels on
   past PRs.
 - **The feature set** (size, spread, author experience with *this* code,
   file criticality, prior incidents in these files, complexity) is cheap
@@ -388,8 +388,10 @@ in this collection uses, and it comes straight from git history.
   code-resolution rate measures findings, not risk. What remains open is
   whether a smaller organisation has enough incidents to train or even
   validate a model: Meta's test set had 305 SEVs in 181,000 diffs. Reverts
-  are about an order of magnitude more frequent and may be the practical
-  label.
+  are more frequent, but a team that fixes forward hardly ever reverts.
+  The practical label there is the **follow-up fix**, found SZZ-style by
+  blaming fix-intent changes back to the PRs that introduced the lines
+  (`agent-design/risk.md` §8a).
 - **Reading versus predicting.** Meta's best-performing system *predicts*
   from history and then has an LLM *read* the diff against safe and risk
   signal lists (RADAR). Every other source only reads. Nobody has
@@ -402,5 +404,5 @@ in this collection uses, and it comes straight from git history.
 - **Domain taxonomies don't transfer.** ClawSweeper's eight categories
   fit a messaging gateway (`message-delivery`, `session-state`). Every
   deployment needs its own list, and none of the sources says how to
-  derive one. The best candidate is mining past reverts and incidents by
+  derive one. The best candidate is mining past follow-up fixes and incidents by
   category, which is also what §8 of `risk.md` proposes to collect.
