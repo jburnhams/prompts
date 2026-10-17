@@ -56,13 +56,29 @@ Added to the review-mode `Complete` report (`formats.md` §3b) as
 "attention": {
   "tier": "low | medium | high",
   "floor": "low | medium | high",
+  "bound_to": {
+    "head_sha": "string", "base_sha": "string",
+    "policy_rev": "string — review-policy blob at base", "conventions_rev": "string",
+    "model": "string", "prompt_rev": "string"
+  },
   "drivers": [
     { "source": "path_rule | triage | finding | unverified | convergence | author_declared",
+      "dimension": "blast_radius | reversibility | authority | product_worth | proof | provenance | trajectory | evidence",
+      "domain": "string — one of the repo's risk domains (§11b), e.g. 'compatibility', 'data', 'auth'",
       "reason": "string — one line, e.g. 'adds a database migration'",
       "paths": ["string, ..."],
       "rule": "string — the policy rule id, for path_rule; null otherwise",
       "raises_to": "low | medium | high" }
   ],
+  "required_decisions": [
+    { "kind": "product_direction | security_boundary | proof_sufficiency | release_inclusion | merge_risk",
+      "question": "string — the one thing a human must decide",
+      "options": [ { "category": "fix_before_merge | accept_risk | pause_or_close", "action": "string" } ] }
+  ],
+  "proof": {
+    "status": "shown | tests_only | none | not_applicable",
+    "path": "shipped_entry_point | in_process_harness | unit_only | none"
+  },
   "reversibility": "flagged | revertable | hard_to_reverse",
   "look_here": [
     { "file": "string", "line": 0, "line_end": 0,
@@ -395,3 +411,131 @@ telemetry) from findings to PRs:
 | Escalation (§3c) | All rules except `round` | + `round > 3` (needs `review.md` §7 sessions) | — |
 | Gate (§6) | Commit status, v1 column, SHA-bound, fail-closed | Prompter rule, sibling guard, human-review override | Calibrated column for `low` |
 | Measurement (§8) | PR outcomes recorded | Resolution reasons; both eval sets | Actionability classifier (`future.md`) |
+| Snapshot binding (§11a) | `bound_to` recorded; mismatch treated as missing | Floor recomputed on push; base policy changes invalidate open tiers | — |
+| Typed drivers (§11b) | `dimension` fixed list; default domain set | Repo-defined domains in the review policy | Domains derived from mined reverts and incidents |
+| Required decisions (§11c) | `product_direction`, `security_boundary` | All five kinds, with `options` | — |
+| Proof axis (§11d) | `proof.path` reported | Proof rules raise tier | — |
+| Authority lens (§11e) | — | Authority-chain `<focus>` on `authority` drivers | — |
+
+
+---
+
+## 11. Second pass: what Guardian and ClawSweeper changed (2026-10-17)
+
+A deeper reading of the two most complete open-source systems
+([`../codex/guardian-mechanics.md`](../codex/guardian-mechanics.md),
+[`../clawsweeper/`](../clawsweeper)) and the cross-source synthesis
+([`../agent-risk-assessment.md`](../agent-risk-assessment.md)) found
+five gaps in the first draft. The §2 schema already includes the fields
+below. The rules are here.
+
+### 11a. A tier is bound to a snapshot, and anything unreviewed invalidates it
+
+Guardian's cached `low` is valid only under an identical authorization
+snapshot and within two tool calls, and by default any unscored action
+invalidates it (`guardian-mechanics.md` §3). The first draft bound the
+gate's *approvals* to a SHA but left the *tier* unbound. Now:
+
+- `bound_to` records head, merge-base, review-policy and conventions blob
+  revisions at base, model, and triage/reviewer prompt revision.
+- The harness treats a tier whose `bound_to` doesn't match current state
+  as **missing**, and a missing tier is `high` for gating (§6, fail
+  closed). It is never a stale `low`.
+- On a new push, the floor (§3a, deterministic and cheap) is recomputed
+  at once. Until a review session completes against the new head, the
+  status shows `max(new floor, previous tier)` and stays pending. A
+  rebase that changes nothing is still a new head; only a fresh session
+  can re-bind.
+- A policy or conventions change on the base invalidates every open PR's
+  tier the same way. That is Guardian's "authorization changed" applied
+  to the rules themselves.
+
+### 11b. Drivers are typed by dimension and by a repo-defined domain
+
+ClawSweeper's eight merge-risk domains (compatibility, message-delivery,
+session-state, auth-provider, security-boundary, availability,
+automation, other) each tell a human *what kind* of breakage to look for.
+A tier alone doesn't. Forge's drivers now carry:
+
+- a **dimension** from the cross-source list (`agent-risk-assessment.md`
+  §2), fixed;
+- a **domain** from a **repository-defined taxonomy** in the review
+  policy, each with a one-line definition the model sees. The defaults
+  are `compatibility`, `data` (migrations, persisted state),
+  `security-boundary`, `availability`, `automation` (CI, deploy, the
+  agent's own config) and `other`.
+
+As in ClawSweeper, **one domain is hard-wired**: any `security-boundary`
+driver puts the PR at `high`, and no learning, triage or policy
+relaxation can change that. The others inform the human and the options.
+
+### 11c. Required decisions, with options, are separate from the tier
+
+ClawSweeper separates *how risky* from *what a human must decide*
+(`maintainerDecision.kind`), and hands each unresolved risk to a
+maintainer with 1–3 typed options (`mergeRiskOptions`). Forge adopts
+both as `required_decisions`:
+
+- A **`product_direction`** decision is raised when triage finds a
+  behaviour change the ticket didn't ask for, a new configuration
+  option, default or public API inside a fix, or a reversal of
+  deliberately built behaviour. ClawSweeper's rule that "a correct patch
+  alone is not worth merging" carries over directly. For Forge-authored
+  PRs it is aimed at the ticket's author, who is already a required
+  reviewer (§6).
+- A non-empty `required_decisions` makes the tier at least `medium`,
+  whatever else is true. "Nobody decided this should exist" is a reason
+  for a human.
+- `options` follow ClawSweeper's three categories. `accept_risk` is
+  offered only where an owner could reasonably own the risk.
+
+### 11d. Proof is its own axis
+
+ClawSweeper treats real-behaviour proof as separate from correctness:
+"Tests … and CI support proof and never replace it". Forge reviews
+without running anything, so it can't produce proof. It can *report*
+whether proof exists:
+
+- `proof.path` is set from what the PR shows: a run of the shipped entry
+  point (attached output or screenshots, or a linked artifact), a harness,
+  unit tests only, or none.
+- `proof.status: none` on any `hard_to_reverse` change, or `tests_only`
+  on a change with an `authority` driver, raises the tier to at least
+  `medium` and adds a `proof_sufficiency` decision. The failure mode
+  `failure_modes.detected_by: "nothing"` is how a reviewer argues it.
+
+### 11e. The authority lens at high tier
+
+When triage records an `authority` driver (the change creates, persists,
+transfers or consumes something that decides *who may cause what*), the
+`security` specialist's brief gains ClawSweeper's authority-chain
+procedure as its `<focus>`:
+
+1. Follow the value from every producer to its final effect.
+2. Invert the success claim against the nearest forbidden principal.
+3. Check stale, revoked or reassigned authority and any queued or
+   replayed decision.
+4. Require rejection to be shown *before* the final effect.
+
+A concrete violation is a blocking finding. A material but unproven one
+becomes a `security_boundary` decision. "Author role is no evidence about
+the changed surface" applies to Forge-authored PRs in particular.
+
+### 11f. Smaller adoptions
+
+- **Repetition counts (Guardian's circuit breaker).** Besides `round > 3`
+  (§3c), a blocking finding that reappears at the same location after its
+  thread was marked fixed raises the tier one step.
+- **"I missed this" is recorded (ClawSweeper's `lateFinding`).** A new
+  finding on code unchanged since an earlier reviewed head is flagged as
+  late in the report, and it counts against the reviewer in telemetry
+  (`medium.md` §3e), not against the author.
+- **Shadow comparison on live traffic (Guardian's Decisions).** During
+  the shadow phase (§8), a candidate triage prompt or model can run beside
+  the current one on the same envelope, recorded and never published.
+  This is how a triage change gets evaluated against real PRs before it
+  replaces the live one.
+- **Never cut a restriction to fit.** Elide the diff before the review
+  policy. A policy rule, a `human-review` label or a required decision is
+  never dropped for budget, matching Guardian's "never truncate a
+  restriction out of a grant".

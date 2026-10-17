@@ -635,7 +635,12 @@ The richest source here, because the output surface is a chat.
 
 ### Code review — [`code-review-approaches.md`](../code-review-approaches.md)
 
-**Added 2026-10-17: ClawSweeper, the merge side** ([`clawsweeper-skill.md`](./clawsweeper-skill.md)).
+**Added 2026-10-17: ClawSweeper, the merge side.** *(Correction, same day:
+the bot itself, read from `openclaw/clawsweeper` and written up in
+[`../clawsweeper/`](../clawsweeper), has **retired** the
+`autofix`/`automerge` labels as review triggers. The skill below still
+describes the automerge loop, so it is the operator's documentation lagging
+the bot.)* ([`clawsweeper-skill.md`](./clawsweeper-skill.md)).
 `autoreview` (below) finds problems. ClawSweeper is the bot that acts on
 the result, and its skill is the clearest open-source statement in this
 collection of *when a review result is allowed to cause a merge*. Opting a

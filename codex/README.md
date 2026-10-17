@@ -62,6 +62,19 @@ Each file carries a provenance header naming its exact source path.
   sandbox-mode and approval-policy templates.
 - [`review-rubric.md`](./review-rubric.md) — `ReviewTask`'s rubric, now with
   repository-rule attribution and P0–P3 priorities.
+- [`guardian-mechanics.md`](./guardian-mechanics.md) — added 2026-10-17:
+  the machinery around Guardian's prompts, read as source (~18k lines):
+  per-model, per-scope coverage policy; the binary async score and when a
+  cached `low` may approve an action (an authorization-snapshot binding
+  and a lag of two tool calls); the race in which either tier can release
+  an action; evidence assembly that never truncates a restriction out of
+  a grant; the circuit breaker; and a table mapping each mechanism to
+  PR-level risk.
+- [`guardian-classifier-default.md`](./guardian-classifier-default.md) —
+  added 2026-10-17: the 82-line *default* async-classifier prompt
+  (`prompts/templates/guardian/classifier_instructions.md`), with its base
+  risk taxonomy and predictive classification rules; the gpt-6-astra
+  catalog ships the shorter override in `guardian-v2-classifier.md`.
 - [`repo-review-skills.md`](./repo-review-skills.md) — added 2026-10-17:
   the four `.codex/skills/code-review*` skills the Codex repository used
   to review its *own* PRs (change size, breaking integration surfaces,
