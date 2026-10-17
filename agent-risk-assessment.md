@@ -8,7 +8,10 @@ asks the question both now feed into: **how much human attention does
 this piece of agent work need, from whom, and for how long does that
 judgment stay true?**
 
-Written 2026-10-17 from source reads of Codex Guardian
+Written 2026-10-17. A third pass the same day added learned risk
+prediction (Meta's DRS and RADAR, §6), rule engines (gitStream, §7) and
+the hosted products' risk signals (CodeRabbit, Cursor Approval Agents,
+CodeScene, §8). The first two passes came from source reads of Codex Guardian
 ([`codex/guardian-mechanics.md`](./codex/guardian-mechanics.md)),
 ClawSweeper ([`clawsweeper/`](./clawsweeper)), Anthropic's
 `agent-approval-check` and `pr-stamp-sweep`
@@ -60,7 +63,7 @@ dimension, and only for problems the reviewer happened to find.
 
 ## 3. Who sets the level
 
-Four patterns, from least to most robust:
+Five patterns, from least to most robust:
 
 1. **Model self-report.** One pass returns a level (PR-Agent's
    `risk_level`, Bugbot's `riskScore`). Cheap and explainable, but it can
@@ -73,7 +76,12 @@ Four patterns, from least to most robust:
    models can only raise it. Anthropic: a classifier plus "a second
    classifier can escalate". Guardian: unknown modes keep synchronous
    review, and failures publish maximum risk.
-4. **Two tiers with a cheap predictor gating an expensive judge.**
+4. **A learned model trained on outcomes.** Meta's DRS (§6) predicts
+   incident probability from the diff and its history, and gates by
+   percentile threshold. It is the only pattern here with a published
+   calibration curve, and the only one that needs incident or revert
+   labels to exist.
+5. **Two tiers with a cheap predictor gating an expensive judge.**
    Guardian's async scorer decides whether the expensive reviewer runs at
    all, and either tier can release the action, but only under identical
    evidence binding. `pr-stamp-sweep` is the PR-level version: a reviewer
@@ -165,13 +173,228 @@ most of 5 and 7, but has no single level. Anthropic's internal system
 (from the outside) covers 1 and a version of 3. No source covers all
 seven, which is what `agent-design/risk.md` §11 attempts.
 
-## 6. Open questions
+## 6. Predicting change risk from history: Meta's DRS and RADAR
 
-- **Calibration.** Nobody publishes how often each level was later
-  wrong. Guardian's Decisions shadow and Anthropic's guardrail ("without
-  increasing reverts or incidents") are the only measurement designs
-  stated. Atlassian's code-resolution rate is the only published
-  production metric, and it measures findings, not risk.
+*Added 2026-10-17 (third pass).* Every source above judges a change by
+reading it. Meta has run the other approach for over two years: **predict
+the risk of a diff from what similar diffs did in production**, and gate
+on the prediction. It is the only change-risk system with published
+calibration numbers, and it answers several of §7's open questions.
+
+**Diff Risk Score (DRS).** DRS predicts whether a diff will cause a
+**SEV** (a severe production incident). The labels are SEV root causes
+identified by domain experts; the papers contrast this with the noisier
+bug-fix-commit labels typical of academic defect prediction. SEV-causing
+diffs are under 1% of all diffs. Two generations are described:
+
+- A **logistic regression** in production for more than nine months by
+  2024. It used about a dozen features chosen from roughly 100: diff size
+  and spread, author experience, file criticality, prior SEVs in the file
+  or folder, complexity, language. It trains in minutes on CPU and its
+  features are actionable.
+- **Fine-tuned LLMs** ([arXiv 2410.06351](https://arxiv.org/abs/2410.06351)).
+  The best was a 13B CodeLlama variant further pre-trained on Meta's
+  historical diffs ("change-aware") and then fine-tuned to emit 0 or 1,
+  with the score read from those two tokens' probabilities. Its input is
+  the diff title, test plan and unified diff, with no hand-built
+  features. Frozen embeddings with a separate classifier did *worse* than
+  the logistic regression, as did a RoBERTa model. Task fine-tuning was
+  what mattered, and diff-specific pre-training added more.
+
+**The metric is "share of incidents caught for share of diffs gated".**
+Gating a random X% of diffs catches about X% of SEVs, so a model's value
+is how far above that line it sits. On about 181,000 test diffs with 305
+SEVs:
+
+| Gate the riskiest… | Logistic regression catches | Best LLM catches |
+|---|---|---|
+| 5% (weekend gating) | 18.7% of SEVs | about 26% (1.40×) |
+| 10% (medium-impact periods) | 27.9% | about 42% (1.52×) |
+| 50% (high-impact periods, e.g. Black Friday) | 84.6% | about 89% (1.05×) |
+
+On another organisation's diffs with no code overlap, the LLM caught
+21.9% / 39.4% / 88.8% against the regression's 11.9% / 26.3% / 84.4%.
+The model carried over to code it hadn't seen.
+
+**How it is used.**
+- **Code freezes became "code chill".** Instead of blocking every diff
+  during a sensitive period, only diffs above a threshold are gated. The
+  rest land. Over 10,000 diffs that a blanket freeze would have blocked
+  landed during one 2024 event "with minimal production impact".
+- **Gated diffs are shown in review** with the score, the reasons and
+  suggested actions. The author can wait or escalate with a standard
+  reason.
+- **One score feeds many features.** Meta's
+  [engineering post](https://engineering.fb.com/2025/08/06/developer-tools/diff-risk-score-drs-ai-risk-aware-software-development-meta/)
+  counts 19 (the RADAR paper says about 20) built on a shared Risk
+  Awareness Platform: build and test selection, reviewer selection for
+  risky diffs, release risk, cherry-pick risk, refactoring prioritisation.
+
+**RADAR: automatically reviewing and landing low-risk diffs.**
+([arXiv 2605.30208](https://arxiv.org/abs/2605.30208).) The motivation is
+the same as Anthropic's. Lines per human-landed diff grew about 106% year
+on year, diffs per developer grew 51% (over 80% of that growth from
+agentic AI), and the share of diffs reviewed promptly fell. RADAR is a
+**layered funnel**, and a diff must pass every layer:
+
+1. **Classify by authorship and source.** Human; deterministic codemod;
+   AI codemod; operational runbook.
+2. **Eligibility gates.**
+   - Deterministic codemods whose *generator* was vetted skip per-diff
+     review.
+   - AI codemods and runbooks need per-diff checks. Runbooks also need a
+     **clean 60-day track record** (no production incidents, low revert
+     and rejection rates, a minimum volume), daily caps and a denylist.
+   - Human authors need an eligible role, tenure and on-call membership.
+     WIP, RFC, previously rejected and code-freeze diffs are excluded.
+   - Open-source, SOX-scoped and extra-review code is always excluded.
+3. **Static heuristics**: blocklisted code phrases and file
+   prefix/suffix lists.
+4. **DRS threshold, by percentile and by source.** P5 for human diffs
+   (only the safest 5% are eligible), P20 for most bot sources, P50 for
+   allow-listed runbooks. Organisations choose their own thresholds.
+   Raising one threshold from P25 to P50 raised the approve rate to 60%.
+5. **LLM review against safe and risk signal lists.** Safe: behaviour-
+   preserving refactors, dead-code removal, logging, formatting, docs,
+   import cleanup, test additions, static resources. Risk: high review
+   effort, substantial structural change, suspected bugs, performance or
+   security issues. Approval needs confidence ≥ 8/10 **and every change in
+   a safe category**. Any risk signal sends the diff to a human.
+6. **Deterministic validation**: CI state, caps, landing windows.
+7. **Land after a delay**, during which a human reviewer can still reject
+   it. The author keeps the choice to ship on the RADAR approval, wait for
+   a human, or put the diff back to "Needs Review".
+
+Results over 535,000+ reviewed and 331,000+ landed diffs: reverts about a
+third of the non-RADAR rate, production incidents about a fiftieth, and
+median review wall time down 35%. The comparison is observational with
+difference-in-differences, and the populations aren't random (RADAR
+diffs are pre-selected to be low-risk). The authors note two further
+things: none of the incidents that did occur would have been caught by a
+human reviewer, and automating review may cost knowledge transfer.
+
+**What carries over to a smaller team.**
+- **The evaluation metric**, "share of reverts or incidents caught for
+  share of PRs given extra attention", is the right calibration test for
+  any tier. It needs nothing more than revert and incident labels on
+  past PRs.
+- **The feature set** (size, spread, author experience with *this* code,
+  file criticality, prior incidents in these files, complexity) is cheap
+  to compute from git and an incident tracker. An open-source replication,
+  [DRS-OSS](https://arxiv.org/abs/2511.21964) (Llama 3.1 8B fine-tuned on
+  the public ApacheJIT defect dataset, MIT,
+  [repo](https://github.com/Ali-Sayed-Salehi/drs-llm)), reports ROC-AUC
+  0.895. Flagging its riskiest 30% catches 86% of defect-inducing
+  commits, and it ships as a GitHub app.
+- **Different thresholds by source** (P5 for humans, P50 for proven
+  runbooks) is a precise version of "trust depends on who or what wrote
+  it", earned through a track record rather than declared.
+- **Per-diff review is skipped only for vetted generators.** For an
+  agent-written PR, the comparable thing would be an agent configuration
+  (prompt, model, task type) with a measured clean history.
+
+## 7. Rule engines: gitStream
+
+[gitStream](https://github.com/linear-b/gitstream) (LinearB,
+Apache-2.0) is the purely deterministic end: per-repo `.cm` YAML/Jinja
+rules that label, route, require approvals and **auto-approve**. Its
+automation library is a catalogue of what teams treat as "safe" and
+"needs more":
+
+- `approve-safe-changes`: approve when every change is formatting only,
+  or every file is docs, tests or images.
+- `review_sensitive_files`: any match against a path list adds the
+  security team and sets required approvals to 2.
+- `additional_review_for_large_pr`: estimated review time ≥ 30 minutes
+  *and* ≥ 10 files *and* touching `src/` → 2 approvals.
+- `provide_estimated_time_to_review` labels every PR with an **estimated
+  review time** in minutes (green < 5, yellow < 20, red ≥ 20). The
+  estimate comes from a hosted ML model over additions and deletions *by
+  type of change* (code, data, configuration) plus PR metadata.
+
+The point is not the rules themselves, which are simple. **Review effort
+is a different quantity from risk**, and gitStream, CodeRabbit (§8),
+PR-Agent and RADAR's risk signals all estimate it separately. A
+five-minute change can be high risk, and an hour-long one can be safe.
+
+## 8. Hosted products: what is shown and what is hidden
+
+**CodeRabbit Triage cards** (`docs.coderabbit.ai/triage/your-triage-view`)
+show separate signals, each tied to the reviewed commit:
+
+| Signal | Values | On a new push |
+|---|---|---|
+| Change type | Bugfix / Feature / Refactor | hidden until re-reviewed |
+| Review guidance | Quick / Standard / Deep / **Review later** | kept |
+| Risk (**residual**, after CodeRabbit's review) | Low / Medium / High / **Unknown** ("not that the risk is low") | kept |
+| Security risk | Minimal → Critical (with the security product) | hidden until re-reviewed |
+| Blast radius | Low / Medium / High | hidden until re-reviewed |
+| Issue severity | High / Medium / Low, "not an overall risk judgment" | hidden until re-reviewed |
+| Review effort | Low / Medium / High, with a percentage on hover | kept |
+
+- **Residual versus inherent risk.** CodeRabbit labels its risk as what
+  is *left* after its review. That is a different quantity from Forge's
+  floor (§3 of `risk.md`), which is about what the change touches before
+  anyone has looked. Both are worth showing, and conflating them is how
+  a reviewed sensitive change ends up looking "low".
+- **Blast radius is a graph built from evidence first.** Changed
+  components, upstream dependencies, downstream consumers ("potentially
+  impacted", possibly outside the diff), related tests, supporting
+  context, joined by typed edges (call, import, read, write, publish,
+  subscribe, test), each with confidence and source ranges. The generated
+  names and summaries come afterwards and "cannot add unsupported
+  components, connections, or relationship directions". The graph is
+  capped ("Showing N of M"). How it becomes Low/Medium/High is not
+  published.
+- **Some signals survive a push and some don't.** Effort, guidance and
+  residual risk are kept across pushes; severity, blast radius and
+  security risk are hidden until a re-review. That is a partial version
+  of Guardian-style binding (§4), applied per signal.
+
+**Cursor Approval Agents** (`cursor.com/docs/approval-agents`) are the
+auto-approve product most like Forge's §6 gate:
+- An optional **risk score** with a **maximum risk threshold** for
+  approval.
+- Bugbot and Security Agent findings count as inputs, and any finding
+  needing human review blocks approval.
+- **`APPROVAL_POLICY.md` files resolved per directory** (nearest file
+  wins, ancestors still apply), plus a routing file mapping product areas
+  to policies.
+- It **never approves a PR that changes the approval policies themselves
+  to loosen them**. It reads the base-branch version, and requires a human
+  if that can't be determined.
+- On a policy conflict, "the stricter instruction".
+- Reviewers are routed by ownership and commit history.
+
+Risk levels and criteria are undocumented. GitHub's rule that the same
+actor can't both create and approve a PR stops it approving PRs made by
+other Cursor automations, which is accidental but useful separation of
+duties.
+
+**CodeScene delta analysis** scores a change set against the repository's
+own risk profile. It flags PRs touching top-ranked **hotspots** (files
+with high change frequency and low code health) and warns on **absent
+change coupling**: files that historically change together, where only
+one changed this time. That second check is a risk signal no LLM reviewer
+in this collection uses, and it comes straight from git history.
+
+## 9. Open questions
+
+- **Calibration.** *(Partly answered by the third pass.)* Meta publishes
+  incident capture against share of diffs gated (§6), which is the only
+  real calibration curve in the field. Everyone else still publishes
+  nothing on how often a level was later wrong. Guardian's Decisions
+  shadow and Anthropic's guardrail are measurement *designs*. Atlassian's
+  code-resolution rate measures findings, not risk. What remains open is
+  whether a smaller organisation has enough incidents to train or even
+  validate a model: Meta's test set had 305 SEVs in 181,000 diffs. Reverts
+  are about an order of magnitude more frequent and may be the practical
+  label.
+- **Reading versus predicting.** Meta's best-performing system *predicts*
+  from history and then has an LLM *read* the diff against safe and risk
+  signal lists (RADAR). Every other source only reads. Nobody has
+  published a comparison of the two on the same PRs, or of the
+  combination against either alone.
 - **How much to trust a model's "low".** Guardian lets a cheap `low`
   approve within strict binding. ClawSweeper retired automerge entirely.
   Anthropic merges low-tier PRs without humans. The field hasn't settled

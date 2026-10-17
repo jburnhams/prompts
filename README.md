@@ -33,7 +33,10 @@ from whom, and for how long that judgment stays true. It covers nine
 dimensions sources assess (blast radius, reversibility, authorization,
 authority movement, product worth, proof, provenance, trajectory, evidence
 completeness), four ways the level gets set, and the mechanisms that
-recur. Built on two source-level deep dives: Codex Guardian's action-risk
+recur. A third pass adds learned change-risk prediction (Meta's Diff
+Risk Score and RADAR, the only published calibration curves), gitStream's
+rules, and the risk signals in CodeRabbit, Cursor Approval Agents and
+CodeScene. Built on two source-level deep dives: Codex Guardian's action-risk
 machinery ([`codex/guardian-mechanics.md`](./codex/guardian-mechanics.md))
 and OpenClaw's maintainer bot [`clawsweeper/`](./clawsweeper).
 

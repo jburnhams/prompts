@@ -75,6 +75,7 @@ Added to the review-mode `Complete` report (`formats.md` §3b) as
       "question": "string — the one thing a human must decide",
       "options": [ { "category": "fix_before_merge | accept_risk | pause_or_close", "action": "string" } ] }
   ],
+  "effort_minutes": 0,
   "proof": {
     "status": "shown | tests_only | none | not_applicable",
     "path": "shipped_entry_point | in_process_harness | unit_only | none"
@@ -539,3 +540,116 @@ the changed surface" applies to Forge-authored PRs in particular.
   policy. A policy rule, a `human-review` label or a required decision is
   never dropped for budget, matching Guardian's "never truncate a
   restriction out of a grant".
+
+---
+
+## 12. Third pass: learned prediction, effort, and residual risk (2026-10-17)
+
+From [`../agent-risk-assessment.md`](../agent-risk-assessment.md) §6–8:
+Meta's DRS and RADAR, gitStream, CodeRabbit's Triage signals, Cursor
+Approval Agents and CodeScene. Seven changes.
+
+### 12a. A history-based predictor as an input, not a replacement
+
+Meta's experience is that a model trained on which past diffs caused
+incidents catches 3–5× its gating share at strict thresholds (18.7–42%
+of incidents for 5–10% of diffs), and that a *logistic regression on a
+dozen cheap features* got most of the way. Forge gains an optional
+**`predicted` driver source**:
+
+- **Features**, computed by the harness from git and the incident/revert
+  tracker, never by the model: lines and files changed, number of
+  directories, the author's prior commits to these files, each file's
+  revert history and change frequency (CodeScene's hotspots), and
+  **absent change coupling**, meaning files that historically change
+  together where only some changed this time.
+- **Output** is a percentile against the repository's own history,
+  stored in the driver (`dimension: trajectory`, `reason: "riskier than
+  92% of this repo's PRs"`).
+- **It may only raise the tier**, like every other input (§3). Above a
+  configured percentile (default P90) it raises to `medium`. A
+  low-percentile prediction never lowers anything.
+- **Phase:** later. It needs labels, which §8's telemetry starts
+  collecting. Until a repository has a few hundred reverts it stays off,
+  and the harness reports "insufficient history" rather than a number.
+
+### 12b. Calibrate by "share of bad outcomes caught for share of PRs escalated"
+
+Meta's metric replaces the vaguer "revert rate by tier" in §8. For each
+tier boundary, report **the share of later-reverted (or incident-linked)
+PRs that sat at or above it** next to **the share of all PRs at or above
+it**. Escalating 20% of PRs should catch well over 20% of reverts. If it
+doesn't, the tier is no better than chance, and `low` may not relax
+anything (§6). This curve goes into `eval.md`'s ship log on every policy,
+prompt or model change.
+
+### 12c. The `low` tier gets RADAR's stricter definition
+
+RADAR auto-approves only when the LLM puts **every** change in a named
+safe category with confidence ≥ 8/10 and finds no risk signal. A single
+risk signal sends it to a human. Forge's triage (§3b) adopts this as the
+**only** route to `low`:
+
+- **Safe categories:** behaviour-preserving refactor, dead-code removal,
+  logging, formatting, docs, import cleanup, test-only additions, static
+  resources, dependency patch bumps inside a lockfile-only change.
+- **Every changed hunk** must be assigned to one, and the assignments are
+  recorded in `mechanical`. A hunk that fits no category, or any risk
+  signal (structural change, suspected bug, performance, security, high
+  review effort), keeps the tier at `medium` or above.
+- gitStream's `approve-safe-changes` (all formatting, docs, tests or
+  images) is the deterministic version, and it is how the floor (§3a)
+  reaches `low` without any model.
+
+### 12d. Track record per agent configuration (RADAR's runbook rule)
+
+RADAR skips per-diff review only for **vetted generators**, and holds AI
+sources to a 60-day clean record, daily caps and a denylist. Forge's own
+PRs come from configurations: a prompt version, a model and a task type.
+The harness keeps a **per-configuration record** (reverts, incident
+links, rejections, volume). Only a configuration with a clean record
+above a minimum volume is eligible for the calibrated `low` relaxation
+in §6. A new prompt or model version starts with no record. This
+replaces the vaguer "trusted authors only" in §6.
+
+### 12e. Effort is not risk, and residual risk is not inherent risk
+
+- **Effort** (estimated human review minutes, gitStream-style, from
+  additions and deletions by change type) is reported separately in
+  `attention.effort_minutes`. It never feeds the tier. It helps humans
+  plan, and an `effort_minutes` far above the PR's tier is itself a hint
+  to split the PR (Codex's `code-review-change-size` lens).
+- **Residual risk** (CodeRabbit's "after review" label) is what the tier
+  becomes once findings exist. Forge's `floor` is the inherent risk.
+  Both are already in the block (`floor`, `tier`), and the status text
+  should show both when they differ: "inherent high; no blocking
+  findings". Then a reviewed sensitive change is never presented as
+  simply "low".
+
+### 12f. A blast-radius graph built from evidence, never from prose
+
+When an `authority` or `compatibility` driver is present at `high`,
+`look_here` gains **downstream consumers**: the call sites, imports and
+subscribers of changed symbols, found by Grep/Read, each with its source
+range. CodeRabbit's rule carries over: the model may *name and summarise*
+nodes that tool evidence found, and **may not add a consumer or an edge
+the evidence didn't show**. A consumer outside the diff is "potentially
+impacted", never a finding by itself.
+
+### 12g. Approval policy files and the stricter rule
+
+Cursor's `APPROVAL_POLICY.md`, resolved per directory (nearest wins,
+ancestors still apply), is the user-facing shape for §3a's review
+policy. Forge adopts two of its rules: **a PR that loosens a policy file
+is never eligible for relaxation** (the base-branch copy applies, and a
+human is required if it can't be read), and **when two policies
+conflict, the stricter applies**.
+
+| Capability | v1 | Phase 2 | Later |
+|---|---|---|---|
+| Calibration curve (12b) | Recorded from day one | Gates the `low` relaxation | — |
+| Safe-category `low` (12c) | Deterministic floor only | Triage assignment of every hunk | — |
+| Per-configuration record (12d) | Recorded | Required for relaxation | — |
+| Effort, residual vs inherent (12e) | `effort_minutes`; both shown | — | — |
+| Evidence-only blast radius (12f) | — | On `high` with authority/compatibility drivers | — |
+| History-based predictor (12a) | — | Features computed and logged | Driver enabled once labels suffice |
