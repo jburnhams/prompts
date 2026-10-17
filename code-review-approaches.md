@@ -24,6 +24,7 @@ etc.) — only things whose job is specifically reviewing code.
 | [`github-pr-bots/codex-review`](./github-pr-bots/codex-review) | GitHub PR | OpenAI reference implementation |
 | [`github-pr-bots/opencode-review`](./github-pr-bots/opencode-review) | GitHub PR (`/oc` mention, or automated) | GitHub Action |
 | [`composio-swekit/pr_review`](./composio-swekit) | GitHub PR | Multi-agent framework template (LangGraph) |
+| [`github-pr-bots/agent-approval-check`](./github-pr-bots/agent-approval-check) | GitHub PR, merge side (approval gate + stamp sweep) | GitHub Action + Claude Code workflow; added 2026-10-17, see §12 |
 | [`deepseek-harness/skills/dsh-code-review`](./deepseek-harness) | GitHub PR, one repo only | Repo-resident skill + a self-maintenance loop |
 | [`openclaw/.agents/skills/autoreview`](./openclaw) | Any git target (branch, PR, ref range), one repo | Repo-resident skill + a 6,168-line Python driver calling a second model |
 
@@ -576,6 +577,206 @@ building an explicit second sweep for the same reason; this is the one-sentence
 version, and it sits directly beside the opposite instruction ("If there is
 no finding that a person would definitely love to see and fix, prefer
 outputting no findings"), which is the pairing that makes either safe.
+
+## 12. How much human attention: the August–October 2026 shift
+
+*Added 2026-10-17 from a pass over vendor changelogs and docs (Aug–Oct
+2026) and the open-source review sources re-read at their current heads.
+Sources and SHAs are in [`sources.md`](./sources.md), "The review-attention
+pass".*
+
+Through mid-2026 every source in this document answered one question:
+*what is wrong with this diff?* In the three months to October the
+industry added a second output, and it is a separate one: **how much
+human attention, and from whom, this change needs before it merges.**
+Anthropic states the target most plainly in its [code-review
+post][anth-post]: "the least human review time that doesn't increase
+reverts or incidents". Reverts and incidents are the guardrail, and
+approvals per PR, human comments and wait time are what gets driven down.
+
+### What each source now produces besides findings
+
+| Source | Attention / risk output | Set by | Can it lower human involvement on its own? |
+|---|---|---|---|
+| **Anthropic internal** ([post][anth-post]) | Low / medium / high tier → 0 / 1 / 2 human approvers. Low = docs, copy, additive-behind-a-flag; medium includes named sensitive areas (caching, auto-updater, system prompts); high = two people | A classifier, from **the change, not the author**; a second classifier **can only escalate**; lighter paths only for trusted authors | Yes for low tier, after green checks. An agent's approval never counts as a human's, the person who prompted an agent change is a required reviewer, and approvals bind to one commit |
+| **Claude Code Review** (GA 2026-10-15) | Severity counts as machine-readable JSON in the check run (`{"nit","normal","pre_existing"}`); the check itself is always neutral | Review agents | No. It "never approves or blocks"; gating is left to the customer's CI parsing the counts, and a **missing** count line must be read as "no verdict", not zero |
+| [`agent-approval-check`](./github-pr-bots/agent-approval-check) (Anthropic, MIT) | Required status: N human approvals on agent-authored PRs | Deterministic; triggered by **authorship** | No. Fails closed; exempt paths are the only relaxation |
+| [`pr-stamp-sweep`](./github-pr-bots/agent-approval-check) (Anthropic, MIT) | `stamp / needs-discussion / skip`, `securitySensitive` by *what is touched*, and an adversarial verifier **only on stamp candidates** | Two agents | It recommends; a maintainer stamps |
+| [PR-Agent](./pr-agent) (2026-08-31 →) | `risk_level`, `merge_recommendation` (`no_concerns_found / needs_review / changes_required`), `failure_modes` with `detected_by` / `covered_in_this_pr`, `review_priority_files` | The model, in one pass, all opt-in | No; advisory fields in the review comment |
+| **Cursor Bugbot** | `riskScore` in the PR summary; effort `low / default / high / smart`, where `smart` takes a natural-language rule for picking the level per PR | Not documented | Not by Bugbot itself. Repo config is read from the **base branch** and can lower Autofix but never enable it |
+| **CodeRabbit Triage** (2026-08-13 →) | Per-PR priority P0–P3 with a stated reason; separate rated facts (risk, security risk, **blast radius**, review effort) that admin rules can match | Deterministic base score (validated finding severity, linked-ticket urgency, PRs blocked behind it) plus a model "verdict"; override order manual > verdict > admin rule > base | Yes, through a rule: "Merge low-risk changes" merges when risk *and* review effort are low and required checks and reviews pass. Branch protection still wins |
+| **Copilot code review** | An effort level per review (Lite / Balanced; Balanced default since 2026-09-28); an overview split into Open (with `new`), Resolved since last review, and Previously missed | Admin/user setting | No |
+| [OpenClaw ClawSweeper](./clawsweeper) | Eight domain-typed `merge-risk` labels, typed `maintainerDecision` kinds, `mergeRiskOptions` (fix / accept / pause), real-behaviour proof status, S–F proof/patch/overall tiers | The review model; code enforces protected labels and computes readiness (a D/F patch tier, missing proof, a pending decision or an unvalidated head all block) | Not any more: the automerge loop the [skill](./openclaw/clawsweeper-skill.md) describes has been retired, and `security-boundary` is the one risk label wired into a hard gate |
+| **Meta DRS + RADAR** ([papers](./agent-risk-assessment.md#6-predicting-change-risk-from-history-metas-drs-and-radar)) | A predicted incident probability per diff, used as a percentile; RADAR's auto-approve when every change falls in a safe category | A model fine-tuned on expert-labelled incident causes; percentile thresholds by author or source (P5 for humans, P50 for proven runbooks) | Yes: RADAR landed 331k+ diffs with about a third the revert rate and about a fiftieth the incident rate of non-RADAR diffs; a human can still veto during a landing delay |
+| **Cursor Approval Agents** | Optional risk score with a maximum threshold; per-directory `APPROVAL_POLICY.md` | Model plus Bugbot/Security findings; policies read from base | Yes, below the threshold. Never when a PR loosens its own approval policy; stricter rule on conflict |
+| **gitStream** ([repo](https://github.com/linear-b/gitstream), Apache-2.0) | Estimated review minutes; labels; required approvals; auto-approve | Deterministic `.cm` rules; review time from a hosted ML model | Yes, for rule-defined safe changes (formatting, docs, tests, images) |
+| [Codex repo skills](./codex/repo-review-skills.md) (removed 2026-09-30) | "P0 … need an additional manual review" for any new context item that can exceed 1k tokens | A repo-specific lens | No |
+
+### Seven patterns, and how widely each one is shared
+
+1. **Attention is a separate output from findings, because a clean review
+   isn't a safety claim.** Claude Code Review says outright that a review
+   with no findings doesn't mean the code is error-free. Bugbot (week of
+   2026-10-05) stopped reporting "clean" when every finding was *filtered
+   out*. CodeRabbit's docs say P3 on an unreviewed PR means no signal
+   raised it, not that someone looked and found little. PR-Agent is the
+   counter-example: its `risk_level` is defined mostly by findings, so a
+   quiet change to a sensitive area reads `low`.
+2. **The risk floor comes from what the change touches, and only goes
+   up.** Anthropic's second classifier only escalates. `pr-stamp-sweep`
+   defines `securitySensitive` by surface (auth, sanitisation, parsers of
+   untrusted input, actor checks, shell construction). Codex's repo lens
+   escalates on *touching* model-visible context. CodeRabbit lets admin
+   rules match on blast radius but explicitly **not** on file paths or
+   CODEOWNERS, which is the opposite choice and the weaker one for this
+   purpose.
+3. **Instructions that lower scrutiny need more provenance than ones that
+   raise it.** Claude Code Review honours "lower severity / exclude paths /
+   cap nits" in `REVIEW.md` only from a protected default branch, while
+   additive rules apply more widely. Bugbot reads `bugbot.yaml` from the
+   base branch so "a PR can't change how Bugbot reviews itself", and the
+   file can lower Autofix but never enable it. `agent-approval-check` runs
+   only on base-branch-executed triggers. All three follow the same rule:
+   a relaxation must come from somewhere the PR can't write.
+4. **Approval binds to a SHA, and an agent never counts.** This shows up
+   in Anthropic's policy, `agent-approval-check`'s `/approve <sha>` with
+   stale-flagging, ClawSweeper's "passed the exact current head", and
+   Bugbot treating a run cancelled by a new push as not satisfying the
+   required check (2026-09-21). The sibling-PR guard is a subtle
+   consequence: a status attached to a SHA unblocks every PR with that
+   head.
+5. **Depth is chosen per PR, and increasingly by rule rather than by
+   size.** Anthropic sets Quick / Standard / Deep by the cost of a missed
+   bug. Bugbot's `smart` mode takes a prose rule. Copilot and Greptile
+   (Base / Plus / Apex, reported secondhand) sell effort tiers. Only
+   Anthropic ties depth to risk explicitly; the rest tie it to cost.
+6. **Re-review is a state machine, and resolution has reasons.** Copilot
+   added resolution reasons (*Addressed / Won't fix / Incorrect*,
+   2026-08-27) and later auto-resolves its own comments by reason.
+   PR-Agent feeds back `active / resolved / dismissed` findings and
+   requires word-for-word restatement for identity. Claude Code Review's
+   re-review now reports the count of earlier findings still open instead
+   of "no issues" (2.1.295). Anthropic's convergence fixes are a
+   three-round cap, diff-only re-review after a few passes, and flagging
+   bug *classes*. Copilot's "Previously missed" bucket is new: older
+   issues found on a later pass go **only in the overview**, never as
+   inline comments, so they don't read as blame.
+7. **The cheapest effective filter may not be an LLM.** Atlassian's
+   [RovoDev Code Reviewer paper][rovo] (one year in production on
+   Bitbucket) found its LLM factual-correctness judge "surprisingly
+   ineffective". A ModernBERT **actionability classifier**, trained on
+   five months of comments labelled by whether they led to a code change,
+   gave the large gain (about +15–20 points of location alignment). Their
+   production metric is **code resolution rate**, the share of comments
+   whose lines changed in a later commit: 38.7% for the bot against
+   44.45% for humans.
+
+### What did not change
+
+- **Nobody's reviewer approves.** Every hosted reviewer here still
+  explicitly does not approve. Where a merge does happen (CodeRabbit's
+  rule, ClawSweeper's automerge, Anthropic's low tier) a separate
+  deterministic gate merges, using the review as one input, behind a
+  switch an administrator owns.
+- **No open-source source computes a risk tier from paths plus content
+  with an escalate-only rule.** Anthropic's classifier is internal.
+  CodeRabbit's and Bugbot's risk calculations are undocumented. PR-Agent's
+  is a self-report. The design side of this repo now specifies one:
+  [`agent-design/risk.md`](./agent-design/risk.md).
+
+[anth-post]: https://claude.dev/blog/solving-code-review-at-anthropic/
+[rovo]: https://arxiv.org/abs/2601.01129
+
+## 13. Rovo Dev, Devin Review and Greptile (read 2026-10-17)
+
+Three hosted reviewers, read from their documentation. None publishes
+prompts. What is recorded here is what each does differently enough to
+matter for [`agent-design/`](./agent-design).
+
+### Atlassian Rovo Dev code review
+
+The reviewer on Forge's own platform (Bitbucket Cloud and GitHub). Its
+production results are in the RovoDev paper (§12, pattern 7): a trained
+actionability classifier beat an LLM judge, and 38.7% of comments led to
+a code change.
+- **Triggers:** on PR creation (the default), on every commit, or manual
+  only. In Bitbucket only the PR author can trigger a manual review.
+- **Acceptance-criteria check against the linked Jira work item:**
+  - The ticket is found from a key in the **branch name** first, then
+    commit messages. **If commits name more than one key, they are
+    ignored.**
+  - Criteria are read from the description, or from custom fields named
+    Acceptance Criteria / AC, Business / Functional Requirements, or
+    Definition of Done. If the description is empty the search is skipped
+    entirely, even when the custom fields have content.
+  - Each criterion gets **one of three results: met, missing from the
+    code, or needs manual checking.** On by default in Bitbucket.
+- **Custom instructions** live in `.rovodev/.review-agent.md`: Markdown
+  bullets grouped by topic. The documented examples include requiring
+  risky changes to be behind feature gates and warning about publicly
+  exposed authorization policy paths. The docs don't say which branch
+  the file is read from.
+- **Licensing:** both features need the PR author's own Rovo Dev Standard
+  seat on the connected Jira site. The standalone product is being folded
+  into Jira subscriptions.
+- **Not documented:** severity levels, summary format, any approve or
+  merge behaviour.
+
+For Forge, the AC check is the important part. `medium.md` §3a's
+ticket-compliance lens is the same idea, and Rovo settles three details
+it left open: how to find the ticket, which fields to read, and a
+three-valued per-criterion result.
+
+### Cognition Devin Review
+
+A review *interface* for large, often agent-written PRs. Its aim is to
+make a human's read faster rather than to post more comments.
+- **Groups related hunks** and orders them so the PR reads top to bottom,
+  instead of in alphabetical file order, with an explanation per group.
+- **Detects moved and copied code** and shows where it came from, instead
+  of a full delete plus a full add. Cognition's point is that most diff
+  viewers inflate relocated code and bury the small real edits.
+- **Three-level flags:** red (probable bug), yellow (warning), gray
+  (FYI), each dismissable.
+- **Chat with the codebase in context**, and stacked-PR support (splitting
+  large changes, fixing comments across a stack).
+- Works on public PRs without an account (`devinreview` in place of
+  `github` in the URL), and from a CLI (`npx devin-review <pr>`).
+
+No risk or attention output. The two ideas worth taking are reading order
+and moved-code detection, and both are things a harness can compute
+before any model sees the diff.
+
+### Greptile (v5 and review tiers, September 2026)
+
+- **v5 is a swarm of single-hypothesis agents.** Each agent investigates
+  one suspected bug in parallel. Over a month-long A/B test on more than
+  a million PRs, median review time fell from about 5:04 to 2:25, and the
+  share of comments authors addressed rose from 52% to 66%. This is the
+  sampling-variance kind of fan-out (§6a of `agent-design/review.md`),
+  split by hypothesis rather than by lens.
+- **Review tiers:** Base, Plus and Apex cost 1, 3 and 10 credits. **Auto**
+  picks a tier per PR "from its size, risk, and complexity" (criteria not
+  published), and you pay for the tier that ran. Plus and Apex show the
+  tier next to the confidence score.
+- **`greptile.json` loads from the PR's source branch**, with one
+  exception: `autoApprove` (approve "low-risk 5/5 reviews") is read from
+  the **base** branch "so a PR can't loosen it for itself". That makes
+  every other setting (`strictness`, `commentTypes`, `ignorePatterns`,
+  scoped `customContext.rules`, `instructions`) editable by the PR under
+  review. Claude Code Review, Bugbot and Cursor Approval Agents all read
+  from base; Greptile exempts only the setting that grants approval.
+- **Learning:** 👍/👎 reactions are the main signal, a 👎 with a short
+  reason teaches faster, and **no reaction slowly lowers a comment
+  pattern's priority**. Improvement takes "the first few weeks". How
+  feedback becomes a rule, the scope of what is learned, and any way to
+  inspect or reset learned rules are not documented, and the security
+  exemption recorded in `agent-memory-learning.md` §8 isn't mentioned on
+  the current page.
+- **Other settings:** `statusCheck` posts a pass/fail check per review;
+  `includeConfidenceScore` adds a 0–5 confidence score to the summary;
+  `context.repos` reads related repositories; rules can be scoped by file
+  glob.
 
 ## Design takeaways
 

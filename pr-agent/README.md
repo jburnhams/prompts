@@ -3,7 +3,10 @@
 - **Type**: Code review agent
 - **License**: Apache-2.0
 - **Source**: https://github.com/qodo-ai/pr-agent
-- **Retrieved from**: `main` branch, `pr_agent/settings/` (2026-07-10)
+- **Retrieved from**: `main` branch, `pr_agent/settings/` — first read
+  2026-07-10; **re-read 2026-10-17 at `5a50bf1e`**, and every `.toml` here
+  was refreshed to that commit. What changed is in "The 2026-10-17
+  re-read" below, and it supersedes two claims further down.
 
 Qodo's (formerly CodiumAI's) open-source PR review tool. Prompts are TOML
 files with Jinja2-style templating, each pairing a `system` and `user`
@@ -21,6 +24,10 @@ prompt for a specific PR command.
   code in the PR.
 - `code_suggestions/` — the `/improve` command: proposes concrete code
   fixes (see that folder's README) — added after initially being missed.
+- `prompt_fragments.toml` — added 2026-10-17. Shared fragments, chiefly
+  `diff_hunk_format`: the `__new hunk__`/`__old hunk__` explanation that
+  used to be inlined in each tool's prompt moved here on 2026-09-02
+  (#2994), and the reviewer prompt now renders `{{ diff_hunk_format }}`.
 
 ## Scaffolding (beyond the prompt text)
 
@@ -51,8 +58,9 @@ templates with the variable names left in place:
 
 ### Existing comments, new comments, proposed changes
 
-- **Existing PR comments/discussion are not fed back into `/review`'s
-  prompt.** Neither `pr_reviewer_prompts.toml` nor
+- **Superseded 2026-10-17 — see below: `/review` now receives its own
+  earlier findings.** As of 2026-07-10: **existing PR comments/discussion
+  were not fed back into `/review`'s prompt.** Neither `pr_reviewer_prompts.toml` nor
   `code_suggestions/pr_code_suggestions_prompts.toml` reference prior
   review threads, other reviewers' comments, or "has this already been
   raised" — each run is a fresh read of the diff plus PR
@@ -72,6 +80,65 @@ templates with the variable names left in place:
   `existing_code`/`improved_code` snippet pairs, self-scored 0-10 by a
   second reflect prompt before being surfaced, rendered as GitHub-native
   suggested-change blocks.
+
+## The 2026-10-17 re-read: an attention axis, and memory of its own findings
+
+Three months of changes, almost all to `/review`. Two of them move
+PR-Agent from "a list of findings" towards "a statement about how much
+human attention this PR needs", which is the question
+[`agent-design/risk.md`](../agent-design/risk.md) builds on.
+
+**Opt-in assessment fields (2026-08-31, #2391; failure modes 2026-10-09,
+#4012).** Four `require_*` flags in `configuration.toml`, each off by
+default and each adding one field to the `PRReview` schema:
+
+| Flag | Field | What the prompt asks for |
+|---|---|---|
+| `require_risk_assessment` | `risk_level: low \| medium \| high` | high only for a clear bug, security concern or major logic risk; medium when nothing is clearly broken but "non-trivial areas … require careful human verification"; low when small, low-impact and nothing important found |
+| `require_merge_recommendation` | `merge_recommendation: no_concerns_found \| needs_review \| changes_required` | Renamed on 2026-10-09 (#4010) so the values "describe findings" rather than sound like approvals. When a CI artifact is supplied, any concern in it (including allowed-to-fail jobs, planned destroys, new vulnerabilities) caps the answer at `needs_review` even on a green pipeline (#4031) |
+| `require_failure_modes` | up to 3 × `{what, where, trigger, detected_by, covered_in_this_pr}` | "How could this PR break after merge, and what would catch it?" — grounded in visible code; `detected_by` may be `nothing`; `covered_in_this_pr` is true only if a test *visible in the PR* covers the trigger. The schema text says these "guide review and do not decide whether merging is safe" |
+| `require_priority_files` | `review_priority_files: [path]` | "the most important files a human reviewer should inspect first", empty when nothing deserves it |
+
+The ticket-compliance field `overall_compliance_level` was renamed
+`requires_further_human_verification` — the same move again: from a
+grade to a statement of what a person still has to check.
+
+What is notable is what the design does *not* do. All four are model
+self-reports on one pass, with no deterministic floor, no path rules and
+no escalate-only constraint; `risk_level` is defined almost entirely by
+findings ("introduces a clear bug"), so a clean-looking change to a
+sensitive area reads `low`. `failure_modes` is the exception and the
+best idea here: it asks about **detection**, not just defects, which is a
+question about how a mistake would surface after merge.
+
+**Earlier findings fed back to `/review` (2026-10-02, #3750, with
+dismissal handling through 2026-10-10).** With `persistent_finding_state`
+on, `/review` receives a `previous_findings` JSON block (budget
+`max_previous_findings_chars = 8000`) with each finding marked:
+
+- `active` — re-report it if it still holds, **with the same
+  `issue_header` and `issue_content`, word for word**, updating only line
+  numbers; identical text is how PR-Agent recognises it as the same
+  finding.
+- `resolved` — a later commit fixed it; re-report only if reintroduced.
+- `dismissed` — a reviewer closed the thread without fixing; `reply`
+  carries their reason; do not re-raise unless the code makes it worse.
+  A thread resolved by **anyone other than PR-Agent** on GitHub, GitLab
+  or Azure counts as dismissed (#3925, #4025, #4032).
+
+Earlier findings compete for the same `num_max_findings` slots (default
+3) as new ones, and "a finding that restates an earlier one in different
+words" is forbidden. Compare `agent-design/review.md` §7, which reaches
+the same goals through structured state and a dedup step rather than by
+asking the model to reproduce text verbatim.
+
+**Smaller changes.** The reviewer system prompt now states that title,
+description, commits, tickets, code and CI artifacts are untrusted
+(#3921, #3978), and the CI artifact is wrapped in start/end markers;
+`skills_context` moved to the top of the system prompt; linked Linear
+issues join Jira for ticket compliance (#4078); inline key issues are
+supported on GitLab, Gitea and Azure; a review-coverage footer and
+opt-in large-diff chunking report what a budget left out.
 
 ## Memory, learnings, and retrospectives
 

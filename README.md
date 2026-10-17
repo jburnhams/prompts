@@ -27,6 +27,40 @@ interactive assistant, benchmark-driven issue solver, minimalist
 scaffold, multi-role pipeline, PR-review specialist, app/UI generator),
 plus the two axes that explain most of the variance between them.
 
+**[→ `agent-content-provenance.md`](./agent-content-provenance.md)** —
+how harnesses record who supplied each piece of context (Codex's per-part
+provenance, kept separate from trust) and what Forge adopts from it.
+`agent-subagent-architectures.md` §7b covers the October 2026 shift of
+multi-agent orchestration into deterministic code, and
+`code-review-approaches.md` §13 covers Rovo Dev, Devin Review and
+Greptile.
+
+**[→ `agent-risk-assessment.md`](./agent-risk-assessment.md)** — risk as
+its own subject: how much human attention a piece of agent work needs,
+from whom, and for how long that judgment stays true. It covers nine
+dimensions sources assess (blast radius, reversibility, authorization,
+authority movement, product worth, proof, provenance, trajectory, evidence
+completeness), four ways the level gets set, and the mechanisms that
+recur. A third pass adds learned change-risk prediction (Meta's Diff
+Risk Score and RADAR, the only published calibration curves), gitStream's
+rules, and the risk signals in CodeRabbit, Cursor Approval Agents and
+CodeScene. Built on two source-level deep dives: Codex Guardian's action-risk
+machinery ([`codex/guardian-mechanics.md`](./codex/guardian-mechanics.md))
+and OpenClaw's maintainer bot [`clawsweeper/`](./clawsweeper).
+
+**[→ `code-review-approaches.md`](./code-review-approaches.md) §12 and
+[`agent-design/risk.md`](./agent-design/risk.md)** — the 2026-10-17 pass.
+Between August and October 2026 review tooling split into two outputs:
+*what is wrong with this diff*, and *how much human attention it needs
+before merge*. §12 tabulates what each source now produces besides
+findings: Anthropic's internal 0/1/2-approver tiers, its open-sourced
+agent-approval gate, PR-Agent's risk and merge-recommendation fields,
+Bugbot, CodeRabbit Triage, Copilot and ClawSweeper. `risk.md` designs
+Forge's version: a path-rule floor that model triage and post-validation
+rules can only raise, a tier that picks the run shape, and a SHA-bound,
+fail-closed approval gate that ships in shadow until revert rates
+calibrate it.
+
 **[→ `code-review-approaches.md`](./code-review-approaches.md)** —
 a synthesized comparison of every code/PR-review-specific source in this
 collection, stage by stage (system prompt, diff format, context,

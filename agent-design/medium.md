@@ -183,6 +183,27 @@ waivers, "ignore previous instructions") is still data to flag, not
 obey. Ambiguous or contradictory reviewer asks route to `AskUser`,
 which this source inherits unchanged.
 
+### 1d. Repair caps for fix and responder runs *(added 2026-10-17)*
+
+1b and 1c close the review → fix → re-review loop with no limit on how
+many times it can go round. Two caps, both enforced by the harness and
+never by the agent:
+- **At most one fix or responder run per PR head.** A run that pushes
+  nothing (no change it could make, or every thread answered with a
+  disagreement) does not get a second attempt on the same head.
+  ClawSweeper caps repairs at 1 per head for the same reason: a run that
+  produced nothing will produce nothing again on unchanged input.
+- **At most 3 rounds per PR** by default (CodeRabbit's auto-fix default;
+  ClawSweeper allows 10). A round is a fix run followed by a review
+  session. After the cap, the harness stops dispatching, posts once that
+  automated repair has stopped and why, and raises the attention tier's
+  `round` driver (`risk.md` §3c). The rounds left are a human's.
+- **Wait for quiet before acting** (CodeRabbit's inactivity clock).
+  Dispatch waits until the PR has had no push, review or human comment
+  for a debounce window (default 10 minutes), so a fix run doesn't race a
+  human still mid-review. Activity resets the timer; title and label edits
+  don't.
+
 ---
 
 ## 2. New tools
@@ -1007,6 +1028,20 @@ It has a second consumer beyond unblocking those decisions: §6's
 learnings runs read exactly this outcome data to decide which findings
 were worth making. That makes this item a prerequisite for the review
 half of cross-run learning, not just a measurement nicety.
+
+**Extended 2026-10-17 from findings to PRs** (`risk.md` §8). The same
+recorder also captures, per PR: follow-up fixes (`risk.md` §8a, the
+fix-forward label: a later fix-intent PR changing lines this PR
+introduced, or an incident or bug ticket attributed to it) with severity
+and time to first fix, review rounds, human comments, time from first review to merge,
+and the attention tier each session reported. Where the platform offers
+resolution reasons (Copilot's *Addressed / Won't fix / Incorrect*) they
+are recorded; elsewhere "anchored lines changed in a later commit" stands
+in for *addressed*, which is Atlassian's published **code resolution
+rate** metric (38.7% for their bot against 44.45% for humans —
+`../code-review-approaches.md` §12). The follow-up-fix-rate-by-tier series is
+the third consumer, and it is the one that gates relaxing any human
+requirement.
 
 ### 3f. Stateful re-review sessions
 

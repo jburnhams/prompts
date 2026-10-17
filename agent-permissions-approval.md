@@ -389,6 +389,13 @@ trusting the model's summary of what it read.
 
 ## 2b. Two models in the loop: a lookahead classifier gating an investigating reviewer
 
+*(2026-10-17: the machinery around these two prompts, including when a
+cached classifier `low` may approve an action, what invalidates it, and how
+evidence is budgeted, is read from source in
+[`codex/guardian-mechanics.md`](./codex/guardian-mechanics.md). The
+change-level counterpart of this whole section is
+[`agent-risk-assessment.md`](./agent-risk-assessment.md).)*
+
 Added 2026-09-12 from Codex's `guardian_v2` block
 ([`codex/guardian-v2-classifier.md`](./codex/guardian-v2-classifier.md)) and
 `core/assets/guardian/`

@@ -799,7 +799,10 @@ Worked example: `examples/validator-brief.md`.
 Everything above — envelope, diff, threads, briefs, validator — is
 shape-neutral. The harness dispatches a review run in one of two
 shapes, chosen per run by config (typically a changed-lines
-threshold); nothing in the wire formats differs between them:
+threshold — **superseded 2026-10-17**: the shape is now chosen by the
+attention tier, `risk.md` §5, because a three-line change to a
+permission check deserves the deep pass more than a two-thousand-line
+rename); nothing in the wire formats differs between them:
 
 - **Multi-stage** (`system-prompts.md` §2a — the reference shape): a
   pure orchestrator fans out to parallel role specialists, then
@@ -1180,3 +1183,224 @@ Everything phase 2 adds is an additive tag (`<review_state>`,
 `thread_updates`), or a new run source — no v1 shape changes meaning.
 That is the property the whole document is built to protect: the query
 structure holds still while the behavior around it grows.
+
+---
+
+## 11. Amendments from the October 2026 research (2026-10-17)
+
+The seven items marked "adopt now" after the review-tool survey
+([`../code-review-approaches.md`](../code-review-approaches.md) §12–13),
+plus three that came out of the follow-up reads on Rovo Dev, Devin
+Review, source tagging and orchestration. Each one names the section it
+amends. All are additive: new envelope blocks or attributes, new harness
+steps, new report fields. No v1 wire shape changes meaning, which is the
+property §10 protects.
+
+### 11a. Harness-computed provenance of changed lines (amends §4a)
+
+*From ClawSweeper's `## Provenance Evidence`
+([`../clawsweeper/review-item-pr.md`](../clawsweeper/review-item-pr.md)).*
+
+§4a limits what a finder may claim about history because review roles
+have no git. The harness has git, so it does the history work and hands
+the result over. A new envelope block, built at dispatch:
+
+```
+<provenance source="harness" nonce="{{ run_nonce }}">
+  <origin path="src/billing/charge.ts" lines="40-52" change="modified|removed|insertion_context"
+          commit="{{sha}}" pr="#{{n}}" ticket="{{KEY-123}}">
+    {{ that PR's title, then the first ~400 characters of its description }}
+  </origin>
+</provenance nonce="{{ run_nonce }}">
+```
+
+- **Built by blame.** The harness blames the base-side lines the diff
+  modifies or removes (and, for pure insertions, the unchanged lines
+  immediately around them, `insertion_context`). It maps each commit to
+  its PR through the platform API and to its Jira key through the PR's
+  branch or title.
+- **Bounded.** At most N origins (default 20), most-changed regions
+  first. Status is `partial` when the cap was hit, or `unavailable` for a
+  shallow history or an unresolvable PR. The prompt is told what each
+  status means, so a missing origin is never read as "no reason existed".
+- **What it unlocks.** §4a's provenance table gains a row: "this change
+  overrides behaviour introduced for *reason R* in PR #n" is now provable
+  from the envelope. This is ClawSweeper's `overrides_without_reason`, and
+  it feeds `risk.md` §11c's `product_direction` decision.
+- The descriptions are written by PR authors, so the block is untrusted
+  and nonce-wrapped like `<description>`.
+
+### 11b. Absent change coupling as a deterministic signal (amends `risk.md` §3a)
+
+*From CodeScene's delta analysis
+([`../agent-risk-assessment.md`](../agent-risk-assessment.md) §8).*
+
+The harness computes, from the last 12 months of the base branch, which
+file pairs change together in at least 60% of the commits that touch
+either one (with a minimum of 5 co-changes). For each changed file whose
+strong partner is **not** in the diff, it adds an `unverified` entry to
+the attention block: "`a.ts` usually changes with `b.ts` (14 of 17
+commits); `b.ts` is unchanged here". This is never a finding, because it
+might be deliberate. It does point `look_here` at the boundary between
+the two files. No model is involved, it costs one `git log` pass that
+can be cached per base commit, and no LLM reviewer in the collection
+produces it.
+
+### 11c. Secret scan before the model sees the diff (amends §2)
+
+*From ClawSweeper's TruffleHog admission
+([`../clawsweeper/README.md`](../clawsweeper/README.md) §6).*
+
+A new **step 0** of diff construction: run a pinned secret scanner over
+the full introduced diff, the PR description and the comment bodies
+before any envelope is built.
+- **A verified live secret** stops the review. The harness reports
+  "review refused: credential material in the change", with no value and
+  no path in the comment, and never sends the content to a model. A
+  model finding that quoted the line would publish the secret a second
+  time.
+- **Unverified matches** are replaced in the envelope with
+  `[redacted: possible credential, detector X]`, and the run continues.
+  The redaction appears in `unverified`.
+- **A scanner error or timeout refuses the review.** "Refuse" means the
+  harness's fail-closed path (`risk.md` §6): status pending, no model
+  call, never a silent skip.
+
+### 11d. Stable finding identity across sessions (amends §7)
+
+*From PR-Agent's `previous_findings` and Copilot's overview buckets
+([`../pr-agent/README.md`](../pr-agent/README.md)).*
+
+§7's reconciliation already joins findings to threads. Two additions:
+- **Identity is a key, not text.** Each finding gets
+  `fingerprint = hash(role, class, file, symbol-or-hunk-header, normalised
+  summary)` when posted, and `<review_state>` carries it. A candidate
+  with the same fingerprint as an open finding is a duplicate before
+  dedup's judgment call is even needed. PR-Agent's word-for-word restating
+  gets the same effect from the model at the cost of output tokens; a
+  harness-side key is cheaper and can't drift.
+- **Late findings are reported, not posted inline.** A new candidate on
+  code unchanged since an earlier session's head, where the earlier
+  session already had it in its diff, is posted only in the Complete
+  report's `late_findings` list unless it is `blocking` (Copilot's
+  "previously missed", ClawSweeper's `lateFinding`). It is counted
+  against the reviewer in telemetry, not the author. A late blocking
+  finding still posts, with the delay acknowledged in its first line.
+
+### 11e. Guidance provenance in the report (amends §4a's closing note)
+
+*From CodeRabbit's summary labels.*
+
+The Complete report gains `guidance_used: [{path, rev, origin:
+"conventions@base" | "review_policy@base" | "org_policy" | "learning",
+sections}]`, and the harness renders it in the review summary as one
+line. This is the one-line change §4a recorded and deferred. It is now
+v1, because Cursor, Claude Code Review, Bugbot and CodeRabbit all show
+or document this, and "why did the bot say that" is the most common
+question on a review comment.
+
+### 11f. Moved and copied code is marked by the harness (amends §2)
+
+*From Devin Review.*
+
+§2 already passes `-M` (rename detection). It adds:
+- **`-C` copy detection**, so a duplicated file is rendered as a copy
+  plus its small edits, not as a new file.
+- **Moved-block detection inside files and across files**, from git's
+  own moved-lines algorithm (`--color-moved=plain
+  --color-moved-ws=allow-indentation-change`, parsed from the colour
+  codes rather than shown to the model). Each moved block's hunk lines
+  get a one-line annotation in the envelope's diff (`[moved from
+  src/old.ts:120-160, unchanged]` or `[…, 2 lines differ]`). The
+  attention block's `mechanical` list gets the block automatically.
+
+A moved block with **no** differing lines is excluded from finder scope
+like a generated file, while staying visible. A moved block *with*
+differences is in scope only for the differing lines. This also partly
+covers Devin's reading-order idea: `look_here` ranges are listed in
+dependency order (callee before caller, where the harness's import graph
+can tell), not file order.
+
+### 11g. Source attribute on every block (amends formats.md §1b)
+
+*From Codex's per-part provenance
+([`../agent-content-provenance.md`](../agent-content-provenance.md)).*
+
+Every envelope and brief block carries `source=`: `harness`,
+`repo@base`, `repo@head`, `pr_author`, `commenter`, `ticket`,
+`tool`. It goes next to the nonce on untrusted blocks, and alone on
+harness-authored ones. The reviewer core states once what each source
+may establish: only `harness` and `repo@base` can carry instructions;
+`pr_author`, `commenter` and `ticket` are intent context; `repo@head` is
+the thing under review. Any summary or elision of a block keeps its
+`source`, and the elision marker is `source="harness"`. Provenance is
+recorded independently of trust, as Codex does, so each consumer
+(finder, validator, risk triage) applies its own policy to the same
+tag.
+
+### 11h. Steps 3–5 of the review pipeline become harness code (amends §6 and `system-prompts.md` §2a)
+
+*From the October convergence in
+[`../agent-subagent-architectures.md`](../agent-subagent-architectures.md)
+§7b.*
+
+Fan-out, dedup against threads, validation and same-location dedup are
+fixed procedure in Forge: the orchestrator prompt already says
+"delegation here is not a judgment call". The design now states the
+consequence. In the reference implementation these steps are
+**harness code that calls models**, not an orchestrator model following
+a numbered prompt:
+- Specialists and validators are invoked with typed schemas
+  (`formats.md` §4).
+- Dedup's exact half is the fingerprint join (11d); only the fuzzy half
+  (a candidate overlapping an open human thread) remains a model call,
+  with one question.
+- Results are cached per (prompt version, envelope hash) so a crashed run
+  resumes without re-running completed leaves, as Claude Code's Workflow
+  tool does.
+- The **orchestrator model keeps** step 1½ (risk triage), writing
+  `<focus>`, judging a specialist's "nothing to review" claim, and
+  reconciliation replies. Those are the judgment steps.
+
+ClawSweeper's list of what "must stay deterministic" carries over almost
+unchanged: authorization, repository boundaries, protected labels, exact-
+head identity, budgets, and the final comment and status writes. The
+`orchestrator` prompt in `system-prompts.md` §2a stays the
+specification of behaviour, and a prompt-driven implementation remains
+valid, but it is no longer the reference.
+
+### 11i. Ticket acceptance criteria, settled (amends `medium.md` §3a)
+
+*From Rovo Dev's documented behaviour
+([`../code-review-approaches.md`](../code-review-approaches.md) §13).*
+
+The phase-2 ticket-compliance lens adopts Rovo's three answers:
+- **Finding the ticket:** the branch name key first, then the PR title,
+  then commit messages. More than one distinct key in commits means **no**
+  ticket, never a guess.
+- **Which fields:** the description, plus custom fields named Acceptance
+  Criteria / AC, Requirements (business or functional) and Definition of
+  Done. Forge also reads them when the description is empty, where Rovo
+  doesn't.
+- **What it returns:** one result per criterion: `met` (with the code
+  location), `missing`, or `needs_manual_check` (with why). `missing` on
+  a criterion is a `defect`-class finding against the PR as a whole.
+  `needs_manual_check` becomes a `proof_sufficiency` decision in the
+  attention block (`risk.md` §11c).
+
+For Forge-authored PRs this closes the loop with the coding entrypoint:
+the ticket that dispatched the implement run is the one checked.
+
+### 11j. Phasing
+
+| Amendment | v1 | Phase 2 |
+|---|---|---|
+| 11a provenance block | Blame + PR titles | + ticket keys, insertion context |
+| 11b change coupling | Computed, in `unverified` | Cached per base commit |
+| 11c secret scan | Yes; refuse on verified secret or scanner failure | — |
+| 11d fingerprints, late findings | Fingerprint on posted findings | `late_findings` with sessions (§7) |
+| 11e guidance provenance | Yes | — |
+| 11f moved/copied | `-C` + moved-block annotations | Dependency-ordered `look_here` |
+| 11g `source=` attribute | Yes | Survives compaction of blocks |
+| 11h steps 3–5 as code | Reference implementation | — |
+| 11i acceptance criteria | — | With the compliance lens (`medium.md` §3a) |

@@ -9,6 +9,18 @@ hasn't reached. Nothing here should influence a v1 implementation; it
 exists so these ideas are tracked instead of forgotten or silently
 re-litigated later.
 
+- **A learned actionability filter after the validator.** *(Added
+  2026-10-17.)* Atlassian's RovoDev reviewer found an LLM
+  factual-correctness judge "surprisingly ineffective" and a small
+  classifier trained on whether past comments led to a code change worth
+  roughly 15–20 points of alignment (`../code-review-approaches.md` §12,
+  pattern 7). The shape that fits this design is a *noise* filter placed
+  after validation — the validator keeps the is-it-real question,
+  untouched — and never applied to `security` findings (Greptile's
+  exemption, for the same reason). **Gated on** `medium.md` §3e's outcome
+  data reaching months of labelled history; until then there is nothing
+  to train on.
+
 - **Adoption-verified criteria maintenance.** The reviewer core
   (`system-prompts.md` §4) is hand-authored and has no revision
   mechanism — it says what it says until someone edits it. The upgrade

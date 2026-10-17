@@ -601,6 +601,102 @@ tells the model not to use the tool for the thing it will want to use it
 for: "use it to recall which ones you started, **not to poll for
 completion** — you are told when one finishes."
 
+## 7b. October 2026: orchestration moves into code
+
+*Added 2026-10-17.* Four independent sources converged within about three
+months on the same split: **the model does the leaf work; ordinary,
+deterministic code decides who runs, in what order, with what authority,
+and what happens to the results.**
+
+**Claude Code's Workflow tool** (described from the tool's own definition
+in a live session; the bundled authoring guide was not read).
+- **A workflow is a JavaScript script.** It must open with a pure-literal
+  `meta` block (name, one-line description, optional phases) and then
+  calls `agent()` for each leaf, combined with `parallel()`,
+  `pipeline()` and `phase()`.
+- **Results are typed.** Each `agent()` call can take a JSON Schema, so
+  results come back as data the script branches on.
+- **Runs are resumable.** A run can be resumed by run ID, and completed
+  `agent()` calls whose prompt and options are unchanged return cached
+  results.
+- **It runs in the background** and reports completion as a
+  notification.
+- **The harness keeps it opt-in.** It refuses the tool unless the user
+  explicitly asked for multi-agent orchestration (a keyword, a session
+  setting, a named workflow, or the user's own words), and applies a
+  default size guideline of "under 10 agents".
+- **The canonical pattern is pipeline-then-verify:** each review dimension
+  verifies its findings as soon as that dimension finishes, rather than
+  waiting for every dimension.
+
+Anthropic's `pr-stamp-sweep` (stored in
+[`github-pr-bots/agent-approval-check/`](./github-pr-bots/agent-approval-check))
+is a real one: a reviewer per PR, then an adversarial verifier only on
+the "approve" recommendations, sorted into four buckets by plain
+JavaScript filters.
+
+**ClawSweeper** (`clawsweeper/`, `docs/orchestration.md`) states the
+division as policy:
+- "Codex proposes a disposition; deterministic code decides whether the
+  resulting apply mutation is allowed and applies it."
+- What "must stay deterministic" is listed explicitly: write and
+  maintainer authorization, target-repository boundaries, protected
+  labels and close guards, stale-item drift and **exact-head review
+  identity**, worker budgets, and the final GitHub comments, labels and
+  closes.
+- CI workflows stay thin (setup, credentials, run a script, upload,
+  publish). Routing logic lives in TypeScript so every trigger path
+  behaves the same.
+- Comments, records, ledgers and dashboards are "projections, not
+  independent sources of truth".
+
+**Codex multi-agent v2** (`openai/codex`, Sep–Oct 2026 commits) hardened
+the agent tree itself:
+- **Message boards replace or supplement direct messages.** A remote
+  board can be configured (#49267; ignored in project-local config). When
+  `disable_direct_message` is set (#47540), `send_message` and
+  `followup_task` disappear and agents must coordinate through a board
+  `post`. All coordination then goes through one observable channel.
+- **Coordinated tree shutdown** (#49814). Starts are refused, pending
+  startups cancelled, and every session in the tree signalled, including
+  delegates outside the registry. Waiting covers teardown and reports
+  persistence failures. Other trees are unaffected.
+- **Provisional children** (#53654). A spawned child isn't committed
+  until the spawn result is returned to the parent, so cancellation in
+  between can't leave an orphan the parent never heard of.
+- **Forks inherit either the whole history or none** (#51329).
+  Partial-history forks were removed, and inherited role instructions are
+  stripped by kind.
+- **Model choice moved out of the tool schema** (#49560). Listing models
+  in `spawn_agent`'s description changed the schema whenever the catalog
+  changed. A bounded `<model_catalog>` developer message, appended only
+  when its content changes, keeps tool definitions stable for caching.
+- **Delivery and failure telemetry** (#51331, #51355): every child
+  result's delivery is counted queued or failed, and spawn failures carry
+  bounded cause labels (capacity, registry, runtime, stage).
+
+**Greptile v5** (`code-review-approaches.md` §13) fans out by
+**hypothesis**: one narrowly scoped agent per suspected bug, in parallel.
+That is a fourth reason to fan out, alongside context coverage, role
+specialisation and sampling variance (`agent-design/review.md` §6a).
+Greptile reports it halved median review time and raised the share of
+addressed comments from 52% to 66%.
+
+**What converges:**
+- **Control flow, authorization, identity checks and side effects are
+  code.** Judgment is the model's.
+- **Results are schemas, not prose.**
+- **Children are cheap to cancel and never orphaned**, and the tree has
+  one owner of shutdown.
+- **Coordination is observable**: boards, ledgers, projections.
+- **Resumability comes from caching completed leaves**, not from
+  checkpointing a conversation.
+
+Forge's review pipeline (`agent-design/system-prompts.md` §2a) is written
+as a *prompt* the orchestrator follows step by step. Every source above
+would write steps 3–5 (fan out, dedup, validate) as code that calls
+models. `agent-design/review.md` §11h records the consequence.
+
 ## 8. Absences worth noting
 
 - **The layer above the call graph: nothing here except OpenClaw has
