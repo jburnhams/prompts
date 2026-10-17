@@ -4,6 +4,8 @@ All notable changes to this repository, grouped by day, newest first. Generated 
 
 ## 2026-10-17
 
+One long session on code review and change risk, in five passes, all on branch `claude/review-recent-developments` (PR #33). Listed newest first.
+
 **Rovo Dev, Devin Review, Greptile, source tagging and orchestration; the "adopt now" amendments.**
 
 - `code-review-approaches.md` §13 — new. Rovo Dev: ticket found from the branch, then commits, and multiple keys means none; AC read from the description and named custom fields; a met / missing / needs-manual-check result per criterion; `.rovodev/.review-agent.md`. Devin Review: hunks in reading order and moved/copied code detection. Greptile: v5's swarm of single-hypothesis agents (median review time 5:04→2:25, addressed comments 52%→66%); Base/Plus/Apex with Auto choosing by size, risk and complexity; `greptile.json` read from the PR's **source** branch except `autoApprove`, which is read from base.
@@ -12,15 +14,16 @@ All notable changes to this repository, grouped by day, newest first. Generated 
 - `agent-design/review.md` §11 — the amendments. 11a harness-blamed provenance of changed lines; 11b absent change coupling; 11c secret scan before the model sees anything; 11d finding fingerprints and late findings; 11e guidance provenance in the report; 11f moved and copied code marked by the harness; 11g a `source=` attribute on every block; 11h review steps 3–5 as harness code; 11i the acceptance-criteria check settled.
 - `agent-design/medium.md` §1d — repair caps (1 per head, 3 rounds, a quiet window). `agent-design/risk.md` §6 — next action shown separately from tier.
 
-## 2026-10-17 (fix-forward and third pass)
+**Fix-forward relabelling.** The team fixes forward rather than reverting, so revert counts label almost nothing.
+
+- `agent-design/risk.md` §8a — new. The outcome label is the **follow-up fix**: a later merged change with fix intent (a Jira Bug or Incident, a fix/hotfix convention, a Forge fix or responder run) that edits lines the PR introduced, traced by blame SZZ-style; or a ticket whose "caused by" names the PR. Weighted by severity (incident > customer bug > hotfix > ordinary), with the known noise and how to limit it. Adds time-to-first-fix and "did `look_here` point at it".
+- Calibration (§8, §12b), the predictor features (§12a), the per-configuration record (§12d), `medium.md` §3e telemetry, `eval.md`'s evaluation sets and open question, and `agent-design/README.md` all switch from reverts to follow-up fixes. The `reversibility` value `revertable` is renamed `fix_forward_safe`.
 
 **Change risk, third pass: learned prediction and the approval products.** Asked to cover CodeRabbit and other change-level risk systems, leaving aside tool-use safety (left to containers and scoped credentials).
 
 - `agent-risk-assessment.md` §6–8 — new. Meta's Diff Risk Score: incident labels, a logistic regression and then a fine-tuned 13B LLM, and the "share of SEVs caught for share of diffs gated" curve (18.7%→about 26% at 5% gated; 84.6%→about 89% at 50%), which carried over to code it hadn't seen. RADAR's layered funnel (authorship class → eligibility and 60-day track record → static heuristics → per-source percentile DRS thresholds → LLM review needing every change in a safe category → deterministic validation → land after a veto window): 331k+ diffs landed, with about a third the revert rate and about a fiftieth the incident rate. DRS-OSS, the open-source replication. gitStream's rule library and its estimated review time. CodeRabbit's separate signals (residual versus inherent risk, review guidance, effort, an evidence-first blast-radius graph). Cursor Approval Agents (per-directory policy files, never loosening its own policy). CodeScene hotspots and absent change coupling. Learned models are added as a fifth way of setting the level, and the calibration open question is partly answered.
-- `agent-design/risk.md` §12 — new. A history-based predictor as a raise-only input (later, gated on labels); calibration by share of reverts caught for share escalated; `low` only when every hunk falls in a named safe category; a per-agent-configuration track record replacing "trusted authors"; effort reported separately (`effort_minutes`) and inherent versus residual risk both shown; an evidence-only blast-radius graph; and approval-policy files with the stricter-rule-on-conflict and never-self-loosen rules.
+- `agent-design/risk.md` §12 — new. A history-based predictor as a raise-only input (later, gated on labels); calibration by share of bad outcomes caught for share escalated (labelled by follow-up fixes after the fix-forward pass below); `low` only when every hunk falls in a named safe category; a per-agent-configuration track record replacing "trusted authors"; effort reported separately (`effort_minutes`) and inherent versus residual risk both shown; an evidence-only blast-radius graph; and approval-policy files with the stricter-rule-on-conflict and never-self-loosen rules.
 - `code-review-approaches.md` §12 table: rows for Meta DRS/RADAR, Cursor Approval Agents and gitStream.
-
-## 2026-10-17 (deep dive)
 
 **Risk deep dive: Guardian and ClawSweeper from source.** Asked for a deeper look at Codex Guardian and ClawSweeper, treating risk as a large area in its own right.
 
@@ -28,8 +31,6 @@ All notable changes to this repository, grouped by day, newest first. Generated 
 - `clawsweeper/` — new folder: the bot's review prompts and merge/security instructions (MIT) plus a README covering its "abundant intelligence, scarce trust" split, the eight domain-typed merge-risk labels, typed maintainer decisions with fix/accept/pause options, product-review-first ordering, the authority-chain procedure, proof as its own axis, code-enforced readiness and protected labels, and the **retirement of automerge** (correcting the morning's note, which came from the OpenClaw-side skill).
 - `agent-risk-assessment.md` — new cross-source document: action risk versus change risk, nine dimensions, four ways a level gets set, and the recurring mechanisms (binding, fail-closed, asymmetric relaxation, protected categories, never cutting a restriction, shadow measurement, repetition as signal).
 - `agent-design/risk.md` §11 — second pass: the tier is bound to a snapshot and a mismatch counts as missing; drivers are typed by dimension and a repo-defined domain, with `security-boundary` hard-wired to high; `required_decisions` with fix/accept/pause options; proof as its own axis; the authority-chain lens on authority drivers; and repetition, late findings and shadow comparison. The §2 schema and §10 phasing are updated to match.
-
-## 2026-10-17 (earlier)
 
 **Code review: the attention axis.** Asked to read Anthropic's code-review post and its linked pages, then to sweep recent (Aug–Oct 2026) changes across review agents and harnesses and fold what's worth adopting into the design. The main finding is that the field has split review into two outputs: what's wrong with a diff, and how much human attention it needs before merge.
 
