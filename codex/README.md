@@ -62,6 +62,12 @@ Each file carries a provenance header naming its exact source path.
   sandbox-mode and approval-policy templates.
 - [`review-rubric.md`](./review-rubric.md) — `ReviewTask`'s rubric, now with
   repository-rule attribution and P0–P3 priorities.
+- [`repo-review-skills.md`](./repo-review-skills.md) — added 2026-10-17:
+  the four `.codex/skills/code-review*` skills the Codex repository used
+  to review its *own* PRs (change size, breaking integration surfaces,
+  model-visible context), read at `ee6814b` and deleted upstream on
+  2026-09-30. Captured for their escalation rule: a new context item that
+  can exceed 1k tokens is P0 and "need[s] an additional manual review".
 - [`base-instructions-fallback.md`](./base-instructions-fallback.md) —
   `models-manager/prompt.md`, the compiled-in `BASE_INSTRUCTIONS` used when
   the catalog supplies no template for the selected model.
@@ -1827,6 +1833,46 @@ was introduced in the commit (pre-existing bugs should not be flagged)" and
 "It is not enough to speculate that a change may disrupt another part of the
 codebase… one must identify the other parts of the code that are provably
 affected."
+
+## The 2026-10-17 re-read: Guardian learns to look things up (targeted)
+
+A targeted pass over `ee6814b..ce0323f2f2` (2026-09-12 → 2026-10-17),
+limited to review, Guardian and context assembly. The `ReviewTask` rubric
+and `codex-rs/prompts/templates/review/` are **unchanged**. `/review`
+gained only lifecycle fixes (#50804, #51217). Guardian changed the most:
+
+- **Conversation-history retrieval** (#49036, 2026-09-28, off by default
+  behind `guardian_conversation_history_tools`). The reviewer gets
+  `user_message.search_messages` / `read_messages` over the parent's live
+  connection, because "the transcript supplied to Guardian may omit earlier
+  user instructions, restrictions, or revoked permissions". The parent's
+  tool policy is rechecked on every call. Output is capped at about 4,000
+  tokens. The prompt has to tell **user authorization** apart from
+  **assistant context** and account for *later revocations*. This is the
+  spend rule from `guardian-policy.md` ("only call tools when they would
+  flip an allow/deny decision") applied to the transcript: a reviewer
+  that can't see an authorization fetches it, instead of guessing.
+- **Handoff-aware root context for sub-agents** (#49057, off by default).
+  When reviewing a worker's action, Guardian picks the root conversation
+  around each `spawn_agent` / `send_message` / `followup_task` that reached
+  that worker or its ancestors, plus the three latest root messages "so
+  recent cancellations remain visible". This makes the authority a
+  sub-agent acts under traceable to the handoff that granted it.
+- **Reviews bound to the action's target environment** (#47630). An action
+  in a secondary environment had been reviewed under the primary
+  environment's denied-read rules. The review now carries
+  `environment_id`, rejects unknown environments, and says explicitly when
+  an environment has *no* denied paths.
+- **Provenance, added, removed and re-added.** Per-content-part source
+  attribution (`ContentItemMetadata`: user input, developer instructions,
+  `AGENTS.md`, skills, harness context, hooks, tool context) landed on
+  2026-10-08 (#52195) and was removed the same day (#52329). It came back
+  on 2026-10-14 (#53831), now carried through compaction, with missing
+  history defaulting to "unknown". A transcript reviewer can then tell who
+  supplied each piece of text. It is the harness-level version of
+  Forge's nonce-wrapped blocks (`agent-design/context-files.md` §5).
+- **Repository guidance deleted** (#49713, 2026-09-30). See
+  [`repo-review-skills.md`](./repo-review-skills.md).
 
 ## The extension contributor API
 

@@ -799,7 +799,10 @@ Worked example: `examples/validator-brief.md`.
 Everything above — envelope, diff, threads, briefs, validator — is
 shape-neutral. The harness dispatches a review run in one of two
 shapes, chosen per run by config (typically a changed-lines
-threshold); nothing in the wire formats differs between them:
+threshold — **superseded 2026-10-17**: the shape is now chosen by the
+attention tier, `risk.md` §5, because a three-line change to a
+permission check deserves the deep pass more than a two-thousand-line
+rename); nothing in the wire formats differs between them:
 
 - **Multi-stage** (`system-prompts.md` §2a — the reference shape): a
   pure orchestrator fans out to parallel role specialists, then

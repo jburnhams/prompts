@@ -33,6 +33,7 @@ index.
 | [`workboard.md`](./workboard.md) | The Workboard team-work system: worker prompt, worker-context format, the 30-odd `workboard_*` tool descriptions, claim tokens, dispatch selection, diagnostics, workspace authority. |
 | [`learning-and-memory-prompts.md`](./learning-and-memory-prompts.md) | The five prompts that write into the agent's own future context: per-turn skill review, `/learn`, historical session scan, memory consolidation, and the compaction summary contract. |
 | [`review-and-approval-prompts.md`](./review-and-approval-prompts.md) | The `autoreview` structured code-review prompt and schema, the exec/widget auto-reviewer prompts, and the GPT-5-family behaviour contract. |
+| [`clawsweeper-skill.md`](./clawsweeper-skill.md) | Added 2026-10-17, from `2437641caba` (2026-10-16): `.agents/skills/clawsweeper/SKILL.md`, the maintainer skill for OpenClaw's review/repair/merge bot. The merge gate, repair caps and `human-review` stop label are summarised under *Code review* below. |
 | [`AGENTS.md`](./AGENTS.md) | The repository's own agent-facing standing orders — Repair Doctrine, Product Doctrine, ClawSweeper Review Policy, Architecture, Commands, Validation. 361 lines, telegraph style, explicitly "root rules only". |
 
 Paths worth re-reading but not copied here — see
@@ -633,6 +634,29 @@ The richest source here, because the output surface is a chat.
 - **Streaming has a channel rule**: no token-delta channel messages.
 
 ### Code review — [`code-review-approaches.md`](../code-review-approaches.md)
+
+**Added 2026-10-17: ClawSweeper, the merge side** ([`clawsweeper-skill.md`](./clawsweeper-skill.md)).
+`autoreview` (below) finds problems. ClawSweeper is the bot that acts on
+the result, and its skill is the clearest open-source statement in this
+collection of *when a review result is allowed to cause a merge*. Opting a
+PR into `automerge` runs a bounded review → fix → merge loop that merges
+**only** when all of these hold: ClawSweeper passed the *exact current
+head*, checks are green, GitHub reports it mergeable, the PR is not a
+draft, there is no `clawsweeper:human-review` label, and both global
+gates (`CLAWSWEEPER_ALLOW_MERGE`, `…_AUTOMERGE`) are open. If it passes
+with the gates closed, it labels the PR `merge-ready` and comments
+instead. A maintainer's `@clawsweeper stop` adds `human-review`, so
+escalating to a person is one comment while de-escalating needs a
+maintainer and an open gate. Repairs are capped at 10 per PR and **1 per
+head**. Security-sensitive work is routed out of the bot entirely: it may
+repair a security finding on an opted-in PR, but merge stays blocked until
+a later exact-head review is clean. The token boundary is explicit:
+"Codex workers do not get mutation credentials … Deterministic scripts own
+comments, labels, branch pushes, PR creation, closes, and merges", and
+"Merge and write gates default closed". The 2026-10 commits made
+maintainer reviews opt-in and stopped PRs waiting on "advisory"
+ClawSweeper reviews (#169739, #170587), so the bot's review is now a
+signal that gates nothing unless a PR opts in.
 
 `autoreview` is a second-model review helper with a validated bundle, a
 strict JSON schema, and a set of rules that are genuinely new to this

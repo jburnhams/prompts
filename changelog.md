@@ -2,6 +2,15 @@
 
 All notable changes to this repository, grouped by day, newest first. Generated from git history.
 
+## 2026-10-17
+
+**Code review: the attention axis.** Asked to read Anthropic's code-review post and its linked pages, then to sweep recent (Aug–Oct 2026) changes across review agents and harnesses and fold what's worth adopting into the design. The main finding is that the field has split review into two outputs: what's wrong with a diff, and how much human attention it needs before merge.
+
+- `code-review-approaches.md` §12 — new. A table of what each source now produces besides findings (Anthropic's internal tiers, Claude Code Review's machine-readable severity counts, `agent-approval-check`, `pr-stamp-sweep`, PR-Agent's assessment fields, Bugbot, CodeRabbit Triage, Copilot, ClawSweeper, Codex's removed repo skills) and seven patterns. **No open-source source computes a risk tier from paths plus content with an escalate-only rule.** Atlassian's RovoDev paper: a trained actionability classifier beat an LLM judge.
+- `agent-design/risk.md` — new. An `attention` block on every non-skipped review (tier, floor, drivers, reversibility, `look_here`, mechanical, unverified, failure modes). The tier is the max of a harness path-rule floor, pre-fan-out triage and post-validation escalations; the tier picks the run shape; and a harness-side, SHA-bound, fail-closed approval gate ships in shadow until revert rate by tier calibrates it. Amendments in `formats.md` §3b, `system-prompts.md` §2a (steps 1 and 7), `review.md` §6 (line-count threshold superseded), `medium.md` §3e, `eval.md`, `future.md` and the README decision log.
+- New sources: `github-pr-bots/agent-approval-check/` (Anthropic, MIT: the N-human-approvals gate for agent PRs, and the stamp-sweep workflow, both missed by the July pass), `codex/repo-review-skills.md` (Codex's own review skills, deleted upstream 2026-09-30), `openclaw/clawsweeper-skill.md`.
+- Refreshed: every `pr-agent/*.toml` to `5a50bf1e`. The README records `risk_level`, `merge_recommendation`, `failure_modes`, `review_priority_files`, and earlier findings fed back as active/resolved/dismissed, which supersedes the July claim that `/review` never sees prior discussion. `codex/README.md` has a targeted Guardian re-read: conversation-history retrieval, handoff-aware sub-agent context, target-environment binding, and provenance metadata added, removed and re-added.
+
 ## 2026-10-13
 
 **Tabular tool results: which text format, measured.** Asked whether `content` for a table should be CSV, TSV or pipe-delimited and whether the design already said, the answer was that `data.md` §2c said only "delimited text". `agent-tabular-results.md` fills it, with two scripts in `bench/`.

@@ -450,6 +450,13 @@ standing procedure:
    review doesn't mean a new push has nothing left worth flagging;
    step 4's dedup is what keeps a re-review from being noisy, not a
    skip gate here.
+   Then read the `<review_policy>` block: the attention floor the harness
+   computed from the changed paths, and the rules that set it. Before
+   launching anything, decide whether this change needs more human
+   attention than that floor — what it touches, whether it can be undone
+   by a revert, which few line ranges a human must judge — and note your
+   drivers. You may raise the tier above the floor; you may never lower
+   it. (`risk.md` §3b.)
 2. **Gather context.** The task envelope already carries the diff,
    PR title/description, and changed-file list (see `formats.md`) — you
    do not need to re-fetch these. If the repository has a
@@ -538,8 +545,14 @@ standing procedure:
    summary (next step), not as a PR comment. What, if anything, gets
    surfaced from a no-findings run is a call for whatever invoked
    Forge, not something Forge posts itself.
-7. **Report.** Call Complete with the full list of findings (posted and
-   filtered-out, per `formats.md`'s schema) and a short summary — this
+7. **Report.** Before calling Complete, apply the escalation table you
+   were given (`risk.md` §3c) to the findings that survived validation —
+   a confirmed blocking defect, a confirmed security defect, anything
+   you could not verify, or a change that is hard to reverse each raises
+   the tier, and nothing lowers it. Call Complete with the full list of findings (posted and
+   filtered-out, per `formats.md`'s schema), the `attention` block — required even
+   when there are no findings, since a clean review is not a statement
+   that the change is safe — and a short summary — this
    is the single place a run's overall outcome is recorded; nothing
    about it is duplicated onto the PR as a comment.
 

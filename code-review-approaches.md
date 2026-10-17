@@ -24,6 +24,7 @@ etc.) — only things whose job is specifically reviewing code.
 | [`github-pr-bots/codex-review`](./github-pr-bots/codex-review) | GitHub PR | OpenAI reference implementation |
 | [`github-pr-bots/opencode-review`](./github-pr-bots/opencode-review) | GitHub PR (`/oc` mention, or automated) | GitHub Action |
 | [`composio-swekit/pr_review`](./composio-swekit) | GitHub PR | Multi-agent framework template (LangGraph) |
+| [`github-pr-bots/agent-approval-check`](./github-pr-bots/agent-approval-check) | GitHub PR, merge side (approval gate + stamp sweep) | GitHub Action + Claude Code workflow; added 2026-10-17, see §12 |
 | [`deepseek-harness/skills/dsh-code-review`](./deepseek-harness) | GitHub PR, one repo only | Repo-resident skill + a self-maintenance loop |
 | [`openclaw/.agents/skills/autoreview`](./openclaw) | Any git target (branch, PR, ref range), one repo | Repo-resident skill + a 6,168-line Python driver calling a second model |
 
@@ -576,6 +577,112 @@ building an explicit second sweep for the same reason; this is the one-sentence
 version, and it sits directly beside the opposite instruction ("If there is
 no finding that a person would definitely love to see and fix, prefer
 outputting no findings"), which is the pairing that makes either safe.
+
+## 12. How much human attention: the August–October 2026 shift
+
+*Added 2026-10-17 from a pass over vendor changelogs and docs (Aug–Oct
+2026) and the open-source review sources re-read at their current heads.
+Sources and SHAs are in [`sources.md`](./sources.md), "The review-attention
+pass".*
+
+Through mid-2026 every source in this document answered one question:
+*what is wrong with this diff?* In the three months to October the
+industry added a second output, and it is a separate one: **how much
+human attention, and from whom, this change needs before it merges.**
+Anthropic states the target most plainly in its [code-review
+post][anth-post]: "the least human review time that doesn't increase
+reverts or incidents". Reverts and incidents are the guardrail, and
+approvals per PR, human comments and wait time are what gets driven down.
+
+### What each source now produces besides findings
+
+| Source | Attention / risk output | Set by | Can it lower human involvement on its own? |
+|---|---|---|---|
+| **Anthropic internal** ([post][anth-post]) | Low / medium / high tier → 0 / 1 / 2 human approvers. Low = docs, copy, additive-behind-a-flag; medium includes named sensitive areas (caching, auto-updater, system prompts); high = two people | A classifier, from **the change, not the author**; a second classifier **can only escalate**; lighter paths only for trusted authors | Yes for low tier, after green checks. An agent's approval never counts as a human's, the person who prompted an agent change is a required reviewer, and approvals bind to one commit |
+| **Claude Code Review** (GA 2026-10-15) | Severity counts as machine-readable JSON in the check run (`{"nit","normal","pre_existing"}`); the check itself is always neutral | Review agents | No. It "never approves or blocks"; gating is left to the customer's CI parsing the counts, and a **missing** count line must be read as "no verdict", not zero |
+| [`agent-approval-check`](./github-pr-bots/agent-approval-check) (Anthropic, MIT) | Required status: N human approvals on agent-authored PRs | Deterministic; triggered by **authorship** | No. Fails closed; exempt paths are the only relaxation |
+| [`pr-stamp-sweep`](./github-pr-bots/agent-approval-check) (Anthropic, MIT) | `stamp / needs-discussion / skip`, `securitySensitive` by *what is touched*, and an adversarial verifier **only on stamp candidates** | Two agents | It recommends; a maintainer stamps |
+| [PR-Agent](./pr-agent) (2026-08-31 →) | `risk_level`, `merge_recommendation` (`no_concerns_found / needs_review / changes_required`), `failure_modes` with `detected_by` / `covered_in_this_pr`, `review_priority_files` | The model, in one pass, all opt-in | No; advisory fields in the review comment |
+| **Cursor Bugbot** | `riskScore` in the PR summary; effort `low / default / high / smart`, where `smart` takes a natural-language rule for picking the level per PR | Not documented | Not by Bugbot itself. Repo config is read from the **base branch** and can lower Autofix but never enable it |
+| **CodeRabbit Triage** (2026-08-13 →) | Per-PR priority P0–P3 with a stated reason; separate rated facts (risk, security risk, **blast radius**, review effort) that admin rules can match | Deterministic base score (validated finding severity, linked-ticket urgency, PRs blocked behind it) plus a model "verdict"; override order manual > verdict > admin rule > base | Yes, through a rule: "Merge low-risk changes" merges when risk *and* review effort are low and required checks and reviews pass. Branch protection still wins |
+| **Copilot code review** | An effort level per review (Lite / Balanced; Balanced default since 2026-09-28); an overview split into Open (with `new`), Resolved since last review, and Previously missed | Admin/user setting | No |
+| [OpenClaw ClawSweeper](./openclaw/clawsweeper-skill.md) | `merge-ready` / `human-review` labels | Deterministic gate over the bot's exact-head review | Yes, on opted-in PRs only, behind two global gates; `@clawsweeper stop` escalates in one comment |
+| [Codex repo skills](./codex/repo-review-skills.md) (removed 2026-09-30) | "P0 … need an additional manual review" for any new context item that can exceed 1k tokens | A repo-specific lens | No |
+
+### Seven patterns, and how widely each one is shared
+
+1. **Attention is a separate output from findings, because a clean review
+   isn't a safety claim.** Claude Code Review says outright that a review
+   with no findings doesn't mean the code is error-free. Bugbot (week of
+   2026-10-05) stopped reporting "clean" when every finding was *filtered
+   out*. CodeRabbit's docs say P3 on an unreviewed PR means no signal
+   raised it, not that someone looked and found little. PR-Agent is the
+   counter-example: its `risk_level` is defined mostly by findings, so a
+   quiet change to a sensitive area reads `low`.
+2. **The risk floor comes from what the change touches, and only goes
+   up.** Anthropic's second classifier only escalates. `pr-stamp-sweep`
+   defines `securitySensitive` by surface (auth, sanitisation, parsers of
+   untrusted input, actor checks, shell construction). Codex's repo lens
+   escalates on *touching* model-visible context. CodeRabbit lets admin
+   rules match on blast radius but explicitly **not** on file paths or
+   CODEOWNERS, which is the opposite choice and the weaker one for this
+   purpose.
+3. **Instructions that lower scrutiny need more provenance than ones that
+   raise it.** Claude Code Review honours "lower severity / exclude paths /
+   cap nits" in `REVIEW.md` only from a protected default branch, while
+   additive rules apply more widely. Bugbot reads `bugbot.yaml` from the
+   base branch so "a PR can't change how Bugbot reviews itself", and the
+   file can lower Autofix but never enable it. `agent-approval-check` runs
+   only on base-branch-executed triggers. All three follow the same rule:
+   a relaxation must come from somewhere the PR can't write.
+4. **Approval binds to a SHA, and an agent never counts.** This shows up
+   in Anthropic's policy, `agent-approval-check`'s `/approve <sha>` with
+   stale-flagging, ClawSweeper's "passed the exact current head", and
+   Bugbot treating a run cancelled by a new push as not satisfying the
+   required check (2026-09-21). The sibling-PR guard is a subtle
+   consequence: a status attached to a SHA unblocks every PR with that
+   head.
+5. **Depth is chosen per PR, and increasingly by rule rather than by
+   size.** Anthropic sets Quick / Standard / Deep by the cost of a missed
+   bug. Bugbot's `smart` mode takes a prose rule. Copilot and Greptile
+   (Base / Plus / Apex, reported secondhand) sell effort tiers. Only
+   Anthropic ties depth to risk explicitly; the rest tie it to cost.
+6. **Re-review is a state machine, and resolution has reasons.** Copilot
+   added resolution reasons (*Addressed / Won't fix / Incorrect*,
+   2026-08-27) and later auto-resolves its own comments by reason.
+   PR-Agent feeds back `active / resolved / dismissed` findings and
+   requires word-for-word restatement for identity. Claude Code Review's
+   re-review now reports the count of earlier findings still open instead
+   of "no issues" (2.1.295). Anthropic's convergence fixes are a
+   three-round cap, diff-only re-review after a few passes, and flagging
+   bug *classes*. Copilot's "Previously missed" bucket is new: older
+   issues found on a later pass go **only in the overview**, never as
+   inline comments, so they don't read as blame.
+7. **The cheapest effective filter may not be an LLM.** Atlassian's
+   [RovoDev Code Reviewer paper][rovo] (one year in production on
+   Bitbucket) found its LLM factual-correctness judge "surprisingly
+   ineffective". A ModernBERT **actionability classifier**, trained on
+   five months of comments labelled by whether they led to a code change,
+   gave the large gain (about +15–20 points of location alignment). Their
+   production metric is **code resolution rate**, the share of comments
+   whose lines changed in a later commit: 38.7% for the bot against
+   44.45% for humans.
+
+### What did not change
+
+- **Nobody's reviewer approves.** Every hosted reviewer here still
+  explicitly does not approve. Where a merge does happen (CodeRabbit's
+  rule, ClawSweeper's automerge, Anthropic's low tier) a separate
+  deterministic gate merges, using the review as one input, behind a
+  switch an administrator owns.
+- **No open-source source computes a risk tier from paths plus content
+  with an escalate-only rule.** Anthropic's classifier is internal.
+  CodeRabbit's and Bugbot's risk calculations are undocumented. PR-Agent's
+  is a self-report. The design side of this repo now specifies one:
+  [`agent-design/risk.md`](./agent-design/risk.md).
+
+[anth-post]: https://claude.dev/blog/solving-code-review-at-anthropic/
+[rovo]: https://arxiv.org/abs/2601.01129
 
 ## Design takeaways
 

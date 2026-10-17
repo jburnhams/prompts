@@ -27,6 +27,19 @@ interactive assistant, benchmark-driven issue solver, minimalist
 scaffold, multi-role pipeline, PR-review specialist, app/UI generator),
 plus the two axes that explain most of the variance between them.
 
+**[→ `code-review-approaches.md`](./code-review-approaches.md) §12 and
+[`agent-design/risk.md`](./agent-design/risk.md)** — the 2026-10-17 pass.
+Between August and October 2026 review tooling split into two outputs:
+*what is wrong with this diff*, and *how much human attention it needs
+before merge*. §12 tabulates what each source now produces besides
+findings: Anthropic's internal 0/1/2-approver tiers, its open-sourced
+agent-approval gate, PR-Agent's risk and merge-recommendation fields,
+Bugbot, CodeRabbit Triage, Copilot and ClawSweeper. `risk.md` designs
+Forge's version: a path-rule floor that model triage and post-validation
+rules can only raise, a tier that picks the run shape, and a SHA-bound,
+fail-closed approval gate that ships in shadow until revert rates
+calibrate it.
+
 **[→ `code-review-approaches.md`](./code-review-approaches.md)** —
 a synthesized comparison of every code/PR-review-specific source in this
 collection, stage by stage (system prompt, diff format, context,

@@ -213,6 +213,32 @@ Read as documentation, not source:
 comes from the paper and its own docs, not from its code), Perspective
 (FINOS), tidy.js, Danfo.js, Data-Forge, hypgrep, hypvector, hypaware.
 
+### The review-attention pass (read 2026-10-17)
+
+Sources for [`code-review-approaches.md`](./code-review-approaches.md) §12
+and [`agent-design/risk.md`](./agent-design/risk.md). Repos re-read at
+their current heads and diffed against the SHA recorded by the earlier
+pass, limited to review, approval and merge paths.
+
+| Source | Repo | Paths that matter | SHA read (previous) |
+|---|---|---|---|
+| **claude-code-action** — merge side | `github.com/anthropics/claude-code-action` | `agent-approval-check/` (`README.md`, `action.yml`, `agent_approval_check.py` 1,828 lines) — the N-human-approvals gate for agent-authored PRs; `.claude/workflows/pr-stamp-sweep.js` — the review-then-adversarial-verify stamp workflow. Both stored in [`github-pr-bots/agent-approval-check/`](./github-pr-bots/agent-approval-check). The rest of the repo since 2026-07-10 is version bumps and hardening (`#1693` secret redaction, `#1636` `delete_files` path validation, `#1584` `diffHunk` in review-comment context) | `f27be6b` (2026-07-10 pass: `main`) |
+| **PR-Agent** | `github.com/qodo-ai/pr-agent` | `pr_agent/settings/pr_reviewer_prompts.toml` (the four `require_*` assessment fields and `previous_findings`), `configuration.toml` lines ~179–200 (their flags, `persistent_finding_state`, `max_previous_findings_chars`), new `prompt_fragments.toml`. All stored `.toml` refreshed | `5a50bf1e` (2026-07-10) |
+| **Codex CLI** — review and Guardian only | `github.com/openai/codex` | `ee6814b:.codex/skills/code-review*/SKILL.md` (deleted at `18131270fe`, stored in [`codex/repo-review-skills.md`](./codex/repo-review-skills.md)); `codex-rs/core/src/guardian/`, `codex-rs/core/src/context/guardian_*.rs`, `codex-rs/ext/guardian-{reviewer,v2}/`. Commit messages for #49036, #49057, #47630, #52195/#52329/#53831 carry the design rationale. `codex-rs/prompts/templates/review/` unchanged. **Don't `git grep HEAD` a blobless clone of this repo** — it faults in every blob and ran past two minutes; sparse-checkout the directories first | `ce0323f2f2` (`ee6814b`) |
+| **OpenClaw** — ClawSweeper | `github.com/openclaw/openclaw` | `.agents/skills/clawsweeper/SKILL.md` (stored as [`openclaw/clawsweeper-skill.md`](./openclaw/clawsweeper-skill.md)); `.agents/skills/autoreview/SKILL.md` is now a 23-line pointer to `openclaw/agent-skills` (not read) | `2437641caba` (`5f714ef`) |
+| **Gemini code-review extension** | `github.com/gemini-cli-extensions/code-review` | No commits since 2026-03-10 — nothing to update | `dd1a10d` |
+| **Claude Code plugins** | `github.com/anthropics/claude-code` | `plugins/` — no review-plugin changes since 2026-07-10 | `c017428` |
+
+Web references (hosted, closed-source services — paraphrased in §12, not stored):
+
+- Anthropic, [How the Claude Code team does code review](https://claude.dev/blog/solving-code-review-at-anthropic/), and the pages it links: [Code Review](https://code.claude.com/docs/en/code-review), [severity levels and check-run output](https://code.claude.com/docs/en/code-review-pull-requests), [`REVIEW.md`](https://code.claude.com/docs/en/code-review-customize), [redesigning source control](https://www.anthropic.com/engineering/redesigning-source-control), [securing the AI-native SDLC](https://claude.com/blog/how-anthropic-secures-its-ai-native-software-development-lifecycle), [Code Review announcement](https://claude.com/resources/articles/code-review), [automated security reviews](https://support.claude.com/en/articles/11932705-automated-security-reviews-in-claude-code); [Claude Code changelog](https://code.claude.com/docs/en/changelog) 2.1.293–2.1.302
+- Cursor: [Bugbot docs](https://cursor.com/docs/bugbot) (`bugbot.yaml`, effort levels, rule order), [Bugbot release notes](https://cursor.com/docs/release-notes/bugbot) (weeks of 2026-08-31 to 2026-10-05)
+- GitHub: Copilot code review [effort levels GA](https://github.blog/changelog/2026-08-07-copilot-code-review-effort-levels-are-generally-available/), [resolution reasons](https://github.blog/changelog/2026-08-27-copilot-code-review-resolution-reasons-and-expanded-capabilities/), [improved review experience](https://github.blog/changelog/2026-09-18-copilot-code-review-an-improved-review-experience/), [request and configure](https://github.blog/changelog/2026-09-23-copilot-code-review-more-ways-to-request-and-configure-reviews/), [new default effort](https://github.blog/changelog/2026-10-02-copilot-code-review-api-support-and-new-default-effort-level/)
+- CodeRabbit: [changelog](https://docs.coderabbit.ai/changelog) (2026-07-17 to 2026-10-14), [Triage prioritization](https://docs.coderabbit.ai/triage/prioritization), [Triage rules](https://docs.coderabbit.ai/triage/rules), [Rethinking PR triage](https://coderabbit.ai/blog/rethinking-pr-triage-from-first-principles)
+- Atlassian: [RovoDev Code Reviewer, arXiv 2601.01129](https://arxiv.org/abs/2601.01129) (the HTML full text)
+- OpenAI: [Codex changelog](https://learn.chatgpt.com/docs/changelog) (CLI 0.158–0.163)
+- Looked for and **thin**: Greptile (Base/Plus/Apex tiers reported only secondhand), Graphite Agent (no 2026 changelog found), Qodo (2.0/2.2 are earlier in 2026), GitLab Code Review Flow (pricing and chat handoff only), Gemini CLI (latest notes found are v0.50, 2026-07-08)
+
 ## OpenClaw 2.0 (read 2026-08-31)
 
 `github.com/openclaw/openclaw` at `5f714ef` (`main`, 2026-08-31). MIT.

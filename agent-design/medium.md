@@ -1008,6 +1008,18 @@ learnings runs read exactly this outcome data to decide which findings
 were worth making. That makes this item a prerequisite for the review
 half of cross-run learning, not just a measurement nicety.
 
+**Extended 2026-10-17 from findings to PRs** (`risk.md` §8). The same
+recorder also captures, per PR: reverted within 14 days, linked to an
+incident, review rounds, human comments, time from first review to merge,
+and the attention tier each session reported. Where the platform offers
+resolution reasons (Copilot's *Addressed / Won't fix / Incorrect*) they
+are recorded; elsewhere "anchored lines changed in a later commit" stands
+in for *addressed*, which is Atlassian's published **code resolution
+rate** metric (38.7% for their bot against 44.45% for humans —
+`../code-review-approaches.md` §12). The revert-rate-by-tier series is
+the third consumer, and it is the one that gates relaxing any human
+requirement.
+
 ### 3f. Stateful re-review sessions
 
 **What**: repeat reviews of the same PR become *sessions* with memory:

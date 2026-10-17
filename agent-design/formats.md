@@ -520,6 +520,7 @@ LLM judge (which stays out of v1, per the README's leanness rule).
   "filtered": [
     { "...": "review-finding objects that were raised by a specialist but not posted, with why — see §4's validated field" }
   ],
+  "attention": { "...": "how much human attention this PR needs — tier, floor, drivers, reversibility, look_here, mechanical, unverified; required on every non-skipped run, including zero-finding runs. Schema and rules: risk.md §2" },
   "comment_urls": ["string, ..."]
 }
 ```
