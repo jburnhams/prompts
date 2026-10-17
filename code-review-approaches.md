@@ -687,6 +687,97 @@ approvals per PR, human comments and wait time are what gets driven down.
 [anth-post]: https://claude.dev/blog/solving-code-review-at-anthropic/
 [rovo]: https://arxiv.org/abs/2601.01129
 
+## 13. Rovo Dev, Devin Review and Greptile (read 2026-10-17)
+
+Three hosted reviewers, read from their documentation. None publishes
+prompts. What is recorded here is what each does differently enough to
+matter for [`agent-design/`](./agent-design).
+
+### Atlassian Rovo Dev code review
+
+The reviewer on Forge's own platform (Bitbucket Cloud and GitHub). Its
+production results are in the RovoDev paper (§12, pattern 7): a trained
+actionability classifier beat an LLM judge, and 38.7% of comments led to
+a code change.
+- **Triggers:** on PR creation (the default), on every commit, or manual
+  only. In Bitbucket only the PR author can trigger a manual review.
+- **Acceptance-criteria check against the linked Jira work item:**
+  - The ticket is found from a key in the **branch name** first, then
+    commit messages. **If commits name more than one key, they are
+    ignored.**
+  - Criteria are read from the description, or from custom fields named
+    Acceptance Criteria / AC, Business / Functional Requirements, or
+    Definition of Done. If the description is empty the search is skipped
+    entirely, even when the custom fields have content.
+  - Each criterion gets **one of three results: met, missing from the
+    code, or needs manual checking.** On by default in Bitbucket.
+- **Custom instructions** live in `.rovodev/.review-agent.md`: Markdown
+  bullets grouped by topic. The documented examples include requiring
+  risky changes to be behind feature gates and warning about publicly
+  exposed authorization policy paths. The docs don't say which branch
+  the file is read from.
+- **Licensing:** both features need the PR author's own Rovo Dev Standard
+  seat on the connected Jira site. The standalone product is being folded
+  into Jira subscriptions.
+- **Not documented:** severity levels, summary format, any approve or
+  merge behaviour.
+
+For Forge, the AC check is the important part. `medium.md` §3a's
+ticket-compliance lens is the same idea, and Rovo settles three details
+it left open: how to find the ticket, which fields to read, and a
+three-valued per-criterion result.
+
+### Cognition Devin Review
+
+A review *interface* for large, often agent-written PRs. Its aim is to
+make a human's read faster rather than to post more comments.
+- **Groups related hunks** and orders them so the PR reads top to bottom,
+  instead of in alphabetical file order, with an explanation per group.
+- **Detects moved and copied code** and shows where it came from, instead
+  of a full delete plus a full add. Cognition's point is that most diff
+  viewers inflate relocated code and bury the small real edits.
+- **Three-level flags:** red (probable bug), yellow (warning), gray
+  (FYI), each dismissable.
+- **Chat with the codebase in context**, and stacked-PR support (splitting
+  large changes, fixing comments across a stack).
+- Works on public PRs without an account (`devinreview` in place of
+  `github` in the URL), and from a CLI (`npx devin-review <pr>`).
+
+No risk or attention output. The two ideas worth taking are reading order
+and moved-code detection, and both are things a harness can compute
+before any model sees the diff.
+
+### Greptile (v5 and review tiers, September 2026)
+
+- **v5 is a swarm of single-hypothesis agents.** Each agent investigates
+  one suspected bug in parallel. Over a month-long A/B test on more than
+  a million PRs, median review time fell from about 5:04 to 2:25, and the
+  share of comments authors addressed rose from 52% to 66%. This is the
+  sampling-variance kind of fan-out (§6a of `agent-design/review.md`),
+  split by hypothesis rather than by lens.
+- **Review tiers:** Base, Plus and Apex cost 1, 3 and 10 credits. **Auto**
+  picks a tier per PR "from its size, risk, and complexity" (criteria not
+  published), and you pay for the tier that ran. Plus and Apex show the
+  tier next to the confidence score.
+- **`greptile.json` loads from the PR's source branch**, with one
+  exception: `autoApprove` (approve "low-risk 5/5 reviews") is read from
+  the **base** branch "so a PR can't loosen it for itself". That makes
+  every other setting (`strictness`, `commentTypes`, `ignorePatterns`,
+  scoped `customContext.rules`, `instructions`) editable by the PR under
+  review. Claude Code Review, Bugbot and Cursor Approval Agents all read
+  from base; Greptile exempts only the setting that grants approval.
+- **Learning:** 👍/👎 reactions are the main signal, a 👎 with a short
+  reason teaches faster, and **no reaction slowly lowers a comment
+  pattern's priority**. Improvement takes "the first few weeks". How
+  feedback becomes a rule, the scope of what is learned, and any way to
+  inspect or reset learned rules are not documented, and the security
+  exemption recorded in `agent-memory-learning.md` §8 isn't mentioned on
+  the current page.
+- **Other settings:** `statusCheck` posts a pass/fail check per review;
+  `includeConfidenceScore` adds a 0–5 confidence score to the summary;
+  `context.repos` reads related repositories; rules can be scoped by file
+  glob.
+
 ## Design takeaways
 
 A few things stood out across all fourteen:

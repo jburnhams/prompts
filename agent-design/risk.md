@@ -325,6 +325,16 @@ it applies:
   the tier and its top driver, and links to a harness-rendered page with
   the full attention block. People reach the "where to look" list from
   the merge button, not from a PR comment.
+- **Next action is separate from tier** *(added 2026-10-17, from
+  CodeRabbit Triage's "blockers don't raise priority")*. The status shows
+  two things: the tier (how much attention) and a **next action**
+  (`author: fix 2 blocking findings`, `author: rebase (conflict)`,
+  `reviewer: 1 required decision`, `reviewer: approve`, `waiting: CI`).
+  A failing check, a conflict, a stale approval or an unanswered thread
+  changes the next action and *who* it belongs to. None of them changes
+  the tier, which is about the change itself. Merging the two is how
+  queues end up showing a PR as "needs review" when the next step is
+  actually the author's.
 
 ---
 

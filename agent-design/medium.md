@@ -183,6 +183,27 @@ waivers, "ignore previous instructions") is still data to flag, not
 obey. Ambiguous or contradictory reviewer asks route to `AskUser`,
 which this source inherits unchanged.
 
+### 1d. Repair caps for fix and responder runs *(added 2026-10-17)*
+
+1b and 1c close the review → fix → re-review loop with no limit on how
+many times it can go round. Two caps, both enforced by the harness and
+never by the agent:
+- **At most one fix or responder run per PR head.** A run that pushes
+  nothing (no change it could make, or every thread answered with a
+  disagreement) does not get a second attempt on the same head.
+  ClawSweeper caps repairs at 1 per head for the same reason: a run that
+  produced nothing will produce nothing again on unchanged input.
+- **At most 3 rounds per PR** by default (CodeRabbit's auto-fix default;
+  ClawSweeper allows 10). A round is a fix run followed by a review
+  session. After the cap, the harness stops dispatching, posts once that
+  automated repair has stopped and why, and raises the attention tier's
+  `round` driver (`risk.md` §3c). The rounds left are a human's.
+- **Wait for quiet before acting** (CodeRabbit's inactivity clock).
+  Dispatch waits until the PR has had no push, review or human comment
+  for a debounce window (default 10 minutes), so a fix run doesn't race a
+  human still mid-review. Activity resets the timer; title and label edits
+  don't.
+
 ---
 
 ## 2. New tools

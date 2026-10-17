@@ -27,6 +27,14 @@ interactive assistant, benchmark-driven issue solver, minimalist
 scaffold, multi-role pipeline, PR-review specialist, app/UI generator),
 plus the two axes that explain most of the variance between them.
 
+**[→ `agent-content-provenance.md`](./agent-content-provenance.md)** —
+how harnesses record who supplied each piece of context (Codex's per-part
+provenance, kept separate from trust) and what Forge adopts from it.
+`agent-subagent-architectures.md` §7b covers the October 2026 shift of
+multi-agent orchestration into deterministic code, and
+`code-review-approaches.md` §13 covers Rovo Dev, Devin Review and
+Greptile.
+
 **[→ `agent-risk-assessment.md`](./agent-risk-assessment.md)** — risk as
 its own subject: how much human attention a piece of agent work needs,
 from whom, and for how long that judgment stays true. It covers nine
