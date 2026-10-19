@@ -28,7 +28,7 @@ auto-mode classifier, with two corrections), `agent-subagent-architectures.md`
 `agent-turn-output.md` §1d (two run-state classifiers that disagree),
 `agent-context-compaction.md` §2b, `agent-memory-learning.md` §13 and
 `agent-content-provenance.md` §5. What Forge could take from it is written
-as proposals, not yet adopted, in
+as fourteen proposals, of which 1–6 are adopted into the design, in
 [`agent-design/proposals-claude-code-2.1.303.md`](./agent-design/proposals-claude-code-2.1.303.md).
 
 This is a first pass focused on **open-source coding and code-review

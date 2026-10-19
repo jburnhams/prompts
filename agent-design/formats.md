@@ -173,8 +173,8 @@ comment on an issue can write into the first. The asymmetry was not
 argued for anywhere; it is an artefact of the review envelope having been
 specified second, with the threat model fresh.
 
-So **`<ticket>`, `<instruction>` and `<resumed_answer>` (§5) carry the
-run nonce on both tags too**, on the same terms: minted per run, repeated
+So **`<ticket>`, `<instruction>`, `<resumed_answer>` and
+`<approved_action>` (§5) carry the run nonce on both tags too**, on the same terms: minted per run, repeated
 on the close, any occurrence inside a body rejected before assembly.
 
 The consuming rule differs from review mode's, and the difference is the
@@ -197,7 +197,10 @@ question that was asked. It does not, by being a reply from a human,
 widen the run's scope, grant a permission, or authorise a step the
 original task did not — `AskUser`'s question is on the record and the
 reply is scoped to it. A reply that asks for something else is a new
-task, and the honest move is to say so in `Complete`.
+task, and the honest move is to say so in `Complete`. *(Added
+2026-10-19.)* An approval also binds to the step it names: a yes to
+preparing a change is not a yes to the later step that pushes, posts or
+publishes it. That step needs its own `approve` question (§5).
 
 **This lands next to `generative.md` §2d, and the two halves fit.** That
 section gives `<resumed_answer>` two harness-filled attributes —
@@ -518,7 +521,7 @@ LLM judge (which stays out of v1, per the README's leanness rule).
     { "...": "one review-finding object per confirmed, posted finding — see §4" }
   ],
   "filtered": [
-    { "...": "review-finding objects that were raised by a specialist but not posted, with why — see §4's validated field" }
+    { "...": "review-finding objects that were raised by a specialist but not posted, with why — see §4's verdict field" }
   ],
   "attention": { "...": "how much human attention this PR needs — tier, floor, drivers, reversibility, look_here, mechanical, unverified; required on every non-skipped run, including zero-finding runs. Schema and rules: risk.md §2" },
   "comment_urls": ["string, ..."]
@@ -534,7 +537,7 @@ envelope's `<review_state>`, with what this session did to it
 (`replied_fixed` / `replied_conceded` / `replied_standing_firm` /
 `left_open`, plus the reply's comment id where one was posted) — the
 same accounting discipline extended to threads; see `review.md` §7b. A candidate dropped by the pre-validation dedup (pipeline step
-4) appears in `filtered` with `validated: null` and the dedup reason —
+4) appears in `filtered` with `verdict: null` and the dedup reason —
 it was never judged wrong, just already reported.
 
 ### 3c. Plan mode
@@ -584,7 +587,7 @@ gets an answer on the ticket either way.
 
 ## 4. Review-finding schema
 
-Produced by a `reviewer` sub-agent (as a candidate, `validated: null`),
+Produced by a `reviewer` sub-agent (as a candidate, `verdict: null`),
 then annotated by a `validator` sub-agent, then carried through to the
 orchestrator's `Complete` report:
 
@@ -600,7 +603,7 @@ orchestrator's `Complete` report:
   "summary": "string, one sentence",
   "rationale": "string, why this is a real problem, citing the specific rule/behavior",
   "suggested_fix": "string, Markdown/diff snippet, or null if none proposed",
-  "validated": true,
+  "verdict": "confirmed | plausible | refuted",
   "validator_note": "string, the validator's one-sentence reason"
 }
 ```
@@ -612,9 +615,14 @@ carry a code anchor like any other, because the validator is text-only and
 re-derives from code; a visual observation that cannot name the line
 producing it is not a finding at all.
 
-`validated: null` is the specialist's own output, before the validator
-pass runs; `true`/`false` is the validator's verdict. Only `true`
-findings are ever passed to `AddComment`. `severity` is set by the
+`verdict: null` is the specialist's own output, before the validator
+pass runs; `confirmed`, `plausible` or `refuted` is the validator's
+verdict *(three states since 2026-10-19; previously a boolean
+`validated`)*. Which verdicts are passed to `AddComment` depends on the
+review's attention tier (`review.md` §5): `confirmed` always,
+`plausible` only on a `high`-tier review and labelled as such in the
+comment, `refuted` never. Findings not posted go to `filtered` with
+their verdict. `severity` is set by the
 specialist and is not re-judged by the validator — the validator's job
 is "is this real," not "how bad is it."
 
@@ -688,6 +696,45 @@ and a *new* run resumes it later.
 4. If the reply doesn't actually resolve the ambiguity (a non-answer, a
    deflection, a reply that raises a new question), Forge may call
    `AskUser` again rather than being forced to guess.
+
+**Two kinds of question** *(added 2026-10-19, from Claude Code's
+coordinator prompt; see `proposals-claude-code-2.1.303.md` §4–§6)*. The
+resume steps above describe `kind: "clarify"`, the default, where the
+answer changes what Forge does next and the run needs its context back.
+`kind: "approve"` asks a yes or no about one action named in the call's
+`action` field (`tools.md`) and resumes differently:
+
+- **The comment names the target.** The harness renders the question
+  with the action's `operation` and `target` in bold and fixes the
+  options to approve and decline. It rejects the call before posting if
+  `target` is empty, so a human is never asked to approve something
+  unnamed.
+- **A yes starts a fresh run, not a resumed one.** When
+  `<resumed_answer>` has `option_id="approve"` and `match="exact"`
+  (`generative.md` §2d), the harness starts a new `implement` run whose
+  envelope holds the original task envelope's identifying fields, the
+  action verbatim in `<approved_action nonce=…>`, the reply in
+  `<resumed_answer>`, and `staged_paths` as a list. It does **not**
+  receive the suspended run's transcript. The run performs the steps,
+  verifies them, and calls `Complete`. The reason is security: the run
+  that read untrusted ticket, PR or tool text is not the run that takes
+  the approved action, so text the first run read cannot steer the
+  second, and the approval cannot be stretched to cover anything the
+  first run might have added later.
+- **Anything else resumes the original run as a clarify.** A decline, a
+  `match="none"` reply or a conditional yes ("yes, but on a branch")
+  goes back to the suspended run with its transcript, because the
+  answer now changes what Forge does.
+- **Headroom.** Because the execute run starts without the transcript,
+  the late-run headroom problem described below does not apply to
+  approvals.
+
+**Batching.** Forge asks once per suspension. Its prompt tells it to
+finish everything that doesn't depend on the answer and to try any
+route that avoids the question first (`system-prompts.md` §1), so a
+suspension should arrive with the rest of the work done and every open
+question in one numbered list. A multi-part question carries no
+`options`, so its reply resumes with `match="none"` and is read as text.
 
 A task can suspend and resume more than once. There is no built-in cap
 in v1 — a real deployment would likely want one (e.g. "escalate instead

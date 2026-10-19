@@ -1,22 +1,23 @@
 # Proposals from Claude Code v2.1.303
 
-**Status: proposals, not adopted.** Nothing below changes the design yet.
-Each item names the section it would amend and what the amendment would
-say, so it can be accepted, changed or rejected one at a time. The
+**Status: 1–6 adopted on 2026-10-19; 7–14 still proposals.** The
+adopted items are now in the documents they amended (named in each
+section below); the rest name the section they would amend, so they can
+be accepted, changed or rejected one at a time. The
 research behind each item is in the cross-source documents, all updated
 2026-10-19 from Piebald's extraction of Claude Code v2.1.303
 ([`../leaked/claude-code/piebald-2.1.303/`](../leaked/claude-code/piebald-2.1.303)).
 
 ## Summary
 
-| # | Proposal | Amends | Recommendation |
+| # | Proposal | Amends | Status |
 |---|---|---|---|
-| 1 | Tie the validator's bias to the tier, with a third verdict | `review.md` §5, §6; `formats.md` §4 | Adopt with the risk work |
-| 2 | Add removed-behaviour and wrapper lenses to the bugs finder | `system-prompts.md` §4; `review.md` §4 | Adopt now |
-| 3 | Tell finders not to pre-filter; add a gap sweep at `high` | `system-prompts.md` §4; `review.md` §6 | Adopt now |
-| 4 | Run an approved action in a fresh run, not the resumed transcript | `formats.md` §5 | Adopt now |
-| 5 | Make every approval question name the dangerous parameter | `formats.md` §5; `system-prompts.md` §1 | Adopt now |
-| 6 | Finish independent work and batch asks before suspending | `system-prompts.md` §1; `formats.md` §5 | Adopt now |
+| 1 | Tie the validator's bias to the tier, with a third verdict | `review.md` §5, §6; `formats.md` §4 | **Adopted** |
+| 2 | Add removed-behaviour and wrapper lenses to the bugs finder | `system-prompts.md` §4; `review.md` §4 | **Adopted** |
+| 3 | Tell finders not to pre-filter; add a gap sweep at `high` | `system-prompts.md` §4; `review.md` §6 | **Adopted** |
+| 4 | Run an approved action in a fresh run, not the resumed transcript | `formats.md` §5 | **Adopted** |
+| 5 | Make every approval question name the dangerous parameter | `formats.md` §5; `system-prompts.md` §1 | **Adopted** |
+| 6 | Finish independent work and batch asks before suspending | `system-prompts.md` §1; `formats.md` §5 | **Adopted** |
 | 7 | A `Complete` report never ends with a question | `formats.md` §3 | Adopt now |
 | 8 | Delegate prompt: restate the task, absolute paths, no report files | `system-prompts.md` §3 | Adopt now |
 | 9 | Rules for the review pipeline when it becomes code | `review.md` §11h | Adopt with §11h |
@@ -29,6 +30,8 @@ research behind each item is in the cross-source documents, all updated
 ---
 
 ## 1. Tie the validator's bias to the tier, with a third verdict
+
+*Adopted 2026-10-19:* `review.md` §5, `system-prompts.md` §2a step 5 and §5, `formats.md` §4, `risk.md` §5, `examples/validator-brief.md`. The tier used is the triage tier, the one that chose the run shape.
 
 **What Claude Code does** (`../code-review-approaches.md` §14). Effort is
 one dial that sets finder count, candidate caps, finding caps **and** the
@@ -61,6 +64,8 @@ be measured before it is trusted.
 
 ## 2. Add removed-behaviour and wrapper lenses to the bugs finder
 
+*Adopted 2026-10-19:* the `bugs` and `all` scope texts in `system-prompts.md` §4.
+
 **What Claude Code does.** Two of its five correctness angles describe
 failure classes no other review prompt in this collection names. Angle
 B: "For every line the diff DELETES or replaces, name the invariant or
@@ -76,6 +81,8 @@ fan-out that `review.md` §6a costs. The removed-behaviour item fits the
 diff construction already in `review.md` §2, which keeps old-side lines.
 
 ## 3. Tell finders not to pre-filter; add a gap sweep at `high`
+
+*Adopted 2026-10-19:* the reviewer core in `system-prompts.md` §4 (its "err toward precision" rule is replaced, and "regardless of input" becomes a nameable failure scenario), §2a step 5b, `risk.md` §5.
 
 **What Claude Code does.** "Pass every candidate with a nameable failure
 scenario through — finders that silently drop half-believed candidates
@@ -99,6 +106,8 @@ do not pad."
   main failure.
 
 ## 4. Run an approved action in a fresh run, not the resumed transcript
+
+*Adopted 2026-10-19:* `formats.md` §5, `tools.md` AskUser, `formats.md` §1b (`<approved_action>` carries the nonce).
 
 **What Claude Code does** (`../agent-subagent-architectures.md` §7c).
 When a worker stops for approval and the user approves, the coordinator
@@ -126,6 +135,8 @@ late-run questions, for the approval case.
 
 ## 5. Make every approval question name the dangerous parameter
 
+*Adopted 2026-10-19:* `tools.md` AskUser (`action.target`, harness rejection), `system-prompts.md` §1, `formats.md` §1b.
+
 **What Claude Code does** (`../agent-permissions-approval.md` §2c). A
 consent clears a rule only if it names the action and the one parameter
 that makes it dangerous: the branch for a push, the destination for a
@@ -144,6 +155,8 @@ carry to the step that ships.
   later step that publishes its result.
 
 ## 6. Finish independent work and batch asks before suspending
+
+*Adopted 2026-10-19, with one change:* the schema keeps a single `question` string, and several questions go in it as a numbered list, so `generative.md` §2d's option matching is untouched; a multi-part question carries no `options`. `tools.md` AskUser, `system-prompts.md` §1, `formats.md` §5.
 
 **What Claude Code does.** "If you're uncertain what to do in the middle
 of execution, it's best to do everything that doesn't need user feedback
