@@ -871,9 +871,12 @@ for delegates either, so "a read-only run cannot launder writes through a
 delegate"), and `orchestration.md` §11 has it for stored tasks. What the
 sources add is that the rule must cover **every** channel authority
 travels through, including MCP servers and harness-side checks, and the
-Goose bug shows how easily one channel is missed. See
-`agent-design/tools.md`, "Delegates inherit the wiring, not a
-definition".
+Goose bug shows how easily one channel is missed. Forge's version differs
+from all four sources in one way: the common parent is the **job's**
+declared tool set rather than the parent agent's, so a specialist may
+hold a server its orchestrator does not, while nothing a definition says
+can add to what the job declared. See `agent-design/tools.md`, "One job
+declares the tools; every role gets a subset".
 
 ## 8. Absences worth noting
 

@@ -68,7 +68,7 @@ specific to decisions this design made.
 | CRLF file | line-ending restore | `formats.md` §8a's normalise-on-read/restore-on-write rule |
 | file where `old_string` appears twice | ambiguous match | the error text, and whether the model recovers in one turn |
 | 20-file batch of large files | call budget | `read.max_entries`, `read.call_budget_chars`, and whether truncated entries are re-read individually |
-| the FIFO and lockfile fixtures again, reached through a `general-purpose` delegate; and a delegate prompt naming an MCP server outside the run's set | delegate parity (added 2026-10-19) | `tools.md`'s "Delegates inherit the wiring": the same refusals fire inside a delegate, and the extra server is dropped, not merged |
+| the FIFO and lockfile fixtures again, reached through a `general-purpose` delegate; and a delegate definition naming an MCP server outside its role's subset | delegate parity (added 2026-10-19) | `tools.md`'s "One job declares the tools": the same refusals fire inside a delegate, and the extra server is dropped, not merged |
 
 ### Suite 2 — Edit correctness under collateral-damage checking
 
