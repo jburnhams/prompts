@@ -118,6 +118,36 @@ system-prompt mode rules in
 `system-prompts.md` remain as the behavioral layer on top of this
 structural one.
 
+**Delegates inherit the wiring, not a definition** (added 2026-10-19,
+from `../agent-subagent-architectures.md` §7c). A sub-agent's effective
+capability set is computed by the harness from the orchestrator's
+*resolved* wiring for this run, intersected with the role table above,
+and that applies to every channel authority travels through, not only
+the built-in tools:
+
+- **MCP servers** are the orchestrator's resolved set (credentials
+  already bound), filtered to the tools the role grants. A sub-agent
+  definition, a skill or a prompt cannot add a server; one that names a
+  server outside the set is dropped and logged, never merged. This is
+  OpenHands' `inherit_mcp_config` rule.
+- **Harness-side checks** (the git-write blocklist, the `Read` name
+  blocklist, the secret scan in `review.md` §11c, every refusal in the
+  implementation contract below) run identically inside a delegate.
+  They are enforced at the tool boundary, so this should hold by
+  construction; it is stated because Goose shipped for months with
+  sub-agents built on an empty hook manager, and an eval case
+  (`eval.md` Suite 1) checks it.
+- **No delegate has a human channel.** `AskUser`, `AddComment` and
+  `Complete` are already absent from every sub-agent; the rule also
+  covers any channel added later (an elicitation, a `ReportProblem`
+  blocker). A delegate that needs a decision returns it in its report and
+  the orchestrator decides whether to ask.
+
+What this supersedes: nothing in the table changes. The previous text
+stated parity only for the built-in tools and said nothing about MCP
+servers or harness checks, which on an MCP-built platform is where a gap
+would be.
+
 ---
 
 ## Implementation contract

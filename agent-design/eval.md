@@ -68,6 +68,7 @@ specific to decisions this design made.
 | CRLF file | line-ending restore | `formats.md` §8a's normalise-on-read/restore-on-write rule |
 | file where `old_string` appears twice | ambiguous match | the error text, and whether the model recovers in one turn |
 | 20-file batch of large files | call budget | `read.max_entries`, `read.call_budget_chars`, and whether truncated entries are re-read individually |
+| the FIFO and lockfile fixtures again, reached through a `general-purpose` delegate; and a delegate prompt naming an MCP server outside the run's set | delegate parity (added 2026-10-19) | `tools.md`'s "Delegates inherit the wiring": the same refusals fire inside a delegate, and the extra server is dropped, not merged |
 
 ### Suite 2 — Edit correctness under collateral-damage checking
 
@@ -98,6 +99,45 @@ changed. The
 second is the one that decides whether `low` may ever relax a human
 requirement; it is re-run on every change to the triage prompt, the
 default review policy, or the model.
+
+**Added 2026-10-19 — ReviewBench as the external calibration set**
+(`../code-review-approaches.md` §14). GitHub's ReviewBench (2026-10-05):
+219 public PRs from 187 repositories in 19 languages, a golden set
+gathered from human reviewers, author follow-up commits, static tools and
+several model families, then deduplicated and validated under a published
+rubric. It is the first public review benchmark this collection has found
+that is multi-language, built from real PRs, and shown to predict online
+results (one Copilot experiment: offline predicted gains in precision,
+recall and volume; online gave +8.0% addressed rate and +13.6% recall).
+That answers part of "public benchmarks don't substitute" above, for
+review only. Three uses:
+
+1. **Run it, don't cite it.** Forge's review pipeline is run on the
+   public set (the runner takes a container image and a model key) and
+   the result goes in the ship/no-ship log beside Suite 3. **Grounded
+   recall** is the headline, as ReviewBench uses it, because its
+   denominator does not move with the agent's output. **Augmented
+   precision** is a diagnostic, and it is the number that matters most
+   here, since a hands-off reviewer pays more for a false positive than
+   for a miss.
+2. **Copy its gold-set recipe for the internal set.** Suite 3's planted
+   defects measure detection; a set built ReviewBench's way from this
+   organisation's own merged PRs measures what real reviewers flagged.
+   Its "issues inferred from author follow-up commits" source is the
+   same signal as `risk.md` §8a's follow-up fix, so one labelling job
+   feeds both the needed-a-fix set above and the review golden set.
+3. **Keep the true-positive rule.** "A finding counts as a true positive
+   only if it is true, relevant, and non-trivial" is a better grading
+   rule than Suite 3's current planted-or-not, and is adopted for the
+   internal set.
+
+Caveats carried into the log: GitHub built it and the only
+offline-to-online evidence is GitHub's own product; the judge is a single
+model (Claude Sonnet 5) with 96.6% agreement against senior engineers on
+true positives, which says nothing about agreement on false positives;
+the blog post states no license for the dataset or code (check before
+storing anything from it); and the PR-size mix is deliberately weighted
+away from tiny changes.
 
 ## Metrics
 
@@ -150,6 +190,14 @@ misconfiguration:
   whole argument for fetching per table is that this number exists at
   all. Log the distribution, not the mean; the interesting case is the
   tail.
+  *Added 2026-10-19:* the first labelled set to check it against is
+  DAB's (`../agent-data-analysis.md` §12a). Its repository publishes
+  the failure-mode judge, its prompts and an example trace; whether the
+  full annotated trajectories are public was not confirmed. If they are,
+  replaying the implementation-error trajectories through the
+  `input_rows` stub (`data.md` §4b) and counting how many show the
+  fan-out line is the test of whether the deferred halves are worth
+  adopting.
 
 Two more from [`cloudflare.md`](./cloudflare.md) §4, both of which exist
 to kill a mechanism if it misbehaves rather than to score a run:

@@ -53,7 +53,8 @@ explaining its own hook system directly to the model; see §1/§7).
 
 **Confirmed absent or near-absent**: Goose (a named
 `permission_judge.md` file exists upstream but was captured as 0
-bytes — a real, evidenced capture gap, not a confirmed absence), Pi
+bytes — a real, evidenced capture gap, not a confirmed absence; filled
+on 2026-10-19, see the list below), Pi
 (the one source in this survey whose entire prompt-construction logic
 is readable, non-truncated executable code with no permission branch
 anywhere in it — an unusually strong negative result), Warp (leaked —
@@ -857,7 +858,12 @@ into "absent":
   0 bytes in this collection, strongly implies an LLM-based judge
   specifically for permission/approval decisions, structurally
   exactly this doc's "LLM classifies risk" axis (§2) — but the content
-  is unrecoverable from what's stored here.
+  is unrecoverable from what's stored here. **Update 2026-10-19:** the
+  file now has content and is stored as `goose/permission_judge.md`. It
+  confirms the inference: a classifier that decides whether a tool
+  request is read-only, treats IDs, names and arguments as untrusted
+  data, and fails toward "not read-only" when a request is ambiguous or
+  its data tries to steer the decision.
 - **Copilot Chat's `../base/safetyRules`** — a `SafetyRules` class is
   imported into several prompt files but the file itself isn't present
   in this collection; combined with the near-universal "no need to ask

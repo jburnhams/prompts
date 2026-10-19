@@ -48,6 +48,13 @@ authenticity notes:
 - `claude-code-docs-assistant.md` — a different product: the docs-site
   "Ask AI" chat assistant, not the CLI's own system prompt. Kept for
   completeness, tangential to the rest of this collection.
+
+**Versioned fragments from the Piebald dumps** (added 2026-10-19):
+- [`consent-provenance/`](./consent-provenance) — twelve prompt
+  fragments from builds 2.1.290–2.1.302 (Piebald-AI's MIT-licensed
+  per-release extraction), covering who can consent, sub-agent consent
+  history, proactivity levels and restart recovery. Its README records
+  the commit read and is the starting point for tracking later builds.
 - `claude-desktop-code.md` — a fourth, structurally distinct capture:
   "Claude Code (Desktop App - Code Mode)," captured 2026-02-21 on Opus
   4.6, from the same `asgeirtj/system_prompts_leaks` aggregator

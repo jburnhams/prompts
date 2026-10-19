@@ -1402,6 +1402,60 @@ to write it down — which makes it a repo-resident, reviewable artifact
 problem, and therefore exactly the kind of thing this collection's
 context-file work already knows how to think about.
 
+## 12a. DAB: where data agents actually fail (read 2026-10-19)
+
+Ma, Shankar, Chen, Lin, Zeighami, Ghosh, Gupta, Gupta, Gopal and
+Parameswaran, *Can AI Agents Answer Your Data Questions? A Benchmark for
+Data Agents* — [arXiv 2603.20576](https://arxiv.org/abs/2603.20576),
+v1 2026-03-21, v3 2026-10-07 (the version read, via the HTML rendering;
+the last ~60k characters, mostly appendices, were not read). Code and
+harness at `ucbepic/DataAgentBench`. Not previously in this collection.
+
+- **The setting is the hard one.** 104 queries over 17 datasets on four
+  systems (PostgreSQL, MongoDB, SQLite, DuckDB). **Every query needs data
+  from more than one database**, up to six databases across three
+  systems, and most also need ill-formatted join keys reconciled or
+  unstructured text parsed. It was built from interviews with
+  enterprises building production data agents in six industries.
+- **Results.** Pass@1 with description and hints, five trials: GPT-5.5
+  in Codex 57% ($484), Gemini 3.1 Pro in a custom ReAct loop 52% ($294),
+  Claude Sonnet 4.6 in Claude Code 48% ($705). No agent above 70%
+  pass@5; one dataset (patents) solved by none. In a shared ReAct harness
+  on the 54 cheapest queries the order changes (Gemini 3.1 Pro 60%,
+  Claude Opus 4.6 55%, GPT-5.2 29%), so harness and model are confounded
+  in the headline table.
+- **The failure taxonomy is the useful part.** Of 196 annotated wrong
+  answers: incorrect implementation 57%, incorrect plan 31%, incorrect
+  data selection 11%, failed before planning 1%. The authors' summary:
+  "Agents typically select the right data, but fail at planning the
+  computation or implementing it correctly." Caveat: the labels came
+  from a GPT-5 judge that a human matched exactly on 20 of 30
+  trajectories, and a GPT-5.4 re-annotation moved plan to 42% and
+  implementation to 44%; κ for those categories was 0.42–0.46. The
+  split between plan and implementation is soft; their sum (~88–90%) and
+  the small data-selection share are robust across both annotations.
+- **Three more takeaways, quoted.** "Writing larger programs upfront is
+  more cost-efficient than step-by-step exploration." "Parallel tool
+  calling is underutilized, but could improve latency and cost." "All
+  agents rely on regex for text extraction and fail when it isn't
+  expressive enough."
+- **Grading is lenient**: normalised substring and tolerance matching
+  that "do[es] not penalize extra incorrect information". A verbose
+  answer that contains the right number and three wrong ones passes.
+
+What it changes here. §12's problem 1 (shape assertions) was argued from
+the catalogue of silent errors in §9a; DAB is the first measurement that
+the dominant failure is in the computation over correctly chosen data,
+which is exactly where a fan-out or a dropped key hides, and its queries
+are the multi-source, messy-key joins where that happens. It says nothing
+about whether shape assertions would have caught those failures; that
+would need the trajectories. The repository (`ucbepic/DataAgentBench`,
+read at `daadd5e426`; no license file found) has `failure_analysis/`
+with the judge, its prompts, `failure_modes.txt` and an example trace,
+and per-model results under `leaderboard_submissions/`; whether every
+annotated trajectory is published was not confirmed.
+`agent-design/data.md` §4b promotes the harness-side half.
+
 ---
 
 ## Where this goes

@@ -706,6 +706,30 @@ like: *when a `table://` is minted from inputs, the stub states the row
 count of each input alongside its own.* A fan-out then shows up as a
 number the model can see, for free, at the moment it happens.
 
+> **Promoted 2026-10-19, the stub half only** (`../agent-data-analysis.md`
+> §12a). DAB's failure analysis puts roughly 88–90% of wrong answers in
+> planning or implementing the computation over data the agent had
+> selected correctly, on multi-database queries with messy join keys:
+> the case this defends. So the second option is adopted into §2b's
+> grammar now, because it costs one attribute and needs no judgement:
+>
+> ```
+> <artifact id="tbl_77d0e3b1" kind="table" … rows="4201" cols="9"
+>           inputs="table://tbl_1188ef40,table://tbl_2a90c4d7"
+>           input_rows="1840,12" …>
+> ! 4201 rows from inputs of 1840 and 12: more rows than the largest input.
+> ```
+>
+> `input_rows` is positional with `inputs` and filled by the harness
+> from the input stubs (blank for an input that is not a `table://`).
+> The `!` line is emitted only when output rows exceed the largest
+> input's, the one shape that is never right for a lookup join and is
+> the fan-out signature. Nothing is refused; the model is shown a
+> number. The prompt-discipline and completion-gate halves stay
+> deferred: DAB shows where the failures are, not whether a check would
+> have caught them, and replaying its trajectories is the way to find
+> out (`eval.md`).
+
 **A streaming or paginated result channel** — MCP has no result
 pagination at all and nobody streams partial answers. Not Forge's to fix.
 
@@ -830,6 +854,7 @@ a programmatic consumer.
 | `future.md` | kernel-backed sessions, the semantic layer, cost governance, big data, partition order (§4a) |
 | `eval.md` | metrics: fraction of analysis runs passing the provenance gate; mean rows read per `table://` ref (a high number means the default projection is wrong) |
 | `README.md` | the two-entrypoint diagram becomes three (§2g) |
+| `artifacts.md` §5.3 (2026-10-19) | `table` stub gains `input_rows` and the fan-out `!` line (§4b, promoted) |
 
 **Amended since, by [`local.md`](./local.md).** Two of this document's
 decisions were narrowed by the local-compute pass and the changes are

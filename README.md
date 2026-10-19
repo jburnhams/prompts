@@ -48,6 +48,20 @@ CodeScene. Built on two source-level deep dives: Codex Guardian's action-risk
 machinery ([`codex/guardian-mechanics.md`](./codex/guardian-mechanics.md))
 and OpenClaw's maintainer bot [`clawsweeper/`](./clawsweeper).
 
+**[→ `agent-content-provenance.md`](./agent-content-provenance.md) §5
+and [`agent-design/formats.md`](./agent-design/formats.md) §5a** — the
+2026-10-19 weekly pass. Claude Code's builds 2.1.290–2.1.302 (now tracked
+through the Piebald dumps, stored in
+[`leaked/claude-code/consent-provenance/`](./leaked/claude-code/consent-provenance))
+spell out *who can consent and to what*: only a harness-marked user, a
+bare reply approves only the one action the message before it named, and
+agents direct work but never consent. Forge's `AskUser` resume now checks
+who replied, and plan approval is bound to the plan's text. The same pass
+adds `agent-subagent-architectures.md` §7c (four harnesses stopped
+sub-agents running with more authority than their parent in one week),
+`code-review-approaches.md` §14 (GitHub's ReviewBench) and
+`agent-data-analysis.md` §12a (DAB's failure taxonomy).
+
 **[→ `code-review-approaches.md`](./code-review-approaches.md) §12 and
 [`agent-design/risk.md`](./agent-design/risk.md)** — the 2026-10-17 pass.
 Between August and October 2026 review tooling split into two outputs:
