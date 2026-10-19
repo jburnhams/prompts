@@ -1208,6 +1208,21 @@ change the schema dialect used elsewhere in this document.)
 > tool afterward, and do not call Complete in the same turn. It posts
 > your question through AddComment automatically; you do not need to
 > call AddComment yourself first.
+>
+> Before calling it, finish every part of the task that does not depend
+> on the answer, and try any alternative that avoids the question (a
+> narrower scope, synthetic data instead of real, leaving a step for the
+> reviewer). Then ask once: if several questions are open, put them all
+> in `question` as a numbered list, one sentence each.
+>
+> Use `kind: "approve"` when the question is whether to take one specific
+> action. Name the action and the exact thing that makes it need
+> approval (the branch, the file, the destination, the record) in
+> `action`; ask about one action per call. On a yes, a fresh run executes
+> that action and nothing else, so put everything it needs in `action`
+> and leave any prepared content in files and list their paths in
+> `staged_paths`. Use `kind: "clarify"` (the default) for everything
+> else.
 
 ```json
 {
@@ -1215,12 +1230,33 @@ change the schema dialect used elsewhere in this document.)
   "input_schema": {
     "type": "object",
     "properties": {
-      "question": { "type": "string", "description": "The specific question that needs a human answer." },
+      "kind": {
+        "type": "string",
+        "enum": ["clarify", "approve"],
+        "description": "clarify (default): the answer changes what you do next. approve: a yes/no on one action named in `action`."
+      },
+      "question": { "type": "string", "description": "The specific question that needs a human answer. Several open questions go here as a numbered list." },
       "context": { "type": "string", "description": "Why this is blocking, and what you've already tried or ruled out." },
       "options": {
         "type": "array",
         "items": { "type": "string" },
-        "description": "Optional: 2-4 concrete choices, if the question reduces to one. Omit for an open-ended question."
+        "description": "Optional, clarify only: 2-4 concrete choices, if the question reduces to one. Omit for an open-ended or multi-part question. Ignored for approve, whose options are fixed by the harness."
+      },
+      "action": {
+        "type": "object",
+        "description": "Required when kind is approve. The one action to approve, complete enough to run without this run's transcript.",
+        "properties": {
+          "operation": { "type": "string", "description": "What will be done, e.g. \"delete\", \"overwrite\", \"migrate\"." },
+          "target": { "type": "string", "description": "The exact thing that makes it need approval: path, branch, table, record id. Never empty." },
+          "steps": { "type": "string", "description": "The literal commands or edits to perform, exactly as they will be run." }
+        },
+        "required": ["operation", "target", "steps"],
+        "additionalProperties": false
+      },
+      "staged_paths": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Optional, approve only: absolute paths of files this run prepared for the action."
       }
     },
     "required": ["question", "context"],
@@ -1228,6 +1264,11 @@ change the schema dialect used elsewhere in this document.)
   }
 }
 ```
+
+The harness rejects an `approve` call with no `action` or an empty
+`target`, and a `question` that does not mention the target, returning
+the error to the model in the same turn so it can retry. See `formats.md`
+§5 for what each kind does on resume.
 
 ---
 

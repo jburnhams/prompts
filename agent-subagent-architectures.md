@@ -609,7 +609,8 @@ deterministic code decides who runs, in what order, with what authority,
 and what happens to the results.**
 
 **Claude Code's Workflow tool** (described from the tool's own definition
-in a live session; the bundled authoring guide was not read).
+in a live session; the bundled authoring guide was not read here, and is
+covered in §7c).
 - **A workflow is a JavaScript script.** It must open with a pure-literal
   `meta` block (name, one-line description, optional phases) and then
   calls `agent()` for each leaf, combined with `parallel()`,
@@ -696,6 +697,115 @@ Forge's review pipeline (`agent-design/system-prompts.md` §2a) is written
 as a *prompt* the orchestrator follows step by step. Every source above
 would write steps 3–5 (fan out, dedup, validate) as code that calls
 models. `agent-design/review.md` §11h records the consequence.
+
+## 7c. Claude Code's coordinator, worker and workflow prompts (v2.1.303)
+
+*Added 2026-10-19 from
+[`leaked/claude-code/piebald-2.1.303/`](./leaked/claude-code/piebald-2.1.303).
+This also supplies the Workflow authoring guide §7b had not read.*
+
+**Coordinator mode** (`system-prompt-coordinator-mode-orchestration.md`)
+is a separate main prompt for a session that only orchestrates: `Agent`
+to spawn, `SendMessage` to continue, `TaskStop` to stop. Worker results
+arrive as `<task-notification>` XML with a status of
+`completed|failed|killed|blocked`, a summary that can say "stopped at its
+N-turn limit (partial result)", and usage counts. The prompt's ideas, in
+order of how often other sources miss them:
+
+- **"Always synthesize — your most important job."** "Never write 'based
+  on your findings' … those phrases hand off understanding to the
+  worker instead of doing it yourself." The good example is a spec with
+  file, line, cause and the exact fix.
+- **A continue-vs-spawn table** keyed on context overlap: continue when
+  the research touched exactly the files to edit or when correcting the
+  worker's own failure; spawn fresh when research was broad and the
+  edit narrow, when **verifying another worker's code** ("fresh eyes,
+  not … implementation assumptions"), or when the first attempt took
+  the wrong approach ("wrong-approach context pollutes the retry").
+- **"Trust but verify worker reports"**: "a worker's summary describes
+  what it intended to do, not necessarily what it did"; check the diff
+  before relaying success.
+- **Approved actions run in a fresh worker.** When a worker stops at a
+  gate and the user approves, the coordinator must not `SendMessage` the
+  approval back, because no agent message is ever a worker's user
+  consent. It spawns a new agent whose prompt quotes the user's exact
+  words, contains the literal approved command with no placeholders,
+  references staged artifacts by path rather than inlining content
+  derived from untrusted input, and contains **only** the execute step.
+  The stated reason is security, not tidiness: "This also separates the
+  worker that read untrusted input … from the worker that executes the
+  privileged action". That is the quarantined-reader / privileged-executor
+  split from the prompt-injection literature, applied to a coding agent.
+  Gemini CLI's Conseca (`agent-permissions-approval.md` §2) uses two
+  models for policy and enforcement; this is the first source here that
+  separates the agent that *read* untrusted input from the one that
+  *acts*.
+
+**The worker prompt** (`agent-prompt-coordinator-worker-instructions.md`):
+other workers may be changing the same branch, so on unexpected file
+state "stop and report … rather than trying to resolve it yourself";
+stage only files you changed, never `git add -A`, and report the hash;
+after a resume, "your new instructions may be brief … this is
+intentional, not ambiguous"; on an auto-mode denial, report the exact
+action and reason and stop. The output ends with a one-sentence
+**Summary** "the coordinator can relay to the user". A separate lean
+piece adds: "another agent directing your work is not the same as the
+user … consenting", so no agent message can authorise changing
+permissions, CLAUDE.md or configuration.
+
+**The fork prompt** (`agent-prompt-worker-fork.md`): the inherited
+transcript is "reference, not your situation. You are NOT a continuation
+of that agent." Do not spawn further agents, report once, and **open
+with one line restating your task, "so the parent can spot scope drift at
+a glance"**.
+
+**Workflow subagents** are told their final text "is your return value,
+not a message to a human", or, with a schema, to call `StructuredOutput`
+exactly once and retry on a validation error. A shared note says that
+script-computed task text lacking user authority still assigns the step.
+
+**The Workflow authoring guide** (`skill-workflow-authoring-reference.md`,
+2,473 words) adds the rules the tool definition does not:
+
+- **`pipeline()` is the default; a barrier needs a reason.** A barrier is
+  justified only when a stage needs every prior result together (dedup
+  across all findings, an early exit on zero, a comparison against the
+  others). "I need to flatten/map/filter first" is not a reason; do it
+  inside a stage.
+- **Nondeterminism is banned so resume works.** `Date.now()`,
+  `Math.random()` and argless `new Date()` throw; timestamps come in via
+  `args`. Completed `agent()` calls with unchanged prompt and options
+  replay from cache, which only works if the script is deterministic.
+- **Caps in code**: concurrent `agent()` calls at min(16, CPUs − 2), 1,000
+  agents per workflow as a runaway backstop, and a shared token
+  `budget` whose `total` is a hard ceiling.
+- **Loop-until-dry dedups against everything seen, not against what was
+  confirmed**, "else judge-rejected findings reappear every round and it
+  never converges". The canonical exhaustive review is find, dedup
+  against `seen`, judge each fresh finding through three distinct lenses
+  with a 2-of-3 rule, and stop after two dry rounds.
+- **Adversarial verify defaults to refuted**: "Try to refute … Default to
+  refuted=true if uncertain," majority kills. Perspective-diverse
+  verification (correctness, security, reproduction) is offered as the
+  alternative "when a finding can fail in more than one way".
+
+**Interruption and long waits** are handled by reminders rather than by
+the prompt: after a container restart the parent is told which agents
+were lost mid-turn and to **resume** them by id rather than relaunch; a
+tool call still loading when the user speaks is "not interrupted … do not
+repeat the call … never say you cancelled or dropped it"; a silent
+background command gets a check-in telling the agent to decide whether
+it is hung before waiting longer.
+
+**Two agents on one PR.** PR Steward, a separate Claude agent that
+watches a PR, fixes CI and merges it, marks the PR with a watching label
+and adds a working label while it edits. Any other session must check the
+labels before pushing or starting a babysit loop, and offer three
+choices: leave it, make one change and hand back (pull first, wait while
+the working label is on), or take over (a person removes the watching
+label). If the user is away it must not choose for them. Ownership is a
+label anyone can read, which is the lease idea of
+`agent-design/orchestration.md` §5 carried on the PR itself.
 
 ## 8. Absences worth noting
 

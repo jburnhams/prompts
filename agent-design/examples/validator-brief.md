@@ -20,7 +20,7 @@ orchestrator assigned it an id:
   "summary": "dispatch() failure exception type changed from RuntimeError to TransportError, breaking existing callers' handlers",
   "rationale": "The old code raised RuntimeError on gateway 5xx; the new _post_once raises TransportError. Any caller with `except RuntimeError` around dispatch() no longer catches gateway failures.",
   "suggested_fix": null,
-  "validated": null,
+  "verdict": null,
   "validator_note": null
 }
 ```
@@ -86,16 +86,19 @@ How this validation actually runs (per the validator system prompt,
    anywhere; `Grep("dispatch\\(", glob: "*.py")` → three call sites,
    none wrapping the call in a handler for either type (failures
    propagate to the job runner's generic error handling).
-3. Verdict: **rejected** — "No caller catches RuntimeError anywhere in
+3. Verdict: **refuted** — "No caller catches RuntimeError anywhere in
    the tree; the exception-type change has no observable effect in
    this codebase."
 
 f-2 therefore lands in the Complete report's `filtered` list with
-`validated: false` and that sentence as `validator_note` — recorded,
+`verdict: "refuted"` and that sentence as `validator_note` — recorded,
 never posted. Had the validator been genuinely unable to tell (say,
-`dispatch()` were a public API of a published package), the standing
-rule is the same outcome for a different reason: reject rather than
-post an unverified claim.
+`dispatch()` were a public API of a published package, so callers outside
+the tree might catch `RuntimeError`), the verdict would be **plausible**:
+the mechanism is real in the code, the trigger is outside what the tree
+shows. A plausible finding is posted, labelled as such, only on a
+`high`-tier review; at `low` and `medium` it lands in `filtered` like a
+refuted one (`review.md` §5).
 
 Contrast f-1: the same brief shape, and the validator confirms by
 Reading `billing/retry.py:19-29` (the loop really does run

@@ -9,6 +9,13 @@ behind) the real thing, so treat this as a data point, not a spec.
 
 ## Files
 
+**Read [`piebald-2.1.303/`](./piebald-2.1.303) first** (added 2026-10-19).
+It holds Claude Code v2.1.303's prompt strings as extracted from the npm
+package by Piebald: an inventory of all 961 pieces, the 63 that this
+collection's documents cite, and a table of what this folder lacked.
+88% of the pieces changed after the 2.1.172 build the captures below come
+from. Everything below is kept for the history it records.
+
 **Original extraction** (thin, dated):
 - `Prompt.txt` — extracted system prompt.
 - `Tools.json` — extracted tool/function definitions.

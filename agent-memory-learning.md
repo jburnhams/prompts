@@ -1757,6 +1757,64 @@ distinctions decide whether such a channel is worth building:
 3. **Blocking or not** — Devin's answer, report-and-continue, is the one
    that survives an unsupervised run.
 
+## 13. Claude Code's shipped memory prompts (v2.1.303)
+
+*Added 2026-10-19 from
+[`leaked/claude-code/piebald-2.1.303/`](./leaked/claude-code/piebald-2.1.303).
+Everything Claude Code-specific above comes from the May 2026 leaked
+source; these are the strings in the October npm build.*
+
+**Claude Code joins §2(b)'s table.** Its background consolidator is the
+**dream** (`agent-prompt-dream-memory-consolidation.md`), in four phases:
+orient (list the directory, read the index, skim topic files "so you
+improve them rather than creating duplicates"), gather signal, consolidate,
+prune and index. The signal sources are ranked, and the first is not the
+transcripts: "**Existing memories that drifted** — facts that contradict
+something you see in the codebase now". Transcripts are large JSONL
+files to "grep narrowly", and "Don't exhaustively read transcripts. Look
+only for things you already suspect matter." Consolidation converts
+relative dates to absolute ones and deletes contradicted facts "at the
+source". The index must stay under a line cap and ~25 KB, one line under
+~150 characters per entry; an entry over ~200 characters "is carrying
+content that belongs in the topic file". Separate pieces reconcile memory
+against CLAUDE.md and handle team memory during a dream.
+
+**The extraction agent is boxed in by tools and turns.** A reminder lists
+its tools: Read, Grep, Glob, read-only shell, Edit/Write only inside the
+memory directory, and `rm` of `.md` files there only ("rm takes no flags
+except -f"); "All other tools — MCP, Agent, write-capable shell, etc —
+will be denied." A second reminder sets a turn budget and the strategy
+for it: all reads in parallel in turn 1, all writes in parallel in turn 2,
+"Do not interleave reads and writes", because Edit requires a prior Read
+of the same file. A third restricts it to facts from the recent
+conversation only.
+
+**The retriever's restraint now names the common failure.** The
+attachment selector (the `findRelevantMemories` side query above) keeps
+its "only include memories that you are certain will be helpful", and
+adds: "Be especially conservative with user-profile and project-overview
+memories … A profile saying 'works on DB performance' is NOT relevant to
+a question that merely contains the word 'performance' … Match on what
+the question IS ABOUT, not on surface keyword overlap with who the user
+is." Profile memories match everything superficially, so a selector
+without this rule attaches them to every turn.
+
+**Shared memory has a mass-deletion guard.** When many synced memory
+files disappear from a session's disk at once, sync withholds every
+deletion that cycle, because that "almost always means the local memory
+folder was wiped rather than deliberately cleared". The files are
+restored on the next sync; a deliberate bulk removal must wait for the
+restore and then go in small batches about a minute apart. This is the
+first deletion-rate limit on a memory store in this collection, and it
+treats a sudden large diff as evidence of an accident rather than intent.
+
+**A refreshed-memory reminder invalidates earlier reads.** When memory
+files change mid-session, a `<memory_updates>` block gives the new
+state, says "those earlier-turn reads are outdated", and forbids quoting
+or paraphrasing the block itself, because it is "machine-generated
+bookkeeping … the user cannot see". A capacity warning fires as an index approaches its byte or line
+read limit, which is the write-side counterpart of the index cap above.
+
 ## Design takeaways
 
 1. **Separate the levels before designing anything else.** Team-shared

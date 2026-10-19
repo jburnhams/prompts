@@ -2,6 +2,27 @@
 
 All notable changes to this repository, grouped by day, newest first. Generated from git history.
 
+## 2026-10-19
+
+**Five proposals adopted into Forge.** Asked to adopt the five learnings summarised in the thread (proposals 1–6 in `agent-design/proposals-claude-code-2.1.303.md`).
+
+- `AskUser` gains `kind` (`clarify` | `approve`), an `action` object with a required `target`, and `staged_paths` (`tools.md`). A yes to an `approve` question starts a fresh `implement` run holding only the approved action (`<approved_action>`, nonce-tagged), the reply and staged paths, with no transcript; anything else resumes the original run (`formats.md` §5). An approval binds to the step it names, not to a later step that ships its result (`formats.md` §1b).
+- Forge finishes every part of a task that doesn't depend on the answer, tries routes that avoid the question, then asks once with all open questions numbered (`system-prompts.md` §1, `tools.md`). The schema keeps one `question` string so `generative.md` §2d's option matching is unchanged.
+- The validator returns `confirmed` / `plausible` / `refuted` (`system-prompts.md` §5; `formats.md` §4's `validated` becomes `verdict`). The triage tier decides what is posted: `plausible` only at `high`, labelled (`review.md` §5, `system-prompts.md` §2a step 5, `risk.md` §5). The resolution check stays binary.
+- The reviewer core no longer tells finders to err toward precision: every candidate with a nameable failure scenario goes to the validator, and "regardless of input" becomes a realistic, nameable trigger. The `bugs` lens checks what each deleted line guaranteed and whether wrappers route to the wrapped object. `high` tier adds a gap sweep after validation (`system-prompts.md` §2a step 5b, §4).
+- `agent-design/README.md` decision log gains two rows; `examples/validator-brief.md` and `examples/specialist-brief-bugs.md` use the new verdict field.
+
+**Claude Code v2.1.303 from Piebald's extraction.** Asked to compare the collection against `Piebald-AI/claude-code-system-prompts` (latest version), list what it has that we lack, update the docs, and write up learnings for our own design. Our Claude Code material was a July capture of build 2.1.172 plus the September artifact skills; 843 of Piebald's 961 pieces changed after that build.
+
+- `leaked/claude-code/piebald-2.1.303/` — new. README with provenance, corpus numbers by section, the gap table (what we had, what Piebald adds, where it is now covered, and what was left out on purpose), `inventory.tsv` of all 961 pieces for later diffing, and the 63 pieces cited below, verbatim with their frontmatter.
+- `code-review-approaches.md` §14 — new. The `/code-review` ladder from minimal to max: finder counts and caps, three-state verification whose bias moves from precision to recall with effort, the removed-behaviour and wrapper/proxy angles, "finders that silently drop half-believed candidates … are the dominant cause of misses", the quote-the-rule conventions angle, and the gap sweep.
+- `agent-permissions-approval.md` §1c and §2c — new. Proactivity levels as a separate mode axis; the auto-mode classifier's HARD/SOFT rules, "must name" consent with Path A/B, "the bar binds at the step that ships", harness meta lines as ground truth, the outcome vocabulary, and nonce-keyed forwarded user turns. **Two corrections:** auto mode is no longer internal-only, and OpenClaw is no longer the only source that closes the consent-assertion seam.
+- `agent-subagent-architectures.md` §7c — new. Coordinator mode (synthesise rather than delegate understanding, a continue-vs-spawn table, approved actions run by a fresh worker that never read the untrusted input), the worker and fork prompts, workflow subagent return contracts, the Workflow authoring guide §7b had not read, interruption reminders, and PR Steward's label hand-off.
+- `agent-turn-output.md` §1d — new. The rewritten title generator, and the background and Projects run-state classifiers, which disagree on offers-as-questions and on auth errors.
+- `agent-context-compaction.md` §2b, `agent-memory-learning.md` §13, `agent-content-provenance.md` §5 — new. The lean summariser's survivor manifest and "the summary is also the only record of what the user said"; the dream, the extraction agent's limits, the selector's rule on profile memories and the mass-deletion guard; and the channels Claude Code declares are not the user, "the outer framing always wins", and injected instructions reported as findings.
+- `agent-design/proposals-claude-code-2.1.303.md` — new. Fourteen proposals for Forge, each naming the section it would amend (1–6 adopted the same day, above). `agent-design/README.md` points to it.
+- `sources.md`, `README.md`, `leaked/claude-code/README.md` — pointers to the new folder; `sources.md` records that Piebald's repo holds no extractor and how its token counts are made.
+
 ## 2026-10-17
 
 One long session on code review and change risk, in five passes, all on branch `claude/review-recent-developments` (PR #33). Listed newest first.

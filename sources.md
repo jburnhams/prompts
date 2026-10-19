@@ -357,6 +357,22 @@ Not read: `cloud-tasks*`, `realtime-*`, `voice-host`, `windows-sandbox*`,
 passes named, and `skills/src/dynamic_skill_selector/` (covered by the
 2026-08-30 pass already recorded above).
 
+## Claude Code prompts from the npm package (Piebald, read 2026-10-19)
+
+| Source | Repo | Paths that matter | SHA read |
+|---|---|---|---|
+| **Claude Code v2.1.303 prompt strings** (MIT mirror; text is Anthropic's) | `github.com/Piebald-AI/claude-code-system-prompts` | `system-prompts/*.md` — 961 pieces, one per file, named `{agent-prompt,system-prompt,system-reminder,tool-description,tool-parameter,skill,data}-<slug>.md`, each with an HTML-comment frontmatter giving `name`, `description`, `ccVersion` (the release it last changed in) and template `variables`. `README.md` — the categorised list with token counts. `CHANGELOG.md` — one line per changed piece per release, 317 releases since v2.0.14. `tools/updatePrompts.js` — **not** the extractor: it reads a `prompts-<version>.json` produced elsewhere (the extraction itself is not in the repo), writes the files and README, and counts tokens with the Messages `count_tokens` endpoint against `claude-sonnet-4-5-20250929`, so counts include a small per-request overhead and use that model's tokenizer | `d895c8d` (v2.1.303, 2026-10-18) |
+
+Stored subset, inventory and the gap analysis:
+[`leaked/claude-code/piebald-2.1.303/`](./leaked/claude-code/piebald-2.1.303).
+To re-read, shallow-clone (5 MB, no sparse checkout needed), rebuild
+`inventory.tsv` and diff the `cc_version` column. This is the
+authoritative source for Claude Code prompt text from 2026-10-19 on: it
+reads the shipped package, so it supersedes both the leaked TypeScript
+source below and the aggregator captures in `leaked/claude-code/` for
+anything they disagree on. The strings it contains are not all live;
+many are behind feature gates the extraction cannot see.
+
 ## Caveat on the Claude Code source
 
 `tanbiralam/claude-code` claims to be the full leaked TypeScript source

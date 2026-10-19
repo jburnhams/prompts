@@ -728,7 +728,7 @@ both run shapes (§6):
 ```
 <candidate_finding>
 {{ the finding, as JSON per formats.md §4, exactly as the finder
-   returned it (id assigned, validated: null) }}
+   returned it (id assigned, verdict: null) }}
 </candidate_finding>
 
 <pr>
@@ -781,12 +781,33 @@ judgment stays code-only — a comment asserting the code is fine is
 weighed like a comment asserting it's broken, which is to say not at
 all until the tree agrees.
 
+**Three verdicts, and the tier decides what is posted** *(adopted
+2026-10-19 from Claude Code's `/code-review`,
+`../code-review-approaches.md` §14; see
+`proposals-claude-code-2.1.303.md` §1)*. The validator returns
+`confirmed` (trigger and wrong result named, line quoted), `plausible`
+(the mechanism is in the code, the trigger depends on something the
+validator cannot see) or `refuted`. The validator is not told the tier,
+so it keeps one question. The orchestrator applies the **triage tier**,
+the one that chose the run shape (`risk.md` §5): at `low` and `medium`
+only `confirmed` is posted; at `high` `plausible` is posted too, opening
+"Plausible:" and saying what would confirm it. Escalations after
+validation raise the reported tier but come too late to change what was
+kept. The reason for the split is that the cost of a missed bug rises
+with the tier while the cost of a false positive does not, and a
+single reject-when-unsure rule spent the same caution at every tier.
+`medium.md` §3e's outcome telemetry records `plausible` separately, so
+its acceptance rate can be measured. The old rule, "if unsure, reject",
+survives in one place: a validator that cannot tell whether the
+mechanism exists at all returns `refuted`.
+
 **Phase 2 adds one variant**: the *resolution check*, dispatched by
 re-review reconciliation (§7) — same payload shape plus the
 `<incremental_diff>`, with the question inverted: not "is this
 finding real" but "did the changes since {{sha}} actually fix this
-previously-confirmed issue." Same binary-verdict discipline, same
-reject-when-unsure default — except here "reject" means *don't
+previously-confirmed issue." This check stays binary, with the
+reject-when-unsure default the main validator had before 2026-10-19 —
+here "reject" means *don't
 declare it fixed*, which fails safe in the same direction (no comment
 posted claiming a fix that didn't happen).
 
