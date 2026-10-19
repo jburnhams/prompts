@@ -126,6 +126,7 @@ and a blob does not.
           bytes="18442119" rows="1840293" cols="7"
           origin="bash:call_7c21" produced_by="artifact://txt_0a19bb4c"
           inputs="table://tbl_1188ef40,file:///data/regions.csv"
+          input_rows="1840293,"
           trust="generated" expires="run">
   order_id     int64      1840293 non-null, 1840293 distinct
   region       string     1840293 non-null, 14 distinct: EMEA, NA, APAC, …
@@ -174,6 +175,21 @@ re-running the analysis needs is **the code, and what it read**.
 consumed. Together they make every table in a run a node in a graph whose
 leaves are source data — which is §2f's completion gate, and the answer
 to `agent-data-analysis.md` §12's open problem 5.
+
+**`input_rows` sits beside `inputs`, and a fan-out gets a `!` line**
+(added 2026-10-19, promoted from §4b). `input_rows` is positional with
+`inputs`, filled by the harness from each input's own stub, and blank for
+an input that is not a `table://` (the CSV above). When the output has
+more rows than the largest input, the harness adds one line before the
+closing `!` hint:
+
+```
+! 4201 rows from inputs of 1840 and 12: more rows than the largest input.
+```
+
+That shape is never right for a lookup join and is what a duplicated key
+looks like. Nothing is refused; the model is shown a number at the moment
+the fan-out happens. The reasoning, and what stays deferred, is in §4b.
 
 **What is deliberately not in the stub:** partition or sort order. It is
 real information (§11c of the topic doc lists it) and it is backend
@@ -710,25 +726,12 @@ number the model can see, for free, at the moment it happens.
 > §12a). DAB's failure analysis puts roughly 88–90% of wrong answers in
 > planning or implementing the computation over data the agent had
 > selected correctly, on multi-database queries with messy join keys:
-> the case this defends. So the second option is adopted into §2b's
-> grammar now, because it costs one attribute and needs no judgement:
->
-> ```
-> <artifact id="tbl_77d0e3b1" kind="table" … rows="4201" cols="9"
->           inputs="table://tbl_1188ef40,table://tbl_2a90c4d7"
->           input_rows="1840,12" …>
-> ! 4201 rows from inputs of 1840 and 12: more rows than the largest input.
-> ```
->
-> `input_rows` is positional with `inputs` and filled by the harness
-> from the input stubs (blank for an input that is not a `table://`).
-> The `!` line is emitted only when output rows exceed the largest
-> input's, the one shape that is never right for a lookup join and is
-> the fan-out signature. Nothing is refused; the model is shown a
-> number. The prompt-discipline and completion-gate halves stay
-> deferred: DAB shows where the failures are, not whether a check would
-> have caught them, and replaying its trajectories is the way to find
-> out (`eval.md`).
+> the case this defends. The second option above costs one attribute
+> and needs no judgement, so it is now part of §2b's canonical stub
+> (`input_rows`, and the fan-out `!` line). The prompt-discipline and
+> completion-gate halves stay deferred: DAB shows where the failures
+> are, not whether a check would have caught them, and replaying its
+> trajectories is the way to find out (`eval.md`).
 
 **A streaming or paginated result channel** — MCP has no result
 pagination at all and nobody streams partial answers. Not Forge's to fix.
@@ -854,7 +857,7 @@ a programmatic consumer.
 | `future.md` | kernel-backed sessions, the semantic layer, cost governance, big data, partition order (§4a) |
 | `eval.md` | metrics: fraction of analysis runs passing the provenance gate; mean rows read per `table://` ref (a high number means the default projection is wrong) |
 | `README.md` | the two-entrypoint diagram becomes three (§2g) |
-| `artifacts.md` §5.3 (2026-10-19) | `table` stub gains `input_rows` and the fan-out `!` line (§4b, promoted) |
+| `artifacts.md` §5.3 (2026-10-19) | `table` stub gains `input_rows` and the fan-out `!` line (§2b; promoted from §4b) |
 
 **Amended since, by [`local.md`](./local.md).** Two of this document's
 decisions were narrowed by the local-compute pass and the changes are

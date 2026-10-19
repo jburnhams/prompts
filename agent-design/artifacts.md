@@ -337,6 +337,11 @@ and usually the best description available; `origin` is provenance *and* the
 address to recover from; `author`/`created` decide trust and staleness;
 `trust` is §7; `expires` is §5.5.
 
+The `table` kind has its own stub, with `rows`/`cols`, column summaries,
+`produced_by`, `inputs` and (since 2026-10-19) `input_rows` and a fan-out
+line; it is specified in [`data.md`](./data.md) §2b, which extends this
+grammar rather than replacing it.
+
 This is the notebook-cell precedent generalised
 (`agent-tool-implementations.md` §5: *when a payload's existence and shape
 are what the model needs and its contents are not, return an address and the

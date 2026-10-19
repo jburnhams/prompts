@@ -661,7 +661,8 @@ and a *new* run resumes it later.
    (`tools.md`): review runs end in `Complete`, never a suspension.
 3. The harness records a suspended-task record keyed to that comment's
    id/URL, containing everything needed to resume: the original task
-   envelope, the full transcript so far, and the question asked.
+   envelope, the full transcript so far, the question asked, and
+   the dispatcher's `requested_by` identity where it recorded one (§5a).
 4. The run ends. No `Complete` call happens for a suspended run — the
    task is not finished, it's paused. (This is why `tools.md` says
    `AskUser` and `Complete` never share a turn: suspension is a distinct
@@ -724,23 +725,41 @@ attribution and content-bound approvals, and Goose's and Crush's
 answers-bound-to-the-asker fixes, compared in
 `../agent-content-provenance.md` §5.
 
-1. **The harness classifies the reply's author against the addressee
-   registry** (`medium.md` §5c) at the moment the reply arrives, and
-   writes the result onto the tag:
+1. **The harness classifies the reply's author against a principal set
+   it can compute in v1**, without `medium.md` §5c's addressee registry
+   (that is a later, additive widening, not a dependency):
+
+   - `source: jira`: the issue's **assignee and reporter**, read by the
+     harness from Jira when the reply arrives (the same fields the
+     dispatcher already reads to route the task), plus the dispatcher's
+     `requested_by` if it recorded one.
+   - `source: manual`: the dispatcher's `requested_by`, the identity
+     that submitted the instruction, which the suspended-task record
+     (§5, step 3) now stores beside the envelope, transcript and
+     question.
+
+   The result goes onto the tag:
 
    ```
    <resumed_answer nonce="…" option_id="keep-legacy-endpoint" match="exact"
                    from="principal" author="c.nolan@example.com">
    ```
 
-   `from` is one of `principal` (an addressee the question was routed
-   to, or the task's requester, assignee or reporter where those are the
-   registry entries), `participant` (any other human), or `automation`
-   (a bot account, any Forge identity, or an integration). Membership is
-   checked when the reply arrives, not when the question was asked, so
-   someone removed from the registry in between is a `participant`. Like
-   `option_id` and `match`, `from` is a harness assertion; the body stays
-   untrusted content.
+   `from` is one of `principal` (in the set above, or later in the
+   registry an `AskUser` `audience` routed to), `participant` (any other
+   human), or `automation` (a bot account, any Forge identity, or an
+   integration). Membership is checked when the reply arrives, not when
+   the question was asked, so a reassigned issue's new assignee can
+   answer and the old one cannot. Like `option_id` and `match`, `from` is
+   a harness assertion; the body stays untrusted content.
+
+   **If the set is empty** (an unassigned issue whose reporter is a bot,
+   or a manual task whose dispatcher recorded no identity), the run
+   cannot resume on any reply, so the harness says so at suspend time
+   rather than waiting: the posted question ends with a line naming who
+   may answer, or, when nobody can, saying that a reply will not resume
+   the task and that it needs an assignee. A suspended run is never
+   silently unanswerable.
 
 2. **Only a `principal` reply resumes the run.** A `participant` reply is
    kept on the suspended-task record and, when a principal reply later
@@ -794,7 +813,8 @@ answers-bound-to-the-asker fixes, compared in
    fixed exactly this in Guardian on 2026-10-15.
 
 What this supersedes: §5's "a reply lands on the comment thread" now
-means a `principal` reply; §6's gated pattern ("wait for an explicit
+means a `principal` reply, and §5 step 3's suspended-task record gains
+`requested_by`; §6's gated pattern ("wait for an explicit
 approving reply") now names who may give it and binds it to the plan
 hash. `generative.md` §2d's tag gains `from` and `author` beside
 `option_id` and `match`, and the coding envelope gains the optional
