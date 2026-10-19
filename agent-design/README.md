@@ -450,6 +450,12 @@ does not need lifecycle folders or a format gate):
    the way: `edit`'s "fuzzy matching" is whitespace normalisation with
    three guards, not similarity scoring.
 
+**Open proposals, not yet adopted:**
+[`proposals-claude-code-2.1.303.md`](./proposals-claude-code-2.1.303.md)
+(2026-10-19) — fourteen amendments drawn from Claude Code v2.1.303's
+shipped prompts, each naming the section it would change, waiting for a
+decision before any document above is edited.
+
 Per-source notes — what one harness does and whether it transfers —
 live in that harness's own folder, not here. `../deepseek-harness/`
 is the worked example: its README carries the travels/doesn't-travel

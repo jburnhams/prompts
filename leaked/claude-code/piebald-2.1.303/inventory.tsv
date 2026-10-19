@@ -1,0 +1,962 @@
+section	name	tokens	cc_version	file
+Agent Prompts	Agent Prompt: Explore	862	2.1.235	agent-prompt-explore.md
+Agent Prompts	Agent Prompt: Plan mode (enhanced)	1066	2.1.235	agent-prompt-plan-mode-enhanced.md
+Agent Prompts	Agent Prompt: CLAUDE.md creation	631	2.1.235	agent-prompt-claude-md-creation.md
+Agent Prompts	Agent Prompt: Status line setup	4815	2.1.284	agent-prompt-status-line-setup.md
+Agent Prompts	Agent Prompt: /batch slash command	1524	2.1.281	agent-prompt-batch-slash-command.md
+Agent Prompts	Agent Prompt: /code-review GitLab comment posting	312	2.1.257	agent-prompt-code-review-gitlab-comment-posting.md
+Agent Prompts	Agent Prompt: /code-review inline gap sweep phase	105	2.1.213	agent-prompt-code-review-inline-gap-sweep-phase.md
+Agent Prompts	Agent Prompt: /code-review minimal mode	632	2.1.288	agent-prompt-code-review-minimal-mode.md
+Agent Prompts	Agent Prompt: /code-review part 1 base finder angles	145	2.1.160	agent-prompt-code-review-part-1-base-finder-angles.md
+Agent Prompts	Agent Prompt: /code-review part 10 ReportFindings output format	448	2.1.288	agent-prompt-code-review-part-10-reportfindings-output-format.md
+Agent Prompts	Agent Prompt: /code-review part 2 low effort minimum findings mode	740	2.1.235	agent-prompt-code-review-part-2-low-effort-minimum-findings-mode.md
+Agent Prompts	Agent Prompt: /code-review part 2 low effort mode	778	2.1.288	agent-prompt-code-review-part-2-low-effort-mode.md
+Agent Prompts	Agent Prompt: /code-review part 3 extra-high and maximum effort modes	553	2.1.288	agent-prompt-code-review-part-3-extra-high-and-maximum-effort-modes.md
+Agent Prompts	Agent Prompt: /code-review part 4 three-state verification phase	98	2.1.173	agent-prompt-code-review-part-4-three-state-verification-phase.md
+Agent Prompts	Agent Prompt: /code-review part 5 recall-biased verification phase	175	2.1.160	agent-prompt-code-review-part-5-recall-biased-verification-phase.md
+Agent Prompts	Agent Prompt: /code-review part 6 medium effort mode	466	2.1.288	agent-prompt-code-review-part-6-medium-effort-mode.md
+Agent Prompts	Agent Prompt: /code-review part 7 high effort mode	511	2.1.288	agent-prompt-code-review-part-7-high-effort-mode.md
+Agent Prompts	Agent Prompt: /code-review part 8 GitHub comment posting	152	2.1.147	agent-prompt-code-review-part-8-github-comment-posting.md
+Agent Prompts	Agent Prompt: /code-review part 9 fix application	250	2.1.235	agent-prompt-code-review-part-9-fix-application.md
+Agent Prompts	Agent Prompt: /code-review unavailable-agent inline mode	403	2.1.213	agent-prompt-code-review-unavailable-agent-inline-mode.md
+Agent Prompts	Agent Prompt: /rename auto-generate session name	80	2.1.147	agent-prompt-rename-auto-generate-session-name.md
+Agent Prompts	Agent Prompt: /schedule slash command	4469	2.1.282	agent-prompt-schedule-slash-command.md
+Agent Prompts	Agent Prompt: /security-review slash command	2521	2.1.120	agent-prompt-security-review-slash-command.md
+Agent Prompts	Agent Prompt: /simplify slash command	362	2.1.154	agent-prompt-simplify-slash-command.md
+Agent Prompts	Agent Prompt: /simplify unavailable-agent inline mode	621	2.1.213	agent-prompt-simplify-unavailable-agent-inline-mode.md
+Agent Prompts	Agent Prompt: Artifact type creation slash command (quickstart flow)	277	2.1.271	agent-prompt-artifact-type-creation-slash-command-quickstart-flow.md
+Agent Prompts	Agent Prompt: Artifact type creation slash command	347	2.1.265	agent-prompt-artifact-type-creation-slash-command.md
+Agent Prompts	Agent Prompt: Agent Hook	275	2.1.300	agent-prompt-agent-hook.md
+Agent Prompts	Agent Prompt: Artifact comment completion reply and resolution	256	2.1.269	agent-prompt-artifact-comment-completion-reply-and-resolution.md
+Agent Prompts	Agent Prompt: Artifact comment thread analyst	750	2.1.257	agent-prompt-artifact-comment-thread-analyst.md
+Agent Prompts	Agent Prompt: Artifact comment thread background directive	300	2.1.290	agent-prompt-artifact-comment-thread-background-directive.md
+Agent Prompts	Agent Prompt: Artifact editor thread follow-up	328	2.1.251	agent-prompt-artifact-editor-thread-follow-up.md
+Agent Prompts	Agent Prompt: Auto mode rule reviewer	292	2.1.136	agent-prompt-auto-mode-rule-reviewer.md
+Agent Prompts	Agent Prompt: Away summary generation	73	2.1.173	agent-prompt-away-summary-generation.md
+Agent Prompts	Agent Prompt: Background agent state classifier ask-opens-message rule	528	2.1.292	agent-prompt-background-agent-state-classifier-ask-opens-message-rule.md
+Agent Prompts	Agent Prompt: Background agent state classifier chat-thread relay rule	1006	2.1.295	agent-prompt-background-agent-state-classifier-chat-thread-relay-rule.md
+Agent Prompts	Agent Prompt: Background agent state classifier	6237	2.1.205	agent-prompt-background-agent-state-classifier.md
+Agent Prompts	Agent Prompt: Background job agent instructions	581	2.1.286	agent-prompt-background-job-agent-instructions.md
+Agent Prompts	Agent Prompt: Claude Code guide	408	2.1.269	agent-prompt-claude-code-guide.md
+Agent Prompts	Agent Prompt: Claude Test author	537	2.1.302	agent-prompt-claude-test-author.md
+Agent Prompts	Agent Prompt: Claude Test explorer	984	2.1.302	agent-prompt-claude-test-explorer.md
+Agent Prompts	Agent Prompt: Claude guide agent	2975	2.1.269	agent-prompt-claude-guide-agent.md
+Agent Prompts	Agent Prompt: Coding session title generator	898	2.1.234	agent-prompt-coding-session-title-generator.md
+Agent Prompts	Agent Prompt: Conversation summarization (capped variant)	166	2.1.290	agent-prompt-conversation-summarization-capped-variant.md
+Agent Prompts	Agent Prompt: Conversation summarization (lean variant)	486	2.1.290	agent-prompt-conversation-summarization-lean-variant.md
+Agent Prompts	Agent Prompt: Conversation summarization (short variant)	400	2.1.296	agent-prompt-conversation-summarization-short-variant.md
+Agent Prompts	Agent Prompt: Conversation summarization with additional instructions	1536	2.1.301	agent-prompt-conversation-summarization-with-additional-instructions.md
+Agent Prompts	Agent Prompt: Conversation summarization	292	2.1.290	agent-prompt-conversation-summarization.md
+Agent Prompts	Agent Prompt: Coordinator worker instructions	830	2.1.271	agent-prompt-coordinator-worker-instructions.md
+Agent Prompts	Agent Prompt: Determine which memory files to attach	388	2.1.287	agent-prompt-determine-which-memory-files-to-attach.md
+Agent Prompts	Agent Prompt: Dream memory consolidation	1214	2.1.296	agent-prompt-dream-memory-consolidation.md
+Agent Prompts	Agent Prompt: General purpose agent	63	2.1.173	agent-prompt-general-purpose-agent.md
+Agent Prompts	Agent Prompt: General purpose	446	2.1.203	agent-prompt-general-purpose.md
+Agent Prompts	Agent Prompt: General task agent	99	2.1.173	agent-prompt-general-task-agent.md
+Agent Prompts	Agent Prompt: Hook condition evaluator (stop)	510	2.1.294	agent-prompt-hook-condition-evaluator-stop.md
+Agent Prompts	Agent Prompt: Hook condition evaluator	155	2.1.294	agent-prompt-hook-condition-evaluator.md
+Agent Prompts	Agent Prompt: Inherited context for worktree sub-agent	121	2.1.173	agent-prompt-inherited-context-for-worktree-sub-agent.md
+Agent Prompts	Agent Prompt: Onboarding guide draft share link workflow	423	2.1.288	agent-prompt-onboarding-guide-draft-share-link-workflow.md
+Agent Prompts	Agent Prompt: Onboarding guide generator	1135	2.1.94	agent-prompt-onboarding-guide-generator.md
+Agent Prompts	Agent Prompt: PR follow-up cron (PR Steward label check)	278	2.1.284	agent-prompt-pr-follow-up-cron-pr-steward-label-check.md
+Agent Prompts	Agent Prompt: PR follow-up cron	332	2.1.284	agent-prompt-pr-follow-up-cron.md
+Agent Prompts	Agent Prompt: Parent messages and user authorization (lean rewrite)	143	2.1.301	agent-prompt-parent-messages-and-user-authorization-lean-rewrite.md
+Agent Prompts	Agent Prompt: Plugin eval pilot trust requirement	205	2.1.269	agent-prompt-plugin-eval-pilot-trust-requirement.md
+Agent Prompts	Agent Prompt: Project thread status card classifier ask-opens-message rule	346	2.1.292	agent-prompt-project-thread-status-card-classifier-ask-opens-message-rule.md
+Agent Prompts	Agent Prompt: Project thread status card classifier	4299	2.1.285	agent-prompt-project-thread-status-card-classifier.md
+Agent Prompts	Agent Prompt: Prompt Suggestion Generator v2	344	2.1.132	agent-prompt-prompt-suggestion-generator-v2.md
+Agent Prompts	Agent Prompt: Pull request creation	1151	2.1.290	agent-prompt-pull-request-creation.md
+Agent Prompts	Agent Prompt: Quick PR creation	1741	2.1.273	agent-prompt-quick-pr-creation.md
+Agent Prompts	Agent Prompt: Quick git commit	1312	2.1.290	agent-prompt-quick-git-commit.md
+Agent Prompts	Agent Prompt: Read-only search agent	93	2.1.173	agent-prompt-read-only-search-agent.md
+Agent Prompts	Agent Prompt: Recent Message Summarization	868	2.1.271	agent-prompt-recent-message-summarization.md
+Agent Prompts	Agent Prompt: Remote machine auto mode rules	228	2.1.248	agent-prompt-remote-machine-auto-mode-rules.md
+Agent Prompts	Agent Prompt: Schedule action selection	114	2.1.173	agent-prompt-schedule-action-selection.md
+Agent Prompts	Agent Prompt: Schedule local MCP server limitation	1145	2.1.251	agent-prompt-schedule-local-mcp-server-limitation.md
+Agent Prompts	Agent Prompt: Security monitor Claude Tag connector writes	542	2.1.286	agent-prompt-security-monitor-claude-tag-connector-writes.md
+Agent Prompts	Agent Prompt: Security monitor attached machine call results	269	2.1.283	agent-prompt-security-monitor-attached-machine-call-results.md
+Agent Prompts	Agent Prompt: Security monitor for autonomous agent actions (first part)	13991	2.1.286	agent-prompt-security-monitor-for-autonomous-agent-actions-first-part.md
+Agent Prompts	Agent Prompt: Security monitor forwarded user turns	761	2.1.267	agent-prompt-security-monitor-forwarded-user-turns.md
+Agent Prompts	Agent Prompt: Security monitor host-context line guidance	614	2.1.236	agent-prompt-security-monitor-host-context-line-guidance.md
+Agent Prompts	Agent Prompt: Session title and branch generation	626	2.1.234	agent-prompt-session-title-and-branch-generation.md
+Agent Prompts	Agent Prompt: Session transcript chunk summary	89	2.1.173	agent-prompt-session-transcript-chunk-summary.md
+Agent Prompts	Agent Prompt: Subagent delegation configuration classifier	474	2.1.295	agent-prompt-subagent-delegation-configuration-classifier.md
+Agent Prompts	Agent Prompt: Subagent reporting notes (lean rewrite)	411	2.1.301	agent-prompt-subagent-reporting-notes-lean-rewrite.md
+Agent Prompts	Agent Prompt: Summarization no-tools guard	164	2.1.290	agent-prompt-summarization-no-tools-guard.md
+Agent Prompts	Agent Prompt: Web fetch agent usage guidance	699	2.1.300	agent-prompt-web-fetch-agent-usage-guidance.md
+Agent Prompts	Agent Prompt: Web reading specialist	962	2.1.300	agent-prompt-web-reading-specialist.md
+Agent Prompts	Agent Prompt: Worker fork	412	2.1.286	agent-prompt-worker-fork.md
+Agent Prompts	Agent Prompt: Workflow script plain text return note	118	2.1.301	agent-prompt-workflow-script-plain-text-return-note.md
+Agent Prompts	Agent Prompt: Workflow script structured return note	218	2.1.301	agent-prompt-workflow-script-structured-return-note.md
+Agent Prompts	Agent Prompt: Workflow subagent plain text output	232	2.1.301	agent-prompt-workflow-subagent-plain-text-output.md
+Agent Prompts	Agent Prompt: Workflow subagent structured output	340	2.1.301	agent-prompt-workflow-subagent-structured-output.md
+Data	Data: /auto-mode-setup usage	406	2.1.217	data-auto-mode-setup-usage.md
+Data	Data: Artifact MCP connector guidance	351	2.1.242	data-artifact-mcp-connector-guidance.md
+Data	Data: Artifact capability verification pass	317	2.1.292	data-artifact-capability-verification-pass.md
+Data	Data: Artifact connector call observation requirement	305	2.1.280	data-artifact-connector-call-observation-requirement.md
+Data	Data: Artifact connector server naming guidance	241	2.1.271	data-artifact-connector-server-naming-guidance.md
+Data	Data: Artifact decision component HTML skeleton	1117	2.1.232	data-artifact-decision-component-html-skeleton.md
+Data	Data: Artifact host MCP server guidance	420	2.1.260	data-artifact-host-mcp-server-guidance.md
+Data	Data: Artifact publish merged-over newer version file changes notice	481	2.1.285	data-artifact-publish-merged-over-newer-version-file-changes-notice.md
+Data	Data: Artifact runtime capability declarations	496	2.1.283	data-artifact-runtime-capability-declarations.md
+Data	Data: Auto-compact inputs changed event schema	221	2.1.227	data-auto-compact-inputs-changed-event-schema.md
+Data	Data: Background tasks changed event schema	374	2.1.293	data-background-tasks-changed-event-schema.md
+Data	Data: Built-in gh stand-in api command help	1149	2.1.290	data-built-in-gh-stand-in-api-command-help.md
+Data	Data: Chrome browser hints control request	207	2.1.274	data-chrome-browser-hints-control-request.md
+Data	Data: Claude API reference — PHP	2877	2.1.284	data-claude-api-reference-php.md
+Data	Data: Claude API reference — Ruby	2120	2.1.284	data-claude-api-reference-ruby.md
+Data	Data: Claude Code agent proxy troubleshooting guide	2194	2.1.300	data-claude-code-agent-proxy-troubleshooting-guide.md
+Data	Data: Claude Code gateway customer-routed inference protocol	2945	2.1.288	data-claude-code-gateway-customer-routed-inference-protocol.md
+Data	Data: Claude Code gateway protocol	7820	2.1.296	data-claude-code-gateway-protocol.md
+Data	Data: Claude Code live documentation sources	2477	2.1.246	data-claude-code-live-documentation-sources.md
+Data	Data: Claude Code recent changes reference	1854	2.1.269	data-claude-code-recent-changes-reference.md
+Data	Data: Claude Platform on AWS reference	1805	2.1.246	data-claude-platform-on-aws-reference.md
+Data	Data: Claude Tag (Claude in Slack) reference	1999	2.1.246	data-claude-tag-claude-in-slack-reference.md
+Data	Data: Claude Test spec file format	1758	2.1.295	data-claude-test-spec-file-format.md
+Data	Data: Claude gateway landing page	392	2.1.195	data-claude-gateway-landing-page.md
+Data	Data: Cloud session unverified remote branch push notice	299	2.1.301	data-cloud-session-unverified-remote-branch-push-notice.md
+Data	Data: Code change published event schema	349	2.1.229	data-code-change-published-event-schema.md
+Data	Data: Command plugin source command field	160	2.1.229	data-command-plugin-source-command-field.md
+Data	Data: Cowork plugin MCP discovery and connection	1746	2.1.246	data-cowork-plugin-mcp-discovery-and-connection.md
+Data	Data: Cowork plugin examples	3158	2.1.246	data-cowork-plugin-examples.md
+Data	Data: Cross-session inbound setting	175	2.1.224	data-cross-session-inbound-setting.md
+Data	Data: Data visualization anti-patterns	2339	2.1.246	data-data-visualization-anti-patterns.md
+Data	Data: Data visualization choosing a form	1177	2.1.246	data-data-visualization-choosing-a-form.md
+Data	Data: Data visualization components	836	2.1.246	data-data-visualization-components.md
+Data	Data: Data visualization interaction	1318	2.1.246	data-data-visualization-interaction.md
+Data	Data: Data visualization marks and anatomy	2162	2.1.296	data-data-visualization-marks-and-anatomy.md
+Data	Data: Dialog expiry setting	204	2.1.224	data-dialog-expiry-setting.md
+Data	Data: DirectoryAdded hook description	216	2.1.219	data-directoryadded-hook-description.md
+Data	Data: Files API reference — C#	378	2.1.251	data-files-api-reference-c.md
+Data	Data: Files API reference — Go	413	2.1.251	data-files-api-reference-go.md
+Data	Data: Files API reference — Java	492	2.1.251	data-files-api-reference-java.md
+Data	Data: Files API reference — PHP	186	2.1.251	data-files-api-reference-php.md
+Data	Data: Files API reference — Python	1719	2.1.251	data-files-api-reference-python.md
+Data	Data: Files API reference — TypeScript	961	2.1.251	data-files-api-reference-typescript.md
+Data	Data: Gateway device code entry page	261	2.1.290	data-gateway-device-code-entry-page.md
+Data	Data: Gateway ignored X-Forwarded-For warning	254	2.1.274	data-gateway-ignored-x-forwarded-for-warning.md
+Data	Data: Get task output control request	201	2.1.287	data-get-task-output-control-request.md
+Data	Data: GitHub Actions workflow for @claude mentions	525	2.1.108	data-github-actions-workflow-for-claude-mentions.md
+Data	Data: GitHub App installation PR description	409	2.1.113	data-github-app-installation-pr-description.md
+Data	Data: Hook classifier context field	654	2.1.288	data-hook-classifier-context-field.md
+Data	Data: Hook mcp_server field	312	2.1.274	data-hook-mcp-server-field.md
+Data	Data: Interrupt cancel queued parameter	646	2.1.261	data-interrupt-cancel-queued-parameter.md
+Data	Data: Interrupt receipt cancelled field	402	2.1.299	data-interrupt-receipt-cancelled-field.md
+Data	Data: Interrupt receipt still queued field	1155	2.1.299	data-interrupt-receipt-still-queued-field.md
+Data	Data: Interrupt send_now message_uuid parameter	246	2.1.287	data-interrupt-send-now-message-uuid-parameter.md
+Data	Data: Interrupt send_now parameter	596	2.1.287	data-interrupt-send-now-parameter.md
+Data	Data: Interrupt worker_epoch parameter	381	2.1.292	data-interrupt-worker-epoch-parameter.md
+Data	Data: Knowledge MCP search strategies	447	2.1.246	data-knowledge-mcp-search-strategies.md
+Data	Data: MCP HTTP client capability validation rationale	189	2.1.221	data-mcp-http-client-capability-validation-rationale.md
+Data	Data: MCP HTTP parameter header validation rationale	247	2.1.221	data-mcp-http-parameter-header-validation-rationale.md
+Data	Data: MCP HTTP standard header validation rationale	326	2.1.221	data-mcp-http-standard-header-validation-rationale.md
+Data	Data: MCP read resource control request	397	2.1.280	data-mcp-read-resource-control-request.md
+Data	Data: MCP server status error_code field	200	2.1.275	data-mcp-server-status-error-code-field.md
+Data	Data: Managed Agents quickstart — Bug hunter	2633	2.1.296	data-managed-agents-quickstart-bug-hunter.md
+Data	Data: Managed Agents quickstart — Contract tracker	689	2.1.290	data-managed-agents-quickstart-contract-tracker.md
+Data	Data: Managed Agents quickstart — Data analyst	579	2.1.290	data-managed-agents-quickstart-data-analyst.md
+Data	Data: Managed Agents quickstart — Deep researcher	798	2.1.290	data-managed-agents-quickstart-deep-researcher.md
+Data	Data: Managed Agents quickstart — Explainer video maker	1653	2.1.296	data-managed-agents-quickstart-explainer-video-maker.md
+Data	Data: Managed Agents quickstart — Field monitor	813	2.1.290	data-managed-agents-quickstart-field-monitor.md
+Data	Data: Managed Agents quickstart — Incident commander	684	2.1.290	data-managed-agents-quickstart-incident-commander.md
+Data	Data: Managed Agents quickstart — Sprint retro facilitator	870	2.1.290	data-managed-agents-quickstart-sprint-retro-facilitator.md
+Data	Data: Managed Agents quickstart — Structured extractor	545	2.1.290	data-managed-agents-quickstart-structured-extractor.md
+Data	Data: Managed Agents quickstart — Support agent	532	2.1.290	data-managed-agents-quickstart-support-agent.md
+Data	Data: Managed Agents quickstart — Support-to-eng escalator	709	2.1.290	data-managed-agents-quickstart-support-to-eng-escalator.md
+Data	Data: Managed Agents quickstart — Watchlist scanner	1854	2.1.296	data-managed-agents-quickstart-watchlist-scanner.md
+Data	Data: Managed settings helper onFailure field	593	2.1.265	data-managed-settings-helper-onfailure-field.md
+Data	Data: Managed settings helper retries field	311	2.1.265	data-managed-settings-helper-retries-field.md
+Data	Data: Managed settings x-whenUnreadable field	179	2.1.300	data-managed-settings-x-whenunreadable-field.md
+Data	Data: Message Batches API reference — C#	188	2.1.246	data-message-batches-api-reference-c.md
+Data	Data: Message Batches API reference — PHP	196	2.1.246	data-message-batches-api-reference-php.md
+Data	Data: Message Batches API reference — Python	2088	2.1.293	data-message-batches-api-reference-python.md
+Data	Data: Message Batches API — TypeScript	1022	2.1.246	data-message-batches-api-typescript.md
+Data	Data: Network-path settings file unread recovery guidance	317	2.1.292	data-network-path-settings-file-unread-recovery-guidance.md
+Data	Data: OpenTelemetry tracing reference — C#	970	2.1.300	data-opentelemetry-tracing-reference-c.md
+Data	Data: OpenTelemetry tracing reference — Go	804	2.1.300	data-opentelemetry-tracing-reference-go.md
+Data	Data: OpenTelemetry tracing reference — Java	987	2.1.300	data-opentelemetry-tracing-reference-java.md
+Data	Data: OpenTelemetry tracing reference — PHP	1015	2.1.300	data-opentelemetry-tracing-reference-php.md
+Data	Data: OpenTelemetry tracing reference — Python	970	2.1.300	data-opentelemetry-tracing-reference-python.md
+Data	Data: OpenTelemetry tracing reference — Ruby	668	2.1.300	data-opentelemetry-tracing-reference-ruby.md
+Data	Data: OpenTelemetry tracing reference — TypeScript	888	2.1.300	data-opentelemetry-tracing-reference-typescript.md
+Data	Data: Peer sender display name field	199	2.1.205	data-peer-sender-display-name-field.md
+Data	Data: Plugin manifest types field	214	2.1.287	data-plugin-manifest-types-field.md
+Data	Data: Prompt suggestions paused control request	229	2.1.280	data-prompt-suggestions-paused-control-request.md
+Data	Data: Query result pending command count	167	2.1.242	data-query-result-pending-command-count.md
+Data	Data: Rate limit grace signal	306	2.1.282	data-rate-limit-grace-signal.md
+Data	Data: Rate limit unified windows	325	2.1.242	data-rate-limit-unified-windows.md
+Data	Data: Remote tools reannounce control request	220	2.1.280	data-remote-tools-reannounce-control-request.md
+Data	Data: Review upload excluded changes error	327	2.1.280	data-review-upload-excluded-changes-error.md
+Data	Data: Rewind files skippedLinks field	223	2.1.260	data-rewind-files-skippedlinks-field.md
+Data	Data: SDK API error kind field	1543	2.1.292	data-sdk-api-error-kind-field.md
+Data	Data: SDK MCP server disableAutoBackground field	180	2.1.292	data-sdk-mcp-server-disableautobackground-field.md
+Data	Data: SDK api_error_params field	668	2.1.292	data-sdk-api-error-params-field.md
+Data	Data: SDK footer indicator schema	249	2.1.286	data-sdk-footer-indicator-schema.md
+Data	Data: SDK frame_intake_phases_ms field	444	2.1.286	data-sdk-frame-intake-phases-ms-field.md
+Data	Data: SDK frame_received_wall_ms field	193	2.1.277	data-sdk-frame-received-wall-ms-field.md
+Data	Data: SDK initialize response sdk_mcp_manifests_parked field	482	2.1.288	data-sdk-initialize-response-sdk-mcp-manifests-parked-field.md
+Data	Data: SDK message_stop abandoned_blocks field	375	2.1.292	data-sdk-message-stop-abandoned-blocks-field.md
+Data	Data: SDK permission_check_status event schema	279	2.1.292	data-sdk-permission-check-status-event-schema.md
+Data	Data: SDK read_file anchor field	334	2.1.292	data-sdk-read-file-anchor-field.md
+Data	Data: SDK result safety_stops field	660	2.1.293	data-sdk-result-safety-stops-field.md
+Data	Data: SDK safeguard_results field	517	2.1.299	data-sdk-safeguard-results-field.md
+Data	Data: SDK safeguard_tool_use field	334	2.1.292	data-sdk-safeguard-tool-use-field.md
+Data	Data: SDK set max thinking tokens request schema	477	2.1.286	data-sdk-set-max-thinking-tokens-request-schema.md
+Data	Data: SDK set model only_if_model_is_current field	464	2.1.296	data-sdk-set-model-only-if-model-is-current-field.md
+Data	Data: SDK set model system prompt field	243	2.1.280	data-sdk-set-model-system-prompt-field.md
+Data	Data: SDK system init plugin_errors field	315	2.1.283	data-sdk-system-init-plugin-errors-field.md
+Data	Data: SDK task notification handback field	205	2.1.292	data-sdk-task-notification-handback-field.md
+Data	Data: SDK thinking_duration_ms field	184	2.1.287	data-sdk-thinking-duration-ms-field.md
+Data	Data: SDK ui_prompt_autocomplete request schema	195	2.1.292	data-sdk-ui-prompt-autocomplete-request-schema.md
+Data	Data: Sandbox TLS termination setting	199	2.1.221	data-sandbox-tls-termination-setting.md
+Data	Data: Sandbox credential environment no-match setting	188	2.1.224	data-sandbox-credential-environment-no-match-setting.md
+Data	Data: Sandbox credential file mask claims setting	179	2.1.224	data-sandbox-credential-file-mask-claims-setting.md
+Data	Data: Sandbox credential mask empty injectHosts warning	174	2.1.221	data-sandbox-credential-mask-empty-injecthosts-warning.md
+Data	Data: Sandbox deniedResolvedAddresses setting	209	2.1.284	data-sandbox-deniedresolvedaddresses-setting.md
+Data	Data: Sandbox filesystem disabled setting	227	2.1.221	data-sandbox-filesystem-disabled-setting.md
+Data	Data: Sandbox network domain spelling warning	278	2.1.229	data-sandbox-network-domain-spelling-warning.md
+Data	Data: Sandbox root without CAP_SETFCAP error	140	2.1.284	data-sandbox-root-without-cap-setfcap-error.md
+Data	Data: Self-hosted runner Anthropic git proxy credential warning	338	2.1.283	data-self-hosted-runner-anthropic-git-proxy-credential-warning.md
+Data	Data: Self-hosted runner GIT_ASKPASS governed hosts warning	311	2.1.283	data-self-hosted-runner-git-askpass-governed-hosts-warning.md
+Data	Data: Self-hosted runner GIT_SSL_CAINFO trust bundle warning	254	2.1.283	data-self-hosted-runner-git-ssl-cainfo-trust-bundle-warning.md
+Data	Data: Self-hosted runner GIT_SSL_NO_VERIFY lifecycle hook exception	330	2.1.283	data-self-hosted-runner-git-ssl-no-verify-lifecycle-hook-exception.md
+Data	Data: Self-hosted runner GIT_SSL_NO_VERIFY session relocation note	325	2.1.283	data-self-hosted-runner-git-ssl-no-verify-session-relocation-note.md
+Data	Data: Self-hosted runner client certificate relay warning	539	2.1.283	data-self-hosted-runner-client-certificate-relay-warning.md
+Data	Data: Self-hosted runner decode-token command help	869	2.1.224	data-self-hosted-runner-decode-token-command-help.md
+Data	Data: Self-hosted runner deferred shutdown timing notice	320	2.1.238	data-self-hosted-runner-deferred-shutdown-timing-notice.md
+Data	Data: Self-hosted runner disabled-by-organization fatal message	208	2.1.296	data-self-hosted-runner-disabled-by-organization-fatal-message.md
+Data	Data: Self-hosted runner git-lfs hook warning	342	2.1.280	data-self-hosted-runner-git-lfs-hook-warning.md
+Data	Data: Self-hosted runner orchestrator command help	1554	2.1.299	data-self-hosted-runner-orchestrator-command-help.md
+Data	Data: Self-hosted runner session metrics help	622	2.1.260	data-self-hosted-runner-session-metrics-help.md
+Data	Data: Streaming reference — C#	376	2.1.260	data-streaming-reference-c.md
+Data	Data: Streaming reference — Go	452	2.1.260	data-streaming-reference-go.md
+Data	Data: Streaming reference — Java	287	2.1.260	data-streaming-reference-java.md
+Data	Data: Streaming reference — PHP	315	2.1.246	data-streaming-reference-php.md
+Data	Data: Streaming reference — Ruby	116	2.1.246	data-streaming-reference-ruby.md
+Data	Data: Structured tool output field schema	234	2.1.287	data-structured-tool-output-field-schema.md
+Data	Data: Structured usage rate-limit rows field	177	2.1.277	data-structured-usage-rate-limit-rows-field.md
+Data	Data: Submit feedback control request	231	2.1.284	data-submit-feedback-control-request.md
+Data	Data: Telemetry variables ignored notice	268	2.1.282	data-telemetry-variables-ignored-notice.md
+Data	Data: Thin-client diff dialog schema	198	2.1.198	data-thin-client-diff-dialog-schema.md
+Data	Data: Token counting reference	665	2.1.246	data-token-counting-reference.md
+Data	Data: Tool result display metadata field	861	2.1.293	data-tool-result-display-metadata-field.md
+Data	Data: Tool use display metadata field	571	2.1.299	data-tool-use-display-metadata-field.md
+Data	Data: Tool use reference — C#	2900	2.1.296	data-tool-use-reference-c.md
+Data	Data: Tool use reference — Ruby	943	2.1.296	data-tool-use-reference-ruby.md
+Data	Data: Turn handoff available event schema	302	2.1.299	data-turn-handoff-available-event-schema.md
+Data	Data: Turn handoff file_names field	346	2.1.292	data-turn-handoff-file-names-field.md
+Data	Data: Turn handoff hydrates_carried_lines field	655	2.1.299	data-turn-handoff-hydrates-carried-lines-field.md
+Data	Data: Turn handoff memory_context field	261	2.1.292	data-turn-handoff-memory-context-field.md
+Data	Data: Upload device hook template request	200	2.1.242	data-upload-device-hook-template-request.md
+Data	Data: VCS state changed branch field	172	2.1.238	data-vcs-state-changed-branch-field.md
+Data	Data: VCS state changed event schema	392	2.1.238	data-vcs-state-changed-event-schema.md
+Data	Data: Windows transcript read EBADF notice	180	2.1.282	data-windows-transcript-read-ebadf-notice.md
+Data	Data: Working tree upload refusal for duplicated withheld file	211	2.1.280	data-working-tree-upload-refusal-for-duplicated-withheld-file.md
+Data	Data: Working tree upload refusal for git dubious ownership	224	2.1.290	data-working-tree-upload-refusal-for-git-dubious-ownership.md
+Data	Data: Working tree upload refusal for misplaced .git entry	345	2.1.285	data-working-tree-upload-refusal-for-misplaced-git-entry.md
+Data	Data: Working tree upload refusal for missing git objects folders	197	2.1.290	data-working-tree-upload-refusal-for-missing-git-objects-folders.md
+Data	Data: Working tree upload refusal for private git directory setup failure	349	2.1.290	data-working-tree-upload-refusal-for-private-git-directory-setup-failure.md
+Data	Data: Working tree upload refusal for unread git config environment variable	305	2.1.290	data-working-tree-upload-refusal-for-unread-git-config-environment-variable.md
+Data	Data: allowManagedPermissionRulesOnly allowed-tools frontmatter scope	424	2.1.284	data-allowmanagedpermissionrulesonly-allowed-tools-frontmatter-scope.md
+Data	Data: allowManagedPermissionRulesOnly deny rules still apply	45	2.1.284	data-allowmanagedpermissionrulesonly-deny-rules-still-apply.md
+Data	Data: allowManagedPermissionRulesOnly setting	66	2.1.284	data-allowmanagedpermissionrulesonly-setting.md
+Data	Data: allowedMcpServers setting	204	2.1.259	data-allowedmcpservers-setting.md
+Data	Data: availableModelsMatch setting	315	2.1.283	data-availablemodelsmatch-setting.md
+Data	Data: deniedModels setting	222	2.1.283	data-deniedmodels-setting.md
+Data	Data: syncClaudeAiPlugins setting	332	2.1.246	data-syncclaudeaiplugins-setting.md
+Data	Data: syncClaudeAiSkills setting	332	2.1.293	data-syncclaudeaiskills-setting.md
+System Prompt	System Prompt: /loop tick (loop.md absent, dynamic pacing)	315	2.1.284	system-prompt-loop-tick-loop-md-absent-dynamic-pacing.md
+System Prompt	System Prompt: /loop tick (loop.md tasks)	94	2.1.173	system-prompt-loop-tick-loop-md-tasks.md
+System Prompt	System Prompt: /loop tick (loop.md tasks, dynamic pacing)	311	2.1.284	system-prompt-loop-tick-loop-md-tasks-dynamic-pacing.md
+System Prompt	System Prompt: Act when ready	68	2.1.173	system-prompt-act-when-ready.md
+System Prompt	System Prompt: Action safety and truthful reporting	161	2.1.271	system-prompt-action-safety-and-truthful-reporting.md
+System Prompt	System Prompt: Advisor tool instructions	443	2.1.98	system-prompt-advisor-tool-instructions.md
+System Prompt	System Prompt: Agent Summary Generation	294	2.1.302	system-prompt-agent-summary-generation.md
+System Prompt	System Prompt: Agent intro (collaborative goals)	31	2.1.295	system-prompt-agent-intro-collaborative-goals.md
+System Prompt	System Prompt: Agent thread notes	284	2.1.301	system-prompt-agent-thread-notes.md
+System Prompt	System Prompt: Analysis instructions for full compact prompt (recent messages)	288	2.1.290	system-prompt-analysis-instructions-for-full-compact-prompt-recent-messages.md
+System Prompt	System Prompt: Artifact comment decision reformat retry	256	2.1.223	system-prompt-artifact-comment-decision-reformat-retry.md
+System Prompt	System Prompt: Artifact comment edit composer	911	2.1.235	system-prompt-artifact-comment-edit-composer.md
+System Prompt	System Prompt: Artifact comment fast acknowledgement selection	603	2.1.271	system-prompt-artifact-comment-fast-acknowledgement-selection.md
+System Prompt	System Prompt: Artifact comment fast acknowledgement	240	2.1.232	system-prompt-artifact-comment-fast-acknowledgement.md
+System Prompt	System Prompt: Artifact comment list framing	1055	2.1.281	system-prompt-artifact-comment-list-framing.md
+System Prompt	System Prompt: Artifact comment presence state guidance	238	2.1.265	system-prompt-artifact-comment-presence-state-guidance.md
+System Prompt	System Prompt: Artifact comment reply composer	375	2.1.271	system-prompt-artifact-comment-reply-composer.md
+System Prompt	System Prompt: Artifact comment result guidance	225	2.1.268	system-prompt-artifact-comment-result-guidance.md
+System Prompt	System Prompt: Artifact comment thread framing	2178	2.1.271	system-prompt-artifact-comment-thread-framing.md
+System Prompt	System Prompt: Artifact comment thread triage	306	2.1.269	system-prompt-artifact-comment-thread-triage.md
+System Prompt	System Prompt: Artifact commenter access guidance	183	2.1.275	system-prompt-artifact-commenter-access-guidance.md
+System Prompt	System Prompt: Artifact page-owned comment thread guidance	192	2.1.271	system-prompt-artifact-page-owned-comment-thread-guidance.md
+System Prompt	System Prompt: Artifact patch turn edit composer	715	2.1.290	system-prompt-artifact-patch-turn-edit-composer.md
+System Prompt	System Prompt: Auto mode Slack message provenance	465	2.1.299	system-prompt-auto-mode-slack-message-provenance.md
+System Prompt	System Prompt: Auto mode setup proposal generator	2740	2.1.257	system-prompt-auto-mode-setup-proposal-generator.md
+System Prompt	System Prompt: Auto mode	244	2.1.139	system-prompt-auto-mode.md
+System Prompt	System Prompt: Autonomous loop check	1484	2.1.246	system-prompt-autonomous-loop-check.md
+System Prompt	System Prompt: Autonomous loop notification guidance	98	2.1.173	system-prompt-autonomous-loop-notification-guidance.md
+System Prompt	System Prompt: Autonomous loop persistence guidance (CLAUDE_CODE_LOOP_PERSISTENT)	1630	2.1.246	system-prompt-autonomous-loop-persistence-guidance-claude-code-loop-persistent.md
+System Prompt	System Prompt: Autonomous loop tick (dynamic pacing)	311	2.1.284	system-prompt-autonomous-loop-tick-dynamic-pacing.md
+System Prompt	System Prompt: Autonomous loop tick	87	2.1.173	system-prompt-autonomous-loop-tick.md
+System Prompt	System Prompt: Autonomous operation guidelines	407	2.1.227	system-prompt-autonomous-operation-guidelines.md
+System Prompt	System Prompt: Avoiding Unnecessary Sleep Commands (part of PowerShell tool description)	299	2.1.295	system-prompt-avoiding-unnecessary-sleep-commands-part-of-powershell-tool-description.md
+System Prompt	System Prompt: Background session instructions (lean rewrite)	410	2.1.301	system-prompt-background-session-instructions-lean-rewrite.md
+System Prompt	System Prompt: Background session instructions	354	2.1.242	system-prompt-background-session-instructions.md
+System Prompt	System Prompt: Background session worktree isolation (lean rewrite)	177	2.1.301	system-prompt-background-session-worktree-isolation-lean-rewrite.md
+System Prompt	System Prompt: Background session worktree persistence guidance	186	2.1.221	system-prompt-background-session-worktree-persistence-guidance.md
+System Prompt	System Prompt: Background worktree isolation guidance	129	2.1.169	system-prompt-background-worktree-isolation-guidance.md
+System Prompt	System Prompt: Background worktree persistence (lean rewrite)	234	2.1.301	system-prompt-background-worktree-persistence-lean-rewrite.md
+System Prompt	System Prompt: Censoring assistance with malicious activities	98	2.1.31	system-prompt-censoring-assistance-with-malicious-activities.md
+System Prompt	System Prompt: Chrome browser MCP tools	388	2.1.221	system-prompt-chrome-browser-mcp-tools.md
+System Prompt	System Prompt: Claude Fable 5 model identity	202	2.1.257	system-prompt-claude-fable-5-model-identity.md
+System Prompt	System Prompt: Claude Fable 5.1 model identity	235	2.1.257	system-prompt-claude-fable-5-1-model-identity.md
+System Prompt	System Prompt: Claude in Chrome browser automation (non-deferred tools)	1130	2.1.271	system-prompt-claude-in-chrome-browser-automation-non-deferred-tools.md
+System Prompt	System Prompt: Claude in Chrome browser automation	1158	2.1.271	system-prompt-claude-in-chrome-browser-automation.md
+System Prompt	System Prompt: Claude in Chrome browser selection instructions	191	2.1.274	system-prompt-claude-in-chrome-browser-selection-instructions.md
+System Prompt	System Prompt: Claude in Chrome deferred tool loading	311	2.1.271	system-prompt-claude-in-chrome-deferred-tool-loading.md
+System Prompt	System Prompt: Combined memory index pointer instructions	120	2.1.173	system-prompt-combined-memory-index-pointer-instructions.md
+System Prompt	System Prompt: Comment what and task context avoidance	76	2.1.161	system-prompt-comment-what-and-task-context-avoidance.md
+System Prompt	System Prompt: Comment why-only guidance	67	2.1.161	system-prompt-comment-why-only-guidance.md
+System Prompt	System Prompt: Communication style	297	2.1.104	system-prompt-communication-style.md
+System Prompt	System Prompt: Concise output style	373	2.1.237	system-prompt-concise-output-style.md
+System Prompt	System Prompt: Context compaction summary	409	2.1.38	system-prompt-context-compaction-summary.md
+System Prompt	System Prompt: Context management (lean rewrite)	193	2.1.301	system-prompt-context-management-lean-rewrite.md
+System Prompt	System Prompt: Coordinator cross-session peer guidance	326	2.1.224	system-prompt-coordinator-cross-session-peer-guidance.md
+System Prompt	System Prompt: Coordinator mode orchestration	5921	2.1.299	system-prompt-coordinator-mode-orchestration.md
+System Prompt	System Prompt: Correction restraint	365	2.1.217	system-prompt-correction-restraint.md
+System Prompt	System Prompt: Delivering requested work (lean rewrite)	477	2.1.301	system-prompt-delivering-requested-work-lean-rewrite.md
+System Prompt	System Prompt: Delivering work at full scope	605	2.1.218	system-prompt-delivering-work-at-full-scope.md
+System Prompt	System Prompt: Deny rule circumvention classifier guidance	74	2.1.173	system-prompt-deny-rule-circumvention-classifier-guidance.md
+System Prompt	System Prompt: Description part of memory instructions	148	2.1.69	system-prompt-description-part-of-memory-instructions.md
+System Prompt	System Prompt: Doing tasks (ambitious tasks)	47	2.1.53	system-prompt-doing-tasks-ambitious-tasks.md
+System Prompt	System Prompt: Doing tasks (help and feedback)	24	2.1.53	system-prompt-doing-tasks-help-and-feedback.md
+System Prompt	System Prompt: Doing tasks (no compatibility hacks)	52	2.1.53	system-prompt-doing-tasks-no-compatibility-hacks.md
+System Prompt	System Prompt: Doing tasks (no unnecessary additions)	73	2.1.161	system-prompt-doing-tasks-no-unnecessary-additions.md
+System Prompt	System Prompt: Doing tasks (no unnecessary error handling)	64	2.1.53	system-prompt-doing-tasks-no-unnecessary-error-handling.md
+System Prompt	System Prompt: Doing tasks (security)	67	2.1.53	system-prompt-doing-tasks-security.md
+System Prompt	System Prompt: Doing tasks (software engineering focus)	104	2.1.53	system-prompt-doing-tasks-software-engineering-focus.md
+System Prompt	System Prompt: Dream CLAUDE.md memory reconciliation	436	2.1.212	system-prompt-dream-claude-md-memory-reconciliation.md
+System Prompt	System Prompt: Dream team memory handling	279	2.1.98	system-prompt-dream-team-memory-handling.md
+System Prompt	System Prompt: Emoji avoidance	31	2.1.161	system-prompt-emoji-avoidance.md
+System Prompt	System Prompt: Executing actions with care	1105	2.1.200	system-prompt-executing-actions-with-care.md
+System Prompt	System Prompt: Explain /code-review ultra	131	2.1.173	system-prompt-explain-code-review-ultra.md
+System Prompt	System Prompt: Exploratory questions — analyze before implementing	75	2.1.161	system-prompt-exploratory-questions-analyze-before-implementing.md
+System Prompt	System Prompt: Feedback memory body structure	79	2.1.173	system-prompt-feedback-memory-body-structure.md
+System Prompt	System Prompt: Feedback memory save guidance	121	2.1.173	system-prompt-feedback-memory-save-guidance.md
+System Prompt	System Prompt: Finish the request instead of stopping early	785	2.1.293	system-prompt-finish-the-request-instead-of-stopping-early.md
+System Prompt	System Prompt: Focus mode (lean rewrite)	142	2.1.301	system-prompt-focus-mode-lean-rewrite.md
+System Prompt	System Prompt: Focus mode (long form)	105	2.1.173	system-prompt-focus-mode-long-form.md
+System Prompt	System Prompt: Focus mode (short form)	91	2.1.173	system-prompt-focus-mode-short-form.md
+System Prompt	System Prompt: Fork usage guidelines	541	2.1.302	system-prompt-fork-usage-guidelines.md
+System Prompt	System Prompt: Forked agent guidance	206	2.1.302	system-prompt-forked-agent-guidance.md
+System Prompt	System Prompt: Forked conversation worktree isolation guidance	416	2.1.235	system-prompt-forked-conversation-worktree-isolation-guidance.md
+System Prompt	System Prompt: Fresh subagent delegation example	315	2.1.211	system-prompt-fresh-subagent-delegation-example.md
+System Prompt	System Prompt: Frontend browser verification	86	2.1.161	system-prompt-frontend-browser-verification.md
+System Prompt	System Prompt: Git status	37	2.1.88	system-prompt-git-status.md
+System Prompt	System Prompt: Handling corrections (lean rewrite)	457	2.1.301	system-prompt-handling-corrections-lean-rewrite.md
+System Prompt	System Prompt: Harness instructions (lean rewrite)	464	2.1.301	system-prompt-harness-instructions-lean-rewrite.md
+System Prompt	System Prompt: Harness instructions	299	2.1.274	system-prompt-harness-instructions.md
+System Prompt	System Prompt: Hook evaluator truncated transcript note	74	2.1.173	system-prompt-hook-evaluator-truncated-transcript-note.md
+System Prompt	System Prompt: Hook feedback handling	85	2.1.173	system-prompt-hook-feedback-handling.md
+System Prompt	System Prompt: Hooks Configuration	1493	2.1.77	system-prompt-hooks-configuration.md
+System Prompt	System Prompt: How to use the SendUserMessage tool	283	2.1.73	system-prompt-how-to-use-the-sendusermessage-tool.md
+System Prompt	System Prompt: Insights at a glance summary	569	2.1.30	system-prompt-insights-at-a-glance-summary.md
+System Prompt	System Prompt: Insights friction analysis	139	2.1.30	system-prompt-insights-friction-analysis.md
+System Prompt	System Prompt: Insights interaction style	119	2.1.173	system-prompt-insights-interaction-style.md
+System Prompt	System Prompt: Insights memorable moment	96	2.1.173	system-prompt-insights-memorable-moment.md
+System Prompt	System Prompt: Insights on the horizon	148	2.1.30	system-prompt-insights-on-the-horizon.md
+System Prompt	System Prompt: Insights session facets extraction	310	2.1.30	system-prompt-insights-session-facets-extraction.md
+System Prompt	System Prompt: Insights suggestions	737	2.1.161	system-prompt-insights-suggestions.md
+System Prompt	System Prompt: Insights summary (At a Glance)	272	2.1.235	system-prompt-insights-summary-at-a-glance.md
+System Prompt	System Prompt: Insights what works	121	2.1.173	system-prompt-insights-what-works.md
+System Prompt	System Prompt: Interactive agent intro (output-style active)	40	2.1.251	system-prompt-interactive-agent-intro-output-style-active.md
+System Prompt	System Prompt: Interactive agent intro (output-style conditional)	181	2.1.295	system-prompt-interactive-agent-intro-output-style-conditional.md
+System Prompt	System Prompt: Irreversible action caution (lean rewrite)	294	2.1.301	system-prompt-irreversible-action-caution-lean-rewrite.md
+System Prompt	System Prompt: Learning mode (insights)	142	2.0.14	system-prompt-learning-mode-insights.md
+System Prompt	System Prompt: Learning mode	1042	2.0.14	system-prompt-learning-mode.md
+System Prompt	System Prompt: Memory description of user feedback	139	2.1.78	system-prompt-memory-description-of-user-feedback.md
+System Prompt	System Prompt: Memory hygiene (lean rewrite)	269	2.1.301	system-prompt-memory-hygiene-lean-rewrite.md
+System Prompt	System Prompt: Memory index pointer instructions	129	2.1.224	system-prompt-memory-index-pointer-instructions.md
+System Prompt	System Prompt: Memory instructions	540	2.1.301	system-prompt-memory-instructions.md
+System Prompt	System Prompt: Memory persistence scope	60	2.1.173	system-prompt-memory-persistence-scope.md
+System Prompt	System Prompt: Memory save exclusions	14	2.1.161	system-prompt-memory-save-exclusions.md
+System Prompt	System Prompt: Minimal mode	285	2.1.280	system-prompt-minimal-mode.md
+System Prompt	System Prompt: Monitor fallback heartbeat guidance	319	2.1.284	system-prompt-monitor-fallback-heartbeat-guidance.md
+System Prompt	System Prompt: Moved Artifact comment thread guidance	158	2.1.271	system-prompt-moved-artifact-comment-thread-guidance.md
+System Prompt	System Prompt: Non-fork subagent delegation examples	894	2.1.235	system-prompt-non-fork-subagent-delegation-examples.md
+System Prompt	System Prompt: One of six rules for using sleep command	23	2.1.75	system-prompt-one-of-six-rules-for-using-sleep-command.md
+System Prompt	System Prompt: Option previewer	151	2.1.69	system-prompt-option-previewer.md
+System Prompt	System Prompt: Outcome-first communication style (lean rewrite)	1246	2.1.301	system-prompt-outcome-first-communication-style-lean-rewrite.md
+System Prompt	System Prompt: Outcome-first communication style	720	2.1.301	system-prompt-outcome-first-communication-style.md
+System Prompt	System Prompt: PR Slack notification step	125	2.1.173	system-prompt-pr-slack-notification-step.md
+System Prompt	System Prompt: PR Steward handoff guidance	597	2.1.284	system-prompt-pr-steward-handoff-guidance.md
+System Prompt	System Prompt: Parallel tool call note (part of "Tool usage policy")	102	2.1.30	system-prompt-parallel-tool-call-note-part-of-tool-usage-policy.md
+System Prompt	System Prompt: Partial compaction instructions	852	2.1.271	system-prompt-partial-compaction-instructions.md
+System Prompt	System Prompt: Pasted content instruction trust boundary	236	2.1.300	system-prompt-pasted-content-instruction-trust-boundary.md
+System Prompt	System Prompt: Permission classifier strict review guidance	79	2.1.173	system-prompt-permission-classifier-strict-review-guidance.md
+System Prompt	System Prompt: Personal project memory description	67	2.1.173	system-prompt-personal-project-memory-description.md
+System Prompt	System Prompt: Phase four of plan mode	238	2.1.299	system-prompt-phase-four-of-plan-mode.md
+System Prompt	System Prompt: Plan mode interactive workshop offer	688	2.1.239	system-prompt-plan-mode-interactive-workshop-offer.md
+System Prompt	System Prompt: Plan sent to Ultraplan	106	2.1.173	system-prompt-plan-sent-to-ultraplan.md
+System Prompt	System Prompt: Plan vs memory guidance	115	2.1.173	system-prompt-plan-vs-memory-guidance.md
+System Prompt	System Prompt: PowerShell edition for 5.1	440	2.1.213	system-prompt-powershell-edition-for-5-1.md
+System Prompt	System Prompt: PowerShell edition for 7+	128	2.1.173	system-prompt-powershell-edition-for-7.md
+System Prompt	System Prompt: PowerShell edition unknown	108	2.1.173	system-prompt-powershell-edition-unknown.md
+System Prompt	System Prompt: Prefer editing existing files	17	2.1.161	system-prompt-prefer-editing-existing-files.md
+System Prompt	System Prompt: Project coordinator relay trust boundary	320	2.1.302	system-prompt-project-coordinator-relay-trust-boundary.md
+System Prompt	System Prompt: Project coordinator reply consent	247	2.1.299	system-prompt-project-coordinator-reply-consent.md
+System Prompt	System Prompt: Project member session user message provenance	1064	2.1.286	system-prompt-project-member-session-user-message-provenance.md
+System Prompt	System Prompt: Project memory body structure	83	2.1.173	system-prompt-project-memory-body-structure.md
+System Prompt	System Prompt: Project memory save guidance	91	2.1.173	system-prompt-project-memory-save-guidance.md
+System Prompt	System Prompt: Project skill upkeep for feedback memory	314	2.1.200	system-prompt-project-skill-upkeep-for-feedback-memory.md
+System Prompt	System Prompt: Project thread in-thread message provenance	278	2.1.302	system-prompt-project-thread-in-thread-message-provenance.md
+System Prompt	System Prompt: Project timeline user message provenance	1703	2.1.302	system-prompt-project-timeline-user-message-provenance.md
+System Prompt	System Prompt: Published artifact inline edits and large-change republish	441	2.1.300	system-prompt-published-artifact-inline-edits-and-large-change-republish.md
+System Prompt	System Prompt: Published artifact same-response edit and republish	307	2.1.300	system-prompt-published-artifact-same-response-edit-and-republish.md
+System Prompt	System Prompt: Remote plan mode (ultraplan)	870	2.1.274	system-prompt-remote-plan-mode-ultraplan.md
+System Prompt	System Prompt: Remote planning session	612	2.1.274	system-prompt-remote-planning-session.md
+System Prompt	System Prompt: Reporting outcomes	261	2.1.251	system-prompt-reporting-outcomes.md
+System Prompt	System Prompt: Respond in configured language	128	2.1.173	system-prompt-respond-in-configured-language.md
+System Prompt	System Prompt: Responsive mode	813	2.1.280	system-prompt-responsive-mode.md
+System Prompt	System Prompt: Sandbox task resource boundary	217	2.1.268	system-prompt-sandbox-task-resource-boundary.md
+System Prompt	System Prompt: Saving skills via file delivery	270	2.1.280	system-prompt-saving-skills-via-file-delivery.md
+System Prompt	System Prompt: Self-hosted runner doctor	8666	2.1.299	system-prompt-self-hosted-runner-doctor.md
+System Prompt	System Prompt: Self-hosted runner setup	2718	2.1.299	system-prompt-self-hosted-runner-setup.md
+System Prompt	System Prompt: Session scratchpad temporary-file guidance	208	2.1.300	system-prompt-session-scratchpad-temporary-file-guidance.md
+System Prompt	System Prompt: Shared git stash safety	201	2.1.198	system-prompt-shared-git-stash-safety.md
+System Prompt	System Prompt: Skill save permission note	163	2.1.281	system-prompt-skill-save-permission-note.md
+System Prompt	System Prompt: Skillify Current Session	1798	2.1.242	system-prompt-skillify-current-session.md
+System Prompt	System Prompt: Subagent carried user consent history	260	2.1.299	system-prompt-subagent-carried-user-consent-history.md
+System Prompt	System Prompt: Subagent delegation cost guidance	503	2.1.296	system-prompt-subagent-delegation-cost-guidance.md
+System Prompt	System Prompt: Subagent delegation examples	620	2.1.176	system-prompt-subagent-delegation-examples.md
+System Prompt	System Prompt: Subagent delegation restraint	479	2.1.215	system-prompt-subagent-delegation-restraint.md
+System Prompt	System Prompt: Subagent delegation when-to-use guidance	198	2.1.296	system-prompt-subagent-delegation-when-to-use-guidance.md
+System Prompt	System Prompt: System reminder interpretation (lean rewrite)	463	2.1.301	system-prompt-system-reminder-interpretation-lean-rewrite.md
+System Prompt	System Prompt: System section	93	2.1.173	system-prompt-system-section.md
+System Prompt	System Prompt: Task approval continuity	109	2.1.173	system-prompt-task-approval-continuity.md
+System Prompt	System Prompt: Tasks vs memory guidance	80	2.1.173	system-prompt-tasks-vs-memory-guidance.md
+System Prompt	System Prompt: Team memory index pointer instructions	159	2.1.235	system-prompt-team-memory-index-pointer-instructions.md
+System Prompt	System Prompt: Team project memory description	67	2.1.173	system-prompt-team-project-memory-description.md
+System Prompt	System Prompt: Teammate Communication	105	2.1.173	system-prompt-teammate-communication.md
+System Prompt	System Prompt: Tone and style (code references)	39	2.1.53	system-prompt-tone-and-style-code-references.md
+System Prompt	System Prompt: Tone and style (concise output — short)	16	2.1.53	system-prompt-tone-and-style-concise-output-short.md
+System Prompt	System Prompt: Tool call colon avoidance	59	2.1.161	system-prompt-tool-call-colon-avoidance.md
+System Prompt	System Prompt: Tool call summary label	112	2.1.173	system-prompt-tool-call-summary-label.md
+System Prompt	System Prompt: Tool usage (subagent guidance)	141	2.1.53	system-prompt-tool-usage-subagent-guidance.md
+System Prompt	System Prompt: Tool usage (task management)	70	2.1.81	system-prompt-tool-usage-task-management.md
+System Prompt	System Prompt: Troubleshooting confirmation policy	71	2.1.173	system-prompt-troubleshooting-confirmation-policy.md
+System Prompt	System Prompt: User memory usage guidance	91	2.1.173	system-prompt-user-memory-usage-guidance.md
+System Prompt	System Prompt: Verified Slack human relay consent	191	2.1.299	system-prompt-verified-slack-human-relay-consent.md
+System Prompt	System Prompt: WSL managed settings double opt-in	152	2.1.118	system-prompt-wsl-managed-settings-double-opt-in.md
+System Prompt	System Prompt: Windows sandbox certificate recovery	292	2.1.299	system-prompt-windows-sandbox-certificate-recovery.md
+System Prompt	System Prompt: Windows sandbox localhost retry guidance	401	2.1.299	system-prompt-windows-sandbox-localhost-retry-guidance.md
+System Prompt	System Prompt: Windows sandbox localhost user alternatives	434	2.1.299	system-prompt-windows-sandbox-localhost-user-alternatives.md
+System Prompt	System Prompt: Windows sandbox package cache limits	259	2.1.299	system-prompt-windows-sandbox-package-cache-limits.md
+System Prompt	System Prompt: Windows sandbox placeholder file protection	187	2.1.299	system-prompt-windows-sandbox-placeholder-file-protection.md
+System Prompt	System Prompt: Windows sandbox profile tool retry guidance	451	2.1.299	system-prompt-windows-sandbox-profile-tool-retry-guidance.md
+System Prompt	System Prompt: Windows sandbox profile tool user guidance	429	2.1.299	system-prompt-windows-sandbox-profile-tool-user-guidance.md
+System Prompt	System Prompt: Worker instructions	356	2.1.271	system-prompt-worker-instructions.md
+System Prompt	System Prompt: Writing for the user	586	2.1.247	system-prompt-writing-for-the-user.md
+System Prompt	System Prompt: Writing subagent prompts	398	2.1.235	system-prompt-writing-subagent-prompts.md
+System Prompt	System Prompt: You should know understood-topic skip guidance	150	2.1.286	system-prompt-you-should-know-understood-topic-skip-guidance.md
+System Reminders	System Reminder: /btw side question	406	2.1.280	system-reminder-btw-side-question.md
+System Reminders	System Reminder: Agent mention	45	2.1.18	system-reminder-agent-mention.md
+System Reminders	System Reminder: App tool server retrying connection failure	169	2.1.300	system-reminder-app-tool-server-retrying-connection-failure.md
+System Reminders	System Reminder: AppifactRepl Slides deck workflow	2086	2.1.273	system-reminder-appifactrepl-slides-deck-workflow.md
+System Reminders	System Reminder: AppifactRepl design canvas workflow	2090	2.1.273	system-reminder-appifactrepl-design-canvas-workflow.md
+System Reminders	System Reminder: Artifact auto-replies resumed	349	2.1.238	system-reminder-artifact-auto-replies-resumed.md
+System Reminders	System Reminder: Artifact capabilities contract unavailable	197	2.1.299	system-reminder-artifact-capabilities-contract-unavailable.md
+System Reminders	System Reminder: Artifact capability declaration revocation warning	341	2.1.280	system-reminder-artifact-capability-declaration-revocation-warning.md
+System Reminders	System Reminder: Artifact comment reply activation failure	204	2.1.251	system-reminder-artifact-comment-reply-activation-failure.md
+System Reminders	System Reminder: Artifact comment reply session collision	347	2.1.242	system-reminder-artifact-comment-reply-session-collision.md
+System Reminders	System Reminder: Artifact page-owned comment reply refusal	156	2.1.271	system-reminder-artifact-page-owned-comment-reply-refusal.md
+System Reminders	System Reminder: Artifact published source edit guidance	163	2.1.299	system-reminder-artifact-published-source-edit-guidance.md
+System Reminders	System Reminder: Artifact type instructions trust boundary	246	2.1.269	system-reminder-artifact-type-instructions-trust-boundary.md
+System Reminders	System Reminder: Artifact type page untrusted content warning	184	2.1.282	system-reminder-artifact-type-page-untrusted-content-warning.md
+System Reminders	System Reminder: AskUserQuestion minimum options validation	161	2.1.216	system-reminder-askuserquestion-minimum-options-validation.md
+System Reminders	System Reminder: Async agent launched metadata	267	2.1.293	system-reminder-async-agent-launched-metadata.md
+System Reminders	System Reminder: Async agent launched	146	2.1.193	system-reminder-async-agent-launched.md
+System Reminders	System Reminder: Attached device stopped offering tools	194	2.1.281	system-reminder-attached-device-stopped-offering-tools.md
+System Reminders	System Reminder: Attached machine asleep command paused	69	2.1.295	system-reminder-attached-machine-asleep-command-paused.md
+System Reminders	System Reminder: Attached machine asleep command withdrawn	73	2.1.295	system-reminder-attached-machine-asleep-command-withdrawn.md
+System Reminders	System Reminder: Attached machine away recheck-on-request ending	26	2.1.295	system-reminder-attached-machine-away-recheck-on-request-ending.md
+System Reminders	System Reminder: Attached machine away until-reachable condition	54	2.1.295	system-reminder-attached-machine-away-until-reachable-condition.md
+System Reminders	System Reminder: Attached machine could not be reached (oversized call)	50	2.1.295	system-reminder-attached-machine-could-not-be-reached-oversized-call.md
+System Reminders	System Reminder: Attached machine could not be reached (return not noted)	185	2.1.295	system-reminder-attached-machine-could-not-be-reached-return-not-noted.md
+System Reminders	System Reminder: Attached machine could not be reached (return noted)	143	2.1.295	system-reminder-attached-machine-could-not-be-reached-return-noted.md
+System Reminders	System Reminder: Attached machine could not be reached	98	2.1.295	system-reminder-attached-machine-could-not-be-reached.md
+System Reminders	System Reminder: Attached machine not answering (retry shortly)	113	2.1.295	system-reminder-attached-machine-not-answering-retry-shortly.md
+System Reminders	System Reminder: Attached machine not answering (stop calling)	204	2.1.295	system-reminder-attached-machine-not-answering-stop-calling.md
+System Reminders	System Reminder: Attached machine reply not received	276	2.1.287	system-reminder-attached-machine-reply-not-received.md
+System Reminders	System Reminder: Attached machine stopped answering (return not noted)	207	2.1.295	system-reminder-attached-machine-stopped-answering-return-not-noted.md
+System Reminders	System Reminder: Attached machine stopped answering (return noted)	164	2.1.295	system-reminder-attached-machine-stopped-answering-return-noted.md
+System Reminders	System Reminder: Attached machine stopped answering	189	2.1.295	system-reminder-attached-machine-stopped-answering.md
+System Reminders	System Reminder: Attached machine untrusted attachments refusal	274	2.1.299	system-reminder-attached-machine-untrusted-attachments-refusal.md
+System Reminders	System Reminder: Attached machine went to sleep (return not noted)	144	2.1.295	system-reminder-attached-machine-went-to-sleep-return-not-noted.md
+System Reminders	System Reminder: Attached machine went to sleep (return noted)	173	2.1.295	system-reminder-attached-machine-went-to-sleep-return-noted.md
+System Reminders	System Reminder: Attached machine went to sleep	100	2.1.295	system-reminder-attached-machine-went-to-sleep.md
+System Reminders	System Reminder: Auto mode clarification bias	338	2.1.200	system-reminder-auto-mode-clarification-bias.md
+System Reminders	System Reminder: Auto mode consent flow	443	2.1.203	system-reminder-auto-mode-consent-flow.md
+System Reminders	System Reminder: Auto mode no verdict after hook input rewrite	265	2.1.287	system-reminder-auto-mode-no-verdict-after-hook-input-rewrite.md
+System Reminders	System Reminder: Background command quiet check-in	270	2.1.293	system-reminder-background-command-quiet-check-in.md
+System Reminders	System Reminder: Background command stopped under memory pressure	190	2.1.274	system-reminder-background-command-stopped-under-memory-pressure.md
+System Reminders	System Reminder: Background task notification with concurrent user input	205	2.1.236	system-reminder-background-task-notification-with-concurrent-user-input.md
+System Reminders	System Reminder: Bound conversation activity authority warning	167	2.1.232	system-reminder-bound-conversation-activity-authority-warning.md
+System Reminders	System Reminder: Brief mode toggle	165	2.1.235	system-reminder-brief-mode-toggle.md
+System Reminders	System Reminder: Brief mode user-facing output	97	2.1.173	system-reminder-brief-mode-user-facing-output.md
+System Reminders	System Reminder: Browser extension not connected	102	2.1.173	system-reminder-browser-extension-not-connected.md
+System Reminders	System Reminder: Cloud agent launched	242	2.1.211	system-reminder-cloud-agent-launched.md
+System Reminders	System Reminder: Cloud session device tools disabled	193	2.1.281	system-reminder-cloud-session-device-tools-disabled.md
+System Reminders	System Reminder: Cloud session settings edit not applied	186	2.1.301	system-reminder-cloud-session-settings-edit-not-applied.md
+System Reminders	System Reminder: Combined thinking and reply token budget	269	2.1.300	system-reminder-combined-thinking-and-reply-token-budget.md
+System Reminders	System Reminder: Compact file reference	102	2.1.239	system-reminder-compact-file-reference.md
+System Reminders	System Reminder: Cross-session message held notice	286	2.1.288	system-reminder-cross-session-message-held-notice.md
+System Reminders	System Reminder: Cross-session peer message authority warning (legacy wording)	171	2.1.222	system-reminder-cross-session-peer-message-authority-warning-legacy-wording.md
+System Reminders	System Reminder: Cross-session peer message authority warning note	190	2.1.251	system-reminder-cross-session-peer-message-authority-warning-note.md
+System Reminders	System Reminder: Cross-session peer message authority warning	162	2.1.181	system-reminder-cross-session-peer-message-authority-warning.md
+System Reminders	System Reminder: Dangerous removal blocked	189	2.1.281	system-reminder-dangerous-removal-blocked.md
+System Reminders	System Reminder: Deferred tools available	121	2.1.257	system-reminder-deferred-tools-available.md
+System Reminders	System Reminder: End conversation background fork no-op	149	2.1.206	system-reminder-end-conversation-background-fork-no-op.md
+System Reminders	System Reminder: Exited plan mode	41	2.1.105	system-reminder-exited-plan-mode.md
+System Reminders	System Reminder: External source trust boundary	167	2.1.235	system-reminder-external-source-trust-boundary.md
+System Reminders	System Reminder: File already in context	87	2.1.199	system-reminder-file-already-in-context.md
+System Reminders	System Reminder: File exists but empty	27	2.1.18	system-reminder-file-exists-but-empty.md
+System Reminders	System Reminder: File opened in IDE	75	2.1.234	system-reminder-file-opened-in-ide.md
+System Reminders	System Reminder: File shorter than offset	59	2.1.18	system-reminder-file-shorter-than-offset.md
+System Reminders	System Reminder: File summary completeness disclosure	107	2.1.173	system-reminder-file-summary-completeness-disclosure.md
+System Reminders	System Reminder: File truncated	124	2.1.239	system-reminder-file-truncated.md
+System Reminders	System Reminder: Hook additional context	35	2.1.18	system-reminder-hook-additional-context.md
+System Reminders	System Reminder: Hook blocking error	52	2.1.18	system-reminder-hook-blocking-error.md
+System Reminders	System Reminder: Hook stopped continuation prefix	12	2.1.31	system-reminder-hook-stopped-continuation-prefix.md
+System Reminders	System Reminder: Hook stopped continuation	30	2.1.18	system-reminder-hook-stopped-continuation.md
+System Reminders	System Reminder: Hook success	29	2.1.18	system-reminder-hook-success.md
+System Reminders	System Reminder: Large PDF read guidance	372	2.1.288	system-reminder-large-pdf-read-guidance.md
+System Reminders	System Reminder: Large file full-content reading guidance	117	2.1.173	system-reminder-large-file-full-content-reading-guidance.md
+System Reminders	System Reminder: Lines selected in IDE	156	2.1.234	system-reminder-lines-selected-in-ide.md
+System Reminders	System Reminder: MCP output truncation warning	138	2.1.277	system-reminder-mcp-output-truncation-warning.md
+System Reminders	System Reminder: MCP resource no content	138	2.1.234	system-reminder-mcp-resource-no-content.md
+System Reminders	System Reminder: MCP servers connecting without ToolSearch	117	2.1.265	system-reminder-mcp-servers-connecting-without-toolsearch.md
+System Reminders	System Reminder: MCP servers connecting	128	2.1.173	system-reminder-mcp-servers-connecting.md
+System Reminders	System Reminder: MCP servers failed to connect guidance	179	2.1.295	system-reminder-mcp-servers-failed-to-connect-guidance.md
+System Reminders	System Reminder: MCP servers failed to connect	119	2.1.295	system-reminder-mcp-servers-failed-to-connect.md
+System Reminders	System Reminder: Memory consolidation tool constraints	250	2.1.235	system-reminder-memory-consolidation-tool-constraints.md
+System Reminders	System Reminder: Memory extraction recent context only	65	2.1.173	system-reminder-memory-extraction-recent-context-only.md
+System Reminders	System Reminder: Memory extraction tool constraints	280	2.1.235	system-reminder-memory-extraction-tool-constraints.md
+System Reminders	System Reminder: Memory extraction turn budget	111	2.1.173	system-reminder-memory-extraction-turn-budget.md
+System Reminders	System Reminder: Memory file contents	64	2.1.275	system-reminder-memory-file-contents.md
+System Reminders	System Reminder: Memory index capacity warning	330	2.1.235	system-reminder-memory-index-capacity-warning.md
+System Reminders	System Reminder: Memory sync mass-deletion guard	193	2.1.280	system-reminder-memory-sync-mass-deletion-guard.md
+System Reminders	System Reminder: Memory updates	237	2.1.251	system-reminder-memory-updates.md
+System Reminders	System Reminder: Nested instruction file contents	45	2.1.275	system-reminder-nested-instruction-file-contents.md
+System Reminders	System Reminder: Nested memory contents	33	2.1.18	system-reminder-nested-memory-contents.md
+System Reminders	System Reminder: New Slides deck parallel AppifactRepl workflow	1088	2.1.273	system-reminder-new-slides-deck-parallel-appifactrepl-workflow.md
+System Reminders	System Reminder: New Slides deck two-step AppifactRepl workflow	1404	2.1.273	system-reminder-new-slides-deck-two-step-appifactrepl-workflow.md
+System Reminders	System Reminder: New design canvas parallel AppifactRepl workflow	1152	2.1.273	system-reminder-new-design-canvas-parallel-appifactrepl-workflow.md
+System Reminders	System Reminder: New design canvas two-step AppifactRepl workflow	1579	2.1.273	system-reminder-new-design-canvas-two-step-appifactrepl-workflow.md
+System Reminders	System Reminder: New diagnostics detected	83	2.1.242	system-reminder-new-diagnostics-detected.md
+System Reminders	System Reminder: No attached machine request guidance	366	2.1.283	system-reminder-no-attached-machine-request-guidance.md
+System Reminders	System Reminder: Output style active	102	2.1.238	system-reminder-output-style-active.md
+System Reminders	System Reminder: Output token limit continuation	147	2.1.290	system-reminder-output-token-limit-continuation.md
+System Reminders	System Reminder: Plan approved	152	2.1.235	system-reminder-plan-approved.md
+System Reminders	System Reminder: Plan awaiting team-lead approval	116	2.1.173	system-reminder-plan-awaiting-team-lead-approval.md
+System Reminders	System Reminder: Plan file reference	133	2.1.301	system-reminder-plan-file-reference.md
+System Reminders	System Reminder: Plan mode approval tool enforcement	413	2.1.239	system-reminder-plan-mode-approval-tool-enforcement.md
+System Reminders	System Reminder: Plan mode is active (5-phase)	472	2.1.198	system-reminder-plan-mode-is-active-5-phase.md
+System Reminders	System Reminder: Plan mode is active (subagent)	456	2.1.239	system-reminder-plan-mode-is-active-subagent.md
+System Reminders	System Reminder: Plan mode is active	147	2.1.173	system-reminder-plan-mode-is-active.md
+System Reminders	System Reminder: Plan mode phase 2 design	495	2.1.235	system-reminder-plan-mode-phase-2-design.md
+System Reminders	System Reminder: Plan mode prototype artifact option	383	2.1.239	system-reminder-plan-mode-prototype-artifact-option.md
+System Reminders	System Reminder: Plan mode re-entry	339	2.1.239	system-reminder-plan-mode-re-entry.md
+System Reminders	System Reminder: Prefetched Artifact type instruction files	294	2.1.277	system-reminder-prefetched-artifact-type-instruction-files.md
+System Reminders	System Reminder: Prefetched design system file reading guidance	192	2.1.272	system-reminder-prefetched-design-system-file-reading-guidance.md
+System Reminders	System Reminder: Previously invoked skills	237	2.1.239	system-reminder-previously-invoked-skills.md
+System Reminders	System Reminder: Proactivity level high	718	2.1.290	system-reminder-proactivity-level-high.md
+System Reminders	System Reminder: Proactivity level low	380	2.1.290	system-reminder-proactivity-level-low.md
+System Reminders	System Reminder: Proactivity level medium	229	2.1.290	system-reminder-proactivity-level-medium.md
+System Reminders	System Reminder: Proactivity setting announcement header	141	2.1.290	system-reminder-proactivity-setting-announcement-header.md
+System Reminders	System Reminder: Proactivity setting withdrawn	58	2.1.290	system-reminder-proactivity-setting-withdrawn.md
+System Reminders	System Reminder: Project document version conflict recovery	153	2.1.299	system-reminder-project-document-version-conflict-recovery.md
+System Reminders	System Reminder: Project memory disconnected	354	2.1.235	system-reminder-project-memory-disconnected.md
+System Reminders	System Reminder: Provider context	75	2.1.173	system-reminder-provider-context.md
+System Reminders	System Reminder: Question context	31	2.1.261	system-reminder-question-context.md
+System Reminders	System Reminder: Queued notifications delivery	430	2.1.292	system-reminder-queued-notifications-delivery.md
+System Reminders	System Reminder: Queued notifications read-time clock note	297	2.1.292	system-reminder-queued-notifications-read-time-clock-note.md
+System Reminders	System Reminder: Read truncation retry guidance	80	2.1.173	system-reminder-read-truncation-retry-guidance.md
+System Reminders	System Reminder: Remote Chrome browser extension not connected	199	2.1.293	system-reminder-remote-chrome-browser-extension-not-connected.md
+System Reminders	System Reminder: Remote machine Git and credential routing	238	2.1.260	system-reminder-remote-machine-git-and-credential-routing.md
+System Reminders	System Reminder: Remote machine branch transfer review	1568	2.1.280	system-reminder-remote-machine-branch-transfer-review.md
+System Reminders	System Reminder: Remote machine separate project copies	207	2.1.277	system-reminder-remote-machine-separate-project-copies.md
+System Reminders	System Reminder: Remote machine-only resources routing	540	2.1.283	system-reminder-remote-machine-only-resources-routing.md
+System Reminders	System Reminder: Reserved-address MCP server refusal	471	2.1.303	system-reminder-reserved-address-mcp-server-refusal.md
+System Reminders	System Reminder: Resume agents interrupted by container restart	195	2.1.299	system-reminder-resume-agents-interrupted-by-container-restart.md
+System Reminders	System Reminder: Scheduled task automated firing	242	2.1.213	system-reminder-scheduled-task-automated-firing.md
+System Reminders	System Reminder: Session context	245	2.1.285	system-reminder-session-context.md
+System Reminders	System Reminder: Session continuation	37	2.1.18	system-reminder-session-continuation.md
+System Reminders	System Reminder: Session stop hook active	111	2.1.173	system-reminder-session-stop-hook-active.md
+System Reminders	System Reminder: Staged files failed to arrive	377	2.1.300	system-reminder-staged-files-failed-to-arrive.md
+System Reminders	System Reminder: Still-running tool call	239	2.1.287	system-reminder-still-running-tool-call.md
+System Reminders	System Reminder: Stop hook blocking error	20	2.1.107	system-reminder-stop-hook-blocking-error.md
+System Reminders	System Reminder: Subagent write blocked pending worktree isolation	242	2.1.288	system-reminder-subagent-write-blocked-pending-worktree-isolation.md
+System Reminders	System Reminder: Task tools reminder	111	2.1.139	system-reminder-task-tools-reminder.md
+System Reminders	System Reminder: Team Coordination	356	2.1.233	system-reminder-team-coordination.md
+System Reminders	System Reminder: Team Shutdown	136	2.1.16	system-reminder-team-shutdown.md
+System Reminders	System Reminder: TodoWrite reminder	86	2.1.139	system-reminder-todowrite-reminder.md
+System Reminders	System Reminder: Token usage	39	2.1.18	system-reminder-token-usage.md
+System Reminders	System Reminder: USD budget	42	2.1.18	system-reminder-usd-budget.md
+System Reminders	System Reminder: Ultracode enabled	110	2.1.248	system-reminder-ultracode-enabled.md
+System Reminders	System Reminder: Ultraplan mode	646	2.1.274	system-reminder-ultraplan-mode.md
+System Reminders	System Reminder: Unreachable attached machines (call only)	101	2.1.295	system-reminder-unreachable-attached-machines-call-only.md
+System Reminders	System Reminder: Unreachable attached machines (rechecked)	188	2.1.295	system-reminder-unreachable-attached-machines-rechecked.md
+System Reminders	System Reminder: Unreachable attached machines (return noted)	310	2.1.295	system-reminder-unreachable-attached-machines-return-noted.md
+System Reminders	System Reminder: Unreachable attached machines retry-by-call guidance	204	2.1.295	system-reminder-unreachable-attached-machines-retry-by-call-guidance.md
+System Reminders	System Reminder: Unreachable attached machines	425	2.1.295	system-reminder-unreachable-attached-machines.md
+System Reminders	System Reminder: User-controlled plan mode exit	182	2.1.299	system-reminder-user-controlled-plan-mode-exit.md
+System Reminders	System Reminder: Web fetch untrusted content reporting guidance	363	2.1.265	system-reminder-web-fetch-untrusted-content-reporting-guidance.md
+System Reminders	System Reminder: Workflow isolated worktree	191	2.1.242	system-reminder-workflow-isolated-worktree.md
+System Reminders	System Reminder: You should know side request	312	2.1.286	system-reminder-you-should-know-side-request.md
+Builtin Tool Descriptions	Tool Description: Agent explicit-spawn restriction	251	2.1.292	tool-description-agent-explicit-spawn-restriction.md
+Builtin Tool Descriptions	Tool Description: AppifactRepl	1332	2.1.272	tool-description-appifactrepl.md
+Builtin Tool Descriptions	Tool Description: Artifact HTML document skeleton	595	2.1.301	tool-description-artifact-html-document-skeleton.md
+Builtin Tool Descriptions	Tool Description: Artifact action reference	1185	2.1.292	tool-description-artifact-action-reference.md
+Builtin Tool Descriptions	Tool Description: Artifact asset read result	674	2.1.274	tool-description-artifact-asset-read-result.md
+Builtin Tool Descriptions	Tool Description: Artifact asset upload guidance	206	2.1.275	tool-description-artifact-asset-upload-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact browser storage guidance	253	2.1.271	tool-description-artifact-browser-storage-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact comments guidance	603	2.1.257	tool-description-artifact-comments-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact database guidance	1001	2.1.284	tool-description-artifact-database-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact database version pinning guidance	187	2.1.284	tool-description-artifact-database-version-pinning-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact design fallback requirements	364	2.1.293	tool-description-artifact-design-fallback-requirements.md
+Builtin Tool Descriptions	Tool Description: Artifact external resource allowlist	281	2.1.281	tool-description-artifact-external-resource-allowlist.md
+Builtin Tool Descriptions	Tool Description: Artifact known-version resubmission guidance	123	2.1.302	tool-description-artifact-known-version-resubmission-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact line diff reading legend	227	2.1.295	tool-description-artifact-line-diff-reading-legend.md
+Builtin Tool Descriptions	Tool Description: Artifact live room guidance	753	2.1.251	tool-description-artifact-live-room-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact multi-file edit and republish guidance	287	2.1.300	tool-description-artifact-multi-file-edit-and-republish-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact nested runtime cleanup error	264	2.1.251	tool-description-artifact-nested-runtime-cleanup-error.md
+Builtin Tool Descriptions	Tool Description: Artifact preview action	177	2.1.280	tool-description-artifact-preview-action.md
+Builtin Tool Descriptions	Tool Description: Artifact profiles action guidance	200	2.1.281	tool-description-artifact-profiles-action-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact publish-edits resend clause	36	2.1.302	tool-description-artifact-publish-edits-resend-clause.md
+Builtin Tool Descriptions	Tool Description: Artifact publish-edits resubmission merge guidance	179	2.1.302	tool-description-artifact-publish-edits-resubmission-merge-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact publishing and update guidance	2087	2.1.293	tool-description-artifact-publishing-and-update-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact quickstart type guidance	707	2.1.302	tool-description-artifact-quickstart-type-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact responsive page contract	371	2.1.299	tool-description-artifact-responsive-page-contract.md
+Builtin Tool Descriptions	Tool Description: Artifact resubmission refetch confirmation clause	91	2.1.302	tool-description-artifact-resubmission-refetch-confirmation-clause.md
+Builtin Tool Descriptions	Tool Description: Artifact runtime verification guidance	198	2.1.257	tool-description-artifact-runtime-verification-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact same-response edit and publish guidance	162	2.1.295	tool-description-artifact-same-response-edit-and-publish-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact share action reference	264	2.1.286	tool-description-artifact-share-action-reference.md
+Builtin Tool Descriptions	Tool Description: Artifact sharing guidance	478	2.1.286	tool-description-artifact-sharing-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact small-change edit and republish guidance	286	2.1.300	tool-description-artifact-small-change-edit-and-republish-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact stale publish saved-source guidance	494	2.1.302	tool-description-artifact-stale-publish-saved-source-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact theme-aware styling	630	2.1.284	tool-description-artifact-theme-aware-styling.md
+Builtin Tool Descriptions	Tool Description: Artifact title and description guidance	312	2.1.284	tool-description-artifact-title-and-description-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact type creation guidance	188	2.1.260	tool-description-artifact-type-creation-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact type discovery guidance	1375	2.1.302	tool-description-artifact-type-discovery-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact type file-backed content detection guidance	355	2.1.273	tool-description-artifact-type-file-backed-content-detection-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact type file-backed content update guidance	1418	2.1.283	tool-description-artifact-type-file-backed-content-update-guidance.md
+Builtin Tool Descriptions	Tool Description: Artifact type staged first-publish sequence	516	2.1.287	tool-description-artifact-type-staged-first-publish-sequence.md
+Builtin Tool Descriptions	Tool Description: Artifact watch approval explanation	271	2.1.246	tool-description-artifact-watch-approval-explanation.md
+Builtin Tool Descriptions	Tool Description: AskUserQuestion decision guidance	60	2.1.173	tool-description-askuserquestion-decision-guidance.md
+Builtin Tool Descriptions	Tool Description: AskUserQuestion extended host guidance	302	2.1.260	tool-description-askuserquestion-extended-host-guidance.md
+Builtin Tool Descriptions	Tool Description: AskUserQuestion	208	2.1.295	tool-description-askuserquestion.md
+Builtin Tool Descriptions	Tool Description: Background monitor WebSocket source	300	2.1.195	tool-description-background-monitor-websocket-source.md
+Builtin Tool Descriptions	Tool Description: Background monitor push notification guidance	91	2.1.232	tool-description-background-monitor-push-notification-guidance.md
+Builtin Tool Descriptions	Tool Description: BrowserBatch	159	2.1.120	tool-description-browserbatch.md
+Builtin Tool Descriptions	Tool Description: Chrome browser automation	62	2.1.173	tool-description-chrome-browser-automation.md
+Builtin Tool Descriptions	Tool Description: Claude in Chrome JavaScript tool	75	2.1.173	tool-description-claude-in-chrome-javascript-tool.md
+Builtin Tool Descriptions	Tool Description: Claude in Chrome bridge disconnect error	96	2.1.173	tool-description-claude-in-chrome-bridge-disconnect-error.md
+Builtin Tool Descriptions	Tool Description: Claude in Chrome find	113	2.1.173	tool-description-claude-in-chrome-find.md
+Builtin Tool Descriptions	Tool Description: Claude in Chrome get page text	66	2.1.173	tool-description-claude-in-chrome-get-page-text.md
+Builtin Tool Descriptions	Tool Description: Claude in Chrome read console messages	109	2.1.173	tool-description-claude-in-chrome-read-console-messages.md
+Builtin Tool Descriptions	Tool Description: Claude in Chrome read network requests	104	2.1.173	tool-description-claude-in-chrome-read-network-requests.md
+Builtin Tool Descriptions	Tool Description: Claude in Chrome read page	158	2.1.211	tool-description-claude-in-chrome-read-page.md
+Builtin Tool Descriptions	Tool Description: Claude in Chrome shortcuts execute	61	2.1.173	tool-description-claude-in-chrome-shortcuts-execute.md
+Builtin Tool Descriptions	Tool Description: Claude in Chrome switch browser	88	2.1.173	tool-description-claude-in-chrome-switch-browser.md
+Builtin Tool Descriptions	Tool Description: Claude in Chrome switched-off and unlinked chat guidance	641	2.1.301	tool-description-claude-in-chrome-switched-off-and-unlinked-chat-guidance.md
+Builtin Tool Descriptions	Tool Description: Claude in Chrome switched-off chat guidance	420	2.1.300	tool-description-claude-in-chrome-switched-off-chat-guidance.md
+Builtin Tool Descriptions	Tool Description: Claude in Chrome tabs context	90	2.1.173	tool-description-claude-in-chrome-tabs-context.md
+Builtin Tool Descriptions	Tool Description: Claude in Chrome unavailable stub result	226	2.1.300	tool-description-claude-in-chrome-unavailable-stub-result.md
+Builtin Tool Descriptions	Tool Description: ClaudeDesign	431	2.1.271	tool-description-claudedesign.md
+Builtin Tool Descriptions	Tool Description: Code review command	256	2.1.290	tool-description-code-review-command.md
+Builtin Tool Descriptions	Tool Description: Computer use enable stub guidance	376	2.1.300	tool-description-computer-use-enable-stub-guidance.md
+Builtin Tool Descriptions	Tool Description: Computer use unlinked chat guidance	482	2.1.301	tool-description-computer-use-unlinked-chat-guidance.md
+Builtin Tool Descriptions	Tool Description: Computer	161	2.0.71	tool-description-computer.md
+Builtin Tool Descriptions	Tool Description: Cowork onboarding role picker	188	2.1.172	tool-description-cowork-onboarding-role-picker.md
+Builtin Tool Descriptions	Tool Description: Cowork plugin creation	86	2.1.173	tool-description-cowork-plugin-creation.md
+Builtin Tool Descriptions	Tool Description: CronCreate	1291	2.1.299	tool-description-croncreate.md
+Builtin Tool Descriptions	Tool Description: DesignSync	1373	2.1.302	tool-description-designsync.md
+Builtin Tool Descriptions	Tool Description: Durable artifact watch and status guidance	414	2.1.257	tool-description-durable-artifact-watch-and-status-guidance.md
+Builtin Tool Descriptions	Tool Description: Easel chart	336	2.1.302	tool-description-easel-chart.md
+Builtin Tool Descriptions	Tool Description: Edit minimal old_string guidance	92	2.1.173	tool-description-edit-minimal-old-string-guidance.md
+Builtin Tool Descriptions	Tool Description: Edit single replacement	178	2.1.285	tool-description-edit-single-replacement.md
+Builtin Tool Descriptions	Tool Description: Edit	311	2.1.285	tool-description-edit.md
+Builtin Tool Descriptions	Tool Description: Enable Claude app browser	165	2.1.284	tool-description-enable-claude-app-browser.md
+Builtin Tool Descriptions	Tool Description: Enable Claude in Chrome	192	2.1.284	tool-description-enable-claude-in-chrome.md
+Builtin Tool Descriptions	Tool Description: Enable computer use	192	2.1.284	tool-description-enable-computer-use.md
+Builtin Tool Descriptions	Tool Description: EndConversation	1452	2.1.206	tool-description-endconversation.md
+Builtin Tool Descriptions	Tool Description: EnterPlanMode	1296	2.1.215	tool-description-enterplanmode.md
+Builtin Tool Descriptions	Tool Description: EnterWorktree	1066	2.1.281	tool-description-enterworktree.md
+Builtin Tool Descriptions	Tool Description: ExitPlanMode	648	2.1.205	tool-description-exitplanmode.md
+Builtin Tool Descriptions	Tool Description: ExitWorktree	527	2.1.72	tool-description-exitworktree.md
+Builtin Tool Descriptions	Tool Description: FetchInboxMessage project thread wake envelope	229	2.1.277	tool-description-fetchinboxmessage-project-thread-wake-envelope.md
+Builtin Tool Descriptions	Tool Description: FetchInboxMessage	950	2.1.277	tool-description-fetchinboxmessage.md
+Builtin Tool Descriptions	Tool Description: GetTask	524	2.1.292	tool-description-gettask.md
+Builtin Tool Descriptions	Tool Description: Glob compact	0	2.1.178	tool-description-glob-compact.md
+Builtin Tool Descriptions	Tool Description: Glob	90	2.1.215	tool-description-glob.md
+Builtin Tool Descriptions	Tool Description: Grep compact	0	2.1.178	tool-description-grep-compact.md
+Builtin Tool Descriptions	Tool Description: Grep	437	2.1.235	tool-description-grep.md
+Builtin Tool Descriptions	Tool Description: Invoke skill	473	2.1.218	tool-description-invoke-skill.md
+Builtin Tool Descriptions	Tool Description: LSP	298	2.1.162	tool-description-lsp.md
+Builtin Tool Descriptions	Tool Description: ListAgents	284	2.1.239	tool-description-listagents.md
+Builtin Tool Descriptions	Tool Description: ListConnectors	234	2.1.199	tool-description-listconnectors.md
+Builtin Tool Descriptions	Tool Description: ListMcpResourcesTool prompt	83	2.1.173	tool-description-listmcpresourcestool-prompt.md
+Builtin Tool Descriptions	Tool Description: ListMcpResourcesTool	82	2.1.173	tool-description-listmcpresourcestool.md
+Builtin Tool Descriptions	Tool Description: Navigate tab cleanup guidance	82	2.1.268	tool-description-navigate-tab-cleanup-guidance.md
+Builtin Tool Descriptions	Tool Description: Navigate	218	2.1.268	tool-description-navigate.md
+Builtin Tool Descriptions	Tool Description: New file-backed Artifact type content guidance	963	2.1.283	tool-description-new-file-backed-artifact-type-content-guidance.md
+Builtin Tool Descriptions	Tool Description: NotebookEdit	194	2.1.162	tool-description-notebookedit.md
+Builtin Tool Descriptions	Tool Description: Offer Claude in Chrome setup	312	2.1.290	tool-description-offer-claude-in-chrome-setup.md
+Builtin Tool Descriptions	Tool Description: Plugin organization submission and replacement	182	2.1.301	tool-description-plugin-organization-submission-and-replacement.md
+Builtin Tool Descriptions	Tool Description: Poll	425	2.1.287	tool-description-poll.md
+Builtin Tool Descriptions	Tool Description: PowerShell	2856	2.1.285	tool-description-powershell.md
+Builtin Tool Descriptions	Tool Description: Project local_file read-only workflow	208	2.1.300	tool-description-project-local-file-read-only-workflow.md
+Builtin Tool Descriptions	Tool Description: ProposeGoal	421	2.1.227	tool-description-proposegoal.md
+Builtin Tool Descriptions	Tool Description: PublishPlugin file listing and consent flow	168	2.1.292	tool-description-publishplugin-file-listing-and-consent-flow.md
+Builtin Tool Descriptions	Tool Description: PushNotification	407	2.1.199	tool-description-pushnotification.md
+Builtin Tool Descriptions	Tool Description: ReadFile compact	285	2.1.288	tool-description-readfile-compact.md
+Builtin Tool Descriptions	Tool Description: ReadFile	578	2.1.288	tool-description-readfile.md
+Builtin Tool Descriptions	Tool Description: ReadMcpResourceDirTool prompt	177	2.1.186	tool-description-readmcpresourcedirtool-prompt.md
+Builtin Tool Descriptions	Tool Description: ReadNotifications	626	2.1.285	tool-description-readnotifications.md
+Builtin Tool Descriptions	Tool Description: RefreshMcpTools prompt	167	2.1.211	tool-description-refreshmcptools-prompt.md
+Builtin Tool Descriptions	Tool Description: RefreshMcpTools	318	2.1.248	tool-description-refreshmcptools.md
+Builtin Tool Descriptions	Tool Description: Remote artifact watch guidance	379	2.1.271	tool-description-remote-artifact-watch-guidance.md
+Builtin Tool Descriptions	Tool Description: RemoteTrigger prompt	955	2.1.227	tool-description-remotetrigger-prompt.md
+Builtin Tool Descriptions	Tool Description: Report code-review findings	163	2.1.196	tool-description-report-code-review-findings.md
+Builtin Tool Descriptions	Tool Description: ScheduleWakeup noop state guidance	169	2.1.284	tool-description-schedulewakeup-noop-state-guidance.md
+Builtin Tool Descriptions	Tool Description: ScheduleWakeup reason field guidance	87	2.1.284	tool-description-schedulewakeup-reason-field-guidance.md
+Builtin Tool Descriptions	Tool Description: ScheduleWakeup	468	2.1.284	tool-description-schedulewakeup.md
+Builtin Tool Descriptions	Tool Description: SearchMcpRegistry	377	2.1.199	tool-description-searchmcpregistry.md
+Builtin Tool Descriptions	Tool Description: SearchPlugins examples	62	2.1.280	tool-description-searchplugins-examples.md
+Builtin Tool Descriptions	Tool Description: SearchPlugins purpose	68	2.1.280	tool-description-searchplugins-purpose.md
+Builtin Tool Descriptions	Tool Description: SearchPlugins result handling	117	2.1.280	tool-description-searchplugins-result-handling.md
+Builtin Tool Descriptions	Tool Description: SearchPlugins up-front guidance	275	2.1.280	tool-description-searchplugins-up-front-guidance.md
+Builtin Tool Descriptions	Tool Description: SearchSkills	220	2.1.221	tool-description-searchskills.md
+Builtin Tool Descriptions	Tool Description: Self-hosted runner requeue session	186	2.1.224	tool-description-self-hosted-runner-requeue-session.md
+Builtin Tool Descriptions	Tool Description: SendFeedback drafting guidance	1145	2.1.242	tool-description-sendfeedback-drafting-guidance.md
+Builtin Tool Descriptions	Tool Description: SendFile	451	2.1.210	tool-description-sendfile.md
+Builtin Tool Descriptions	Tool Description: SendMessage cross-session guidance	1109	2.1.274	tool-description-sendmessage-cross-session-guidance.md
+Builtin Tool Descriptions	Tool Description: SendMessage	813	2.1.296	tool-description-sendmessage.md
+Builtin Tool Descriptions	Tool Description: SendUserFile	599	2.1.227	tool-description-senduserfile.md
+Builtin Tool Descriptions	Tool Description: SendUserMessage	226	2.1.116	tool-description-sendusermessage.md
+Builtin Tool Descriptions	Tool Description: Session artifact watch lifecycle	821	2.1.274	tool-description-session-artifact-watch-lifecycle.md
+Builtin Tool Descriptions	Tool Description: ShowOnboardingRolePicker	38	2.1.173	tool-description-showonboardingrolepicker.md
+Builtin Tool Descriptions	Tool Description: Skill proposal rendering	320	2.1.274	tool-description-skill-proposal-rendering.md
+Builtin Tool Descriptions	Tool Description: Skill-scoped git push refusal	258	2.1.273	tool-description-skill-scoped-git-push-refusal.md
+Builtin Tool Descriptions	Tool Description: SubagentHandback	215	2.1.285	tool-description-subagenthandback.md
+Builtin Tool Descriptions	Tool Description: SuggestConnectors	244	2.1.292	tool-description-suggestconnectors.md
+Builtin Tool Descriptions	Tool Description: SuggestPluginInstall	474	2.1.280	tool-description-suggestplugininstall.md
+Builtin Tool Descriptions	Tool Description: SuggestSkills proactive guidance	303	2.1.213	tool-description-suggestskills-proactive-guidance.md
+Builtin Tool Descriptions	Tool Description: Task Get	182	2.1.173	tool-description-task-get.md
+Builtin Tool Descriptions	Tool Description: TaskCreate	738	2.1.84	tool-description-taskcreate.md
+Builtin Tool Descriptions	Tool Description: TaskList	267	2.1.173	tool-description-tasklist.md
+Builtin Tool Descriptions	Tool Description: TaskUpdate	586	2.1.173	tool-description-taskupdate.md
+Builtin Tool Descriptions	Tool Description: TodoWrite compact	108	2.1.173	tool-description-todowrite-compact.md
+Builtin Tool Descriptions	Tool Description: TodoWrite proactive update guidance	65	2.1.173	tool-description-todowrite-proactive-update-guidance.md
+Builtin Tool Descriptions	Tool Description: TodoWrite	2037	2.1.84	tool-description-todowrite.md
+Builtin Tool Descriptions	Tool Description: Upload image	241	2.1.268	tool-description-upload-image.md
+Builtin Tool Descriptions	Tool Description: WebFetch private URL warning	217	2.1.299	tool-description-webfetch-private-url-warning.md
+Builtin Tool Descriptions	Tool Description: WebFetch	478	2.1.268	tool-description-webfetch.md
+Builtin Tool Descriptions	Tool Description: WebSearch	537	2.1.295	tool-description-websearch.md
+Builtin Tool Descriptions	Tool Description: Workflow	1118	2.1.248	tool-description-workflow.md
+Builtin Tool Descriptions	Tool Description: Write	185	2.1.285	tool-description-write.md
+Builtin Tool Descriptions	Tool Description: claude.ai Project	1630	2.1.301	tool-description-claude-ai-project.md
+Builtin Tool Descriptions	Tool Description: memory_list prompt	193	2.1.246	tool-description-memory-list-prompt.md
+Builtin Tool Descriptions	Tool Description: memory_write prompt	426	2.1.246	tool-description-memory-write-prompt.md
+Builtin Tool Descriptions	Tool Description: memory_write update triggers and timing	611	2.1.224	tool-description-memory-write-update-triggers-and-timing.md
+Builtin Tool Descriptions	Tool Description: Agent (usage notes)	2040	2.1.302	tool-description-agent-usage-notes.md
+Builtin Tool Descriptions	Tool Description: Agent (when to launch subagents)	485	2.1.290	tool-description-agent-when-to-launch-subagents.md
+Builtin Tool Descriptions	Tool Description: Agent (when to launch subagents, lean rewrite)	353	2.1.301	tool-description-agent-when-to-launch-subagents-lean-rewrite.md
+Builtin Tool Descriptions	Tool Description: Agent delegation summary (lean rewrite)	196	2.1.301	tool-description-agent-delegation-summary-lean-rewrite.md
+Builtin Tool Descriptions	Tool Description: Agent delegation tradeoffs (lean rewrite)	797	2.1.301	tool-description-agent-delegation-tradeoffs-lean-rewrite.md
+Builtin Tool Descriptions	Tool Description: Agent result visibility (lean rewrite)	205	2.1.301	tool-description-agent-result-visibility-lean-rewrite.md
+Builtin Tool Descriptions	Tool Description: Artifact action reference (concise app wording)	815	2.1.292	tool-description-artifact-action-reference-concise-app-wording.md
+Builtin Tool Descriptions	Tool Description: Artifact assets guidance (app wording)	667	2.1.287	tool-description-artifact-assets-guidance-app-wording.md
+Builtin Tool Descriptions	Tool Description: Artifact comments guidance (app wording)	416	2.1.271	tool-description-artifact-comments-guidance-app-wording.md
+Builtin Tool Descriptions	Tool Description: Artifact design skill loading guidance (app wording)	366	2.1.284	tool-description-artifact-design-skill-loading-guidance-app-wording.md
+Builtin Tool Descriptions	Tool Description: Artifact live room guidance (app wording)	293	2.1.269	tool-description-artifact-live-room-guidance-app-wording.md
+Builtin Tool Descriptions	Tool Description: Artifact page authoring and HTML skeleton (app wording)	703	2.1.295	tool-description-artifact-page-authoring-and-html-skeleton-app-wording.md
+Builtin Tool Descriptions	Tool Description: Artifact page implementation requirements (app wording)	1890	2.1.293	tool-description-artifact-page-implementation-requirements-app-wording.md
+Builtin Tool Descriptions	Tool Description: Artifact preview action (in-session viewer)	198	2.1.292	tool-description-artifact-preview-action-in-session-viewer.md
+Builtin Tool Descriptions	Tool Description: Artifact publishing introduction (app wording)	196	2.1.269	tool-description-artifact-publishing-introduction-app-wording.md
+Builtin Tool Descriptions	Tool Description: Artifact quickstart type guidance (app wording)	845	2.1.302	tool-description-artifact-quickstart-type-guidance-app-wording.md
+Builtin Tool Descriptions	Tool Description: Artifact runtime capabilities guidance (app wording)	407	2.1.269	tool-description-artifact-runtime-capabilities-guidance-app-wording.md
+Builtin Tool Descriptions	Tool Description: Artifact title and description guidance (app wording)	236	2.1.271	tool-description-artifact-title-and-description-guidance-app-wording.md
+Builtin Tool Descriptions	Tool Description: Artifact type discovery guidance (app wording)	912	2.1.302	tool-description-artifact-type-discovery-guidance-app-wording.md
+Builtin Tool Descriptions	Tool Description: AskUserQuestion (lean rewrite)	217	2.1.301	tool-description-askuserquestion-lean-rewrite.md
+Builtin Tool Descriptions	Tool Description: AskUserQuestion (preview field)	134	2.1.69	tool-description-askuserquestion-preview-field.md
+Builtin Tool Descriptions	Tool Description: AskUserQuestion (without plan mode note)	147	2.1.295	tool-description-askuserquestion-without-plan-mode-note.md
+Builtin Tool Descriptions	Tool Description: Background monitor (streaming events)	1963	2.1.287	tool-description-background-monitor-streaming-events.md
+Builtin Tool Descriptions	Tool Description: Bash (Git commit instructions)	1477	2.1.286	tool-description-bash-git-commit-instructions.md
+Builtin Tool Descriptions	Tool Description: Bash (PR creation instructions)	864	2.1.286	tool-description-bash-pr-creation-instructions.md
+Builtin Tool Descriptions	Tool Description: Bash (alternative — communication)	18	2.1.53	tool-description-bash-alternative-communication.md
+Builtin Tool Descriptions	Tool Description: Bash (alternative — content search)	27	2.1.53	tool-description-bash-alternative-content-search.md
+Builtin Tool Descriptions	Tool Description: Bash (alternative — edit files)	27	2.1.53	tool-description-bash-alternative-edit-files.md
+Builtin Tool Descriptions	Tool Description: Bash (alternative — file search)	26	2.1.53	tool-description-bash-alternative-file-search.md
+Builtin Tool Descriptions	Tool Description: Bash (alternative — read files)	27	2.1.53	tool-description-bash-alternative-read-files.md
+Builtin Tool Descriptions	Tool Description: Bash (alternative — write files)	29	2.1.53	tool-description-bash-alternative-write-files.md
+Builtin Tool Descriptions	Tool Description: Bash (attached machines)	350	2.1.283	tool-description-bash-attached-machines.md
+Builtin Tool Descriptions	Tool Description: Bash (built-in tools note)	53	2.1.53	tool-description-bash-built-in-tools-note.md
+Builtin Tool Descriptions	Tool Description: Bash (git — avoid destructive ops)	58	2.1.53	tool-description-bash-git-avoid-destructive-ops.md
+Builtin Tool Descriptions	Tool Description: Bash (git — never skip hooks)	59	2.1.53	tool-description-bash-git-never-skip-hooks.md
+Builtin Tool Descriptions	Tool Description: Bash (git — prefer new commits)	22	2.1.53	tool-description-bash-git-prefer-new-commits.md
+Builtin Tool Descriptions	Tool Description: Bash (maintain cwd)	81	2.1.113	tool-description-bash-maintain-cwd.md
+Builtin Tool Descriptions	Tool Description: Bash (overview)	19	2.1.53	tool-description-bash-overview.md
+Builtin Tool Descriptions	Tool Description: Bash (prefer dedicated tools bullet)	72	2.1.133	tool-description-bash-prefer-dedicated-tools-bullet.md
+Builtin Tool Descriptions	Tool Description: Bash (prefer dedicated tools)	71	2.1.71	tool-description-bash-prefer-dedicated-tools.md
+Builtin Tool Descriptions	Tool Description: Bash (quote file paths)	35	2.1.53	tool-description-bash-quote-file-paths.md
+Builtin Tool Descriptions	Tool Description: Bash (sandbox — default to sandbox)	38	2.1.53	tool-description-bash-sandbox-default-to-sandbox.md
+Builtin Tool Descriptions	Tool Description: Bash (sandbox — evidence list header)	15	2.1.53	tool-description-bash-sandbox-evidence-list-header.md
+Builtin Tool Descriptions	Tool Description: Bash (sandbox — evidence: access denied)	15	2.1.53	tool-description-bash-sandbox-evidence-access-denied.md
+Builtin Tool Descriptions	Tool Description: Bash (sandbox — evidence: network failures)	17	2.1.53	tool-description-bash-sandbox-evidence-network-failures.md
+Builtin Tool Descriptions	Tool Description: Bash (sandbox — evidence: operation not permitted)	18	2.1.53	tool-description-bash-sandbox-evidence-operation-not-permitted.md
+Builtin Tool Descriptions	Tool Description: Bash (sandbox — evidence: unix socket errors)	11	2.1.53	tool-description-bash-sandbox-evidence-unix-socket-errors.md
+Builtin Tool Descriptions	Tool Description: Bash (sandbox — explain restriction)	110	2.1.282	tool-description-bash-sandbox-explain-restriction.md
+Builtin Tool Descriptions	Tool Description: Bash (sandbox — failure evidence condition)	48	2.1.53	tool-description-bash-sandbox-failure-evidence-condition.md
+Builtin Tool Descriptions	Tool Description: Bash (sandbox — local port binding EPERM, no override)	140	2.1.281	tool-description-bash-sandbox-local-port-binding-eperm-no-override.md
+Builtin Tool Descriptions	Tool Description: Bash (sandbox — local port binding EPERM, override available)	119	2.1.281	tool-description-bash-sandbox-local-port-binding-eperm-override-available.md
+Builtin Tool Descriptions	Tool Description: Bash (sandbox — no sensitive paths)	36	2.1.53	tool-description-bash-sandbox-no-sensitive-paths.md
+Builtin Tool Descriptions	Tool Description: Bash (sandbox — per-command)	52	2.1.53	tool-description-bash-sandbox-per-command.md
+Builtin Tool Descriptions	Tool Description: Bash (sandbox — response header)	17	2.1.53	tool-description-bash-sandbox-response-header.md
+Builtin Tool Descriptions	Tool Description: Bash (sandbox — retry without sandbox)	33	2.1.53	tool-description-bash-sandbox-retry-without-sandbox.md
+Builtin Tool Descriptions	Tool Description: Bash (sandbox — tmpdir)	58	2.1.163	tool-description-bash-sandbox-tmpdir.md
+Builtin Tool Descriptions	Tool Description: Bash (sleep — keep short)	22	2.1.108	tool-description-bash-sleep-keep-short.md
+Builtin Tool Descriptions	Tool Description: Bash (sleep — no polling background tasks)	37	2.1.53	tool-description-bash-sleep-no-polling-background-tasks.md
+Builtin Tool Descriptions	Tool Description: Bash (sleep — run immediately)	21	2.1.53	tool-description-bash-sleep-run-immediately.md
+Builtin Tool Descriptions	Tool Description: Bash (sleep — use check commands)	34	2.1.53	tool-description-bash-sleep-use-check-commands.md
+Builtin Tool Descriptions	Tool Description: Bash (timeout)	150	2.1.285	tool-description-bash-timeout.md
+Builtin Tool Descriptions	Tool Description: Bash (verify parent directory)	38	2.1.53	tool-description-bash-verify-parent-directory.md
+Builtin Tool Descriptions	Tool Description: Bash (working directory)	37	2.1.53	tool-description-bash-working-directory.md
+Builtin Tool Descriptions	Tool Description: CronCreate (durability note)	122	2.1.173	tool-description-croncreate-durability-note.md
+Builtin Tool Descriptions	Tool Description: Enable Claude app browser (shared description)	242	2.1.288	tool-description-enable-claude-app-browser-shared-description.md
+Builtin Tool Descriptions	Tool Description: Enable Claude in Chrome (shared description)	269	2.1.288	tool-description-enable-claude-in-chrome-shared-description.md
+Builtin Tool Descriptions	Tool Description: Enable computer use (shared description)	268	2.1.288	tool-description-enable-computer-use-shared-description.md
+Builtin Tool Descriptions	Tool Description: EnterPlanMode (ambiguous tasks)	312	2.1.235	tool-description-enterplanmode-ambiguous-tasks.md
+Builtin Tool Descriptions	Tool Description: Grep compact (lean rewrite)	228	2.1.301	tool-description-grep-compact-lean-rewrite.md
+Builtin Tool Descriptions	Tool Description: Invoke skill (lean rewrite)	509	2.1.301	tool-description-invoke-skill-lean-rewrite.md
+Builtin Tool Descriptions	Tool Description: ListAgents (no SendMessage tool)	224	2.1.284	tool-description-listagents-no-sendmessage-tool.md
+Builtin Tool Descriptions	Tool Description: Live Artifact watch guidance (app wording)	456	2.1.274	tool-description-live-artifact-watch-guidance-app-wording.md
+Builtin Tool Descriptions	Tool Description: PowerShell (git guidance)	192	2.1.271	tool-description-powershell-git-guidance.md
+Builtin Tool Descriptions	Tool Description: Prohibited artifact publishing (app wording)	185	2.1.269	tool-description-prohibited-artifact-publishing-app-wording.md
+Builtin Tool Descriptions	Tool Description: Publish audience-facing deliverables (app wording)	658	2.1.281	tool-description-publish-audience-facing-deliverables-app-wording.md
+Builtin Tool Descriptions	Tool Description: ScheduleWakeup delay guidance (1-hour cache TTL)	430	2.1.284	tool-description-schedulewakeup-delay-guidance-1-hour-cache-ttl.md
+Builtin Tool Descriptions	Tool Description: ScheduleWakeup delay guidance (5-minute cache TTL)	543	2.1.284	tool-description-schedulewakeup-delay-guidance-5-minute-cache-ttl.md
+Builtin Tool Descriptions	Tool Description: ScheduleWakeup delay guidance (unknown cache TTL)	463	2.1.284	tool-description-schedulewakeup-delay-guidance-unknown-cache-ttl.md
+Builtin Tool Descriptions	Tool Description: SendUserMessage (verbatim)	102	2.1.182	tool-description-sendusermessage-verbatim.md
+Builtin Tool Descriptions	Tool Description: TaskList (teammate workflow)	133	2.1.38	tool-description-tasklist-teammate-workflow.md
+Builtin Tool Descriptions	Tool Description: ToolSearch (input validation note)	65	2.1.231	tool-description-toolsearch-input-validation-note.md
+Builtin Tool Descriptions	Tool Description: ToolSearch (lean rewrite)	47	2.1.301	tool-description-toolsearch-lean-rewrite.md
+Builtin Tool Descriptions	Tool Description: ToolSearch (opening)	39	2.1.231	tool-description-toolsearch-opening.md
+Builtin Tool Descriptions	Tool Description: ToolSearch (second part)	178	2.1.178	tool-description-toolsearch-second-part.md
+Builtin Tool Descriptions	Tool Description: ToolSearch (unfetched tool note)	31	2.1.231	tool-description-toolsearch-unfetched-tool-note.md
+Builtin Tool Descriptions	Tool Description: Updating existing artifacts (app wording)	469	2.1.300	tool-description-updating-existing-artifacts-app-wording.md
+Builtin Tool Descriptions	Tool Description: WebFetch (concise)	277	2.1.299	tool-description-webfetch-concise.md
+Builtin Tool Descriptions	Tool Description: WebSearch (concise)	180	2.1.295	tool-description-websearch-concise.md
+Builtin Tool Descriptions	Tool Description: Workflow (lean rewrite)	1113	2.1.301	tool-description-workflow-lean-rewrite.md
+Builtin Tool Descriptions	Tool Description: Write (read existing file first)	121	2.1.285	tool-description-write-read-existing-file-first.md
+Builtin Tool Descriptions	Tool Description: list_connected_browsers (browser picker guidance)	234	2.1.274	tool-description-list-connected-browsers-browser-picker-guidance.md
+Builtin Tool Descriptions	Tool Parameter: Artifact URL guidance (app wording)	284	2.1.284	tool-parameter-artifact-url-guidance-app-wording.md
+Builtin Tool Descriptions	Tool Parameter: Artifact URL guidance	333	2.1.284	tool-parameter-artifact-url-guidance.md
+Builtin Tool Descriptions	Tool Parameter: Artifact auto-open timing (app wording)	163	2.1.277	tool-parameter-artifact-auto-open-timing-app-wording.md
+Builtin Tool Descriptions	Tool Parameter: Artifact auto-open timing	179	2.1.277	tool-parameter-artifact-auto-open-timing.md
+Builtin Tool Descriptions	Tool Parameter: Artifact comment actions guidance	688	2.1.251	tool-parameter-artifact-comment-actions-guidance.md
+Builtin Tool Descriptions	Tool Parameter: Artifact database access level	181	2.1.284	tool-parameter-artifact-database-access-level.md
+Builtin Tool Descriptions	Tool Parameter: Artifact database batch writes	347	2.1.284	tool-parameter-artifact-database-batch-writes.md
+Builtin Tool Descriptions	Tool Parameter: Artifact database version precondition	182	2.1.284	tool-parameter-artifact-database-version-precondition.md
+Builtin Tool Descriptions	Tool Parameter: Artifact force overwrite guidance	170	2.1.242	tool-parameter-artifact-force-overwrite-guidance.md
+Builtin Tool Descriptions	Tool Parameter: Artifact force page overwrite warning	55	2.1.242	tool-parameter-artifact-force-page-overwrite-warning.md
+Builtin Tool Descriptions	Tool Parameter: Artifact force supporting files preservation	58	2.1.242	tool-parameter-artifact-force-supporting-files-preservation.md
+Builtin Tool Descriptions	Tool Parameter: Artifact preview action	211	2.1.283	tool-parameter-artifact-preview-action.md
+Builtin Tool Descriptions	Tool Parameter: Artifact supporting files with cross-artifact sources (app wording)	248	2.1.287	tool-parameter-artifact-supporting-files-with-cross-artifact-sources-app-wording.md
+Builtin Tool Descriptions	Tool Parameter: Artifact supporting files with cross-artifact sources	233	2.1.287	tool-parameter-artifact-supporting-files-with-cross-artifact-sources.md
+Builtin Tool Descriptions	Tool Parameter: Artifact title	267	2.1.260	tool-parameter-artifact-title.md
+Builtin Tool Descriptions	Tool Parameter: Artifact unread path overwrite acknowledgement	149	2.1.271	tool-parameter-artifact-unread-path-overwrite-acknowledgement.md
+Builtin Tool Descriptions	Tool Parameter: Artifact watch actions guidance	552	2.1.274	tool-parameter-artifact-watch-actions-guidance.md
+Builtin Tool Descriptions	Tool Parameter: Bash command description	311	2.1.267	tool-parameter-bash-command-description.md
+Builtin Tool Descriptions	Tool Parameter: Bash run_in_background guidance (completion notices disabled)	91	2.1.295	tool-parameter-bash-run-in-background-guidance-completion-notices-disabled.md
+Builtin Tool Descriptions	Tool Parameter: Bash run_in_background guidance	154	2.1.296	tool-parameter-bash-run-in-background-guidance.md
+Builtin Tool Descriptions	Tool Parameter: Claude in Chrome JavaScript code	103	2.1.173	tool-parameter-claude-in-chrome-javascript-code.md
+Builtin Tool Descriptions	Tool Parameter: Computer action	251	2.0.71	tool-parameter-computer-action.md
+Builtin Tool Descriptions	Tool Parameter: PowerShell run_in_background note (completion notices disabled)	71	2.1.295	tool-parameter-powershell-run-in-background-note-completion-notices-disabled.md
+Builtin Tool Descriptions	Tool Parameter: PowerShell run_in_background note	107	2.1.285	tool-parameter-powershell-run-in-background-note.md
+Builtin Tool Descriptions	Tool Parameter: Sandboxed command allowed domains	228	2.1.268	tool-parameter-sandboxed-command-allowed-domains.md
+Builtin Tool Descriptions	Tool Parameter: SendUserMessage attachments	75	2.1.173	tool-parameter-sendusermessage-attachments.md
+Builtin Tool Descriptions	Tool Parameter: matched ask rule	198	2.1.213	tool-parameter-matched-ask-rule.md
+Builtin Tool Descriptions	Tool Parameter: set_cwd needs_trust directory	197	2.1.200	tool-parameter-set-cwd-needs-trust-directory.md
+Skills	Skill: /code-review efficiency dimension	106	2.1.173	skill-code-review-efficiency-dimension.md
+Skills	Skill: /doctor prompt-audit configuration scope	532	2.1.283	skill-doctor-prompt-audit-configuration-scope.md
+Skills	Skill: /doctor slash command description	372	2.1.233	skill-doctor-slash-command-description.md
+Skills	Skill: /doctor slash command	16174	2.1.303	skill-doctor-slash-command.md
+Skills	Skill: /explain-usage measured usage slash command	998	2.1.290	skill-explain-usage-measured-usage-slash-command.md
+Skills	Skill: /explain-usage slash command	449	2.1.217	skill-explain-usage-slash-command.md
+Skills	Skill: /init CLAUDE.md and skill setup (new version)	7828	2.1.235	skill-init-claude-md-and-skill-setup-new-version.md
+Skills	Skill: /insights report output	293	2.1.281	skill-insights-report-output.md
+Skills	Skill: /loop cloud-first scheduling offer	730	2.1.101	skill-loop-cloud-first-scheduling-offer.md
+Skills	Skill: /loop local runtime note	96	2.1.173	skill-loop-local-runtime-note.md
+Skills	Skill: /loop self-pacing mode (re-arm decision)	412	2.1.284	skill-loop-self-pacing-mode-re-arm-decision.md
+Skills	Skill: /loop self-pacing mode	738	2.1.284	skill-loop-self-pacing-mode.md
+Skills	Skill: /loop slash command (dynamic mode)	977	2.1.284	skill-loop-slash-command-dynamic-mode.md
+Skills	Skill: /stuck (background-daemon diagnostics)	273	2.1.235	skill-stuck-background-daemon-diagnostics.md
+Skills	Skill: /stuck slash command	964	2.1.242	skill-stuck-slash-command.md
+Skills	Skill: Artifact PR review description (composed publish flow)	178	2.1.242	skill-artifact-pr-review-description-composed-publish-flow.md
+Skills	Skill: Artifact components	2462	2.1.296	skill-artifact-components.md
+Skills	Skill: Artifact data table	2016	2.1.246	skill-artifact-data-table.md
+Skills	Skill: Artifact diagramming	1413	2.1.292	skill-artifact-diagramming.md
+Skills	Skill: Artifact document	2055	2.1.275	skill-artifact-document.md
+Skills	Skill: Artifact explainer	2024	2.1.246	skill-artifact-explainer.md
+Skills	Skill: Artifact report	1930	2.1.251	skill-artifact-report.md
+Skills	Skill: Artifact whiteboard when-to-use guidance	182	2.1.242	skill-artifact-whiteboard-when-to-use-guidance.md
+Skills	Skill: Claude API Managed Agents onboarding source tier	718	2.1.290	skill-claude-api-managed-agents-onboarding-source-tier.md
+Skills	Skill: Claude Code configuration guide	2462	2.1.269	skill-claude-code-configuration-guide.md
+Skills	Skill: Claude Test sign-in	371	2.1.275	skill-claude-test-sign-in.md
+Skills	Skill: Claude guide unavailable reference fallback	344	2.1.235	skill-claude-guide-unavailable-reference-fallback.md
+Skills	Skill: Code Review (Angle B — removed-behavior auditor)	94	2.1.173	skill-code-review-angle-b-removed-behavior-auditor.md
+Skills	Skill: Code Review (Angle C — cross-file tracer)	88	2.1.173	skill-code-review-angle-c-cross-file-tracer.md
+Skills	Skill: Code Review (Angle D — language-pitfall specialist)	101	2.1.173	skill-code-review-angle-d-language-pitfall-specialist.md
+Skills	Skill: Code Review (Angle E — wrapper/proxy correctness)	126	2.1.173	skill-code-review-angle-e-wrapper-proxy-correctness.md
+Skills	Skill: Code Review (Output — findings JSON array)	343	2.1.288	skill-code-review-output-findings-json-array.md
+Skills	Skill: Code Review (Phase 0 — gather the diff)	135	2.1.173	skill-code-review-phase-0-gather-the-diff.md
+Skills	Skill: Code Review (Phase 2 — verify, 3-state)	125	2.1.173	skill-code-review-phase-2-verify-3-state.md
+Skills	Skill: Code Review (Phase 2 — verify, recall-biased)	137	2.1.173	skill-code-review-phase-2-verify-recall-biased.md
+Skills	Skill: Code Review (Phase 3 — sweep for gaps)	131	2.1.173	skill-code-review-phase-3-sweep-for-gaps.md
+Skills	Skill: Code Review (conventions dimension)	0	2.1.178	skill-code-review-conventions-dimension.md
+Skills	Skill: Code Review correctness finder angles	414	2.1.206	skill-code-review-correctness-finder-angles.md
+Skills	Skill: Code Review inline medium/high template	652	2.1.288	skill-code-review-inline-medium-high-template.md
+Skills	Skill: Code Review inline xhigh mode	1234	2.1.288	skill-code-review-inline-xhigh-mode.md
+Skills	Skill: Code Review low effort expanded-findings mode	810	2.1.288	skill-code-review-low-effort-expanded-findings-mode.md
+Skills	Skill: Computer Use MCP	1731	2.1.242	skill-computer-use-mcp.md
+Skills	Skill: Data Visualization description	496	2.1.251	skill-data-visualization-description.md
+Skills	Skill: Data Visualization	2901	2.1.246	skill-data-visualization.md
+Skills	Skill: Debugging	653	2.1.235	skill-debugging.md
+Skills	Skill: Dynamic pacing loop execution (re-arm decision)	411	2.1.284	skill-dynamic-pacing-loop-execution-re-arm-decision.md
+Skills	Skill: Dynamic pacing loop execution	664	2.1.284	skill-dynamic-pacing-loop-execution.md
+Skills	Skill: Generate permission allowlist from transcripts	3419	2.1.290	skill-generate-permission-allowlist-from-transcripts.md
+Skills	Skill: Import to Claude Code	418	2.1.235	skill-import-to-claude-code.md
+Skills	Skill: Mod GitHub sharing consent	315	2.1.300	skill-mod-github-sharing-consent.md
+Skills	Skill: Multiplayer whiteboard description	211	2.1.260	skill-multiplayer-whiteboard-description.md
+Skills	Skill: Plugin eval authoring interview	5128	2.1.269	skill-plugin-eval-authoring-interview.md
+Skills	Skill: Prototype description	151	2.1.242	skill-prototype-description.md
+Skills	Skill: Prototype runtime capabilities guidance	242	2.1.229	skill-prototype-runtime-capabilities-guidance.md
+Skills	Skill: Run CLI tool example	648	2.1.246	skill-run-cli-tool-example.md
+Skills	Skill: Run TUI interactive terminal app example	1292	2.1.246	skill-run-tui-interactive-terminal-app-example.md
+Skills	Skill: Run app	1315	2.1.246	skill-run-app.md
+Skills	Skill: Run browser-driven web app example	1413	2.1.246	skill-run-browser-driven-web-app-example.md
+Skills	Skill: Run library SDK example	835	2.1.246	skill-run-library-sdk-example.md
+Skills	Skill: Run skill template	1596	2.1.246	skill-run-skill-template.md
+Skills	Skill: Run web server API example	1364	2.1.246	skill-run-web-server-api-example.md
+Skills	Skill: Schedule recurring cron and run immediately	271	2.1.101	skill-schedule-recurring-cron-and-run-immediately.md
+Skills	Skill: Setup Cowork role selection	475	2.1.260	skill-setup-cowork-role-selection.md
+Skills	Skill: Setup Cowork	3464	2.1.280	skill-setup-cowork.md
+Skills	Skill: Team onboarding guide	521	2.1.94	skill-team-onboarding-guide.md
+Skills	Skill: Update Claude Code Config	1726	2.1.282	skill-update-claude-code-config.md
+Skills	Skill: Update config description	170	2.1.173	skill-update-config-description.md
+Skills	Skill: Update config settings file locations	1445	2.1.281	skill-update-config-settings-file-locations.md
+Skills	Skill: Verify CLI changes (example for Verify skill)	772	2.1.246	skill-verify-cli-changes-example-for-verify-skill.md
+Skills	Skill: Verify server/API changes (example for Verify skill)	793	2.1.246	skill-verify-server-api-changes-example-for-verify-skill.md
+Skills	Skill: Whiteboard description	228	2.1.246	skill-whiteboard-description.md
+Skills	Skill: Workflow authoring reference	6322	2.1.265	skill-workflow-authoring-reference.md
+Skills	Skill: update-config (7-step verification flow)	1755	2.1.282	skill-update-config-7-step-verification-flow.md

@@ -15,6 +15,22 @@ repo here has been restructured at least once), the commits read, and the
 sparse-clone recipe for re-fetching any of them in a couple of minutes.
 Start there before re-deriving where a harness keeps its tool definitions.
 
+**[→ `leaked/claude-code/piebald-2.1.303/`](./leaked/claude-code/piebald-2.1.303)** —
+Claude Code's prompts as shipped in the v2.1.303 npm package (2026-10-18),
+from Piebald's MIT-licensed extraction: an inventory of all 961 pieces
+(517k tokens; 88% changed since the 2.1.172 captures elsewhere in that
+folder), the 63 pieces this collection now cites, and a table of what we
+lacked. The new material is folded into
+`code-review-approaches.md` §14 (the `/code-review` effort ladder),
+`agent-permissions-approval.md` §1c and §2c (proactivity levels and the
+auto-mode classifier, with two corrections), `agent-subagent-architectures.md`
+§7c (coordinator, worker, fork and Workflow prompts),
+`agent-turn-output.md` §1d (two run-state classifiers that disagree),
+`agent-context-compaction.md` §2b, `agent-memory-learning.md` §13 and
+`agent-content-provenance.md` §5. What Forge could take from it is written
+as proposals, not yet adopted, in
+[`agent-design/proposals-claude-code-2.1.303.md`](./agent-design/proposals-claude-code-2.1.303.md).
+
 This is a first pass focused on **open-source coding and code-review
 agents**, where the system prompt ships directly in the project's public
 source code (as opposed to being reverse-engineered/leaked from a closed
