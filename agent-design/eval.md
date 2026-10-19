@@ -101,7 +101,7 @@ requirement; it is re-run on every change to the triage prompt, the
 default review policy, or the model.
 
 **Added 2026-10-19 — ReviewBench as the external calibration set**
-(`../code-review-approaches.md` §14). GitHub's ReviewBench (2026-10-05):
+(`../code-review-approaches.md` §15). GitHub's ReviewBench (2026-10-05):
 219 public PRs from 187 repositories in 19 languages, a golden set
 gathered from human reviewers, author follow-up commits, static tools and
 several model families, then deduplicated and validated under a published
@@ -119,7 +119,11 @@ review only. Three uses:
    denominator does not move with the agent's output. **Augmented
    precision** is a diagnostic, and it is the number that matters most
    here, since a hands-off reviewer pays more for a false positive than
-   for a miss.
+   for a miss. Score both twice, on `confirmed` findings alone and on
+   `confirmed` plus `plausible`: since the validator became three-state
+   and `plausible` is posted only on `high`-tier reviews (`review.md`
+   §5), the gap between the two runs is the recall that rule buys and the
+   precision it costs, measured on PRs nobody here labelled.
 2. **Copy its gold-set recipe for the internal set.** Suite 3's planted
    defects measure detection; a set built ReviewBench's way from this
    organisation's own merged PRs measures what real reviewers flagged.

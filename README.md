@@ -15,6 +15,22 @@ repo here has been restructured at least once), the commits read, and the
 sparse-clone recipe for re-fetching any of them in a couple of minutes.
 Start there before re-deriving where a harness keeps its tool definitions.
 
+**[→ `leaked/claude-code/piebald-2.1.303/`](./leaked/claude-code/piebald-2.1.303)** —
+Claude Code's prompts as shipped in the v2.1.303 npm package (2026-10-18),
+from Piebald's MIT-licensed extraction: an inventory of all 961 pieces
+(517k tokens; 88% changed since the 2.1.172 captures elsewhere in that
+folder), the 63 pieces this collection now cites, and a table of what we
+lacked. The new material is folded into
+`code-review-approaches.md` §14 (the `/code-review` effort ladder),
+`agent-permissions-approval.md` §1c and §2c (proactivity levels and the
+auto-mode classifier, with two corrections), `agent-subagent-architectures.md`
+§7c (coordinator, worker, fork and Workflow prompts),
+`agent-turn-output.md` §1d (two run-state classifiers that disagree),
+`agent-context-compaction.md` §2b, `agent-memory-learning.md` §13 and
+`agent-content-provenance.md` §5. What Forge could take from it is written
+as fourteen proposals, of which 1–6 are adopted into the design, in
+[`agent-design/proposals-claude-code-2.1.303.md`](./agent-design/proposals-claude-code-2.1.303.md).
+
 This is a first pass focused on **open-source coding and code-review
 agents**, where the system prompt ships directly in the project's public
 source code (as opposed to being reverse-engineered/leaked from a closed
@@ -48,18 +64,17 @@ CodeScene. Built on two source-level deep dives: Codex Guardian's action-risk
 machinery ([`codex/guardian-mechanics.md`](./codex/guardian-mechanics.md))
 and OpenClaw's maintainer bot [`clawsweeper/`](./clawsweeper).
 
-**[→ `agent-content-provenance.md`](./agent-content-provenance.md) §5
+**[→ `agent-content-provenance.md`](./agent-content-provenance.md) §6
 and [`agent-design/formats.md`](./agent-design/formats.md) §5a** — the
-2026-10-19 weekly pass. Claude Code's builds 2.1.290–2.1.302 (now tracked
-through the Piebald dumps, stored in
-[`leaked/claude-code/consent-provenance/`](./leaked/claude-code/consent-provenance))
-spell out *who can consent and to what*: only a harness-marked user, a
-bare reply approves only the one action the message before it named, and
-agents direct work but never consent. Forge's `AskUser` resume now checks
-who replied, and plan approval is bound to the plan's text. The same pass
-adds `agent-subagent-architectures.md` §7c (four harnesses stopped
-sub-agents running with more authority than their parent in one week),
-`code-review-approaches.md` §14 (GitHub's ReviewBench) and
+2026-10-19 weekly pass, which followed the Piebald comparison above.
+Claude Code's Project and Slack consent pieces, Codex, Goose and Crush
+agree that the harness decides who the principal is and that an answer
+binds to the request it answers. Forge's `AskUser` resume now checks who
+replied, which matters most for the new `approve` kind, and the gated plan
+approval is bound to the plan's text. The same pass adds
+`agent-subagent-architectures.md` §7d (four harnesses stopped sub-agents
+running with more authority than their parent in one week),
+`code-review-approaches.md` §15 (GitHub's ReviewBench) and
 `agent-data-analysis.md` §12a (DAB's failure taxonomy).
 
 **[→ `code-review-approaches.md`](./code-review-approaches.md) §12 and

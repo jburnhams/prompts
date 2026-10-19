@@ -173,8 +173,8 @@ comment on an issue can write into the first. The asymmetry was not
 argued for anywhere; it is an artefact of the review envelope having been
 specified second, with the threat model fresh.
 
-So **`<ticket>`, `<instruction>` and `<resumed_answer>` (§5) carry the
-run nonce on both tags too**, on the same terms: minted per run, repeated
+So **`<ticket>`, `<instruction>`, `<resumed_answer>` and
+`<approved_action>` (§5) carry the run nonce on both tags too**, on the same terms: minted per run, repeated
 on the close, any occurrence inside a body rejected before assembly.
 
 The consuming rule differs from review mode's, and the difference is the
@@ -197,7 +197,10 @@ question that was asked. It does not, by being a reply from a human,
 widen the run's scope, grant a permission, or authorise a step the
 original task did not — `AskUser`'s question is on the record and the
 reply is scoped to it. A reply that asks for something else is a new
-task, and the honest move is to say so in `Complete`.
+task, and the honest move is to say so in `Complete`. *(Added
+2026-10-19.)* An approval also binds to the step it names: a yes to
+preparing a change is not a yes to the later step that pushes, posts or
+publishes it. That step needs its own `approve` question (§5).
 
 **This lands next to `generative.md` §2d, and the two halves fit.** That
 section gives `<resumed_answer>` two harness-filled attributes —
@@ -518,7 +521,7 @@ LLM judge (which stays out of v1, per the README's leanness rule).
     { "...": "one review-finding object per confirmed, posted finding — see §4" }
   ],
   "filtered": [
-    { "...": "review-finding objects that were raised by a specialist but not posted, with why — see §4's validated field" }
+    { "...": "review-finding objects that were raised by a specialist but not posted, with why — see §4's verdict field" }
   ],
   "attention": { "...": "how much human attention this PR needs — tier, floor, drivers, reversibility, look_here, mechanical, unverified; required on every non-skipped run, including zero-finding runs. Schema and rules: risk.md §2" },
   "comment_urls": ["string, ..."]
@@ -534,7 +537,7 @@ envelope's `<review_state>`, with what this session did to it
 (`replied_fixed` / `replied_conceded` / `replied_standing_firm` /
 `left_open`, plus the reply's comment id where one was posted) — the
 same accounting discipline extended to threads; see `review.md` §7b. A candidate dropped by the pre-validation dedup (pipeline step
-4) appears in `filtered` with `validated: null` and the dedup reason —
+4) appears in `filtered` with `verdict: null` and the dedup reason —
 it was never judged wrong, just already reported.
 
 ### 3c. Plan mode
@@ -584,7 +587,7 @@ gets an answer on the ticket either way.
 
 ## 4. Review-finding schema
 
-Produced by a `reviewer` sub-agent (as a candidate, `validated: null`),
+Produced by a `reviewer` sub-agent (as a candidate, `verdict: null`),
 then annotated by a `validator` sub-agent, then carried through to the
 orchestrator's `Complete` report:
 
@@ -600,7 +603,7 @@ orchestrator's `Complete` report:
   "summary": "string, one sentence",
   "rationale": "string, why this is a real problem, citing the specific rule/behavior",
   "suggested_fix": "string, Markdown/diff snippet, or null if none proposed",
-  "validated": true,
+  "verdict": "confirmed | plausible | refuted",
   "validator_note": "string, the validator's one-sentence reason"
 }
 ```
@@ -612,9 +615,14 @@ carry a code anchor like any other, because the validator is text-only and
 re-derives from code; a visual observation that cannot name the line
 producing it is not a finding at all.
 
-`validated: null` is the specialist's own output, before the validator
-pass runs; `true`/`false` is the validator's verdict. Only `true`
-findings are ever passed to `AddComment`. `severity` is set by the
+`verdict: null` is the specialist's own output, before the validator
+pass runs; `confirmed`, `plausible` or `refuted` is the validator's
+verdict *(three states since 2026-10-19; previously a boolean
+`validated`)*. Which verdicts are passed to `AddComment` depends on the
+review's attention tier (`review.md` §5): `confirmed` always,
+`plausible` only on a `high`-tier review and labelled as such in the
+comment, `refuted` never. Findings not posted go to `filtered` with
+their verdict. `severity` is set by the
 specialist and is not re-judged by the validator — the validator's job
 is "is this real," not "how bad is it."
 
@@ -690,6 +698,46 @@ and a *new* run resumes it later.
    deflection, a reply that raises a new question), Forge may call
    `AskUser` again rather than being forced to guess.
 
+**Two kinds of question** *(added 2026-10-19, from Claude Code's
+coordinator prompt; see `proposals-claude-code-2.1.303.md` §4–§6)*. The
+resume steps above describe `kind: "clarify"`, the default, where the
+answer changes what Forge does next and the run needs its context back.
+`kind: "approve"` asks a yes or no about one action named in the call's
+`action` field (`tools.md`) and resumes differently:
+
+- **The comment names the target.** The harness renders the question
+  with the action's `operation` and `target` in bold and fixes the
+  options to approve and decline. It rejects the call before posting if
+  `target` is empty, so a human is never asked to approve something
+  unnamed.
+- **A yes starts a fresh run, not a resumed one.** When
+  `<resumed_answer>` has `option_id="approve"` and `match="exact"`
+  (`generative.md` §2d), and the reply came from a principal (§5a,
+  `from="principal"`), the harness starts a new `implement` run whose
+  envelope holds the original task envelope's identifying fields, the
+  action verbatim in `<approved_action nonce=…>`, the reply in
+  `<resumed_answer>`, and `staged_paths` as a list. It does **not**
+  receive the suspended run's transcript. The run performs the steps,
+  verifies them, and calls `Complete`. The reason is security: the run
+  that read untrusted ticket, PR or tool text is not the run that takes
+  the approved action, so text the first run read cannot steer the
+  second, and the approval cannot be stretched to cover anything the
+  first run might have added later.
+- **Anything else resumes the original run as a clarify.** A decline, a
+  `match="none"` reply or a conditional yes ("yes, but on a branch")
+  goes back to the suspended run with its transcript, because the
+  answer now changes what Forge does.
+- **Headroom.** Because the execute run starts without the transcript,
+  the late-run headroom problem described below does not apply to
+  approvals.
+
+**Batching.** Forge asks once per suspension. Its prompt tells it to
+finish everything that doesn't depend on the answer and to try any
+route that avoids the question first (`system-prompts.md` §1), so a
+suspension should arrive with the rest of the work done and every open
+question in one numbered list. A multi-part question carries no
+`options`, so its reply resumes with `match="none"` and is read as text.
+
 A task can suspend and resume more than once. There is no built-in cap
 in v1 — a real deployment would likely want one (e.g. "escalate instead
 of asking a third time"), left as a v2 addition per `future.md` rather
@@ -713,17 +761,19 @@ additional work.
 §5's resume step matches a reply to its suspended task "via the comment
 id". It does not say whose reply. On most Jira deployments anyone who can
 comment on the issue can reply in that thread, as can other bots and
-Forge's own runs on linked issues, so today the first reply from anyone
-resumes the run and is carried as the answer. §1b already limits what an
-answer can do (it answers the question; it grants nothing). This section
-adds the missing half, **who can give it**, and, for the one question that
-is consent rather than clarification, **what exactly it approves**.
+Forge's own runs on linked issues. For a `clarify` question that means
+the first reply from anyone is carried as the answer. For an `approve`
+question it is worse: §5 starts a fresh run that executes the approved
+action when `<resumed_answer>` has `option_id="approve"` and
+`match="exact"`, so as written **anyone who can comment can approve the
+action**. §1b already limits what an answer can do; this section adds
+**who can give it**, and binds the one approval §5 does not cover (the
+gated plan in §6) to what it approved.
 
-Sources: Claude Code's consent rules in builds 2.1.290–2.1.302
-(`../leaked/claude-code/consent-provenance/`), Codex's compaction
-attribution and content-bound approvals, and Goose's and Crush's
-answers-bound-to-the-asker fixes, compared in
-`../agent-content-provenance.md` §5.
+Sources: Claude Code's Project and Slack consent pieces, Codex's
+compaction attribution and content-bound approvals, and Goose's and
+Crush's answers-bound-to-the-asker fixes, compared in
+`../agent-content-provenance.md` §6.
 
 1. **The harness classifies the reply's author against a principal set
    it can compute in v1**, without `medium.md` §5c's addressee registry
@@ -741,7 +791,7 @@ answers-bound-to-the-asker fixes, compared in
    The result goes onto the tag:
 
    ```
-   <resumed_answer nonce="…" option_id="keep-legacy-endpoint" match="exact"
+   <resumed_answer nonce="…" option_id="approve" match="exact"
                    from="principal" author="c.nolan@example.com">
    ```
 
@@ -754,74 +804,66 @@ answers-bound-to-the-asker fixes, compared in
    a harness assertion; the body stays untrusted content.
 
    **If the set is empty** (an unassigned issue whose reporter is a bot,
-   or a manual task whose dispatcher recorded no identity), the run
-   cannot resume on any reply, so the harness says so at suspend time
-   rather than waiting: the posted question ends with a line naming who
-   may answer, or, when nobody can, saying that a reply will not resume
-   the task and that it needs an assignee. A suspended run is never
-   silently unanswerable.
+   or a manual task whose dispatcher recorded no identity), no reply can
+   resume the run, so the harness says so at suspend time rather than
+   waiting: the posted question ends with a line naming who may answer,
+   or, when nobody can, saying that a reply will not resume the task and
+   that it needs an assignee. A suspended run is never silently
+   unanswerable.
 
-2. **Only a `principal` reply resumes the run.** A `participant` reply is
+2. **Only a `principal` reply resumes, and only a principal's yes runs an
+   approved action.** §5's approve rule becomes `option_id="approve"`,
+   `match="exact"` **and** `from="principal"`. A `participant` reply is
    kept on the suspended-task record and, when a principal reply later
    resumes the run, handed over beside it in an `<other_replies>` block
    (run-nonced like every untrusted block, one entry per reply with its
-   `from` and `author`), never inside `<resumed_answer>`; it does not
-   resume by itself. An `automation`
-   reply is ignored for resumption. Forge's text is never an answer to
+   `from` and `author`), never inside `<resumed_answer>`, and never into
+   an execute run's envelope, which stays as §5 defines it. An
+   `automation` reply is ignored. Forge's text is never an answer to
    Forge: a plan comment, a mirrored audit-trail comment or a sibling
    run's report that lands in the thread can neither resume nor approve.
-   A deployment that wants anyone on the issue to answer can widen
-   `principal` in the registry; the default is narrow because a resumed
-   run acts on the answer without another human in the loop.
+   A deployment that wants anyone on the issue to answer `clarify`
+   questions can widen `principal` for that kind only; the default is
+   narrow for both.
 
 3. **A reply answers the question it was posted under, and nothing
    else.** The harness binds a resume to one suspended record by comment
    id; a reply on another issue, or under a different Forge comment,
-   resumes nothing here, however it is worded. That is Claude Code's
-   "a 'yes' in another thread … approves nothing here", and Crush's
-   request-is-resolvable-only-while-its-waiter-exists, in Forge terms: a
-   reply to a suspended record that has been superseded (the task was
-   re-dispatched, cancelled, or already resumed) is recorded and resumes
-   nothing.
+   resumes nothing here, however it is worded (Claude Code: a "yes" in
+   another thread "approves nothing here"). A reply to a record that has
+   been superseded (re-dispatched, cancelled, or already resumed) is
+   recorded and resumes nothing, as Crush reports a request only "while
+   Grant/Deny can actually resolve it".
 
-4. **Plan approval is consent, so it is bound to the plan text.** In the
-   gated pattern (§6), the harness posts the plan with a short hash of
-   the §3c plan object and records it. An approving reply approves
-   **that hash**: the `implement` run's `<plan>` must hash to it, and if
-   the plan is amended after posting (a new plan run, an edited comment)
-   the approval lapses and a new one is needed. That is Codex's
-   content-hash approval (#54619) applied to a plan. The approval rule
-   itself follows Claude Code's: a bare "yes", "ok", "go ahead" from a
-   principal approves the plan it was posted under; a reply that picks
-   between alternatives the plan offered, or says "yes but …", is an
-   amendment, so it starts a new `plan` run (§6's last paragraph), not an
-   `implement` one. This is why a plan that reaches the gate should offer
-   no menu: a plan with open alternatives is not ready for approval.
+4. **The gated plan approval is bound to the plan text.** §6's gated
+   pattern is not an `AskUser` call: the plan is posted by plan mode's
+   workflow, and an approving reply dispatches `implement`. It gets the
+   same treatment as `approve`. The harness posts the plan with a short
+   hash of the §3c plan object and records it, only a principal's reply
+   approves, and the reply approves **that hash**: the `implement` run's
+   `<plan>` must hash to it, and if the plan is amended after posting
+   (a new plan run, an edited comment) the approval lapses. That is
+   Codex's content-hash approval (#54619) applied to a plan. Any reply
+   other than an unconditional yes is an amendment and starts a new
+   `plan` run, which is how §5 already treats a conditional yes to an
+   `approve` question.
 
-5. **No reply grants what §1b and the safety section already withhold.**
-   A principal's reply can approve the plan and answer the question. It
-   cannot lift the git-write ban, approve editing the conventions file
-   (`system-prompts.md` §1, Safety), or widen `paths`. Claude Code draws
-   the same line: no marked message "ever answers a pending permission
-   prompt or licenses editing permission settings, CLAUDE.md, or other
-   configuration."
-
-6. **A summary is never the user.** If a resumed run's inherited
+5. **A summary is never the user.** If a resumed run's inherited
    transcript is ever compacted (`future.md`), the summary is attributed
    to the harness, never to the human whose reply it condenses, so a
    later turn cannot read "the user approved X" out of a summary. Codex
    fixed exactly this in Guardian on 2026-10-15.
 
 What this supersedes: §5's "a reply lands on the comment thread" now
-means a `principal` reply, and §5 step 3's suspended-task record gains
-`requested_by`; §6's gated pattern ("wait for an explicit
-approving reply") now names who may give it and binds it to the plan
-hash. `generative.md` §2d's tag gains `from` and `author` beside
-`option_id` and `match`, and the coding envelope gains the optional
-`<other_replies>` block; nothing else about either changes. Phasing: rules 1–3
-and 5 are needed in v1 wherever `AskUser` is wired, because they close a
-hole rather than add a feature; rule 4 applies only to deployments that
-choose the gated pattern.
+means a `principal` reply, its approve rule gains `from="principal"`, and
+§5 step 3's suspended-task record gains `requested_by`; §6's gated
+pattern ("wait for an explicit approving reply") now names who may give
+it and binds it to the plan hash. `generative.md` §2d's tag gains `from`
+and `author` beside `option_id` and `match`, and the resumed (not the
+execute) envelope gains the optional `<other_replies>` block. Phasing:
+rules 1–3 are needed in v1 wherever `AskUser` is wired, because they
+close a hole rather than add a feature; rule 4 applies only to
+deployments that choose the gated pattern.
 
 ---
 

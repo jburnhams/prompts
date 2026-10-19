@@ -113,7 +113,7 @@ Things to notice:
   is the ground truth its finding's `line` field must match, not hunk
   arithmetic (§1).
 - Its return value is a JSON list of candidate findings per
-  `formats.md` §4, `validated: null` — e.g. f-1:
+  `formats.md` §4, `verdict: null` — e.g. f-1:
 
 ```json
 {
@@ -126,7 +126,7 @@ Things to notice:
   "summary": "send_with_retry makes one fewer attempt than max_attempts, and raises None when max_attempts=1",
   "rationale": "range(1, max_attempts) iterates max_attempts-1 times, so the configured attempt budget is never delivered (max_attempts=3 yields 2 calls). With max_attempts=1 the loop body never runs, last_exc stays None, and `raise last_exc` at line 29 raises TypeError instead of a TransportError. tests/test_retry.py never asserts call counts, so both cases pass CI.",
   "suggested_fix": "for attempt in range(1, max_attempts + 1):",
-  "validated": null,
+  "verdict": null,
   "validator_note": null
 }
 ```

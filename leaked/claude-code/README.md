@@ -9,6 +9,13 @@ behind) the real thing, so treat this as a data point, not a spec.
 
 ## Files
 
+**Read [`piebald-2.1.303/`](./piebald-2.1.303) first** (added 2026-10-19).
+It holds Claude Code v2.1.303's prompt strings as extracted from the npm
+package by Piebald: an inventory of all 961 pieces, the 63 that this
+collection's documents cite, and a table of what this folder lacked.
+88% of the pieces changed after the 2.1.172 build the captures below come
+from. Everything below is kept for the history it records.
+
 **Original extraction** (thin, dated):
 - `Prompt.txt` — extracted system prompt.
 - `Tools.json` — extracted tool/function definitions.
@@ -48,13 +55,6 @@ authenticity notes:
 - `claude-code-docs-assistant.md` — a different product: the docs-site
   "Ask AI" chat assistant, not the CLI's own system prompt. Kept for
   completeness, tangential to the rest of this collection.
-
-**Versioned fragments from the Piebald dumps** (added 2026-10-19):
-- [`consent-provenance/`](./consent-provenance) — twelve prompt
-  fragments from builds 2.1.290–2.1.302 (Piebald-AI's MIT-licensed
-  per-release extraction), covering who can consent, sub-agent consent
-  history, proactivity levels and restart recovery. Its README records
-  the commit read and is the starting point for tracking later builds.
 - `claude-desktop-code.md` — a fourth, structurally distinct capture:
   "Claude Code (Desktop App - Code Mode)," captured 2026-02-21 on Opus
   4.6, from the same `asgeirtj/system_prompts_leaks` aggregator

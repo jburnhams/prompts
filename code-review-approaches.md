@@ -778,7 +778,66 @@ before any model sees the diff.
   `context.repos` reads related repositories; rules can be scoped by file
   glob.
 
-## 14. ReviewBench, and the week's smaller review changes (read 2026-10-19)
+## 14. Claude Code's `/code-review` effort ladder (v2.1.303, read 2026-10-19)
+
+The July capture (`leaked/claude-code/bundled-skills/code-review.md`) is
+one rung of a ladder. Piebald's extraction
+([`leaked/claude-code/piebald-2.1.303/`](./leaked/claude-code/piebald-2.1.303))
+has the rest, assembled from shared pieces by effort level. The finding
+counts come from variables and are taken from Piebald's descriptions.
+
+| Level | Finders | Verification | Cap | Notes |
+|---|---|---|---|---|
+| minimal | one careful pass by the main agent | none | variable | Restates findings as `file:line — summary` after the tool call, "so they stay visible in sessions that do not render tool output" |
+| low | one tool call reads the diff; no subagents, no full-file reads | none | ≤4 | Test and fixture hunks are skipped. A variant sets a **floor** of `min(files_changed, 4)`: with fewer, do one more pass on the largest changed file and on removed code |
+| medium | 8 angles (3 correctness, 3 cleanup, 1 altitude, 1 conventions), ≤6 each | one verifier per candidate, 3-state | ≤8 | "Reviewing for **precision**" |
+| high | the same 8 angles | one verifier, **recall-biased** | ≤10 | "Reviewing for **recall**" |
+| xhigh / max | 10 angles (5 correctness), ≤8 each | one verifier; "a single non-REFUTED vote carries the finding" | variable | Adds a **gap sweep**: a fresh finder given the verified list, looking only for what is missing, "do not pad" |
+
+Five details worth recording:
+
+- **The correctness angles are named lenses, not personas.** A is a
+  line-by-line scan that also reads each hunk's enclosing function
+  ("bugs in unchanged lines of a touched function are in scope"). B is a
+  **removed-behaviour auditor**: for every deleted or replaced line, name
+  the invariant it enforced and find where the new code re-establishes
+  it. C traces callers and callees across files. D is a language-pitfall
+  list (falsy zero, Python mutable defaults, Go nil-map writes, DST). E
+  checks **wrappers and proxies**: every method routes to the wrapped
+  instance and not back through a registry, which would re-enter the
+  cache or recurse. B and E name failure classes that no other review
+  prompt in this collection names.
+- **Verification has three states, and the bias moves with effort.**
+  CONFIRMED needs the triggering input and the wrong output, with the
+  line quoted. PLAUSIBLE means the mechanism is real and the trigger is
+  uncertain. REFUTED needs a quoted line, a provable invariant or a
+  guard in the diff. At high effort PLAUSIBLE is the default for
+  realistic uncertainty (races, rare-but-reachable nulls, retry storms,
+  a regex that lost an anchor). Medium keeps CONFIRMED and PLAUSIBLE
+  alike but asks for precision upstream.
+- **Finders must not pre-filter.** "Pass every candidate with a nameable
+  failure scenario through — finders that silently drop half-believed
+  candidates bypass the verify step and are the dominant cause of
+  misses." At xhigh: "Do NOT let one angle's conclusions suppress
+  another's — if two angles flag the same line for different reasons,
+  record both."
+- **The conventions angle must quote.** It reads the CLAUDE.md files on
+  the changed files' ancestor paths and flags a violation only when it
+  can quote the exact rule and the exact line that breaks it, naming the
+  CLAUDE.md path. That is §11a's citation obligation, shipped.
+- **The output is a tool call**, `ReportFindings`, with `short_summary`
+  (≤60 characters, "the claim alone"), `failure_scenario`, a kebab-case
+  `category` naming the angle, and `verdict` when a verify pass ran.
+  "The tool call is the report": no artifact, no duplicate text.
+
+The ladder is the single clearest statement in this collection of
+review depth as a **cost-recall dial with the verification bias on the
+same dial**. Forge's tier picks the run shape (`agent-design/risk.md`)
+but keeps one binary, reject-when-unsure validator for every shape
+(`agent-design/review.md` §5). The proposals that follow from that are in
+[`agent-design/proposals-claude-code-2.1.303.md`](./agent-design/proposals-claude-code-2.1.303.md) §1.
+
+## 15. ReviewBench, and the week's smaller review changes (read 2026-10-19)
 
 **ReviewBench** — GitHub, [blog post](https://github.blog/ai-and-ml/github-copilot/reviewbench-an-open-benchmark-for-ai-code-review/)
 by Michelle Zhou and Alejandro Carderera de Diego, 2026-10-05; site

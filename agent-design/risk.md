@@ -272,7 +272,7 @@ missed bug, not by size (§12, pattern 5). Replacing the threshold:
 |---|---|---|
 | low | single-stage (`all` lens) | — |
 | medium | multi-stage | bugs, security, conventions (if a file is scoped), visual (if triggered) |
-| high | multi-stage | as medium, plus the security lens **always** runs, and the bugs lens is sampled twice (the `medium.md` §3c double-coverage option, enabled here first) |
+| high | multi-stage | as medium, plus the security lens **always** runs, and the bugs lens is sampled twice (the `medium.md` §3c double-coverage option, enabled here first). *(Added 2026-10-19.)* `plausible` validator verdicts are posted, labelled, and a gap sweep runs after validation (`system-prompts.md` §2a step 5b) |
 
 Size still matters, through the existing per-file and run-level budget
 caps (`review.md` §2, `formats.md` §1b). Everything those caps elide goes

@@ -434,5 +434,5 @@ predate the shallow clone used, so *when* is not recorded here.
 - **Sub-agent architecture changed** the same fortnight: background
   sub-agents and the orchestrator were removed (#12729), and sub-agents
   now run the parent's hooks and route approvals to the parent's client
-  (#12802). Covered in `../agent-subagent-architectures.md` §7c.
+  (#12802). Covered in `../agent-subagent-architectures.md` §7d.
 

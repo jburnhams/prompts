@@ -251,8 +251,8 @@ Web references (hosted, closed-source services — paraphrased in §12, not stor
 
 ### The weekly pass (read 2026-10-19)
 
-Sources for `agent-content-provenance.md` §5, `agent-subagent-architectures.md`
-§7c, `code-review-approaches.md` §14, `agent-data-analysis.md` §12a, and
+Sources for `agent-content-provenance.md` §6, `agent-subagent-architectures.md`
+§7d, `code-review-approaches.md` §15, `agent-data-analysis.md` §12a, and
 the amendments in `agent-design/formats.md` §5a, `tools.md`, `eval.md` and
 `data.md` §4b. Repos were cloned with `--shallow-since=2026-10-03` and
 their commit logs since 2026-10-05 scanned for prompt, sub-agent,
@@ -261,7 +261,7 @@ were read as diffs.
 
 | Source | Repo | Paths / commits that matter | SHA read (HEAD) |
 |---|---|---|---|
-| **Claude Code prompt dumps** (first time tracked) | `github.com/Piebald-AI/claude-code-system-prompts` (MIT) | `CHANGELOG.md` for 2.1.287–2.1.303; `system-prompts/` — the twelve files stored in [`leaked/claude-code/consent-provenance/`](./leaked/claude-code/consent-provenance). Later passes: diff `CHANGELOG.md` from this commit | `d895c8dd54` (v2.1.303, 2026-10-18) |
+| **Claude Code prompt dumps** (same commit as the Piebald comparison above) | `github.com/Piebald-AI/claude-code-system-prompts` (MIT) | `CHANGELOG.md` for 2.1.287–2.1.303; seven Project/Slack/pasted-content consent pieces added to [`leaked/claude-code/piebald-2.1.303/`](./leaked/claude-code/piebald-2.1.303) | `d895c8dd54` (v2.1.303, 2026-10-18) |
 | **Goose** | `github.com/block/goose` | #12802 `6ead9cb` (`crates/goose/src/agents/subagent_handler.rs`, `action_required_manager.rs`, `state_machine/ops_subagent.rs`, tests in `state_machine/tests/agent_reply.rs`); #12729 `8f72d2d` (background sub-agents and `orchestrator.rs` removed; `commands/review/default_review_prompt.md`); #12946 `62d3501` | `fb9e3c89b2` (prev. `eea5609`) |
 | **OpenHands SDK** | `github.com/OpenHands/software-agent-sdk` | #5747 `0bd5cc2` — `openhands-sdk/openhands/sdk/subagent/scope.py` (`inherit_mcp_config`), `subagent/AGENTS.md` | `3f3294581e` |
 | **Codex CLI** | `github.com/openai/codex` | Commit messages for #54263 `4b9c24f`, #54619 `2bf2bdf`, #54281 `3ee47c1`, #54264 `b687844`, #54589 `144779c` (Guardian and approvals only) | `89461ea683` (prev. `ce0323f2f2`) |
@@ -400,6 +400,22 @@ Not read: `cloud-tasks*`, `realtime-*`, `voice-host`, `windows-sandbox*`,
 `mxc-sandbox`, `bwrap`, `execpolicy`, the TUI beyond the files earlier
 passes named, and `skills/src/dynamic_skill_selector/` (covered by the
 2026-08-30 pass already recorded above).
+
+## Claude Code prompts from the npm package (Piebald, read 2026-10-19)
+
+| Source | Repo | Paths that matter | SHA read |
+|---|---|---|---|
+| **Claude Code v2.1.303 prompt strings** (MIT mirror; text is Anthropic's) | `github.com/Piebald-AI/claude-code-system-prompts` | `system-prompts/*.md` — 961 pieces, one per file, named `{agent-prompt,system-prompt,system-reminder,tool-description,tool-parameter,skill,data}-<slug>.md`, each with an HTML-comment frontmatter giving `name`, `description`, `ccVersion` (the release it last changed in) and template `variables`. `README.md` — the categorised list with token counts. `CHANGELOG.md` — one line per changed piece per release, 317 releases since v2.0.14. `tools/updatePrompts.js` — **not** the extractor: it reads a `prompts-<version>.json` produced elsewhere (the extraction itself is not in the repo), writes the files and README, and counts tokens with the Messages `count_tokens` endpoint against `claude-sonnet-4-5-20250929`, so counts include a small per-request overhead and use that model's tokenizer | `d895c8d` (v2.1.303, 2026-10-18) |
+
+Stored subset, inventory and the gap analysis:
+[`leaked/claude-code/piebald-2.1.303/`](./leaked/claude-code/piebald-2.1.303).
+To re-read, shallow-clone (5 MB, no sparse checkout needed), rebuild
+`inventory.tsv` and diff the `cc_version` column. This is the
+authoritative source for Claude Code prompt text from 2026-10-19 on: it
+reads the shipped package, so it supersedes both the leaked TypeScript
+source below and the aggregator captures in `leaked/claude-code/` for
+anything they disagree on. The strings it contains are not all live;
+many are behind feature gates the extraction cannot see.
 
 ## Caveat on the Claude Code source
 
