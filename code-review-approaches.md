@@ -837,6 +837,69 @@ but keeps one binary, reject-when-unsure validator for every shape
 (`agent-design/review.md` §5). The proposals that follow from that are in
 [`agent-design/proposals-claude-code-2.1.303.md`](./agent-design/proposals-claude-code-2.1.303.md) §1.
 
+## 15. ReviewBench, and the week's smaller review changes (read 2026-10-19)
+
+**ReviewBench** — GitHub, [blog post](https://github.blog/ai-and-ml/github-copilot/reviewbench-an-open-benchmark-for-ai-code-review/)
+by Michelle Zhou and Alejandro Carderera de Diego, 2026-10-05; site
+`review-bench.ai` (the page returned only its title to this pass, so
+everything below is from the post).
+
+- **Corpus.** 219 public PRs from 187 repositories, 19 languages, sampled
+  so language and repository size match GitHub overall (calibrated against
+  103.9M PRs), with PR size deliberately weighted toward the "reviewable
+  middle and tail" rather than one-file changes.
+- **Golden set, in three stages.** Candidates from human reviewers,
+  **issues inferred from author follow-up commits**, deterministic
+  analysis tools and several frontier models from different families;
+  semantic deduplication; validation under a published rubric with Claude
+  Sonnet 5 as grader. "A finding counts as a true positive only if it is
+  true, relevant, and non-trivial." Each finding has a severity
+  (Critical/Medium/Low) and category (Correctness, Security, Reliability,
+  Maintainability, Testing, …). Senior engineers who did not build the set
+  re-labelled true positives and agreed 96.6% of the time.
+- **Metrics.** Grounded precision/recall/F1 count only matches against
+  gold labels; augmented ones let the judge credit valid findings missing
+  from the gold set. **Grounded recall is the headline** because
+  augmented recall's denominator depends on each agent's output. Fβ for
+  choosing a precision/recall weighting. (The post says "six metrics in
+  two families" in one place and lists four in another.)
+- **Offline predicted online.** A multi-model ensemble for Copilot's lite
+  tier was predicted to improve precision, recall and volume at lower
+  cost; the online A/B gave addressed rate +8.0%, recall +13.6%, comment
+  volume +61%, cost −8.0%. Predicted critical comments +227%, observed
+  +262%. One experiment, on the authors' own product.
+- **Submission.** An agent is a container image plus configuration and
+  the submitter's model key; GitHub supplies the judge. 25-PR smoke set,
+  then the full 219 PRs in three rounds; a maintainer approves results and
+  only improvements are published.
+- **No leaderboard numbers in the post**, and no license stated.
+
+What it changes here: §5 and the attention work in §12 compared review
+tools by mechanism, because there was no shared measurement. ReviewBench
+is the first one that is multi-language, built from real PRs, publishes
+its judge, and has any offline-to-online evidence. It also independently
+uses the follow-up-commit signal `agent-design/risk.md` §8a adopted two
+days earlier for risk calibration. Forge's use of it is in
+`agent-design/eval.md` Suite 3.
+
+**Smaller changes the same fortnight:**
+
+- **Claude Code Review left research preview** on 2026-10-15 for Team and
+  Enterprise ([announcement](https://claude.com/resources/articles/code-review-is-now-generally-available)).
+  The behaviour documented in §12 is unchanged as far as the announcement
+  says.
+- **Copilot code review** can be requested through the REST and GraphQL
+  APIs, and its default effort moved from Lite to Balanced on 2026-09-28
+  (secondary reporting; not checked against GitHub's changelog this pass).
+- **PR-Agent** (`qodo-ai/pr-agent`, read at `fbf7f6d3fc`): CI artifact
+  credentials are redacted before the artifact goes into the prompt
+  (#3989, 2026-10-09; not mentioned in `pr-agent/README.md`, which covers
+  the CI-artifact markers), and chunked reviews now cap merged findings
+  at `num_max_findings` (#4138). Failure modes and dismissal handling are
+  already in the README. Since the 2026-10-17 refresh at `5a50bf1e` only
+  `configuration.toml` changed (GitLab subgroup inheritance, Jira project
+  keys, model routing; no prompt text), so the stored prompt files stand.
+
 ## Design takeaways
 
 A few things stood out across all fourteen:

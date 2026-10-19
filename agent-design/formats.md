@@ -669,7 +669,8 @@ and a *new* run resumes it later.
    (`tools.md`): review runs end in `Complete`, never a suspension.
 3. The harness records a suspended-task record keyed to that comment's
    id/URL, containing everything needed to resume: the original task
-   envelope, the full transcript so far, and the question asked.
+   envelope, the full transcript so far, the question asked, and
+   the dispatcher's `requested_by` identity where it recorded one (§5a).
 4. The run ends. No `Complete` call happens for a suspended run — the
    task is not finished, it's paused. (This is why `tools.md` says
    `AskUser` and `Complete` never share a turn: suspension is a distinct
@@ -711,7 +712,8 @@ answer changes what Forge does next and the run needs its context back.
   unnamed.
 - **A yes starts a fresh run, not a resumed one.** When
   `<resumed_answer>` has `option_id="approve"` and `match="exact"`
-  (`generative.md` §2d), the harness starts a new `implement` run whose
+  (`generative.md` §2d), and the reply came from a principal (§5a,
+  `from="principal"`), the harness starts a new `implement` run whose
   envelope holds the original task envelope's identifying fields, the
   action verbatim in `<approved_action nonce=…>`, the reply in
   `<resumed_answer>`, and `staged_paths` as a list. It does **not**
@@ -754,6 +756,115 @@ resumed runs to have real headroom should suspend-and-resume with a
 raised budget or accept that late-run questions buy very little
 additional work.
 
+### 5a. Who may answer, and what an answer approves (added 2026-10-19)
+
+§5's resume step matches a reply to its suspended task "via the comment
+id". It does not say whose reply. On most Jira deployments anyone who can
+comment on the issue can reply in that thread, as can other bots and
+Forge's own runs on linked issues. For a `clarify` question that means
+the first reply from anyone is carried as the answer. For an `approve`
+question it is worse: §5 starts a fresh run that executes the approved
+action when `<resumed_answer>` has `option_id="approve"` and
+`match="exact"`, so as written **anyone who can comment can approve the
+action**. §1b already limits what an answer can do; this section adds
+**who can give it**, and binds the one approval §5 does not cover (the
+gated plan in §6) to what it approved.
+
+Sources: Claude Code's Project and Slack consent pieces, Codex's
+compaction attribution and content-bound approvals, and Goose's and
+Crush's answers-bound-to-the-asker fixes, compared in
+`../agent-content-provenance.md` §6.
+
+1. **The harness classifies the reply's author against a principal set
+   it can compute in v1**, without `medium.md` §5c's addressee registry
+   (that is a later, additive widening, not a dependency):
+
+   - `source: jira`: the issue's **assignee and reporter**, read by the
+     harness from Jira when the reply arrives (the same fields the
+     dispatcher already reads to route the task), plus the dispatcher's
+     `requested_by` if it recorded one.
+   - `source: manual`: the dispatcher's `requested_by`, the identity
+     that submitted the instruction, which the suspended-task record
+     (§5, step 3) now stores beside the envelope, transcript and
+     question.
+
+   The result goes onto the tag:
+
+   ```
+   <resumed_answer nonce="…" option_id="approve" match="exact"
+                   from="principal" author="c.nolan@example.com">
+   ```
+
+   `from` is one of `principal` (in the set above, or later in the
+   registry an `AskUser` `audience` routed to), `participant` (any other
+   human), or `automation` (a bot account, any Forge identity, or an
+   integration). Membership is checked when the reply arrives, not when
+   the question was asked, so a reassigned issue's new assignee can
+   answer and the old one cannot. Like `option_id` and `match`, `from` is
+   a harness assertion; the body stays untrusted content.
+
+   **If the set is empty** (an unassigned issue whose reporter is a bot,
+   or a manual task whose dispatcher recorded no identity), no reply can
+   resume the run, so the harness says so at suspend time rather than
+   waiting: the posted question ends with a line naming who may answer,
+   or, when nobody can, saying that a reply will not resume the task and
+   that it needs an assignee. A suspended run is never silently
+   unanswerable.
+
+2. **Only a `principal` reply resumes, and only a principal's yes runs an
+   approved action.** §5's approve rule becomes `option_id="approve"`,
+   `match="exact"` **and** `from="principal"`. A `participant` reply is
+   kept on the suspended-task record and, when a principal reply later
+   resumes the run, handed over beside it in an `<other_replies>` block
+   (run-nonced like every untrusted block, one entry per reply with its
+   `from` and `author`), never inside `<resumed_answer>`, and never into
+   an execute run's envelope, which stays as §5 defines it. An
+   `automation` reply is ignored. Forge's text is never an answer to
+   Forge: a plan comment, a mirrored audit-trail comment or a sibling
+   run's report that lands in the thread can neither resume nor approve.
+   A deployment that wants anyone on the issue to answer `clarify`
+   questions can widen `principal` for that kind only; the default is
+   narrow for both.
+
+3. **A reply answers the question it was posted under, and nothing
+   else.** The harness binds a resume to one suspended record by comment
+   id; a reply on another issue, or under a different Forge comment,
+   resumes nothing here, however it is worded (Claude Code: a "yes" in
+   another thread "approves nothing here"). A reply to a record that has
+   been superseded (re-dispatched, cancelled, or already resumed) is
+   recorded and resumes nothing, as Crush reports a request only "while
+   Grant/Deny can actually resolve it".
+
+4. **The gated plan approval is bound to the plan text.** §6's gated
+   pattern is not an `AskUser` call: the plan is posted by plan mode's
+   workflow, and an approving reply dispatches `implement`. It gets the
+   same treatment as `approve`. The harness posts the plan with a short
+   hash of the §3c plan object and records it, only a principal's reply
+   approves, and the reply approves **that hash**: the `implement` run's
+   `<plan>` must hash to it, and if the plan is amended after posting
+   (a new plan run, an edited comment) the approval lapses. That is
+   Codex's content-hash approval (#54619) applied to a plan. Any reply
+   other than an unconditional yes is an amendment and starts a new
+   `plan` run, which is how §5 already treats a conditional yes to an
+   `approve` question.
+
+5. **A summary is never the user.** If a resumed run's inherited
+   transcript is ever compacted (`future.md`), the summary is attributed
+   to the harness, never to the human whose reply it condenses, so a
+   later turn cannot read "the user approved X" out of a summary. Codex
+   fixed exactly this in Guardian on 2026-10-15.
+
+What this supersedes: §5's "a reply lands on the comment thread" now
+means a `principal` reply, its approve rule gains `from="principal"`, and
+§5 step 3's suspended-task record gains `requested_by`; §6's gated
+pattern ("wait for an explicit approving reply") now names who may give
+it and binds it to the plan hash. `generative.md` §2d's tag gains `from`
+and `author` beside `option_id` and `match`, and the resumed (not the
+execute) envelope gains the optional `<other_replies>` block. Phasing:
+rules 1–3 are needed in v1 wherever `AskUser` is wired, because they
+close a hole rather than add a feature; rule 4 applies only to
+deployments that choose the gated pattern.
+
 ---
 
 ## 6. Plan → implement handoff
@@ -781,7 +892,9 @@ callout at the end.
    valid implementations of everything above:
    - **Gated**: treat the posted plan like an `AskUser` question in
      reverse — wait for an explicit approving reply on the same thread
-     before dispatching `implement`.
+     before dispatching `implement`. Who may give that reply, and
+     that it approves only the plan text it was posted under, is §5a
+     rule 4 (added 2026-10-19).
    - **Auto-chained**: dispatch `implement` immediately once
      `Complete(status: "planned")` returns; the posted comment is
      audit trail, not a gate.

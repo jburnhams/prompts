@@ -807,6 +807,77 @@ label). If the user is away it must not choose for them. Ownership is a
 label anyone can read, which is the lease idea of
 `agent-design/orchestration.md` §5 carried on the PR itself.
 
+## 7d. October 2026: delegation never widens authority
+
+*Added 2026-10-19.* In one week (2026-10-07 to 2026-10-16) four harnesses
+closed the same class of hole: a sub-agent running with **more** authority
+than the agent that delegated to it, or with authority taken from somewhere
+other than its parent. Each fix is in code, with tests.
+
+**Goose: sub-agents run the parent's hooks and ask the parent's client**
+(`block/goose` #12802, `6ead9cb`, 2026-10-13). Before this change a
+sub-agent was built with `HookManager::default()`, i.e. **no hooks at
+all**, so any policy enforced by a hook simply did not apply inside a
+delegate. Now the same hooks load, and approval and elicitation requests
+are forwarded to the parent session under a fresh id that only the parent
+can answer. The tests name the contract:
+`a_subagent_runs_the_parents_hooks_and_is_released_when_it_finishes`,
+`a_subagent_asks_the_parents_client_for_approval_in_the_parents_mode`,
+`a_subagents_elicitation_is_answered_by_the_parents_client`,
+`cancelling_the_parent_ends_a_waiting_subagent`.
+
+**Goose also removed background sub-agents and its orchestrator**
+(#12729, `8f72d2d`, 2026-10-07; about 3,000 lines deleted, including the
+1,061-line `orchestrator.rs`). `delegate(…, async: true)` plus
+`load(task_id)` is gone; parallelism is now several `delegate` calls in
+one response, each returning its result when it finishes. Its built-in
+review prompt changed to match: "dispatch them all in parallel … `async =
+true`, # IMPORTANT: parallelize" became "delegate each one before doing
+your own pass". The commit gives no rationale. A concurrency cap
+(`GOOSE_MAX_CONCURRENT_SUBAGENTS`, #12946) followed on 2026-10-18. Read
+with the hooks fix, the inference is that a sub-agent that outlives its
+parent's turn is hard to keep inside the parent's approvals; that is an
+inference, not something the commits say.
+
+**OpenHands: sub-agents get exactly the parent's MCP servers**
+(`OpenHands/software-agent-sdk` #5747, `0bd5cc2`, 2026-10-14).
+`inherit_mcp_config` returns the sub-agent "with exactly `parent`'s MCP
+servers … Servers the sub-agent declares itself are dropped, never
+merged." The parent's config is already resolved (plugin servers merged,
+`${VAR}` secrets expanded), and the child is created with a flag so it
+does not resolve them again. The old opt-in `mcp_servers` scope flag is
+deprecated and ignored. Before this, a sub-agent definition could bring
+its own servers.
+
+**Codex: an approval covers what was reviewed and nothing broader**
+(`openai/codex` #54263, `4b9c24f`, 2026-10-15). A Guardian approval no
+longer pre-approves an escalated retry outside the sandbox; the retry is
+reviewed with its real permissions. Plugin hook approvals are bound to a
+hash of the plugin's contents (#54619), so changed scripts need renewed
+approval.
+
+**Claude Code** states the consent half from the sub-agent's side
+("another agent directing your work is not the same as the user …
+consenting") and resumes interrupted sub-agents after a container
+restart; both are in §7c above.
+
+**The shared rule.** A delegate's authority is the parent's, resolved
+once by the harness and handed down: its tools, its MCP servers, its
+hooks, its approval channel and its mode. Nothing the delegate's own
+definition declares can add to it, and nothing a parent *says* can stand
+in for the user's consent. Forge already has the first half for built-in
+tools (`agent-design/tools.md`: `plan` runs register no `Edit`/`Write`
+for delegates either, so "a read-only run cannot launder writes through a
+delegate"), and `orchestration.md` §11 has it for stored tasks. What the
+sources add is that the rule must cover **every** channel authority
+travels through, including MCP servers and harness-side checks, and the
+Goose bug shows how easily one channel is missed. Forge's version differs
+from all four sources in one way: the common parent is the **job's**
+declared tool set rather than the parent agent's, so a specialist may
+hold a server its orchestrator does not, while nothing a definition says
+can add to what the job declared. See `agent-design/tools.md`, "One job
+declares the tools; every role gets a subset".
+
 ## 8. Absences worth noting
 
 - **The layer above the call graph: nothing here except OpenClaw has

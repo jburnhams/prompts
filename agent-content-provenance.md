@@ -151,3 +151,80 @@ auto-mode classifier sit in tags carrying a per-request random key, and
 only those tags count (`agent-permissions-approval.md` §2c). That is
 Forge's nonce, used for the one block whose content *should* carry
 authority, rather than for the blocks that should not.
+
+## 6. Consent across channels and delegates (added 2026-10-19, weekly pass)
+
+§5 lists the channels Claude Code says are not the user, and
+`agent-permissions-approval.md` §2c covers the auto-mode classifier's
+"must name" consent (Path A and B, a third party between proposal and
+reply breaks Path B, the bar binds at the step that ships). This section
+adds what those two leave out: the rules for **which human reply counts
+and what it binds to**, which Claude Code now states for Projects and
+Slack, plus the same week's fixes in Codex, Goose and Crush.
+
+### 6a. Claude Code: the rules §2c does not cover
+
+Stored in [`leaked/claude-code/piebald-2.1.303/`](./leaked/claude-code/piebald-2.1.303)
+under "Consent across channels".
+
+- **The user is identified by membership checked at read time.** On a
+  shared Project every *current* member is the user; "a member who left"
+  is external content. The marker is generated "from server-attributed
+  authorship, never from message content".
+- **A question that offers options proposes none of them.** Neither a
+  bare "ok go ahead" nor a pick by label approves an option, "even an
+  option that names the action under review and its target". §2c's Path
+  B says a bare yes to a multi-action proposal covers only the one named
+  as the next step; this is stricter, and applies only to consent for a
+  consequential action, not to answering a question.
+- **Consent does not cross contexts.** A "yes" written in another thread
+  "approved something in that other thread and approves nothing here".
+  Only a message that itself names the action and target carries over.
+- **Carried history is scoped and may be partial.** A sub-agent shown the
+  parent's user turns may credit a bare yes/no only for the assistant
+  message shown directly before it, never for the delegating prompt, and
+  a trimmed-history marker means standing instructions may be missing.
+- **No reply edits configuration or answers a permission prompt.**
+
+### 6b. Codex: a compaction summary is not the user
+
+`openai/codex` #54281 (`3ee47c1`, 2026-10-15): "Local compaction stores
+generated summaries with the `user` wire role, but those summaries are
+not user authorization." Guardian now attributes `compaction.summary`
+messages to the assistant. This is §1's survives-compaction rule found in
+the consent path: the summary says what the user asked, in the user's
+role. (`agent-context-compaction.md` §2b records the other side: Claude
+Code's lean summariser is told the summary "is also the only record of
+what the user said".)
+
+The same week Codex bound two approvals to exactly what was approved.
+#54263 (`4b9c24f`): "Guardian approval covers the permissions of the
+reviewed action. A retry outside the sandbox needs a fresh review of its
+broader permissions." #54619 (`2bf2bdf`): a plugin's hook approval now
+carries a hash of the plugin's **contents**, because "a plugin's scripts
+can change without changing its hook declaration".
+
+### 6c. Answers bound to the asker: Goose and Crush
+
+- **Goose** #12802 (`6ead9cb`, 2026-10-13) forwards a sub-agent's
+  approval and elicitation requests to the parent session under a fresh
+  id, and refuses an answer from any session the request was not
+  forwarded to ("Request … was not forwarded to session …"). Tests
+  include `a_parent_tool_call_id_that_looks_forwarded_is_still_the_parents`.
+- **Crush** #3924 (`d6edc32`, 2026-10-13) scopes permission and question
+  prompts to the session that raised them, and reports a request "only …
+  while Grant/Deny can actually resolve it".
+
+### 6d. What it means for Forge
+
+The rules converge: the harness, not the content, decides who the
+principal is; an answer binds to the request it answers; approval covers
+exactly what was shown and lapses when that changes; summaries and
+relays never carry the user's authority.
+
+Forge's `AskUser` now distinguishes `clarify` from `approve` and runs an
+approved action in a fresh run (`agent-design/formats.md` §5). What it
+did not yet check is **who** replied: resume matched on the comment id,
+and on most Jira deployments anyone who can comment can reply, which on
+an `approve` question means anyone could approve the action. That is
+`agent-design/formats.md` §5a.

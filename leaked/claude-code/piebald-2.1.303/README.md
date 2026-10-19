@@ -52,7 +52,7 @@ versions, 502 new pieces, 117 removed pieces and a net growth of about
 
 ## Files stored here
 
-63 of the 961 pieces, chosen because a document in this collection now
+70 of the 961 pieces (63 from the first read, 7 added later the same day), chosen because a document in this collection now
 cites them. Each keeps Piebald's HTML-comment frontmatter (name,
 description, `ccVersion`, template variables). Use `inventory.tsv` and the
 mirror for the rest.
@@ -111,6 +111,18 @@ not been read), `system-reminder-resume-agents-interrupted-by-container-restart`
 `system-reminder-web-fetch-untrusted-content-reporting-guidance`,
 `system-reminder-external-source-trust-boundary`,
 `system-reminder-file-summary-completeness-disclosure`.
+
+**Consent across channels** (`agent-content-provenance.md` §6; added
+2026-10-19 by the weekly pass, same commit):
+`system-prompt-project-timeline-user-message-provenance` (the longest
+statement: who counts as the user in a Project, why a "yes" from another
+thread approves nothing here, why a reply under a menu approves no option),
+`system-prompt-project-coordinator-reply-consent`,
+`system-prompt-project-coordinator-relay-trust-boundary`,
+`system-prompt-subagent-carried-user-consent-history`,
+`system-prompt-verified-slack-human-relay-consent`,
+`system-prompt-auto-mode-slack-message-provenance`,
+`system-prompt-pasted-content-instruction-trust-boundary`.
 
 **The "lean rewrite" family** (style observation in
 `../../../agent-design/proposals-claude-code-2.1.303.md` §10):

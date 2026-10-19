@@ -249,6 +249,50 @@ Web references (hosted, closed-source services — paraphrased in §12, not stor
 - OpenAI: [Codex changelog](https://learn.chatgpt.com/docs/changelog) (CLI 0.158–0.163)
 - Looked for and **thin**: Greptile (Base/Plus/Apex tiers reported only secondhand), Graphite Agent (no 2026 changelog found), Qodo (2.0/2.2 are earlier in 2026), GitLab Code Review Flow (pricing and chat handoff only), Gemini CLI (latest notes found are v0.50, 2026-07-08)
 
+### The weekly pass (read 2026-10-19)
+
+Sources for `agent-content-provenance.md` §6, `agent-subagent-architectures.md`
+§7d, `code-review-approaches.md` §15, `agent-data-analysis.md` §12a, and
+the amendments in `agent-design/formats.md` §5a, `tools.md`, `eval.md` and
+`data.md` §4b. Repos were cloned with `--shallow-since=2026-10-03` and
+their commit logs since 2026-10-05 scanned for prompt, sub-agent,
+approval, MCP, compaction and review changes; only the commits named
+were read as diffs.
+
+| Source | Repo | Paths / commits that matter | SHA read (HEAD) |
+|---|---|---|---|
+| **Claude Code prompt dumps** (same commit as the Piebald comparison above) | `github.com/Piebald-AI/claude-code-system-prompts` (MIT) | `CHANGELOG.md` for 2.1.287–2.1.303; seven Project/Slack/pasted-content consent pieces added to [`leaked/claude-code/piebald-2.1.303/`](./leaked/claude-code/piebald-2.1.303) | `d895c8dd54` (v2.1.303, 2026-10-18) |
+| **Goose** | `github.com/block/goose` | #12802 `6ead9cb` (`crates/goose/src/agents/subagent_handler.rs`, `action_required_manager.rs`, `state_machine/ops_subagent.rs`, tests in `state_machine/tests/agent_reply.rs`); #12729 `8f72d2d` (background sub-agents and `orchestrator.rs` removed; `commands/review/default_review_prompt.md`); #12946 `62d3501` | `fb9e3c89b2` (prev. `eea5609`) |
+| **OpenHands SDK** | `github.com/OpenHands/software-agent-sdk` | #5747 `0bd5cc2` — `openhands-sdk/openhands/sdk/subagent/scope.py` (`inherit_mcp_config`), `subagent/AGENTS.md` | `3f3294581e` |
+| **Codex CLI** | `github.com/openai/codex` | Commit messages for #54263 `4b9c24f`, #54619 `2bf2bdf`, #54281 `3ee47c1`, #54264 `b687844`, #54589 `144779c` (Guardian and approvals only) | `89461ea683` (prev. `ce0323f2f2`) |
+| **Crush** | `github.com/charmbracelet/crush` | #3924 merge `d6edc32` — `internal/permission/permission.go` (`SessionID`, `ActiveRequest`) | `7dadde0bb4` (prev. `d15f793`) |
+| **PR-Agent** | `github.com/qodo-ai/pr-agent` | `git diff 5a50bf1 HEAD -- pr_agent/settings/` (only `configuration.toml`); #3989, #4138 | `fbf7f6d3fc` (prev. `5a50bf1e`) |
+| **DataAgentBench** (new) | `github.com/ucbepic/DataAgentBench` (no license file found) | `failure_analysis/` (judge, `failure_modes.txt`, example trace), `leaderboard_submissions/` — listed, not read | `daadd5e426` |
+
+Scanned and nothing used this pass (logs since 2026-10-05, no prompt-text
+or architecture change found relevant to Forge): Gemini CLI `ed96faedfd`
+(SKILL.md frontmatter hardening, non-interactive git credentials, ask_user
+display fixes); OpenCode `ba06ff9e0b` (MCP capability and OAuth fixes,
+saved-permission editing, compaction output limits); Cline `dc3d7a58c9`
+(Cline Cloud hosted-sandbox sessions #13799, MCP resources, Composio
+connector auth); `anthropics/claude-code-action` (13 commits since
+2026-10-03, none read). `SWE-agent/mini-swe-agent` failed to shallow-clone
+("error processing shallow info") and was not checked.
+
+Web references: GitHub, [ReviewBench](https://github.blog/ai-and-ml/github-copilot/reviewbench-an-open-benchmark-for-ai-code-review/)
+(2026-10-05; `review-bench.ai` returned only a title); Anthropic,
+[Code Review is now generally available](https://claude.com/resources/articles/code-review-is-now-generally-available)
+(2026-10-15); Ma et al., [DAB, arXiv 2603.20576v3](https://arxiv.org/abs/2603.20576)
+(HTML, first ~100k of 161k characters read).
+
+Looked for and **not used**: an MCP specification revision after
+2026-07-28 (none found; October coverage is migration guides for the
+stateless revision); first-party October harness-engineering posts from
+the major labs (none found); Docker Sandboxes running Harbor evals in
+microVMs (2026-10-14, vendor post, not read); Harness's acquisition of
+Augment Code (2026-10-08; relevant to [`augment-swebench-agent/`](./augment-swebench-agent)
+only as provenance, not read).
+
 ## OpenClaw 2.0 (read 2026-08-31)
 
 `github.com/openclaw/openclaw` at `5f714ef` (`main`, 2026-08-31). MIT.

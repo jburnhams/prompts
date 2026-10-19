@@ -118,6 +118,48 @@ system-prompt mode rules in
 `system-prompts.md` remain as the behavioral layer on top of this
 structural one.
 
+**One job declares the tools; every role gets a subset** (added
+2026-10-19, from `../agent-subagent-architectures.md` §7d). The agent
+job's configuration, which lives in harness config and never in the
+repository, declares every tool the job may use: the built-in tools
+above, each MCP server with its credentials bound, and the harness-side
+checks. The orchestrator and each sub-agent role are granted **subsets**
+of that declaration, by role and by `mode`, and the table above is the
+default grant. That covers every channel authority travels through, not
+only the built-in tools:
+
+- **Subsets are siblings, not a chain.** A role's subset is taken from
+  the job's declaration, not from the orchestrator's, so a specialist can
+  hold a server the orchestrator does not: a data sub-agent can have the
+  warehouse server while the orchestrator that spawns it never sees it.
+  What a delegate can never get is anything the job did not declare.
+- **Only the job grants.** A sub-agent definition, a skill, a
+  conventions file or a prompt can narrow what a role uses but cannot
+  add to it. A definition that names a server or tool outside its role's
+  subset gets that entry dropped and logged, never merged. This is
+  OpenHands' `inherit_mcp_config` rule, with the job's declaration in
+  place of the parent's resolved config.
+- **Harness-side checks are not part of the subset.** The git-write
+  blocklist, the `Read` name blocklist, the secret scan in `review.md`
+  §11c and every refusal in the implementation contract below apply to
+  every role the same way. They are enforced at the tool boundary, so
+  this should hold by construction; it is stated because Goose's
+  sub-agents ran with an empty hook manager until 2026-10-13, and an
+  eval case (`eval.md` Suite 1) checks it.
+- **No delegate has a human channel.** `AskUser`, `AddComment` and
+  `Complete` are already absent from every sub-agent, and the rule also
+  covers any channel added later (an elicitation, a `ReportProblem`
+  blocker). A delegate that needs a decision returns it in its report,
+  and the orchestrator decides whether to ask.
+
+What this supersedes: nothing in the table changes, and `plan`-mode
+narrowing still applies to every role. Two things are new. The previous
+text stated parity only for the built-in tools and said nothing about MCP
+servers or harness checks, which on an MCP-built platform is where a gap
+would be. And it framed a delegate's tools as a subset of the
+orchestrator's, which would force a specialist's server onto the
+orchestrator too; the job's declaration is now the common parent.
+
 ---
 
 ## Implementation contract

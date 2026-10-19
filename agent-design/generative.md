@@ -317,7 +317,9 @@ human can reply `plan-b`, `2`, or a sentence, and the first two resolve
 without interpretation.
 
 **(ii) The resume envelope carries a resolution, not just text.**
-`<resumed_answer>` gains two attributes the harness fills:
+`<resumed_answer>` gains two attributes the harness fills (two more,
+`from` and `author`, were added on 2026-10-19 by `formats.md` §5a, which
+also decides who may resume a run at all):
 
 ```xml
 <resumed_answer option_id="keep-legacy-endpoint" match="exact">

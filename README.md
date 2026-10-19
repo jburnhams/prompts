@@ -64,6 +64,19 @@ CodeScene. Built on two source-level deep dives: Codex Guardian's action-risk
 machinery ([`codex/guardian-mechanics.md`](./codex/guardian-mechanics.md))
 and OpenClaw's maintainer bot [`clawsweeper/`](./clawsweeper).
 
+**[→ `agent-content-provenance.md`](./agent-content-provenance.md) §6
+and [`agent-design/formats.md`](./agent-design/formats.md) §5a** — the
+2026-10-19 weekly pass, which followed the Piebald comparison above.
+Claude Code's Project and Slack consent pieces, Codex, Goose and Crush
+agree that the harness decides who the principal is and that an answer
+binds to the request it answers. Forge's `AskUser` resume now checks who
+replied, which matters most for the new `approve` kind, and the gated plan
+approval is bound to the plan's text. The same pass adds
+`agent-subagent-architectures.md` §7d (four harnesses stopped sub-agents
+running with more authority than their parent in one week),
+`code-review-approaches.md` §15 (GitHub's ReviewBench) and
+`agent-data-analysis.md` §12a (DAB's failure taxonomy).
+
 **[→ `code-review-approaches.md`](./code-review-approaches.md) §12 and
 [`agent-design/risk.md`](./agent-design/risk.md)** — the 2026-10-17 pass.
 Between August and October 2026 review tooling split into two outputs:
