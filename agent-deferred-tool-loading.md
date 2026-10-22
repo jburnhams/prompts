@@ -147,3 +147,46 @@ it.
   generalises OpenClaw's "prompt-state mutations default to deferred
   invalidation" (`agent-context-compaction.md` §7) from a rule about
   skills and memory to the whole tool surface.
+
+## 5. Other providers (added 2026-10-22)
+
+**OpenAI (Responses API, `gpt-5.4` and later).** Source: the
+[tool search guide](https://developers.openai.com/api/docs/guides/tools-tool-search).
+Add `{"type": "tool_search"}` to `tools` and set `defer_loading: true` on
+functions or MCP servers. Differences from Anthropic's:
+
+- **Namespaces are the unit.** Before loading, the model sees only a
+  namespace's name and description; `defer_loading` applies to the functions
+  inside. OpenAI says its models are trained mainly on namespaces and MCP
+  servers and advises under 10 functions per namespace.
+- **Two modes.** *Hosted* (`execution: "server"`): OpenAI searches the tools
+  declared in the request. *Client-executed* (`execution: "client"`): the
+  model emits a `tool_search_call` with a `call_id` and a `goal`, the
+  application looks the tools up and returns a `tool_search_output`. The
+  docs state client mode "can also return tools that weren't in the original
+  request", so the registered set is not fixed up front.
+- **Cache.** Discovered tools are "injected at the end of the context window";
+  "changing the loaded tool set partway through a conversation breaks the
+  cache from that point on". An `additional_tools` input item with
+  `role: "developer"` makes tools callable from a specific point, and its
+  position must be preserved when round-tripping.
+- Not documented for Chat Completions. Codex has its own client-side BM25
+  `tool_search` (`codex/README.md`).
+
+**Bedrock `Converse`.** No server-side deferral (the Anthropic docs say
+`InvokeModel` only). Forge on Converse has three honest options:
+
+1. **Load a small core upfront.** The cheap-start set is 3–4 tools, so the
+   cost is small.
+2. **Expand at a run boundary.** `Expand` ends the run with a handoff and the
+   next run starts with a different tools array (and, for `investigate`, a
+   higher tier). A new run has no cache to lose, and Forge's runs are
+   one-shot already. This is the recommended default.
+3. **A fixed `CallTool(name, args)` dispatcher** with schemas delivered as text
+   in a tool result. The array never changes, but the harness validates
+   arguments itself and the model loses native schema enforcement, which a
+   cheap model feels most. Use only if mid-run expansion is needed.
+
+*Not verified:* how Bedrock orders and invalidates cache checkpoints for
+`toolConfig` changes. Assume the same tools → system → messages prefix
+order until checked.
