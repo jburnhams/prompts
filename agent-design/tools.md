@@ -160,6 +160,72 @@ would be. And it framed a delegate's tools as a subset of the
 orchestrator's, which would force a specialist's server onto the
 orchestrator too; the job's declaration is now the common parent.
 
+**Granted, registered, visible: three questions, three owners** (added
+2026-10-22, from [`../agent-deferred-tool-loading.md`](../agent-deferred-tool-loading.md)
+and [`models.md`](./models.md)). The sections above decide what a role is
+*granted*. Two more things are separate from that, and conflating them is
+how a design ends up either wasting context or opening a hole.
+
+| Question | Decided by | Where it is enforced |
+|---|---|---|
+| **Granted:** may this role use the tool? | the job's declaration, narrowed by role and `mode` (above) | the executor, on every call |
+| **Registered:** will the provider accept a call to it? | the tools array sent with the request | the provider's validation (native calls) or the harness's own parser |
+| **Visible:** does the model have its schema in context right now? | the availability state below | nothing; it only shapes what the model tries |
+
+Rules:
+
+1. **Authority is checked at the executor, whatever the model saw.** A call
+   to a tool outside the role's grant is refused and logged, whether the
+   tool was hidden, deferred, never declared, or hallucinated. Visibility
+   narrows what the model tries; it never widens what it may do. This
+   matters most for hidden tools: a tool the model was not told about can
+   still be named by a guess or by an injected instruction.
+2. **The tools array and the system prompt are fixed for a run.** Anything
+   that changes during a run is delivered as messages. Changing a tool
+   definition invalidates the whole prompt cache (tools, then system, then
+   messages), and Anthropic's own rule for `defer_loading` is built on this:
+   deferred definitions are excluded from the cached prefix and expanded
+   inline in the history. Where the provider has no equivalent (Bedrock
+   `Converse`), the surface changes only **at a run boundary**: the run ends
+   with a handoff and the next run starts with a different array.
+3. **Four availability states.**
+
+   | State | In the model's context | How it gets used | Typical use here |
+   |---|---|---|---|
+   | **Loaded** | name, description, schema | called directly | the small core of each role |
+   | **Deferred** | name and a search hint | the model asks to load it, then calls it | optional and MCP-supplied tools |
+   | **Hidden** | nothing | the harness reveals it when a trigger fires | tools tied to a state the model cannot judge (a spill happened, a column error) |
+   | **Revealed** | schema, injected at a point in the history | called directly | what hidden and deferred tools become |
+
+   "Hidden" is "deferred and unannounced". Both are registered with the
+   provider and flagged deferred, so the array does not change. Whether a
+   harness may reveal a tool the model did not ask for is documented for
+   OpenAI (client-executed search, `additional_tools`) and not for
+   Anthropic's; treat it as unverified there.
+4. **Default: everything stays loaded.** Forge's built-in set is eleven
+   tools. Deferring them would add a round trip and gain little, and a
+   cheap model under-calls optional tools (`../agent-multi-model.md` §4).
+   Deferral applies to MCP-supplied tools and to the focused `analyse` tools
+   that sit behind `Expand`. Anthropic's guidance is to keep 3–5 tools
+   non-deferred; the quick analysis run loads 3–4 and needs nothing else.
+5. **A provider flag, not an assumption.** Config records
+   `deferred_tools: native | client | none` per provider. `none` (Bedrock
+   `Converse`) means MCP and focused tools load upfront in runs small enough
+   to afford it, and otherwise expand at a run boundary.
+6. **Sub-agents load independently.** A delegate does not inherit its
+   parent's loaded set. What it *may* load is its own grant from the job
+   (above), not the parent's.
+7. **Tool text is untrusted context.** An MCP server's tool descriptions and
+   instructions sit beside the system prompt but come from outside it, so
+   they follow the provenance rules in
+   [`../agent-content-provenance.md`](../agent-content-provenance.md).
+   Descriptions are length-capped (Claude Code truncates at 4,096 characters
+   when loaded upfront and 16,384 when loaded by search), and the words a
+   model would search for belong first.
+8. **Open:** whether loaded definitions survive compaction. If a summary
+   drops them, the run must re-announce them. Not verified for any provider
+   here.
+
 ---
 
 ## Implementation contract
