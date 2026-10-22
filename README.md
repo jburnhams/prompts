@@ -827,7 +827,7 @@ how Claude Code adds tools mid-session without invalidating the prompt cache
 (2026-10-22): every definition is sent in a fixed `tools` array, deferred
 ones are excluded from the cached prefix, and a `ToolSearch` meta tool
 returns `tool_reference` blocks that the API expands in the message history.
-Includes what still busts the cache and what it means for Forge's `Expand`
+Includes what still busts the cache and what it means for Forge's `HandOff`
 tool.
 
 **[→ `agent-multi-model.md`](./agent-multi-model.md)** — using more than

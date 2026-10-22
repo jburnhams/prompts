@@ -206,7 +206,7 @@ Rules:
    tools. Deferring them would add a round trip and gain little, and a
    cheap model under-calls optional tools (`../agent-multi-model.md` §4).
    Deferral applies to MCP-supplied tools and to the focused `analyse` tools
-   that sit behind `Expand`. Anthropic's guidance is to keep 3–5 tools
+   that sit behind `HandOff`. Anthropic's guidance is to keep 3–5 tools
    non-deferred; the quick analysis run loads 3–4 and needs nothing else.
 5. **A provider flag, not an assumption.** Config records
    `deferred_tools: native | client | none` per provider. `none` (Bedrock

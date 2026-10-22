@@ -113,10 +113,10 @@ it.
 
 ## 4. Consequences for Forge
 
-- **`Expand(need: "data")` is this mechanism.** Forge's focused data tools
+- **`HandOff(missing_data)` is this mechanism.** Forge's focused data tools
   (chart spec, profile, fetch, table ops) sit in the fixed, cached `tools`
-  array flagged deferred. The overview line "N more sources, `Expand` reveals
-  them" is the name list. A model-called `Expand` returns `tool_reference`
+  array flagged deferred. The overview line "N more sources, `HandOff` reveals
+  them" is the name list. A model-called `HandOff` returns `tool_reference`
   blocks. Nothing is added to the array mid-run.
 - **"Hidden" is "deferred and unannounced."** A tool the model was never told
   about can still be revealed by the harness if a harness-triggered result
@@ -127,7 +127,7 @@ it.
   | | Pulled by the model | Pushed by the harness |
   |---|---|---|
   | **Announced by name** | deferred tool, found via search | harness says "tool X now available" |
-  | **Not announced** | `Expand` with a free-text need | hidden tool revealed by a trigger |
+  | **Not announced** | a free-text request to the search tool | hidden tool revealed by a trigger |
 
 - **Provider portability decides the fallback.** Server-side deferral needs
   the Claude API or a gateway that forwards `defer_loading` and
@@ -178,7 +178,7 @@ functions or MCP servers. Differences from Anthropic's:
 
 1. **Load a small core upfront.** The cheap-start set is 3–4 tools, so the
    cost is small.
-2. **Expand at a run boundary.** `Expand` ends the run with a handoff and the
+2. **Hand off at a run boundary.** `HandOff` ends the run with a handoff and the
    next run starts with a different tools array (and, for `investigate`, a
    higher tier). A new run has no cache to lose, and Forge's runs are
    one-shot already. This is the recommended default.

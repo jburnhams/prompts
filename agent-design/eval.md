@@ -144,7 +144,7 @@ the blog post states no license for the dataset or code (check before
 storing anything from it); and the PR-size mix is deliberately weighted
 away from tiny changes.
 
-### Suite 4 — Analysis quick path and `Expand`
+### Suite 4 — Analysis quick path and `HandOff`
 
 *Added 2026-10-22.* Decides whether the cheap-start design in
 [`models.md`](./models.md) is safe and whether it earns its keep. The first
@@ -158,11 +158,11 @@ stratified by what the right route is:
 
 | Stratum | Right route | Examples |
 |---|---|---|
-| **L** — clean lookup | answer, no `Expand` | one aggregate over one table; a documented join |
+| **L** — clean lookup | answer, no `HandOff` | one aggregate over one table; a documented join |
 | **T** — lookalike with a trap | answer *correctly* or escalate; a wrong quick answer is the failure | a join on a duplicated key that inflates a `SUM`; a nullable key an inner join drops; soft-deleted rows; a UTC period boundary; a metric with two plausible definitions |
-| **D** — needs a hidden source | `Expand(data)` | a question about a source not in the overview |
-| **I** — needs investigation | `Expand(investigate)` | no obvious table, several steps, an undefined metric |
-| **R** — asks for a report | `Expand(report)` as the first action | "make me a report on churn by region" |
+| **D** — needs a hidden source | `HandOff(missing_data)` | a question about a source not in the overview |
+| **I** — needs investigation | `HandOff(too_complex)` | no obvious table, several steps, an undefined metric |
+| **R** — asks for a report | `HandOff(report_requested)` as the first action | "make me a report on churn by region" |
 
 Each item carries: the correct answer with a tolerance, the required
 disclosures (SQL shown, row count shown, assumption stated), and the expected
@@ -176,24 +176,24 @@ checked against the fan-out ones.
 
 | Arm | What it is | Purpose |
 |---|---|---|
-| A0 | cheap model, quick tools, **no** `Expand`, no "further sources" line | baseline for quick-path cost and latency |
-| A1 | A0 plus `Expand` and the overview line | the design, model-called only |
+| A0 | cheap model, quick tools, **no** `HandOff`, no "further sources" line | baseline for quick-path cost and latency |
+| A1 | A0 plus `HandOff` and the overview line | the design, model-called only |
 | A2 | A1 plus the harness triggers (`models.md` §5) | the design as proposed |
-| A3 | standard tier from the start, no `Expand` | the "just use a better model" alternative |
+| A3 | standard tier from the start, no `HandOff` | the "just use a better model" alternative |
 | A4 | `investigate` landing from the start | quality ceiling, and the cost of always paying for it |
 
 **Measures** (the five in `models.md` §8, made concrete):
 
 1. **Quick-path regression.** On stratum L: time to first token, time to final
    answer, and input and output tokens, A1 and A2 against A0. The expected
-   overhead is the `Expand` description and one overview line. Any gap larger
+   overhead is the `HandOff` description and one overview line. Any gap larger
    than that is a bug in the design. Proposed gate: median latency within 5%
    and tokens within 100 of A0. These two numbers are guesses; set them from
    the first A0 baseline and write the real ones into the log.
 2. **Route accuracy.** Confusion matrix of expected route against actual,
    split into model-called and harness-triggered. Many harness triggers with
    few model calls on D, I and R means the model is under-calling.
-3. **Unnecessary `Expand`.** Calls on L items that A0 answered correctly.
+3. **Unnecessary `HandOff`.** Calls on L items that A0 answered correctly.
 4. **Silent wrong answers (headline).** On T items: a wrong figure with no
    escalation, per arm. The goal is not zero; it is no worse than A0 and
    visibly better than nothing on the fan-out and null-key traps once the
@@ -208,6 +208,28 @@ checked against the fan-out ones.
 7. **Report quality**, separately for collector tier (economy versus
    standard, same writer) and writer tier (strong versus standard, same
    collector).
+
+**Presentation variants (text only).** How the hatch is presented
+(`models.md` §4b) is cheap to vary and decides how it is used, so it is
+measured, on A1 (model-called only, no harness triggers) so that triggers
+cannot hide under-calling. One factor at a time against the §4b default:
+
+| Variant | Change |
+|---|---|
+| V1 | situations in the prompt removed (tool description only) |
+| V2 | harness notes removed |
+| V3 | harness notes kept, prompt situations removed |
+| V4 | the cost sentence ("the user will wait longer") removed from the description |
+| V5 | tool listed first instead of last |
+| V6 | named `Expand` instead of `HandOff` |
+| V7 | enum values `data` / `investigate` / `report` instead of the situational names |
+
+Read each against the default on three numbers: the model-called share on D,
+I and R items (under-calling), the unnecessary-call rate on L items
+(over-calling), and quick-path tokens. A variant that wins on one by losing
+on another is a finding, not a tie. Expect V4 to raise unnecessary calls and
+V1 to lower the model-called share; if neither moves, the text matters less
+than assumed and the harness triggers are doing the work.
 
 **Online counterpart.** Once there is traffic, the same silent-wrong question
 runs on sampled live requests: re-run answers that did not escalate through
@@ -347,7 +369,7 @@ design that can retire one.
 
 ## Open questions this is built to close
 
-00. *(Added 2026-10-22.)* Does the cheap start with `Expand` keep the quick case as fast and cheap as a plain cheap agent, and is its silent-wrong rate on trap questions no worse? (Suite 4; `models.md` §8. Until it is answered yes, `Expand` ships off.)
+00. *(Added 2026-10-22.)* Does the cheap start with `HandOff` keep the quick case as fast and cheap as a plain cheap agent, and is its silent-wrong rate on trap questions no worse? (Suite 4; `models.md` §8. Until it is answered yes, `HandOff` ships off.)
 
 0. *(Added 2026-10-17.)* Is the attention tier calibrated: is the
    follow-up-fix rate (`risk.md` §8a) of `low`-tier PRs no worse than the human-reviewed baseline over a
