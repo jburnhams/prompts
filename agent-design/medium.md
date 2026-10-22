@@ -921,6 +921,9 @@ pins `oracle` to a different vendor entirely, GitHub Copilot CLI pins
 per-sub-agent models in YAML with one deliberately inheriting the
 user's live choice (`agent-subagent-architectures.md` §3).
 
+The analysis entrypoint and escalation are worked through in
+[`models.md`](./models.md) (proposal, 2026-10-22).
+
 Mechanically this is harness config (model per `subagent_type`/role),
 zero prompt changes — which is what makes it medium-tier: the work is
 choosing and measuring, not building.

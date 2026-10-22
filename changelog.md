@@ -2,6 +2,14 @@
 
 All notable changes to this repository, grouped by day, newest first. Generated from git history.
 
+## 2026-10-22
+
+**Multi-model research.** Asked how a data-analysis task would use a cheap model for tool calling and a strong one for the report, whether that is sub-agents or two stages, and whether harnesses route models automatically.
+
+- `agent-multi-model.md` — new. Four patterns: pinned-model sub-agents, two stages with a typed handoff, the Anthropic advisor tool (cheap executor consulting a strong advisor server-side, beta, not on Bedrock), and per-turn routers (Cursor's Compass plus task router, Copilot Auto). Claude Code's "auto mode" is the permission classifier, not a model router. For data analysis the cheap/strong line is mechanical retrieval versus judgment, since DAB puts most wrong answers in planning and computation.
+- `agent-design/models.md` — new, proposal only. A capability tier per stage in job config, `explore` economy and `answer` strong with an `<exploration>` handoff, an optional `tier` on `Task` that cannot exceed the parent's, escalation as a ledger rule on objective signals, no router, and a measurement order.
+- `medium.md` §3d points to it.
+
 ## 2026-10-19
 
 **Weekly research pass (scheduled), on branch `claude/weekly-research-2026-10-19`, merged with the two passes below.** Asked to check tracked sources for changes, look for new projects and approaches from the last week or two, and fold the most relevant into Forge's design. The pass ran in parallel with the Piebald comparison below; after merging main it was reconciled with it (sections renumbered, duplicate prompt files dropped, the consent material cut to what §2c and §5 do not already cover, and the `AskUser` amendment rewritten against the new `approve` kind).
