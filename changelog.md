@@ -9,6 +9,7 @@ All notable changes to this repository, grouped by day, newest first. Generated 
 - `agent-multi-model.md` — new. Four patterns: pinned-model sub-agents, two stages with a typed handoff, the Anthropic advisor tool (cheap executor consulting a strong advisor server-side, beta, not on Bedrock), and per-turn routers (Cursor's Compass plus task router, Copilot Auto). Claude Code's "auto mode" is the permission classifier, not a model router. For data analysis the cheap/strong line is mechanical retrieval versus judgment, since DAB puts most wrong answers in planning and computation.
 - `agent-design/models.md` — new, proposal only. A capability tier per stage in job config, `explore` economy and `answer` strong with an `<exploration>` handoff, an optional `tier` on `Task` that cannot exceed the parent's, escalation as a ledger rule on objective signals, no router, and a measurement order.
 - `medium.md` §3d points to it.
+- `agent-deferred-tool-loading.md` — new. Deferred loading is two layers: the API's `defer_loading` plus `tool_reference` (definitions appended to the message history, prefix untouched) and Claude Code's `ToolSearch` client tool with name lists announced as system-reminder messages. Cache hygiene: constant tools array, breakpoints on non-deferred tools, hysteresis on the auto threshold. Open: what compaction does to loaded references. Forge consequence: `Expand(data)` is this mechanism, and "hidden" is deferred-and-unannounced.
 
 ## 2026-10-19
 

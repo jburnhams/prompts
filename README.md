@@ -822,6 +822,14 @@ header and a preamble line, empty = null stated, and aggregation moved to a
 tool unless the model is known to count. The general rule for *every* structured result — nested values, escaping, which shape for which data — is `agent-design/data.md` §2h. Most free-tier keys supplied did not yield data and the doc says
 which and why. Scripts in [`bench/`](./bench).
 
+**[→ `agent-deferred-tool-loading.md`](./agent-deferred-tool-loading.md)** —
+how Claude Code adds tools mid-session without invalidating the prompt cache
+(2026-10-22): every definition is sent in a fixed `tools` array, deferred
+ones are excluded from the cached prefix, and a `ToolSearch` meta tool
+returns `tool_reference` blocks that the API expands in the message history.
+Includes what still busts the cache and what it means for Forge's `Expand`
+tool.
+
 **[→ `agent-multi-model.md`](./agent-multi-model.md)** — using more than
 one model in a run (2026-10-22): sub-agents with a model pin, two stages
 joined by a typed handoff, Anthropic's advisor tool (cheap executor, strong
