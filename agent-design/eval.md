@@ -42,8 +42,9 @@ functional test would ever have found it.
 
 ## What it measures
 
-Three suites, in priority order. Each targets decisions this design
-currently makes on argument alone.
+Four suites, in priority order (Suite 4, added 2026-10-22, covers the
+analysis quick path). Each targets decisions this design currently makes on
+argument alone.
 
 ### Suite 1 — Tool hardening (the hostile workspace)
 
@@ -142,6 +143,103 @@ true positives, which says nothing about agreement on false positives;
 the blog post states no license for the dataset or code (check before
 storing anything from it); and the PR-size mix is deliberately weighted
 away from tiny changes.
+
+### Suite 4 — Analysis quick path, `Expand` and `HandOff`
+
+*Added 2026-10-22.* Decides whether the cheap-start design in
+[`models.md`](./models.md) is safe and whether it earns its keep. The first
+question is not whether it is accurate. It is whether the quick case got
+slower or dearer, because that is the constraint the design exists to
+protect.
+
+**Fixture.** A small fixed warehouse (DuckDB or SQLite; the same data every
+run) with documented joins and traps seeded on purpose, and a question set
+stratified by what the right route is:
+
+| Stratum | Right route | Examples |
+|---|---|---|
+| **L** — clean lookup | answer, no hatch | one aggregate over one table; a documented join |
+| **T** — lookalike with a trap | answer *correctly* or escalate; a wrong quick answer is the failure | a join on a duplicated key that inflates a `SUM`; a nullable key an inner join drops; soft-deleted rows; a UTC period boundary; a metric with two plausible definitions |
+| **D** — needs a hidden source | `Expand`, then answer in the same run | a question about a source not in the overview |
+| **I** — needs investigation | `HandOff(too_complex)` | no obvious table, several steps, an undefined metric |
+| **R** — asks for a report | `HandOff(report_requested)` as the first action | "make me a report on churn by region" |
+
+Each item carries: the correct answer with a tolerance, the required
+disclosures (SQL shown, row count shown, assumption stated), and the expected
+route. T items are the ones that matter most and the ones public benchmarks
+are weakest on; DAB's labelled failure modes
+([`../agent-data-analysis.md`](../agent-data-analysis.md) §12a) are the
+source for the trap shapes, and `data.md` §4b's `input_rows` stub is
+checked against the fan-out ones.
+
+**Arms.** The same questions, the same prompt text where the arms share it:
+
+| Arm | What it is | Purpose |
+|---|---|---|
+| A0 | cheap model, quick tools, **no** hatch, no "further sources" line | baseline for quick-path cost and latency |
+| A1 | A0 plus `Expand`, `HandOff` and the overview line | the design, model-called only |
+| A2 | A1 plus the harness triggers (`models.md` §5) | the design as proposed |
+| A3 | standard tier from the start, no hatch | the "just use a better model" alternative |
+| A4 | `investigate` landing from the start | quality ceiling, and the cost of always paying for it |
+
+**Measures** (the five in `models.md` §8, made concrete):
+
+1. **Quick-path regression.** On stratum L: time to first token, time to final
+   answer, and input and output tokens, A1 and A2 against A0. The expected
+   overhead is the two descriptions and one overview line. Any gap larger
+   than that is a bug in the design. Proposed gate: median latency within 5%
+   and tokens within 100 of A0. These two numbers are guesses; set them from
+   the first A0 baseline and write the real ones into the log.
+2. **Route accuracy.** Confusion matrix of expected route against actual,
+   split into model-called and harness-triggered. Many harness triggers with
+   few model calls on D, I and R means the model is under-calling.
+3. **Unnecessary hatch calls.** `Expand` or `HandOff` on L items that A0 answered correctly; and the `Expand` hit rate on D items (what it revealed that a later query used).
+4. **Silent wrong answers (headline).** On T items: a wrong figure with no
+   escalation, per arm. The goal is not zero; it is no worse than A0 and
+   visibly better than nothing on the fan-out and null-key traps once the
+   disclosures are in. Also scored: whether the disclosed SQL and row count
+   would let a reader see the error, on a sample judged by a person.
+5. **Cost per correct answer** across the whole question set, per arm. A2
+   should beat A3 (otherwise the hatch has not paid for itself) and cost far
+   less than A4.
+6. **Handoff loss** on R items: facts present in the collector's refs that the
+   report omits, and wrong facts the report states that no ref supports.
+   Also, the provenance gate's pass rate.
+7. **Report quality**, separately for collector tier (economy versus
+   standard, same writer) and writer tier (strong versus standard, same
+   collector).
+
+**Presentation variants (text only).** How the hatch is presented
+(`models.md` §4b) is cheap to vary and decides how it is used, so it is
+measured, on A1 (model-called only, no harness triggers) so that triggers
+cannot hide under-calling. One factor at a time against the §4b default:
+
+| Variant | Change |
+|---|---|
+| V1 | situations in the prompt removed (tool description only) |
+| V2 | harness notes removed |
+| V3 | harness notes kept, prompt situations removed |
+| V4 | the cost sentence ("the user will wait longer") removed from the description |
+| V5 | tool listed first instead of last |
+| V6 | one tool, named `Expand`, with the three reasons, instead of the pair |
+| V7 | `HandOff` enum values `investigate` / `report` instead of the situational names |
+
+Read each against the default on three numbers: the model-called share on D,
+I and R items (under-calling), the unnecessary-call rate on L items
+(over-calling), and quick-path tokens. A variant that wins on one by losing
+on another is a finding, not a tie. Expect V4 to raise unnecessary calls and
+V1 to lower the model-called share; if neither moves, the text matters less
+than assumed and the harness triggers are doing the work.
+
+**Online counterpart.** Once there is traffic, the same silent-wrong question
+runs on sampled live requests: re-run answers that did not escalate through
+the `investigate` landing and compare. This is shadow evaluation, and it is
+the only source for a silent-wrong rate on questions nobody planted traps in.
+
+**Rules.** Three reps minimum; a Haiku-class model and a materially weaker
+one; record tier, model ID and price on every result; mark any run where the
+prompt changed between series as non-comparable. The suite makes claims about
+the harness and the routing, not about which model is better.
 
 ## Metrics
 
@@ -270,6 +368,8 @@ design that can retire one.
   [`future.md`](./future.md) is gated on the former, not the latter.
 
 ## Open questions this is built to close
+
+00. *(Added 2026-10-22.)* Does the cheap start with `Expand` and `HandOff` keep the quick case as fast and cheap as a plain cheap agent, and is its silent-wrong rate on trap questions no worse? (Suite 4; `models.md` §8. Until it is answered yes, `HandOff` ships off.)
 
 0. *(Added 2026-10-17.)* Is the attention tier calibrated: is the
    follow-up-fix rate (`risk.md` §8a) of `low`-tier PRs no worse than the human-reviewed baseline over a
