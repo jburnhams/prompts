@@ -191,6 +191,19 @@ Observations that matter for design:
    escalate on failure. It needs a cheap, trustworthy failure signal, which
    data analysis lacks (§6).
 
+## 5a. Pattern E: start cheap with an escape hatch (added 2026-10-22)
+
+Not found as a named pattern in any source, but assembled from parts that are:
+a cheap model starts alone with a minimal tool set, and one tool lets it (or
+the harness) grow the session. The parts: the advisor tool's executor that
+chooses when to ask for help, deferred tool loading (`agent-deferred-tool-loading.md`),
+FrugalGPT's cascade with an objective failure signal, and Forge's
+`AskUser` run-ending tool. Its merit is that the quick case pays almost
+nothing: no triage call, no fixed stages, no large prompt. Its risks are
+under-calling (cheap models rarely reach for optional tools) and confident
+wrong answers that raise no signal, so it needs harness-side triggers and
+sampling. The Forge version is in `agent-design/models.md`.
+
 ## 6. What is different about data analysis
 
 `agent-data-analysis.md` establishes that analysis correctness cannot be
@@ -251,8 +264,10 @@ config.
    is the better default; a pinned-model sub-agent is the quick version.**
 2. The advisor tool is the right idea for the *opposite* case (cheap executor
    that needs occasional strong planning) and is not portable.
-3. Per-stage pinning needs no router. A router earns its keep only when the
-   harness cannot name the stage, which is not Forge's situation.
+3. Per-stage pinning needs no router for coding and review. For analysis the
+   stage is not known in advance, and the better answer is not a router but a
+   cheap start with an escape hatch (§5a): the cheap model reads the request
+   anyway, so it is the router at no extra cost.
 4. For data analysis, tier by **mechanical vs judgment**, not by tool use vs
    prose. DAB says the judgment steps are where wrong answers come from.
 5. No source measures cheap-collector/strong-writer on analysis tasks; the

@@ -1,177 +1,235 @@
-# Models: one model per stage, chosen by config, not by a model
+# Models: start cheap and quick, grow on demand
 
-**Status: proposal, written 2026-10-22. Nothing here is adopted yet.** The
-research is in [`../agent-multi-model.md`](../agent-multi-model.md). This
-file says what Forge would change, what it would leave alone, and what to
+**Status: proposal, revised 2026-10-22. Nothing here is adopted yet.** The
+research is in [`../agent-multi-model.md`](../agent-multi-model.md) and
+[`../agent-deferred-tool-loading.md`](../agent-deferred-tool-loading.md).
+This file says what Forge would change, what it would leave alone, and what to
 measure first. It extends `medium.md` §3d (per-role models for review) and
-§3d-i (plan strong, implement cheap) to the `analyse` entrypoint and to
-mid-run escalation.
+§3d-i (plan strong, implement cheap).
 
-## 1. Position
+## 1. The constraint that decides the design
 
-1. **The model is a property of a run's stage, set in job config.** Not of a
-   turn, not of a prompt, and not decided by a model.
-2. **No router.** Forge's stages are named (`plan`, `implement`, `explore`,
-   `answer`, `reviewer`, `validator`), so the stage is already the routing
-   signal and costs nothing. Cursor's and Copilot's routers exist because a
-   free-form chat turn has no stage label.
-3. **Escalation is a ledger rule, not a feeling.** A run that ends in a
-   specific, countable failure state may be retried one tier up. That is the
-   same shape as `orchestration.md` §7's other health rules.
-4. **Model-agnostic.** A stage names a *tier* (`economy`, `standard`,
-   `strong`); the deployment maps tiers to model IDs. Vendor features such as
-   the Anthropic advisor tool are optional accelerators behind a tier, never
-   required by a prompt.
+**The quick case is the product.** A user who asks "what was revenue last
+month?" wants an answer in seconds, from a cheap model, with nothing else in
+the way. A design that makes that user pay for triage, a handoff, a stage
+boundary, or a big prompt will lose them, however good it is on hard tasks.
 
-## 2. The analysis case: `explore` cheap, `answer` strong
+So the rule for every mechanism below is: **it must cost the quick case
+nothing it can avoid.** No triage call before the first token. No fixed
+multi-stage pipeline in front of a one-line question. No tool catalogue the
+quick case does not need. Power is added by the run asking for it, or by the
+harness noticing it is needed, and only then.
 
-This is the user's scenario, and the seam already exists (`data.md` §2g).
+This reverses an earlier draft of this file, which made `explore` (cheap) →
+`answer` (strong) the default analysis path. That path is right for a request
+that clearly wants a report, and is kept as one landing (§4). It is the wrong
+front door.
 
-```
-explore (economy tier)                 answer (strong tier)
-read-only, mints table:// refs   ──►   reads the handoff, re-queries
-ends with a structured finding         read-only if it doubts a number,
-                                       writes the report, passes the gate
-```
+## 2. Positions
 
-What changes:
+1. **Every analysis run starts on the economy tier with a minimal tool set and
+   a short data overview.** If that is enough, it answers and the run ends.
+2. **One escape hatch, `Expand`, reaches everything else.** More data, a
+   stronger model, or a report. It is a tool the cheap model can call and the
+   harness can also trigger itself (§5).
+3. **The cheap model is the router, not a separate classifier.** It already
+   reads the request. If the request says "make me a report", it calls
+   `Expand(report)` as its first action. No extra model call, no latency.
+4. **Escalation moves forward and costs a restart, never a mid-run model
+   swap.** `Expand` ends the run with a handoff, and a new run starts with the
+   bigger tool set and/or tier. On Bedrock `Converse` there is no deferred
+   loading (`agent-deferred-tool-loading.md` §5), so a run boundary is the
+   only point where the tools array can change without losing the prompt
+   cache. A cheap run's context is small, so restarting costs little; and the
+   restart is paid only by requests that were not quick.
+5. **Tiers, not model names.** Config names `economy`, `standard`, `strong`;
+   the deployment maps them to model IDs. Vendor features (the Anthropic
+   advisor tool, OpenAI tool search) may implement a tier but no prompt or
+   schema depends on them.
+6. **Coding and review keep per-role tiers** (§7), because their stages are
+   named and the quick case there is not a one-line question.
 
-- **`tiers` per mode** in the analysis job config:
-  `explore: economy`, `answer: strong`. Default both to the deployment's
-  current model so nothing changes until someone opts in.
-- **A handoff envelope.** `answer` already receives the task envelope; add an
-  `<exploration>` tag carrying the `explore` run's `Complete` payload: the
-  question as understood, the refs minted (with their stubs), the queries run
-  (`produced_by`), caveats, and what it did **not** manage to check. The tag
-  is data under the existing nonce-tagging rule; the answer run treats it as
-  evidence to verify, not as instruction or fact.
-- **`explore` is told what it is for.** Its prompt gains one rule: *retrieve
-  and describe; do not conclude.* It may profile, run the queries the task
-  names and note anomalies. It must not state a headline number as an
-  answer, because the strong stage owns the claim. This follows
-  `agent-multi-model.md` §6: the cheap tier is safe on mechanical steps and
-  unsafe on deciding what to compute (DAB: ~88–90% of wrong answers are in
-  planning or computing).
-- **`answer` may re-query.** It keeps the read-only `table://` selectors and
-  SQL (`data.md` §2c). A writer that cannot check a number can only repeat
-  it. The strong tier's job includes recomputing any figure that appears in
-  the report headline.
-- **Provenance gate unchanged** (`data.md` §2f). It does not care which tier
-  made a ref, only that it resolves and traces to a query. This is the
-  property that makes mixed tiers safe to ship.
+## 3. What the quick run carries
 
-When `explore` has to do real analysis (a join the task did not specify, a
-metric definition), the right outcome is for it to **stop and say so in the
-handoff**, and for the dispatcher to run the strong tier for that part. Do
-not make the cheap tier guess.
+| Part | Content | Why this much |
+|---|---|---|
+| Tier | economy | speed and cost |
+| Tools | `DescribeSource`/`ListSources`, read-only `RunSQL` against the described sources, `Expand`. Final answer is plain text, or `Complete` where a run ledger is used | 3–4 tools, so loading them upfront is cheap and needs no deferral |
+| Data overview | one line per source the user has, plus a last line: `N further sources are not listed; Expand reveals them` | the cheap model cannot ask for what it does not know exists; the last line is the whole cost of that |
+| Prompt | a short analysis prompt: ground in the schema, show your SQL, state the row count, do not guess a join | DAB puts ~88–90% of wrong answers in planning or computing the query (`../agent-data-analysis.md` §12a) |
+| Answer form | the number or table, then the SQL and the row count in the same message | Haiku's characteristic failure is plausible-but-wrong SQL, and nothing automatic catches it; showing the query lets the user |
 
-### 2a. Dynamic delegation inside a run
+Everything else (profiling, chart specs, joins across sources, `table://`
+spill, report writing, the provenance gate) is behind `Expand` or triggered by
+the harness. `data.md` §2d's spill still applies on its own: a large result
+becomes a `table://` handle without the model asking.
 
-For a coding or `answer` run that wants a cheap helper mid-run (scan 40 files,
-profile five tables), the existing `Task` tool gets one field:
+## 4. `Expand`
+
+One tool, deliberately small. The description is about two lines, so that it
+costs few tokens and does not invite use:
+
+> Use only when the tools and data above cannot answer the question, or the
+> user asked for a report. Say in one sentence what is missing.
 
 ```json
-"tier": { "type": "string", "enum": ["economy", "standard", "strong"],
-          "description": "Capability tier for this sub-agent. Omit to use the sub-agent type's default. Use economy for retrieval and profiling; use strong when the result decides what the report claims." }
+{
+  "name": "Expand",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "need": { "type": "string", "enum": ["data", "investigate", "report"] },
+      "blocker": { "type": "string", "description": "One sentence: what you could not do, or what the user asked for." }
+    },
+    "required": ["need", "blocker"],
+    "additionalProperties": false
+  }
+}
 ```
 
-- Defaults come from config per `subagent_type` (`general-purpose` defaults to
-  the parent's tier; `reviewer`/`validator` per §3). A parent **cannot pick a
-  tier above its own** (the harness clamps), so delegation never widens cost
-  authority; compare `agent-subagent-architectures.md` §7d on authority.
-- A deployment may pin a tier with a force switch, as Claude Code's
-  `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` does.
-- The sub-agent's report format for `economy` children must include the refs
-  or file/line evidence behind each statement, not just conclusions. This is
-  the same rule as the review `Task` notes: a report is a candidate until
-  checked.
+The required `blocker` does two jobs. It makes a casual call slightly
+effortful, and it is the first line of the brief the next run reads.
 
-## 3. Review and coding
+Like `AskUser`, `Expand` is the last action of a run. The harness ends the run
+and starts the next one. Three landings:
 
-These are `medium.md` §3d and §3d-i unchanged except for naming tiers:
+| `need` | Next run | Tier | Tools and context |
+|---|---|---|---|
+| `data` | same shape as the quick run, bigger world | economy | the sources the overview hid, plus the focused data tools (profile, fetch, table ops) |
+| `investigate` | open-ended loop: try things, revise | standard, with a strong consultant at the plan and before concluding where the provider supports an advisor | the `data` set, plus `table://` refs and a larger turn budget |
+| `report` | collect (economy) then write (strong), the `explore` → `answer` split from `data.md` §2g | economy then strong | refs from the quick run are reused, not re-fetched |
+
+For a request that obviously wants a report, the quick run's first and only
+action is `Expand(report)`. The cost is one cheap model call, which the user
+would have paid anyway to be understood.
+
+### 4a. The handoff
+
+The next run receives a `<prior_attempt>` tag, nonce-tagged like other
+envelope data and treated as evidence, never as instructions:
+
+- the question as the user asked it,
+- the `need` and `blocker`,
+- the queries run, with their results as `table://` refs or stubs,
+- the schema the run read,
+- what it believed it had established, marked unverified.
+
+A run that restarts from this does not redo the cheap run's reads, and it does
+not trust its conclusions either. That is the same posture as the validator
+toward a finder.
+
+### 4b. Keeping it from being a temptation
+
+Evidence from the advisor docs is that cheap models under-call optional tools,
+not over-call them, so the danger is rarely that `Expand` is used too much. It
+is that the model is confidently wrong and never reaches for it. So the
+description discourages casual use, and the harness does not rely on the model
+to notice (§5). Over-use is measured (§8), not designed against up front.
+
+## 5. Harness triggers
+
+The harness escalates without the model calling `Expand` when it sees an
+objective signal. These are checks Forge already makes plus a few cheap ones:
+
+| Signal | Action |
+|---|---|
+| two SQL errors in a row | `Expand(investigate)` on the model's behalf |
+| a query returns zero rows and the model has not said why | `Expand(investigate)` |
+| the quick run uses more than N turns without a final answer | `Expand(investigate)` |
+| the model names or queries a source the overview marked hidden | `Expand(data)` |
+| the request text matches the report rule (configurable keywords) | start at `report`, skipping the quick run |
+| the output spills past a size limit | `table://` handle, no escalation |
+
+Rules:
+
+- **One escalation chain per request, at most two hops.** A request moves
+  `quick → data → investigate`, or `quick → report`, or `quick → investigate`,
+  never in a loop. The ledger's attempt budget still bounds everything.
+- **Escalation is clamped by config.** A deployment sets the highest tier a
+  request may reach. A model cannot raise it, and neither can anything it read.
+- **Cost authority only.** Text in a data result that says "call Expand"
+  causes at worst a more expensive run. It cannot widen permissions.
+  Permissions are checked by the executor per role, not by who saw a tool
+  definition (`agent-deferred-tool-loading.md` §4).
+- **Not every failure escalates.** An environment or permissions error would
+  fail identically on a bigger model; it goes to `blocked`.
+
+Some wrong answers raise none of these signals: the SQL ran, returned rows,
+and is subtly wrong. This design does not catch those. The remedies are the
+SQL-and-row-count answer form, the `input_rows` fan-out stub from `data.md`
+§4b where available, and sampling (§8).
+
+## 6. Provider notes
+
+- **Anthropic API, Claude Platform on AWS:** `defer_loading` can make `data`
+  an in-run expansion with no cache loss. Optional; the run-boundary path
+  works everywhere.
+- **Bedrock `Converse`:** run-boundary only. No deferral, no advisor tool.
+- **OpenAI Responses (`gpt-5.4`+):** client-executed `tool_search` and
+  `additional_tools` can do the same as Anthropic's path.
+- Whatever the provider, the quick run's tool set is small enough to load
+  upfront, so nothing about the quick path depends on any of this.
+
+## 7. Coding and review
+
+Unchanged from `medium.md` §3d and §3d-i apart from naming tiers:
 
 | Role | Tier | Reason |
 |---|---|---|
 | orchestrator (review) | standard | skip/dispatch decisions, brief construction |
-| finder specialists | economy → standard | silent misses are costly, but dedup + validator catch overlap |
+| finder specialists | economy → standard | silent misses are costly, but dedup and the validator catch overlap |
 | validator | strong | a wrong confirmation becomes a posted comment |
 | `plan` | strong | nothing downstream re-derives the approach |
-| `implement` | standard (economy to be measured) | checked by verification, audit and review; but see the instruction-density risk in §3d-i |
-| `explore` | economy | mechanical retrieval |
-| `answer` | strong | owns the claim |
+| `implement` | standard (economy to be measured) | checked by verification, audit and review; see the instruction-density risk in §3d-i |
 
-## 4. Escalation
+For `Task` children inside a run, an optional `tier` field is clamped to the
+parent's tier, so delegation never widens cost authority. Children's reports
+must include the refs or file lines behind each claim.
 
-A small addition to `orchestration.md` §7:
+## 8. What to measure
 
-| Check | Condition | Action |
-|---|---|---|
-| `tier_escalate` | last attempt ended `Complete(budget_exhausted)` or the completion audit/gate failed on an `economy` or `standard` stage | next attempt runs one tier up; recorded as `escalated_from` on the attempt |
+Each step changes one thing, using `medium.md` §3e telemetry and `eval.md`.
+Record tier, model ID and the price at the time on every result.
 
-Rules to keep it from becoming an unbounded cost source:
+1. **The quick path must not regress.** Time to answer and cost of a plain
+   cheap agent with no `Expand`, versus the same with `Expand` in its tool
+   list and the "N further sources" line. The overhead should be tens of
+   tokens. If it is more, the design is wrong.
+2. **Escalation mix.** Share of requests that stay quick, go to `data`,
+   `investigate`, `report`; share escalated by the model versus by a harness
+   trigger. A near-zero model-called share with a high harness-triggered
+   share means the model is under-calling.
+3. **Unnecessary calls.** Sample `Expand` calls and ask whether the quick run
+   could have answered. This is the over-use rate.
+4. **Silent wrong answers.** Sample quick-run answers that did not escalate,
+   re-run them at `investigate`, and compare. This is the number that decides
+   whether the cheap start is safe, and no signal in §5 produces it for free.
+5. **Report quality.** `report` with economy collection versus standard
+   collection, same writer; and strong versus standard writer. Needs an
+   analysis eval set (`eval.md` notes DAB as the first labelled data-agent
+   set; none exists in this design yet).
 
-- One escalation per task; the ledger's `max_attempts` still bounds everything.
-- Escalation is triggered only by **objective** signals Forge already
-  produces (`budget_exhausted`, a failed gate, a failed `verification`
-  entry). No model is asked whether it was clever enough. This is the
-  FrugalGPT cascade with the confidence signal replaced by checks that exist.
-- Not every failure escalates. `blocked` (needs a human) and `failed` for
-  tool or environment reasons would fail identically on a bigger model.
-- Data analysis has few objective failure signals. The provenance gate catches
-  unsupported numbers but not wrong ones, so escalation there depends on the
-  gate and the audit; it is weaker than in coding. That is the reason the
-  strong tier is the default for `answer`, rather than a cascade starting
-  cheap.
+## 9. Not adopted
 
-## 5. Not adopted, and why
-
-- **A model router (Compass-style).** Needs a satisfaction signal and a human
-  to absorb mis-routes; Forge has neither, and the stage already carries the
-  information. Also adds a model call to a dispatcher that is deliberately
-  non-model (`orchestration.md` §8).
+- **A triage model call before every request.** Costs the quick case latency
+  and tokens to answer a question the cheap model answers anyway by reading
+  the request.
+- **A learned router (Compass-style).** Needs a satisfaction signal and
+  scale. Cursor and Copilot have both; a Forge deployment does not.
 - **Mid-run model switching.** Loses the prompt cache and mixes behaviours in
-  one transcript. Switch at stage or task boundaries only.
-- **Requiring the Anthropic advisor tool.** Useful for a cheap `implement`
-  that needs occasional strong planning, and it sees the whole transcript,
-  which a separate `plan` run does not. But it is a vendor beta, absent from
-  Bedrock, Google-managed Vertex and Foundry, and its result may be redacted
-  from the client, so logs would lack the advice. **Allowed as an
-  implementation of the `standard` tier** where the deployment has it; no
-  prompt or schema depends on it. Revisit when measuring cheap `implement`
-  (§6), since it is the obvious thing to compare against a separate `plan`
-  run.
-- **Cheap model summarising for the strong one inside a run.** Compaction
-  already exists as a lever (`formats.md` §7); mixing tiers there adds a
-  faithfulness risk with no seam to check it.
+  one transcript.
+- **Requiring the advisor tool.** Vendor beta, not on Bedrock.
+- **`explore` → `answer` as the default for every analysis request.** Kept
+  only as the `report` landing.
 
-## 6. What to measure before turning anything on
+## 10. Open points
 
-Everything defaults to today's model. Each step changes one thing and has a
-number that decides it, using the finding-outcome telemetry of `medium.md`
-§3e and `eval.md`:
-
-1. `analyse`: `explore` on economy vs standard, same `answer`. Metric:
-   report correctness on a DAB-style set (`eval.md` Suite 3 notes DAB as the first labelled data-agent set; no analysis suite exists yet), plus
-   *handoff loss* — facts present in the `explore` refs that never reach the
-   report, and wrong facts that do.
-2. `analyse`: `answer` on strong vs standard, same `explore`. Does the
-   stronger writer catch an `explore` error by re-querying?
-3. Review: validator strong vs standard, with findings-per-run and
-   post-resolution rates as in §3d.
-4. Escalation: fraction of `economy` attempts that escalate and the cost of
-   those attempts, against running the stronger tier first. If most economy
-   runs escalate, the economy tier is a net cost.
-
-Record in each result the tier, the model ID and its price at the time, so
-runs stay comparable when model names change.
-
-## 7. Open points
-
-- The tier→model mapping needs a home in the job config
-  (`tools.md` "One job declares the tools" is the nearest precedent).
-- Cost accounting: a run's budget should count tokens by tier. OpenHands
-  charges delegated vision calls to the run budget; the same rule applies
-  here so spend cannot hide in a cheap child.
-- Thinking/effort is separate from model: Claude Code sub-agents inherit the
-  parent's setting, Codex sets effort per role. A tier may need an effort
-  setting too; not decided.
+- The tier→model mapping, the report keyword rule and the hop limit need a
+  home in job config (`tools.md` "One job declares the tools" is the nearest
+  precedent).
+- A run's budget should count tokens by tier, so spend cannot hide in a cheap
+  child.
+- Thinking and effort are separate from model choice. A tier may need an
+  effort setting; not decided.
+- The general rule for tool availability (loaded, deferred, revealed) belongs
+  in `tools.md`; this file only uses it.
