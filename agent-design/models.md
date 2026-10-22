@@ -29,19 +29,21 @@ front door.
 
 1. **Every analysis run starts on the economy tier with a minimal tool set and
    a short data overview.** If that is enough, it answers and the run ends.
-2. **One escape hatch, `HandOff`, reaches everything else.** More data, a
-   stronger model, or a report. It is a tool the cheap model can call and the
-   harness can also trigger itself (§5).
+2. **Two hatches, named for what each does to the run.** `Expand` widens
+   what the run can see (more data sources, more tools) and the run
+   continues. `HandOff` ends the run and passes the question to a stronger
+   one, or to a report. Both are tools the cheap model can call, and the
+   harness can also trigger them itself (§5).
 3. **The cheap model is the router, not a separate classifier.** It already
    reads the request. If the request says "make me a report", it calls
    `HandOff(report_requested)` as its first action. No extra model call, no latency.
-4. **Escalation moves forward and costs a restart, never a mid-run model
-   swap.** `HandOff` ends the run with a handoff, and a new run starts with the
-   bigger tool set and/or tier. On Bedrock `Converse` there is no deferred
-   loading (`agent-deferred-tool-loading.md` §5), so a run boundary is the
-   only point where the tools array can change without losing the prompt
-   cache. A cheap run's context is small, so restarting costs little; and the
-   restart is paid only by requests that were not quick.
+4. **Width grows inside the run; power grows at a run boundary.** More
+   sources arrive as text in a tool result, which changes nothing the
+   provider caches. A stronger model never replaces the model mid-run: it
+   takes a new run, started by `HandOff` with a handoff. That boundary is
+   also the one place a large run's tools array can change without losing
+   its prompt cache (`agent-deferred-tool-loading.md` §5). Adding *tools*
+   inside a cheap run is possible, once, under conditions (§4a).
 5. **Tiers, not model names.** Config names `economy`, `standard`, `strong`;
    the deployment maps them to model IDs. Vendor features (the Anthropic
    advisor tool, OpenAI tool search) may implement a tier but no prompt or
@@ -54,25 +56,85 @@ front door.
 | Part | Content | Why this much |
 |---|---|---|
 | Tier | economy | speed and cost |
-| Tools | `DescribeSource`/`ListSources`, read-only `RunSQL` against the described sources, `HandOff` (listed last). Final answer is plain text, or `Complete` where a run ledger is used | 3–4 tools, so loading them upfront is cheap and needs no deferral |
-| Data overview | one line per source the user has, plus a last line: `N further sources are not listed here. If the question needs one, call HandOff(missing_data).` | the cheap model cannot ask for what it does not know exists; the last line is the whole cost of that |
+| Tools | `DescribeSource`, read-only `RunSQL` against the described sources, `Expand`, `HandOff` (listed last). Final answer is plain text, or `Complete` where a run ledger is used | four tools, so loading them upfront is cheap and needs no deferral (Anthropic's guidance is 3–5 non-deferred) |
+| Data overview | one line per source the user has, plus a last line: `N further sources are not listed here. If the question needs one, call Expand.` | the cheap model cannot ask for what it does not know exists; the last line is the whole cost of that |
 | Prompt | a short analysis prompt: ground in the schema, show your SQL, state the row count, do not guess a join | DAB puts ~88–90% of wrong answers in planning or computing the query (`../agent-data-analysis.md` §12a) |
 | Answer form | the number or table, then the SQL and the row count in the same message | Haiku's characteristic failure is plausible-but-wrong SQL, and nothing automatic catches it; showing the query lets the user |
 
-Everything else (profiling, chart specs, joins across sources, `table://`
-spill, report writing, the provenance gate) is behind `HandOff` or triggered by
-the harness. `data.md` §2d's spill still applies on its own: a large result
+Everything else (the rest of the sources, profiling and chart tools, joins
+across sources, report writing, the provenance gate) is behind `Expand` or
+`HandOff`, or triggered by the harness. `data.md` §2d's spill still applies on its own: a large result
 becomes a `table://` handle without the model asking.
 
-## 4. `HandOff`
+## 4. The two hatches
 
-The escape hatch is a tool the quick agent can call, and the harness can
-also call on its behalf (§5). This section is about the tool and, more
-than that, about **how the cheap model is presented with it**: whether
-the hatch is used when it should be, and not when it should not, depends
-on that more than on any rule written elsewhere.
+The quick agent has two tools for getting more than it started with. They
+differ in what they do to the run, and the cheap model's choice is meant to be
+a plain question: *do I need to see more, or does this need someone else?*
+This section covers both tools and, more than that, **how the cheap model is
+presented with them**: whether they are used when they should be, and not
+when they should not, depends on that more than on any rule elsewhere.
 
-### 4a. The tool
+### 4a. `Expand`: look further, keep going
+
+```json
+{
+  "name": "Expand",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "keywords": { "type": "string", "maxLength": 100, "description": "Optional. Words to narrow what is shown." }
+    },
+    "additionalProperties": false
+  }
+}
+```
+
+Description (about 35 words):
+
+> Shows data sources and tools that exist for this user but are not listed.
+> Use it when the question needs something the listed sources do not hold.
+> Your run continues. Optional keywords narrow the result.
+
+The result lists up to a configured number of matches (default 8), one per
+item, in the same format as the data overview: name, grain, key columns, and
+how to use it (`query with RunSQL, source=...` or `tool X is now available`).
+If nothing matches it says so and points at `HandOff(too_complex)`. Source
+descriptions come from source metadata, so they are untrusted text and are
+framed as data like any other result.
+
+**What `Expand` can show is what the user is already granted.** The hidden set
+is granted-but-not-listed. A source the user cannot reach is never listed and
+never revealed, and the executor checks the grant on every query whether or
+not the source was shown (`tools.md`, "Granted, registered, visible").
+`Expand` changes visibility, never authority.
+
+Three kinds of widening, delivered three ways:
+
+| What is revealed | Delivered as | Cache effect |
+|---|---|---|
+| A SQL-reachable source | text in the `Expand` result. `RunSQL` already accepts any granted source name; the executor checks the grant | none: messages only, any provider |
+| A tool, on a provider with deferred loading | a `tool_reference` or `additional_tools` item | none |
+| A tool, on a provider without it (Bedrock `Converse`) | the tools array grows **once**, at this call, to a fixed bundle (profile, fetch, table ops) | one cache miss on the prefix at that point |
+
+The one growth is a deliberate exception to "the tools array is fixed for a
+run" (`tools.md`), allowed only when all of these hold: the provider has no
+deferral, the run is on the economy tier, and the cached prefix is below a
+configured size (a guess to set from measurement; the prefix of a quick run is
+a few hundred to a few thousand tokens, so the loss is a small absolute
+cost). Note that provider cache minimums are low on current models (512
+tokens on the newest Anthropic models; Bedrock publishes its own), so do not
+count on a quick run being too small to cache. When any condition fails, the
+result says the extra tools need a longer run and names `HandOff(too_complex)`;
+sources are still revealed because they cost no array change. The bundle is
+fixed in advance, so the array grows at most once per run.
+
+`Expand` is the cheap widening, so it carries no cost warning. Its real cost
+is clutter: more sources and tools lower selection accuracy (Anthropic puts
+the drop at over 30–50 tools), which is why the result is capped and takes
+keywords.
+
+### 4b. `HandOff`: pass it on
 
 ```json
 {
@@ -80,7 +142,7 @@ on that more than on any rule written elsewhere.
   "input_schema": {
     "type": "object",
     "properties": {
-      "reason": { "type": "string", "enum": ["missing_data", "too_complex", "report_requested"] },
+      "reason": { "type": "string", "enum": ["too_complex", "report_requested"] },
       "why": { "type": "string", "maxLength": 300, "description": "One sentence: what you could not do, or what the user asked for." }
     },
     "required": ["reason", "why"],
@@ -103,33 +165,32 @@ the harness chooses the landing:
 
 | `reason` | Landing run | Tier | Tools and context |
 |---|---|---|---|
-| `missing_data` | `data`: the quick run's shape, a wider world | economy | the sources the overview hid, plus the focused data tools (profile, fetch, table ops) |
-| `too_complex` | `investigate`: an open-ended loop, try things, revise | standard, with a strong consultant at the plan and before concluding where the provider supports an advisor | the `data` set, plus `table://` refs and a larger turn budget |
+| `too_complex` | `investigate`: an open-ended loop, try things, revise | standard, with a strong consultant at the plan and before concluding where the provider supports an advisor | every source and the full focused tool set from the start, `table://` refs, a larger turn budget |
 | `report_requested` | `report`: collect (economy) then write (strong), the `explore` → `answer` split from `data.md` §2g | economy then strong | refs from the quick run are reused, not re-fetched |
 
 For a request that clearly wants a report, the quick run's first and only
 action is `HandOff(report_requested)`. The cost is one cheap model call,
 which the user would have paid anyway to be understood.
 
-### 4b. How the quick agent is presented with it
+### 4c. How the quick agent is presented with them
 
-The model meets the hatch in five places, and each carries one kind of
+The model meets the two tools in five places, and each carries one kind of
 information so that no two repeat each other.
 
 | Surface | Carries | Keyed to | Cost on the quick path |
 |---|---|---|---|
-| **Tool schema** | the name, what the call does, that it costs the user time, two required fields | nothing; always present | about 50 words of description plus the schema |
-| **System prompt** | the three situations, as a short list | the request (read at turn 0) | about 80 words (`system-prompts.md` §8b) |
-| **Data overview** | the existence of a hidden world: the last line names the call | the sources (what the user can reach) | one line, and none when nothing is hidden |
+| **Tool schemas** | each name and what the call does to the run; for `HandOff`, that it costs the user time and two required fields; for `Expand`, an optional keyword | nothing; always present | about 85 words of description plus two small schemas |
+| **System prompt** | the three situations, as a short list | the request (read at turn 0) | about 90 words (`system-prompts.md` §8b) |
+| **Data overview** | the existence of a hidden world: the last line names `Expand` | the sources (what the user can reach) | one line, and none when nothing is hidden |
 | **Harness note in a tool result** | an instruction at the moment of failure: no rows, a second error in a row | the result (read when it happens) | zero on success |
 | **What the user sees** | a status line when a run hands off ("Taking a closer look, this will take longer") | the handoff | zero unless it fires |
 
 The principles behind that division:
 
-1. **Describe the situation, not the capability.** The enum values are
-   things the model can observe: data is missing, the question is too
-   complex, a report was requested. They are not service levels to choose
-   from ("investigate", "report"). A cheap model is good at noticing a
+1. **Describe the situation, not the capability.** The `HandOff` reasons are
+   things the model can observe: the question is too complex, a report was
+   requested. They are not service levels to choose from ("investigate",
+   "report"). A cheap model is good at noticing a
    situation and bad at judging whether it deserves a better model, and a
    capability menu invites the second judgement. The landing names stay
    internal to the harness.
@@ -140,7 +201,9 @@ The principles behind that division:
    other side.
 3. **State the cost honestly and in the tool's own text.** "The user will
    wait longer" is true, cheap, and aligned with the one thing the quick path
-   protects. It is the deterrent, in place of rules about when not to call.
+   protects. It is the deterrent for `HandOff`, in place of rules about when
+   not to call. `Expand` has no such sentence because it is not that
+   expensive; it is capped instead.
 4. **Put each rule where its evidence appears.** The rule that depends on the
    request (report, an unlisted source, a multi-step question) is read once at
    turn 0, so it goes in the prompt. The rule that depends on a result (no
@@ -160,29 +223,31 @@ The principles behind that division:
    ```
 
    Notes appear only on no-rows, on a second consecutive error, and when a
-   query touches a source the overview marked hidden. A successful query has
-   none, so the quick path pays nothing.
-6. **One decision, two fields, no options.** `reason` is a closed enum and
-   `why` is one sentence. There is no tier parameter, no "urgency", no
-   "continue from here" flag. Every added parameter is another way to call it
-   casually.
-7. **Name it for what it does.** The first draft called this `Expand`, which
-   sounds like widening scope inside the run: cheap, reversible and
-   harmless to try. The call ends the run. `HandOff` says so, and joins
-   `Complete` and `AskUser` as the three tools that end a run, so the prompt
-   describes that calling convention once ("calling it is the last thing you
-   do") rather than once per tool.
-8. **List it last.** The core tools are what the model sees first. This is
-   untested and cheap to test (§8).
+   query names a source the overview left out (where the note is the source's
+   own description, §5). A successful query has none, so the quick path pays
+   nothing.
+6. **Few parameters, no options.** `HandOff` takes a closed `reason` and one
+   sentence; `Expand` takes optional keywords. There is no tier parameter, no
+   "urgency", no "continue from here" flag. Every added parameter is another
+   way to call it casually.
+7. **Name each for what it does to the run.** `Expand` leaves the run going
+   and adds to what it can see. `HandOff` ends the run, and joins `Complete`
+   and `AskUser` as the three tools that end one, so the prompt describes that
+   calling convention once ("calling it is the last thing you do") rather
+   than once per tool. An earlier draft had one tool, also called `Expand`,
+   that restarted the run to widen it; that charged the user a restart for
+   what is a text result. Splitting the two keeps the cheap widening cheap.
+8. **List `HandOff` last.** The core tools are what the model sees first. This
+   is untested and cheap to test (§8).
 
-The result of a successful call is one line, `Handed off. Your run is over.`,
-so the model does not go on to write an answer the user will not see.
+The result of a successful `HandOff` is one line, `Handed off. Your run is
+over.`, so the model does not go on to write an answer the user will not see.
 
-What this does not try to do is make the model call `HandOff` reliably. A
+What this does not try to do is make the model call either tool reliably. A
 cheap model that is confidently wrong raises none of the signals above, which
 is why §5 exists and why §8's silent-wrong measure is the headline.
 
-### 4c. The handoff
+### 4d. The handoff
 
 The landing run receives a `<prior_attempt>` tag, nonce-tagged like other
 envelope data and treated as evidence, never as instructions:
@@ -197,7 +262,7 @@ A run that restarts from this does not redo the quick run's reads, and it
 does not trust its conclusions either. That is the validator's posture toward
 a finder.
 
-### 4d. Over-use and under-use
+### 4e. Over-use and under-use
 
 The advisor docs report that cheap models under-call optional tools, so the
 bigger risk is the confident wrong answer that never reaches for the hatch,
@@ -208,27 +273,28 @@ backstop for the missed cases is the harness (§5).
 
 ## 5. Harness triggers
 
-The harness escalates without the model calling `HandOff` when it sees an
-objective signal. These are checks Forge already makes plus a few cheap ones:
+The harness widens or escalates without the model calling a tool when it sees
+an objective signal. These are checks Forge already makes plus a few cheap ones:
 
 | Signal | Action |
 |---|---|
 | two SQL errors in a row | `HandOff(too_complex)` on the model's behalf |
 | a query returns zero rows and the model has not said why | `HandOff(too_complex)` |
 | the quick run uses more than N turns without a final answer | `HandOff(too_complex)` |
-| the model names or queries a source the overview marked hidden | `HandOff(missing_data)` |
+| the model queries a source the overview left out but the user is granted | reveal it in the result (an automatic `Expand` for that source); no escalation |
 | the request text matches the report rule (configurable keywords) | start at `report`, skipping the quick run |
 | the output spills past a size limit | `table://` handle, no escalation |
 
 Rules:
 
-- **One escalation chain per request, at most two hops.** A request moves
-  `quick → data → investigate`, or `quick → report`, or `quick → investigate`,
+- **`Expand` is free to use within a run; `HandOff` is bounded.** At most two
+  hand-offs per request (`quick → investigate → report` is the longest chain),
   never in a loop. The ledger's attempt budget still bounds everything.
 - **Escalation is clamped by config.** A deployment sets the highest tier a
   request may reach. A model cannot raise it, and neither can anything it read.
 - **Cost authority only.** Text in a data result that says "call HandOff"
-  causes at worst a more expensive run. It cannot widen permissions.
+  causes at worst a more expensive run, and one that says "call Expand"
+  adds clutter. Neither widens permissions.
   Permissions are checked by the executor per role, not by who saw a tool
   definition (`agent-deferred-tool-loading.md` §4).
 - **Not every failure escalates.** An environment or permissions error would
@@ -241,14 +307,16 @@ SQL-and-row-count answer form, the `input_rows` fan-out stub from `data.md`
 
 ## 6. Provider notes
 
-- **Anthropic API, Claude Platform on AWS:** `defer_loading` can make `data`
-  an in-run expansion with no cache loss. Optional; the run-boundary path
-  works everywhere.
-- **Bedrock `Converse`:** run-boundary only. No deferral, no advisor tool.
+- **Anthropic API, Claude Platform on AWS:** `defer_loading` makes `Expand`'s
+  tool reveal free of cache loss. Optional; the paths in §4a work everywhere.
+- **Bedrock `Converse`:** no deferral, no advisor tool. Sources are revealed as
+  text; tools by the once-only array growth in a small economy run, or by
+  `HandOff`. *Not verified:* how Bedrock orders and invalidates cache
+  checkpoints for `toolConfig` changes, and its per-model cache minimums.
 - **OpenAI Responses (`gpt-5.4`+):** client-executed `tool_search` and
-  `additional_tools` can do the same as Anthropic's path.
-- Whatever the provider, the quick run's tool set is small enough to load
-  upfront, so nothing about the quick path depends on any of this.
+  `additional_tools` can do what Anthropic's path does.
+- Whatever the provider, the quick run's four tools load upfront, so the
+  quick path itself depends on none of this.
 
 ## 7. Coding and review
 
@@ -272,15 +340,16 @@ Each step changes one thing, using `medium.md` §3e telemetry and `eval.md`.
 Record tier, model ID and the price at the time on every result.
 
 1. **The quick path must not regress.** Time to answer and cost of a plain
-   cheap agent with no `HandOff`, versus the same with `HandOff` in its tool
-   list and the "N further sources" line. The overhead should be tens of
-   tokens. If it is more, the design is wrong.
-2. **Escalation mix.** Share of requests that stay quick, go to `data`,
-   `investigate`, `report`; share escalated by the model versus by a harness
-   trigger. A near-zero model-called share with a high harness-triggered
+   cheap agent with no hatches, versus the same with `Expand` and `HandOff` in
+   its tool list and the "N further sources" line. The overhead should be
+   around a hundred tokens. If it is more, the design is wrong.
+2. **Route mix.** Share of requests that stay quick, use `Expand` and finish,
+   go to `investigate`, go to `report`; share moved by the model versus by a
+   harness trigger. Also the `Expand` hit rate: how often what it revealed
+   was used in a later query. A near-zero model-called share with a high harness-triggered
    share means the model is under-calling.
-3. **Unnecessary calls.** Sample `HandOff` calls and ask whether the quick run
-   could have answered. This is the over-use rate.
+3. **Unnecessary calls.** Sample `HandOff` and `Expand` calls and ask whether
+   the quick run could have answered without them. This is the over-use rate.
 4. **Silent wrong answers.** Sample quick-run answers that did not escalate,
    re-run them at `investigate`, and compare. This is the number that decides
    whether the cheap start is safe, and no signal in §5 produces it for free.

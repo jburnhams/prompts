@@ -187,7 +187,11 @@ Rules:
    deferred definitions are excluded from the cached prefix and expanded
    inline in the history. Where the provider has no equivalent (Bedrock
    `Converse`), the surface changes only **at a run boundary**: the run ends
-   with a handoff and the next run starts with a different array.
+   with a handoff and the next run starts with a different array. One
+   narrow exception, for the cheap `analyse` run only: `Expand` may grow the
+   array once, to a fixed bundle, when the provider has no deferral, the run
+   is on the economy tier and its cached prefix is small (`models.md` §4a).
+   The loss is one cache miss on a small prefix, taken once.
 3. **Four availability states.**
 
    | State | In the model's context | How it gets used | Typical use here |
@@ -206,7 +210,7 @@ Rules:
    tools. Deferring them would add a round trip and gain little, and a
    cheap model under-calls optional tools (`../agent-multi-model.md` §4).
    Deferral applies to MCP-supplied tools and to the focused `analyse` tools
-   that sit behind `HandOff`. Anthropic's guidance is to keep 3–5 tools
+   that sit behind `Expand`. Anthropic's guidance is to keep 3–5 tools
    non-deferred; the quick analysis run loads 3–4 and needs nothing else.
 5. **A provider flag, not an assumption.** Config records
    `deferred_tools: native | client | none` per provider. `none` (Bedrock

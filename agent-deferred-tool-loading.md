@@ -113,11 +113,13 @@ it.
 
 ## 4. Consequences for Forge
 
-- **`HandOff(missing_data)` is this mechanism.** Forge's focused data tools
+- **`Expand` is this mechanism.** Forge's focused data tools
   (chart spec, profile, fetch, table ops) sit in the fixed, cached `tools`
-  array flagged deferred. The overview line "N more sources, `HandOff` reveals
-  them" is the name list. A model-called `HandOff` returns `tool_reference`
-  blocks. Nothing is added to the array mid-run.
+  array flagged deferred. The overview line "N more sources, `Expand` reveals
+  them" is the name list. A model-called `Expand` returns `tool_reference`
+  blocks. Nothing is added to the array mid-run. Data *sources* need none of
+  this: they are text in the `Expand` result, and the SQL tool already
+  accepts any granted source name.
 - **"Hidden" is "deferred and unannounced."** A tool the model was never told
   about can still be revealed by the harness if a harness-triggered result
   carries a `tool_reference` for it. *Unverified:* that a harness-built tool
@@ -179,9 +181,11 @@ functions or MCP servers. Differences from Anthropic's:
 1. **Load a small core upfront.** The cheap-start set is 3–4 tools, so the
    cost is small.
 2. **Hand off at a run boundary.** `HandOff` ends the run with a handoff and the
-   next run starts with a different tools array (and, for `investigate`, a
-   higher tier). A new run has no cache to lose, and Forge's runs are
-   one-shot already. This is the recommended default.
+   next run starts with a different tools array (and a higher tier). A new
+   run has no cache to lose, and Forge's runs are one-shot already. This is
+   the default for big runs. For a small economy run, `Expand` may instead
+   grow the array once, to a fixed bundle, and take one cache miss on a small
+   prefix (`agent-design/models.md` §4a).
 3. **A fixed `CallTool(name, args)` dispatcher** with schemas delivered as text
    in a tool result. The array never changes, but the harness validates
    arguments itself and the model loses native schema enforcement, which a

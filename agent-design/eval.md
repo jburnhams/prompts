@@ -144,7 +144,7 @@ the blog post states no license for the dataset or code (check before
 storing anything from it); and the PR-size mix is deliberately weighted
 away from tiny changes.
 
-### Suite 4 — Analysis quick path and `HandOff`
+### Suite 4 — Analysis quick path, `Expand` and `HandOff`
 
 *Added 2026-10-22.* Decides whether the cheap-start design in
 [`models.md`](./models.md) is safe and whether it earns its keep. The first
@@ -158,9 +158,9 @@ stratified by what the right route is:
 
 | Stratum | Right route | Examples |
 |---|---|---|
-| **L** — clean lookup | answer, no `HandOff` | one aggregate over one table; a documented join |
+| **L** — clean lookup | answer, no hatch | one aggregate over one table; a documented join |
 | **T** — lookalike with a trap | answer *correctly* or escalate; a wrong quick answer is the failure | a join on a duplicated key that inflates a `SUM`; a nullable key an inner join drops; soft-deleted rows; a UTC period boundary; a metric with two plausible definitions |
-| **D** — needs a hidden source | `HandOff(missing_data)` | a question about a source not in the overview |
+| **D** — needs a hidden source | `Expand`, then answer in the same run | a question about a source not in the overview |
 | **I** — needs investigation | `HandOff(too_complex)` | no obvious table, several steps, an undefined metric |
 | **R** — asks for a report | `HandOff(report_requested)` as the first action | "make me a report on churn by region" |
 
@@ -176,24 +176,24 @@ checked against the fan-out ones.
 
 | Arm | What it is | Purpose |
 |---|---|---|
-| A0 | cheap model, quick tools, **no** `HandOff`, no "further sources" line | baseline for quick-path cost and latency |
-| A1 | A0 plus `HandOff` and the overview line | the design, model-called only |
+| A0 | cheap model, quick tools, **no** hatch, no "further sources" line | baseline for quick-path cost and latency |
+| A1 | A0 plus `Expand`, `HandOff` and the overview line | the design, model-called only |
 | A2 | A1 plus the harness triggers (`models.md` §5) | the design as proposed |
-| A3 | standard tier from the start, no `HandOff` | the "just use a better model" alternative |
+| A3 | standard tier from the start, no hatch | the "just use a better model" alternative |
 | A4 | `investigate` landing from the start | quality ceiling, and the cost of always paying for it |
 
 **Measures** (the five in `models.md` §8, made concrete):
 
 1. **Quick-path regression.** On stratum L: time to first token, time to final
    answer, and input and output tokens, A1 and A2 against A0. The expected
-   overhead is the `HandOff` description and one overview line. Any gap larger
+   overhead is the two descriptions and one overview line. Any gap larger
    than that is a bug in the design. Proposed gate: median latency within 5%
    and tokens within 100 of A0. These two numbers are guesses; set them from
    the first A0 baseline and write the real ones into the log.
 2. **Route accuracy.** Confusion matrix of expected route against actual,
    split into model-called and harness-triggered. Many harness triggers with
    few model calls on D, I and R means the model is under-calling.
-3. **Unnecessary `HandOff`.** Calls on L items that A0 answered correctly.
+3. **Unnecessary hatch calls.** `Expand` or `HandOff` on L items that A0 answered correctly; and the `Expand` hit rate on D items (what it revealed that a later query used).
 4. **Silent wrong answers (headline).** On T items: a wrong figure with no
    escalation, per arm. The goal is not zero; it is no worse than A0 and
    visibly better than nothing on the fan-out and null-key traps once the
@@ -221,8 +221,8 @@ cannot hide under-calling. One factor at a time against the §4b default:
 | V3 | harness notes kept, prompt situations removed |
 | V4 | the cost sentence ("the user will wait longer") removed from the description |
 | V5 | tool listed first instead of last |
-| V6 | named `Expand` instead of `HandOff` |
-| V7 | enum values `data` / `investigate` / `report` instead of the situational names |
+| V6 | one tool, named `Expand`, with the three reasons, instead of the pair |
+| V7 | `HandOff` enum values `investigate` / `report` instead of the situational names |
 
 Read each against the default on three numbers: the model-called share on D,
 I and R items (under-calling), the unnecessary-call rate on L items
@@ -369,7 +369,7 @@ design that can retire one.
 
 ## Open questions this is built to close
 
-00. *(Added 2026-10-22.)* Does the cheap start with `HandOff` keep the quick case as fast and cheap as a plain cheap agent, and is its silent-wrong rate on trap questions no worse? (Suite 4; `models.md` §8. Until it is answered yes, `HandOff` ships off.)
+00. *(Added 2026-10-22.)* Does the cheap start with `Expand` and `HandOff` keep the quick case as fast and cheap as a plain cheap agent, and is its silent-wrong rate on trap questions no worse? (Suite 4; `models.md` §8. Until it is answered yes, `HandOff` ships off.)
 
 0. *(Added 2026-10-17.)* Is the attention tier calibrated: is the
    follow-up-fix rate (`risk.md` §8a) of `low`-tier PRs no worse than the human-reviewed baseline over a

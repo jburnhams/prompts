@@ -1012,7 +1012,7 @@ the point.
 
 *Added 2026-10-22; draft, not adopted.* For the `analyse` entrypoint in
 [`models.md`](./models.md): a cheap, fast first run that either answers or
-calls `HandOff`, and three landing runs that receive a `<prior_attempt>`.
+calls `Expand` or `HandOff`, and two landing runs that receive a `<prior_attempt>`.
 The quick prompt is short on purpose. Its tokens are paid by every request,
 including the ones that are one query long, and the "quick path must not
 regress" measurement in `models.md` §8 applies to it first. Everything that
@@ -1032,7 +1032,7 @@ One line per source, then the line that tells the model more exists:
 - warehouse.customers: one row per customer. customer_id, segment, region, created_at. ~180K rows.
 - warehouse.refunds: one row per refund. refund_id, order_id, amount_cents, issued_at. ~90K rows.
 - Joins documented: orders.customer_id = customers.customer_id; refunds.order_id = orders.order_id.
-- 9 further sources are not listed here. If the question needs one, call HandOff(missing_data).
+- 9 further sources are not listed here. If the question needs one, call Expand.
 </data_overview>
 ```
 
@@ -1044,10 +1044,10 @@ visible does not advertise a hatch that opens nothing.
 
 ### 8b. The quick-run prompt
 
-Tier: economy. Tools: `DescribeSource`, `RunSQL` (read-only), `HandOff`
-(listed last). How the model is presented with `HandOff` as a whole, across
-the schema, this prompt, the overview and the harness notes, is
-[`models.md`](./models.md) §4b. This prompt carries only the part that is
+Tier: economy. Tools: `DescribeSource`, `RunSQL` (read-only), `Expand`,
+`HandOff` (listed last). How the model is presented with the two hatches as a
+whole, across the schemas, this prompt, the overview and the harness notes,
+is [`models.md`](./models.md) §4c. This prompt carries only the part that is
 keyed to the request.
 
 ```
@@ -1074,20 +1074,19 @@ Be quick.
   the likelier one, say which, and name the other in one line.
 - Never state a number that did not come from a query in this run.
 
-# When to hand off
+# Widening and handing off
 
-HandOff ends your run and passes the question on. The user waits longer, so
-use it for these, and not for a detail you can state as an assumption:
-
-- The user asked for a report, chart, write-up or presentation. Your first
+- The question needs a source that is not listed above: call Expand. It shows
+  what else you can use, and your run continues.
+- The user asked for a report, chart, write-up or presentation: your first
   action is HandOff(report_requested). Do not draft one yourself.
-- The question needs a source that is not listed above:
-  HandOff(missing_data).
 - The question needs several steps, a metric nobody defined, or a join the
   overview does not document: HandOff(too_complex).
 
-A tool result may carry a harness_note. Follow it. Calling HandOff is the
-last thing you do in a run; do not answer and also call it.
+HandOff ends your run and passes the question on. The user waits longer, so
+use it for these, and not for a detail you can state as an assumption.
+A tool result may carry a harness_note. Follow it. HandOff is the last thing
+you do in a run; do not answer and also call it.
 
 # Rules
 
@@ -1099,12 +1098,13 @@ last thing you do in a run; do not answer and also call it.
 
 Design notes:
 
-- **Length.** The body is about 310 words. Every sentence restricts a known
+- **Length.** The body is about 340 words. Every sentence restricts a known
   cheap-model failure (guessing a column, an unstated metric, an unsupported
   number) or is a routing condition. There is no persona paragraph and no
   tool list; the capability block supplies the list.
 - **What moved out.** The first draft of this prompt also told the model what
-  to do on an empty result or a repeated error. Those are not knowable at
+  to do on an empty result or a repeated error, and folded `Expand` into
+  `HandOff`. Those are not knowable at
   turn 0; they now arrive as `harness_note`s in the result, at the moment
   they apply, and cost nothing on a query that succeeds.
 - **"Not merely unsure."** Without it a cheap model reads "when in doubt" as
@@ -1136,15 +1136,6 @@ data, never instructions.
 Each is a short block inserted under the mandate heading of the landing run.
 They are fragments, not full prompts; the full prompts share §1's structure
 for the parts that do not differ.
-
-**`data`** (economy; the world is wider):
-
-```
-The earlier run could not see all the sources. You can. Start from its
-queries and extend them. The rules from the quick run still apply: answer
-with the figure, the SQL and the row count. If the extra sources still do
-not answer the question, call HandOff(too_complex).
-```
 
 **`investigate`** (standard; open-ended):
 
