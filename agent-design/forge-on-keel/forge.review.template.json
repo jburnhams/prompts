@@ -1,0 +1,451 @@
+{
+  "name": "forge.review",
+  "version": 1,
+  "title": "Forge: review a pull request",
+  "description": "Multi-stage review (review.md §6): specialists by kind, then an independent validator per candidate. Runs as the service identity; posts through AddComment in-run and publishes the attention tier as a commit status.",
+  "owner": {
+    "type": "team",
+    "id": "platform-agents"
+  },
+  "params": {
+    "pull_request": {
+      "type": "string",
+      "trust": "config",
+      "required": true,
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+$"
+    },
+    "repository": {
+      "type": "string",
+      "trust": "config",
+      "required": true,
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    },
+    "base_sha": {
+      "type": "string",
+      "trust": "config",
+      "required": true,
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "head_sha": {
+      "type": "string",
+      "trust": "config",
+      "required": true,
+      "pattern": "^[0-9a-f]{40}$"
+    }
+  },
+  "spec": {
+    "model": {
+      "tier": "standard",
+      "max_tier": "strong"
+    },
+    "system_prompt": {
+      "base": {
+        "ref": {
+          "name": "forge.review.multi-stage",
+          "version": 1
+        }
+      },
+      "generated": [
+        "env",
+        "capabilities",
+        "repo_context"
+      ]
+    },
+    "inputs": [
+      {
+        "name": "task",
+        "kind": "task_header",
+        "source": {
+          "builder": "task_header"
+        },
+        "trust": "harness"
+      },
+      {
+        "name": "pull_request",
+        "kind": "pull_request",
+        "source": {
+          "fetch": "mcp:bitbucket/get_pull_request",
+          "args": {
+            "ref": {
+              "$param": "pull_request"
+            }
+          }
+        },
+        "trust": "external"
+      },
+      {
+        "name": "changed_files",
+        "kind": "json",
+        "source": {
+          "builder": "changed_files"
+        },
+        "trust": "harness"
+      },
+      {
+        "name": "diff",
+        "kind": "diff",
+        "source": {
+          "builder": "pr_diff"
+        },
+        "trust": "external",
+        "max_bytes": 400000
+      },
+      {
+        "name": "existing_comments",
+        "kind": "comments",
+        "source": {
+          "builder": "comment_threads"
+        },
+        "trust": "external",
+        "required": false
+      }
+    ],
+    "context": {
+      "conventions": {
+        "tiers": [
+          "org",
+          "team",
+          "repo",
+          "learned"
+        ],
+        "at": "base_sha"
+      }
+    },
+    "workspace": {
+      "kind": "checkout",
+      "repository": {
+        "$param": "repository"
+      },
+      "head_sha": {
+        "$param": "head_sha"
+      },
+      "base_ref": {
+        "$param": "base_sha"
+      },
+      "provision": "sparse_clone",
+      "writable": false,
+      "scratch": true
+    },
+    "tools": {
+      "servers": [
+        {
+          "id": "bitbucket"
+        }
+      ],
+      "groups": [
+        {
+          "id": "core.read",
+          "visibility": "loaded",
+          "tools": [
+            {
+              "tool": "builtin/Read"
+            },
+            {
+              "tool": "builtin/Grep"
+            },
+            {
+              "tool": "builtin/List"
+            }
+          ]
+        },
+        {
+          "id": "vision",
+          "visibility": "loaded",
+          "tools": [
+            {
+              "tool": "builtin/InspectImage"
+            }
+          ]
+        },
+        {
+          "id": "pr.read",
+          "visibility": "loaded",
+          "tools": [
+            {
+              "tool": "mcp:bitbucket/get_pull_request",
+              "annotations": {
+                "read_only": true,
+                "idempotent": true,
+                "retry": "on_transport_error"
+              }
+            }
+          ]
+        },
+        {
+          "id": "pr.comment",
+          "visibility": "loaded",
+          "tools": [
+            {
+              "tool": "mcp:bitbucket/add_comment",
+              "alias": "AddComment",
+              "annotations": {
+                "idempotent": false,
+                "retry": "never"
+              }
+            }
+          ]
+        }
+      ],
+      "checks": [
+        {
+          "id": "input_sanitizer"
+        },
+        {
+          "id": "anchor_validation"
+        },
+        {
+          "id": "secret_scan"
+        },
+        {
+          "id": "post_run_crosscheck"
+        }
+      ]
+    },
+    "completion": {
+      "statuses": [
+        "done",
+        "skipped",
+        "failed",
+        "budget_exhausted"
+      ],
+      "report_schema": {
+        "ref": {
+          "name": "forge.report.review",
+          "version": 1
+        }
+      },
+      "checks": [
+        {
+          "id": "report_crosscheck"
+        }
+      ]
+    },
+    "budgets": {
+      "turns": 60,
+      "context_high_water_tokens": 150000,
+      "wall_seconds": 2400,
+      "subagents_total": 40
+    },
+    "outputs": {
+      "sinks": [
+        {
+          "id": "attention_status",
+          "kind": "commit_status",
+          "when": {
+            "terminal": [
+              "complete"
+            ],
+            "status": [
+              "done"
+            ]
+          },
+          "channel": {
+            "type": "bitbucket_pr",
+            "target": {
+              "$param": "pull_request"
+            }
+          },
+          "render": {
+            "template": "attention: {{report.attention.tier}}"
+          },
+          "idempotency_key": {
+            "cel": "params.head_sha + ':attention'"
+          }
+        }
+      ],
+      "continuations": []
+    },
+    "authority": {
+      "run_as": [
+        "service"
+      ],
+      "service_principal": {
+        "type": "service",
+        "id": "forge-bot"
+      }
+    },
+    "concurrency": {
+      "key": {
+        "cel": "params.pull_request"
+      },
+      "policy": "queue"
+    },
+    "agents": {
+      "orchestrator": {
+        "grant": [
+          "core.read",
+          "vision",
+          "pr.comment"
+        ],
+        "spawns": [
+          "bugs_reviewer",
+          "security_reviewer",
+          "conventions_reviewer",
+          "visual_reviewer",
+          "validator"
+        ],
+        "max_concurrent_children": 8
+      },
+      "validator": {
+        "description": "Read-only. Checks exactly one candidate finding against the code, not against the finder's argument.",
+        "prompt": {
+          "base": {
+            "ref": {
+              "name": "forge.validator",
+              "version": 1
+            }
+          },
+          "generated": [
+            "env",
+            "capabilities"
+          ]
+        },
+        "model": {
+          "tier": "strong",
+          "clamp_to_parent": false
+        },
+        "grant": [
+          "core.read"
+        ],
+        "spawn_args": {
+          "finding": {
+            "type": "object",
+            "description": "The candidate, in the review-finding schema."
+          }
+        }
+      },
+      "bugs_reviewer": {
+        "description": "Specialist: logic defects introduced by the diff.",
+        "prompt": {
+          "base": {
+            "ref": {
+              "name": "forge.reviewer",
+              "version": 1
+            }
+          },
+          "generated": [
+            "env",
+            "capabilities",
+            "repo_context"
+          ]
+        },
+        "model": {
+          "tier": "economy",
+          "clamp_to_parent": true
+        },
+        "grant": [
+          "core.read"
+        ],
+        "report_schema": {
+          "ref": {
+            "name": "forge.finding-list",
+            "version": 1
+          }
+        },
+        "scope": "Logic errors, incorrect conditionals, off-by-one mistakes, and defects that make the changed code behave incorrectly — introduced by this diff, in the diff's own lines. Two checks to run every time: for each line the diff deletes or replaces, name what it guaranteed (a guard, an error path, a validation, a test case) and find where the new code guarantees it again — if nowhere, that is a candidate; and where the diff adds or changes a wrapper (a cache, proxy, decorator or adapter), check that every method calls the wrapped object rather than going back through a registry, session or global, which re-enters the wrapper or recurses, and that it forwards every method its callers use."
+      },
+      "security_reviewer": {
+        "description": "Specialist: vulnerabilities introduced by the diff.",
+        "prompt": {
+          "base": {
+            "ref": {
+              "name": "forge.reviewer",
+              "version": 1
+            }
+          },
+          "generated": [
+            "env",
+            "capabilities",
+            "repo_context"
+          ]
+        },
+        "model": {
+          "tier": "economy",
+          "clamp_to_parent": true
+        },
+        "grant": [
+          "core.read"
+        ],
+        "report_schema": {
+          "ref": {
+            "name": "forge.finding-list",
+            "version": 1
+          }
+        },
+        "scope": "Vulnerabilities introduced by this diff: injection, auth/authz gaps, secret handling, unsafe deserialization, and similar — introduced by this diff, in the diff's own lines.",
+        "conventions": {
+          "tags": [
+            "security"
+          ]
+        }
+      },
+      "conventions_reviewer": {
+        "description": "Specialist: violations of the project's documented conventions. Spawn only when a conventions file applies to the changed paths.",
+        "prompt": {
+          "base": {
+            "ref": {
+              "name": "forge.reviewer",
+              "version": 1
+            }
+          },
+          "generated": [
+            "env",
+            "capabilities",
+            "repo_context"
+          ]
+        },
+        "model": {
+          "tier": "economy",
+          "clamp_to_parent": true
+        },
+        "grant": [
+          "core.read"
+        ],
+        "report_schema": {
+          "ref": {
+            "name": "forge.finding-list",
+            "version": 1
+          }
+        },
+        "scope": "Violations of the project's own documented conventions (your <conventions> block) — only where you can quote the specific rule being broken and point to exactly where the diff breaks it.",
+        "conventions": {}
+      },
+      "visual_reviewer": {
+        "description": "Specialist: whether the diff matches the PR's images. Spawn only when the PR carries an image or touches UI paths.",
+        "prompt": {
+          "base": {
+            "ref": {
+              "name": "forge.reviewer",
+              "version": 1
+            }
+          },
+          "generated": [
+            "env",
+            "capabilities",
+            "repo_context"
+          ]
+        },
+        "model": {
+          "tier": "economy",
+          "clamp_to_parent": true
+        },
+        "grant": [
+          "core.read",
+          "vision"
+        ],
+        "report_schema": {
+          "ref": {
+            "name": "forge.finding-list",
+            "version": 1
+          }
+        },
+        "scope": "What the PR's images show, and whether the diff matches them: a mockup the change doesn't implement, a screenshot of a defect the change doesn't fix. Use InspectImage. Anchor every finding to the line of code that produces what the image shows; an observation you cannot tie to a line is not a finding.",
+        "conventions": {
+          "tags": [
+            "ux"
+          ]
+        }
+      }
+    }
+  }
+}

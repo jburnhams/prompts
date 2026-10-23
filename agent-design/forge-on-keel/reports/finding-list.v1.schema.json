@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.example/registry/report_schema/forge.finding-list/1",
+  "title": "Reviewer report",
+  "description": "What a reviewer sub-agent returns: candidates only, verdict null.",
+  "type": "object",
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "finding.v1.schema.json"
+          },
+          {
+            "properties": {
+              "verdict": {
+                "const": null
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "findings"
+  ],
+  "additionalProperties": false
+}

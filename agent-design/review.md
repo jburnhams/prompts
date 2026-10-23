@@ -47,9 +47,9 @@ ladder — for each kind of context, *why* it sits where it sits:
 | PR metadata, description, changed-file list | Inline, envelope | Needed by every run, tiny, and the harness has it anyway from the webhook/API call that triggered the run |
 | The diff | Inline, envelope, pre-built by the harness (§2) | Line-number fidelity is the whole game: a posted comment's anchor derives from these hunks, and no human filters a mis-anchored comment before it lands. Also removes a whole class of failure where the model runs the *wrong* diff command (wrong base, no rename detection) and reviews the wrong delta |
 | Existing comments and threads (§3) | Inline, envelope; transcluded into specialist/validator briefs (§4–5), including, for stale threads, the then/now code blocks (§3a) | The dedup step (pipeline step 4) and re-review reconciliation (§7) need the complete set, and finders/validators need it as intent context — the record of what humans asked for, without which a specialist can end up proposing the revert of a requested change (§3); "fetch if you think you need it" is exactly how a run silently duplicates a comment |
-| Project-conventions files | Path known to orchestrator; contents read in step 2 **at the PR's base SHA** and transcluded into the `conventions` specialist's brief (or held in hand by a single-stage finder), nonce-wrapped like `<existing_comments>` | Only the conventions lens needs the text. **Superseded** (see [`context-files.md`](./context-files.md) §5): this row previously read "repo-controlled, so lower injection risk than PR content" and gave the block no nonce. That holds for a coding run and not for a review one — the conventions file can be *part of the diff*, and Codex's own published review workflow checks out `refs/pull/N/merge`, so the `AGENTS.md` its CLI loads already contains the PR's edits to `AGENTS.md`. Base SHA, a nonce, and "a diff touching a conventions file is a finding, not an instruction" replace the assumption |
+| Project-conventions files | Path known to orchestrator; contents read in step 2 **at the PR's base SHA** and transcluded into the `conventions` specialist's brief (or held in hand by a single-stage finder), nonce-wrapped like `<existing_comments>` | Only the conventions specialist needs the text. **Superseded** (see [`context-files.md`](./context-files.md) §5): this row previously read "repo-controlled, so lower injection risk than PR content" and gave the block no nonce. That holds for a coding run and not for a review one — the conventions file can be *part of the diff*, and Codex's own published review workflow checks out `refs/pull/N/merge`, so the `AGENTS.md` its CLI loads already contains the PR's edits to `AGENTS.md`. Base SHA, a nonce, and "a diff touching a conventions file is a finding, not an instruction" replace the assumption |
 | Surrounding code beyond hunks | **Not inline** — Read/Grep/List against the working tree at Head SHA | See below |
-| Linked ticket | Phase 2+, inline when present (`medium.md` §3a) | Compliance lens only |
+| Linked ticket | Phase 2+, inline when present (`medium.md` §3a) | Compliance specialist only |
 
 The "surrounding lines vs. lookup tools" question is answered **both,
 with different jobs**:
@@ -82,7 +82,7 @@ because its model has no tools to go look.
 ---
 
 
-### 1c. Attachments on the PR and its threads, and the `visual` lens
+### 1c. Attachments on the PR and its threads, and the `visual` specialist
 
 A pull request's description and its review comments carry images —
 before/after screenshots, an annotated mockup, and on a re-review the
@@ -92,23 +92,23 @@ thread. These reach review mode exactly as they reach coding mode: as
 `<existing_comments>`, complete and unconditional, with bytes fetched only
 if something looks (`artifacts.md` §5.1).
 
-**Sight is granted to exactly one lens.** `visual` is a fourth `role` on the
+**Sight is granted to exactly one specialist.** `visual` is a fourth `role` on the
 existing `reviewer` sub-agent type — not a new type, and not a tool of its
-own. It runs the same reviewer core as every other lens
+own. It runs the same reviewer core as every other specialist
 (`system-prompts.md` §4), differing in its scope paragraph and in one
-thing no other lens changes: **it is wired with `InspectImage`**, where
+thing no other specialist changes: **it is wired with `InspectImage`**, where
 `bugs`, `security`, `conventions`, the single-stage `all` finder, the
 orchestrator and the validator are not.
 
 That one difference means **tool scope is keyed on the
 `(subagent_type, kinds)` pair rather than on the type alone** — an
 amendment to `tools.md`'s availability table, recorded there. A reviewer's
-kind is its `role`; `role`, "lens" and the context service's `kinds` are
+kind is its `role`; `role`, "lens" (renamed "specialist" on 2026-10-23, when Lens became a product name) and the context service's `kinds` are
 one vocabulary under three spellings, and a kind resolves to prompt scope,
 tool grants and (reserved) context sections alike
 (`context-files.md`, "Kinds: one vocabulary, three resolutions"). Widening
 the key rather than minting a fourth sub-agent type is what keeps one
-reviewer core parameterised by lens instead of fracturing it — and the
+reviewer core parameterised by specialism instead of fracturing it — and the
 kind→tools mapping lives in harness config, never in a repository's corpus,
 so no amount of editing a conventions file can grant a specialist a tool. Codex is the only source in the collection that models
 reviewer sight as its own decision — a three-valued
@@ -116,14 +116,14 @@ reviewer sight as its own decision — a three-valued
 receives screenshots at all (`../agent-vision-multimodal.md` §11) — and
 this is the same decision resolved one notch further open.
 
-**The `visual` lens runs conditionally** — fanned out only when the PR has
+**The `visual` specialist runs conditionally** — fanned out only when the PR has
 something to look at: an image artifact on the description or a thread,
 **or** a diff touching UI-classified paths. On a backend-only PR it is not
 spawned at all.
 
-This is the *second* conditional lens, not the first: `conventions` is
+This is the *second* conditional specialist, not the first: `conventions` is
 already skipped when step 2 finds no project-conventions file scoped to the
-changed paths, on identical reasoning — "its whole lens is quoting
+changed paths, on identical reasoning — "its whole job is quoting
 documented rules, so with nothing to quote it can only return an empty list
 at the cost of a full sub-agent run" (`system-prompts.md` §2a). `visual`
 inherits an established pattern rather than introducing one, which is the
@@ -152,7 +152,7 @@ it would be checking the same pixels with the same eyes. So:
   asserting a defect.
 
 That constraint is doing real work, not just satisfying the schema: "this
-looks a bit off" is not a review comment anybody can act on, and a lens
+looks a bit off" is not a review comment anybody can act on, and a specialist
 that cannot tie what it sees to a line of code is producing exactly that.
 
 **An image in a comment thread is discussion, not a verdict**, under the
@@ -586,8 +586,8 @@ Four rules with teeth:
      as joining the conversation, not ignoring it. A human-requested
      change that genuinely introduces a bug is still flagged — the
      request changes the framing, never the verdict.
-3. **What's deliberately absent.** Other specialists' output — lens
-   independence is the point of having lenses — and anything not in
+3. **What's deliberately absent.** Other specialists' output — specialist
+   independence is the point of having specialists — and anything not in
    the envelope: a brief is transcluded envelope blocks plus
    `<focus>`, nothing else.
 4. **The description and the discussion are inside the brief but
@@ -662,7 +662,7 @@ it. The vocabulary here is therefore three-valued rather than four:
 on purpose, because a finder that cannot establish provenance should not
 be reporting a provenance claim at all.
 
-If a `history` lens is ever wired with `Bash` — the obvious way to make
+If a `history` specialist is ever wired with `Bash` — the obvious way to make
 regression-hunting a first-class review role — OpenClaw's protocol is
 the specification to adopt wholesale, and `unknown` comes back with it
 as the required answer when the parents are unavailable.
@@ -693,11 +693,11 @@ narrowed to three values precisely because they cannot be answered.
 Two things follow. First, the starved default stands: adding `Bash` to
 finders would buy little on diff review and would cost the two
 properties that make the fan-out affordable — bounded, comparable context
-per lens (§6a) and a reviewer that cannot be steered into running
+per specialist (§6a) and a reviewer that cannot be steered into running
 something by the PR it is reading. Second, the exception is now named
-rather than implicit: **if a lens is ever given a reason to ask about
-present state rather than about the diff** — a `history` lens as above, or
-a hypothetical lens ruling on a command in CI config — Codex's spend rule
+rather than implicit: **if a specialist is ever given a reason to ask about
+present state rather than about the diff** — a `history` specialist as above, or
+a hypothetical specialist ruling on a command in CI config — Codex's spend rule
 is the one to adopt with it, because "would this flip the finding?" is a
 better gate on a reviewer's tool budget than a per-turn cap.
 
@@ -831,7 +831,7 @@ rename); nothing in the wire formats differs between them:
   designed.
 - **Single-stage** (`system-prompts.md` §2b): one context does the
   finding itself — the same reviewer core the specialists run, with
-  the broad `all` lens covering every role at once — then runs the
+  the broad `all` scope covering every role at once — then runs the
   identical tail in the same context: dedup, validate (the same
   validator sub-agents, §5), deliver, report.
 
@@ -849,7 +849,7 @@ The unification is deliberate and total on the data side:
 - On the prompt side, both finders run the same **reviewer core**
   (`system-prompts.md` §4) — the flag/don't-flag rules, the
   discussion rules, the line-number ground-truth discipline —
-  parameterized only by lens: one role's scope for a specialist, the
+  parameterized only by specialism: one role's scope for a specialist, the
   `all` scope for single-stage. Broad versus focused is the *entire*
   difference between a single-stage finder and a specialist, which is
   what keeps the two shapes from drifting into two products.
@@ -901,7 +901,7 @@ So multi-stage's real cost is not duplicated discovery. It is N× calls
 and N× *prompt* tokens for the shared blocks — which the cache table in
 `formats.md` §1b argues is cheaper than N× a full review, since the diff
 is an identical prefix across the fan-out. What remains genuinely
-unmeasured is whether role specialization beats one broad lens at equal
+unmeasured is whether role specialization beats one broad finder at equal
 total spend, and that is exactly the shape `eval.md` exists to settle;
 it is now an open question there rather than an assumption in either
 direction. DeepSeek's own bet is legible and worth weighing: they put the
@@ -927,7 +927,7 @@ different jobs that happen to share a name:
   inherently cross-candidate, which is also why it structurally
   *couldn't* live inside a per-candidate validator.
 
-**What each shape buys.** Multi-stage buys lens focus and recall on
+**What each shape buys.** Multi-stage buys specialist focus and recall on
 large diffs (a bugs specialist doesn't spend attention on convention
 citations), parallel wall-clock time, and per-role model choice later
 (`medium.md` §3d) — at the cost of extra finder contexts and the diff
@@ -935,7 +935,7 @@ copied into each (`formats.md` §1b's fan-out multiplier).
 Single-stage buys cost and latency on the PRs that dominate real
 queues — small diffs where three specialist contexts would each
 re-read the same forty lines — at the cost of one context's attention
-covering three lenses. In-collection precedent for shape-by-situation:
+covering three specialists. In-collection precedent for shape-by-situation:
 TuringMind's quick (4-agent) vs. deep (9-agent) tiers, and
 pr-review-toolkit's user-chosen execution mode; PR-Agent and
 Codex-review are production single-pass finders. What no source does —
@@ -1192,7 +1192,7 @@ covers it.
 | Comment context | §3 threaded model, full set inline; transcluded into every brief as intent context under §4's discussion rules | unchanged | — |
 | Stale threads | `at_sha` attribute + `@ sha` comment markers (§3a) | + `<code_then>`/`<changed_since>` blocks and the `<format_notes>` stale note (§3a–3b, same plumbing as the interdiff) | — |
 | Run shapes | Both specified (§6); multi-stage is the reference default, single-stage selectable by harness config — identical formats either way | unchanged | Per-role model selection (`medium.md` §3d) |
-| Finder/validator briefs | §4/§5 verbatim-transclusion payloads | + `<scope>`/`<incremental_diff>`; resolution-check variant | Ticket-compliance lens brief (`medium.md` §3a) |
+| Finder/validator briefs | §4/§5 verbatim-transclusion payloads | + `<scope>`/`<incremental_diff>`; resolution-check variant | Ticket-compliance specialist brief (`medium.md` §3a) |
 | Repeat review | Full re-review + dedup against open threads | Sessions: `<review_state>`, interdiff scoping, reconciliation, `thread_updates` | Finding-outcome telemetry (`medium.md` §3e) feeding thresholds |
 | Replies | None (review posts new findings only) | Reconciliation replies + `resolve_thread`; one-round standing-firm cap | — |
 | Comment-driven code changes | None | Responder/fix runs (`medium.md` §1b/§1c) consuming §3's thread shape | — |
@@ -1395,7 +1395,7 @@ valid, but it is no longer the reference.
 *From Rovo Dev's documented behaviour
 ([`../code-review-approaches.md`](../code-review-approaches.md) §13).*
 
-The phase-2 ticket-compliance lens adopts Rovo's three answers:
+The phase-2 ticket-compliance specialist adopts Rovo's three answers:
 - **Finding the ticket:** the branch name key first, then the PR title,
   then commit messages. More than one distinct key in commits means **no**
   ticket, never a guess.
@@ -1424,4 +1424,4 @@ the ticket that dispatched the implement run is the one checked.
 | 11f moved/copied | `-C` + moved-block annotations | Dependency-ordered `look_here` |
 | 11g `source=` attribute | Yes | Survives compaction of blocks |
 | 11h steps 3–5 as code | Reference implementation | — |
-| 11i acceptance criteria | — | With the compliance lens (`medium.md` §3a) |
+| 11i acceptance criteria | — | With the compliance specialist (`medium.md` §3a) |

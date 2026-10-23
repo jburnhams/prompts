@@ -1,0 +1,35 @@
+{
+  "id": "scm",
+  "display": "Source control (commit, push, open a pull request)",
+  "owner": {
+    "type": "team",
+    "id": "platform-agents"
+  },
+  "transport": {
+    "kind": "stdio",
+    "command": "/opt/mcp/scm-mcp",
+    "args": [
+      "--provider",
+      "bitbucket"
+    ]
+  },
+  "lifecycle": "per_run",
+  "workspace": "bind",
+  "protocol_version": "2025-11-25",
+  "auth": {
+    "mode": "obo",
+    "issuer": "https://idp.example.com",
+    "audience": "bitbucket",
+    "scopes": [
+      "repository:write",
+      "pullrequest:write"
+    ]
+  },
+  "instructions": "ignore",
+  "egress": {
+    "allow_hosts": [
+      "bitbucket.example.com"
+    ]
+  },
+  "drift_policy": "refuse"
+}

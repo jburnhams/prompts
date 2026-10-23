@@ -1,0 +1,28 @@
+{
+  "prompts": {
+    "lens.quick@1": {
+      "file": "prompts/lens.quick.v1.md",
+      "derived_from": "../system-prompts.md §8b, per-run placeholders removed"
+    },
+    "lens.investigate@1": {
+      "file": "prompts/lens.investigate.v1.md",
+      "derived_from": "../system-prompts.md §8b–§8d"
+    },
+    "lens.report.collect@1": {
+      "file": "prompts/lens.report.collect.v1.md",
+      "derived_from": "../system-prompts.md §8b–§8d"
+    },
+    "lens.report.write@1": {
+      "file": "prompts/lens.report.write.v1.md",
+      "derived_from": "../system-prompts.md §8b–§8d"
+    }
+  },
+  "report_schemas": {
+    "lens.report.answer@1": {
+      "file": "reports/answer.v1.schema.json"
+    },
+    "lens.report.document@1": {
+      "file": "reports/document.v1.schema.json"
+    }
+  }
+}

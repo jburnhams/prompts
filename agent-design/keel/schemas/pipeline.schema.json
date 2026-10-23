@@ -1,0 +1,702 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.example/schemas/pipeline.schema.json",
+  "title": "Pipeline",
+  "description": "A versioned graph of template stages, and the durable record of work across runs. Stages are templates used as they are; edges wire one stage's exits to the next stage. A pipeline run holds retries, waits, settling and spinoffs (../pipelines.md §7e, §7f). It replaces the run ledger of orchestration.md.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "$ref": "common.schema.json#/$defs/Name"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/Version"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published",
+        "deprecated"
+      ],
+      "readOnly": true
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "owner": {
+      "$ref": "common.schema.json#/$defs/PrincipalRef"
+    },
+    "params": {
+      "type": "object",
+      "description": "The pipeline's own params, the same ParamSpec as a template's. Stages read them as pipeline.params.",
+      "propertyNames": {
+        "$ref": "common.schema.json#/$defs/Name"
+      },
+      "additionalProperties": {
+        "$ref": "template.schema.json#/$defs/ParamSpec"
+      }
+    },
+    "entry": {
+      "$ref": "common.schema.json#/$defs/Name"
+    },
+    "stages": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "common.schema.json#/$defs/Name"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/Stage"
+      },
+      "minProperties": 1
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Edge"
+      }
+    },
+    "sinks": {
+      "type": "array",
+      "description": "Deliveries owned by the pipeline. `stage` and `result` in expressions are the triggering stage's (the last one, at the end).",
+      "items": {
+        "$ref": "run-spec.schema.json#/$defs/Sink"
+      }
+    },
+    "max_hops": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 3
+    },
+    "max_tier": {
+      "$ref": "common.schema.json#/$defs/Tier",
+      "description": "No stage may run above this; also checked against each stage template's own max_tier."
+    },
+    "resolved": {
+      "readOnly": true,
+      "type": "object",
+      "properties": {
+        "stages": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/VersionedRef"
+          }
+        },
+        "digest": {
+          "$ref": "common.schema.json#/$defs/Digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "labels": {
+      "$ref": "common.schema.json#/$defs/Labels"
+    },
+    "tools": {
+      "$ref": "run-spec.schema.json#/$defs/ToolsSpec",
+      "description": "Tools the pipeline's own sinks call (a Jira transition at the end). Never granted to a stage."
+    },
+    "limits": {
+      "type": "object",
+      "description": "Caps from orchestration.md §11.",
+      "properties": {
+        "spinoff_depth": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "runs_per_subject": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 8,
+          "description": "Open pipeline runs per issue or PR, spinoffs included."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "params",
+    "entry",
+    "stages",
+    "edges"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Stage": {
+      "type": "object",
+      "properties": {
+        "template": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "$ref": "common.schema.json#/$defs/Name"
+            },
+            "version": {
+              "anyOf": [
+                {
+                  "$ref": "common.schema.json#/$defs/Version"
+                },
+                {
+                  "const": "pinned"
+                }
+              ]
+            }
+          },
+          "required": [
+            "name",
+            "version"
+          ],
+          "additionalProperties": false
+        },
+        "params": {
+          "type": "object",
+          "description": "The stage template's params, as expressions over pipeline.params, origin and principal. An edge into the stage may add or override them from the previous result.",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "$ref": "common.schema.json#/$defs/Expr"
+              },
+              {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "array"
+                ]
+              }
+            ]
+          }
+        },
+        "retry": {
+          "type": "object",
+          "description": "When a stage's run ends in a retryable way, start another attempt instead of ending the stage. Replaces the template's stage_defaults.retry. By default failed is not retried: a genuine failure blocks the stage for a human.",
+          "properties": {
+            "max_attempts": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "on": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "budget_exhausted",
+                  "infra_failure",
+                  "lease_lost",
+                  "failed"
+                ]
+              },
+              "default": [
+                "budget_exhausted",
+                "infra_failure",
+                "lease_lost"
+              ],
+              "description": "failed is opt-in: by default a genuine failure blocks the stage for a human."
+            },
+            "raise_budgets": {
+              "type": "object",
+              "description": "Multipliers applied to the template's budgets on a budget_exhausted retry, within the params' maxima.",
+              "properties": {
+                "turns": {
+                  "type": "number",
+                  "minimum": 1
+                },
+                "context_high_water_tokens": {
+                  "type": "number",
+                  "minimum": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "settle": {
+          "type": "object",
+          "description": "A stage whose run ended done is not finished until an external event: the PR it led to merges. The stage waits in settling, holding its concurrency key if the template says so. orchestration.md's handoff state. Replaces the template's stage_defaults.settle.",
+          "properties": {
+            "event": {
+              "type": "string",
+              "enum": [
+                "pr",
+                "build",
+                "jira"
+              ]
+            },
+            "ref": {
+              "$ref": "common.schema.json#/$defs/Expr",
+              "description": "What to watch, usually stage.links.pull_request, written by the tool that opened it (ToolRef.links) or by an external committer through :link."
+            },
+            "done_when": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "e.g. [merged]."
+            },
+            "abandon_when": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "e.g. [closed_unmerged]. A closed PR is a decision, not a failure to retry."
+            },
+            "link_within_s": {
+              "type": "integer",
+              "minimum": 60,
+              "description": "If no ref appears in this time (the committer never ran), the stage is flagged unlinked."
+            }
+          },
+          "required": [
+            "event",
+            "ref",
+            "done_when"
+          ],
+          "additionalProperties": false
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "normal",
+            "high",
+            "urgent"
+          ]
+        }
+      },
+      "required": [
+        "template"
+      ],
+      "additionalProperties": false
+    },
+    "Edge": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "from": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "on": {
+          "type": "object",
+          "description": "Exactly one exit of the from stage.",
+          "properties": {
+            "terminal": {
+              "$ref": "common.schema.json#/$defs/Terminal"
+            },
+            "status": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/CompleteStatus"
+              }
+            },
+            "handoff_reason": {
+              "type": "string"
+            },
+            "expr": {
+              "$ref": "common.schema.json#/$defs/Expr"
+            },
+            "finished_with": {
+              "type": "string",
+              "description": "The ending tool's name (a tool marked use: finish in the from stage's template)."
+            }
+          },
+          "required": [
+            "terminal"
+          ],
+          "additionalProperties": false
+        },
+        "to": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "$ref": "common.schema.json#/$defs/Expr"
+              },
+              {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "array"
+                ]
+              }
+            ]
+          }
+        },
+        "carry": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "plan",
+              "prior_attempt",
+              "findings",
+              "artifacts"
+            ]
+          },
+          "description": "Envelope blocks the next stage receives; it must declare a matching carry input. Never a transcript."
+        },
+        "gate": {
+          "$ref": "run-spec.schema.json#/$defs/Continuation/properties/gate"
+        },
+        "announce": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Posted to the origin channel when the edge is taken, e.g. 'Taking a closer look, this will take a few minutes.'"
+        }
+      },
+      "required": [
+        "id",
+        "from",
+        "on",
+        "to",
+        "gate"
+      ],
+      "additionalProperties": false
+    },
+    "PipelineRun": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "pipeline": {
+          "$ref": "common.schema.json#/$defs/VersionedRef"
+        },
+        "params": {
+          "type": "object"
+        },
+        "principal": {
+          "$ref": "common.schema.json#/$defs/PrincipalRef"
+        },
+        "requested_by": {
+          "$ref": "common.schema.json#/$defs/PrincipalRef"
+        },
+        "delegation_id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "origin": {
+          "$ref": "common.schema.json#/$defs/Origin"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "running",
+            "waiting",
+            "blocked",
+            "done",
+            "abandoned"
+          ],
+          "description": "waiting: every open stage is waiting (on a gate, a child run, a settle event, a concurrency key or a timer). blocked: a stage needs a human. done: the last stage finished or settled. abandoned: given up, with a reason."
+        },
+        "stages": {
+          "type": "array",
+          "description": "Stage records in the order entered.",
+          "items": {
+            "$ref": "#/$defs/StageRecord"
+          }
+        },
+        "outcome": {
+          "type": "object",
+          "description": "The last stage's outcome, plus which stage it was.",
+          "properties": {
+            "stage": {
+              "$ref": "common.schema.json#/$defs/Name"
+            },
+            "run_outcome": {
+              "$ref": "run.schema.json#/$defs/Outcome"
+            },
+            "refusal": {
+              "$ref": "common.schema.json#/$defs/RefusalCode"
+            }
+          },
+          "required": [
+            "stage"
+          ],
+          "additionalProperties": false
+        },
+        "deliveries": {
+          "type": "array",
+          "items": {
+            "$ref": "run.schema.json#/$defs/Delivery"
+          }
+        },
+        "created_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "ended_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "normal",
+            "high",
+            "urgent"
+          ]
+        },
+        "subject": {
+          "type": "object",
+          "description": "The issue or PR this work is about, and what the tracker last said (orchestration.md §10a: the tracker owns intent; a change it makes invalidates, it is never merged).",
+          "properties": {
+            "issue_key": {
+              "type": "string"
+            },
+            "pull_request": {
+              "type": "string"
+            },
+            "tracker_observed": {
+              "type": "object",
+              "properties": {
+                "at": {
+                  "$ref": "common.schema.json#/$defs/Timestamp"
+                },
+                "revision": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "open",
+                    "closed",
+                    "unknown"
+                  ]
+                },
+                "fields_digest": {
+                  "$ref": "common.schema.json#/$defs/Digest"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "spun_off_from": {
+          "type": "object",
+          "properties": {
+            "pipeline_run_id": {
+              "$ref": "common.schema.json#/$defs/Id"
+            },
+            "stage": {
+              "$ref": "common.schema.json#/$defs/Name"
+            },
+            "relation": {
+              "type": "string",
+              "enum": [
+                "blocks_this",
+                "follows_this"
+              ]
+            }
+          },
+          "required": [
+            "pipeline_run_id",
+            "stage",
+            "relation"
+          ],
+          "additionalProperties": false
+        },
+        "spinoff_depth": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Id"
+          },
+          "description": "Pipeline runs this one spun off."
+        },
+        "supersedes": {
+          "$ref": "common.schema.json#/$defs/Id",
+          "description": "Set when this run replaces an abandoned one, e.g. a reopened ticket. The old run is never resurrected."
+        },
+        "abandon_reason": {
+          "type": "string",
+          "description": "e.g. ticket_closed, pr_closed_unmerged, attempts_exhausted, dependency_abandoned."
+        },
+        "updated_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "id",
+        "pipeline",
+        "principal",
+        "state",
+        "stages",
+        "created_at"
+      ],
+      "additionalProperties": false,
+      "description": "The durable record of one piece of work: its stages, their attempts and waits, and where it ended. A template run on its own is a one-stage pipeline run."
+    },
+    "Wait": {
+      "type": "object",
+      "description": "Why a stage is not running.",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "gate",
+            "dependency",
+            "settle",
+            "concurrency",
+            "timer"
+          ]
+        },
+        "gate_id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "pipeline_run_id": {
+          "$ref": "common.schema.json#/$defs/Id",
+          "description": "dependency: the child pipeline run a blocks_this spinoff started."
+        },
+        "event": {
+          "type": "object",
+          "properties": {
+            "provider": {
+              "type": "string"
+            },
+            "ref": {
+              "type": "string"
+            },
+            "done_when": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "description": "concurrency: the key another stage holds."
+        },
+        "until": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "since": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "kind",
+        "since"
+      ],
+      "additionalProperties": false
+    },
+    "StageRecord": {
+      "type": "object",
+      "properties": {
+        "stage": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "template": {
+          "$ref": "common.schema.json#/$defs/VersionedRef"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "ready",
+            "running",
+            "waiting",
+            "settling",
+            "blocked",
+            "done",
+            "abandoned"
+          ]
+        },
+        "via_edge": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "params": {
+          "type": "object",
+          "description": "Frozen when the stage was entered."
+        },
+        "attempts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "run_id": {
+                "$ref": "common.schema.json#/$defs/Id"
+              },
+              "cause": {
+                "type": "string",
+                "enum": [
+                  "entered",
+                  "retry",
+                  "resume",
+                  "approved_action",
+                  "dependency_cleared"
+                ]
+              },
+              "started_at": {
+                "$ref": "common.schema.json#/$defs/Timestamp"
+              },
+              "ended_at": {
+                "$ref": "common.schema.json#/$defs/Timestamp"
+              },
+              "terminal": {
+                "$ref": "common.schema.json#/$defs/Terminal"
+              },
+              "status": {
+                "$ref": "common.schema.json#/$defs/CompleteStatus"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "run_id",
+              "cause"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "waiting_on": {
+          "$ref": "#/$defs/Wait"
+        },
+        "links": {
+          "type": "object",
+          "description": "Facts written to the stage once: by a tool's links mapping when it succeeds, or from downstream through POST …/stages/{stage}:link. Open names; pull_request is the one settle usually watches.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "outcome": {
+          "$ref": "run.schema.json#/$defs/Outcome",
+          "description": "The last attempt's."
+        },
+        "concurrency_key": {
+          "type": "string"
+        },
+        "blocked_reason": {
+          "type": "string"
+        },
+        "abandon_reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage",
+        "template",
+        "state",
+        "attempts"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

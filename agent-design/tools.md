@@ -36,7 +36,7 @@ Availability by role:
 
 **Tool scope is keyed on the `(subagent_type, kinds)` pair, not on
 `subagent_type` alone** — where a reviewer's kind is the `role` it was
-spawned with. `role`, "lens" and the context service's `kinds` are one
+spawned with. `role`, "lens" (renamed "specialist" on 2026-10-23, when Lens became a product name) and the context service's `kinds` are one
 open vocabulary under three spellings, and a kind resolves to three
 payloads: prompt scope, tool grants, and (reserved) context sections.
 [`context-files.md`](./context-files.md)'s "Kinds: one vocabulary, three
@@ -50,13 +50,13 @@ agent about itself mid-run.
 
 The concrete consequence: This supersedes the earlier phrasing that
 "`reviewer` and `validator` sub-agent types get `Read`/`Grep`/`List` only":
-true for three of the four reviewer lenses, and not for `visual`, which is
-the one lens that needs `InspectImage` (`review.md` §1c). Both fields are
+true for three of the four reviewer specialists, and not for `visual`, which is
+the one specialist that needs `InspectImage` (`review.md` §1c). Both fields are
 model-supplied enums the harness validates and maps to a tool set, so
 keying on the pair is exactly as structural as keying on the type — the
 gate is the harness's mapping table either way, not the argument. Widening
 the key rather than minting a fourth sub-agent type keeps one reviewer core
-parameterised by lens, which is the property `system-prompts.md` §4 exists
+parameterised by specialism, which is the property `system-prompts.md` §4 exists
 to preserve.
 
 The validator is deliberately *not* given sight even for validating a
@@ -204,8 +204,12 @@ Rules:
    "Hidden" is "deferred and unannounced". Both are registered with the
    provider and flagged deferred, so the array does not change. Whether a
    harness may reveal a tool the model did not ask for is documented for
-   OpenAI (client-executed search, `additional_tools`) and not for
-   Anthropic's; treat it as unverified there.
+   OpenAI (client-executed search, `additional_tools`), and, as of
+   2026-10-23, for Anthropic's as a beta: mid-conversation tool changes
+   (`mid-conversation-tool-changes-2026-07-01`) reveal a `defer_loading`
+   tool through an appended system message, without breaking the cache.
+   See [`keel/tools-and-agents.md`](./keel/tools-and-agents.md) §4b for
+   the models and platforms it covers.
 4. **Default: everything stays loaded.** Forge's built-in set is eleven
    tools. Deferring them would add a round trip and gain little, and a
    cheap model under-calls optional tools (`../agent-multi-model.md` §4).
@@ -1239,7 +1243,7 @@ Code's own tool contract carries an `aliases` field for.
 > calling: `general-purpose` (coding mode only — full tool parity,
 > for open-ended search/investigation you're not confident a direct
 > Read/Grep/List will resolve quickly); `reviewer` (review mode only —
-> read-only, takes a `role` field selecting which lens to review
+> read-only, takes a `role` field selecting which specialist to review
 > through); `validator` (review mode only — read-only, checks exactly
 > one candidate finding).
 >
@@ -1271,7 +1275,7 @@ Code's own tool contract carries an `aliases` field for.
       "subagent_type": { "type": "string", "enum": ["general-purpose", "reviewer", "validator"] },
       "description": { "type": "string", "description": "A short (3-5 word) label for this call." },
       "prompt": { "type": "string", "description": "The complete, self-contained task for the sub-agent, including exactly what it should return." },
-      "role": { "type": "string", "enum": ["bugs", "security", "conventions", "visual"], "description": "Required when subagent_type is \"reviewer\": the lens that specialist reviews through. \"visual\" is spawned only when the PR carries an image artifact or touches UI-classified paths, and is the one lens whose specialist is wired with InspectImage." },
+      "role": { "type": "string", "enum": ["bugs", "security", "conventions", "visual"], "description": "Required when subagent_type is \"reviewer\": the specialist that specialist reviews through. \"visual\" is spawned only when the PR carries an image artifact or touches UI-classified paths, and is the one specialist whose specialist is wired with InspectImage." },
       "finding": { "type": "object", "description": "Required when subagent_type is \"validator\": the single candidate finding to check, in the review-finding schema (see formats.md)." }
     },
     "required": ["subagent_type", "description", "prompt"],

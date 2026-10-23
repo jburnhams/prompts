@@ -1,0 +1,128 @@
+{
+  "name": "lens",
+  "version": 1,
+  "title": "Lens: answer a data question",
+  "description": "Use case 3. Starts cheap with four tools; HandOff exits go to a stronger investigate stage or a report stage. The answer goes back to wherever the question came from.",
+  "owner": {
+    "type": "team",
+    "id": "data-platform"
+  },
+  "params": {
+    "question": {
+      "type": "string",
+      "trust": "principal",
+      "required": true,
+      "max_length": 4000
+    }
+  },
+  "entry": "quick",
+  "stages": {
+    "quick": {
+      "template": {
+        "name": "lens.quick",
+        "version": "pinned"
+      },
+      "params": {
+        "question": {
+          "cel": "pipeline.params.question"
+        }
+      }
+    },
+    "investigate": {
+      "template": {
+        "name": "lens.investigate",
+        "version": "pinned"
+      },
+      "params": {
+        "question": {
+          "cel": "pipeline.params.question"
+        }
+      }
+    },
+    "report": {
+      "template": {
+        "name": "lens.report",
+        "version": "pinned"
+      },
+      "params": {
+        "question": {
+          "cel": "pipeline.params.question"
+        }
+      }
+    }
+  },
+  "edges": [
+    {
+      "id": "quick_too_complex",
+      "from": "quick",
+      "on": {
+        "terminal": "handoff",
+        "handoff_reason": "too_complex"
+      },
+      "to": "investigate",
+      "carry": [
+        "prior_attempt"
+      ],
+      "gate": {
+        "kind": "auto"
+      },
+      "announce": "Taking a closer look. This will take a few minutes."
+    },
+    {
+      "id": "quick_report",
+      "from": "quick",
+      "on": {
+        "terminal": "handoff",
+        "handoff_reason": "report_requested"
+      },
+      "to": "report",
+      "carry": [
+        "prior_attempt",
+        "artifacts"
+      ],
+      "gate": {
+        "kind": "auto"
+      },
+      "announce": "Writing that up as a report. I'll post it here when it's ready."
+    },
+    {
+      "id": "investigate_report",
+      "from": "investigate",
+      "on": {
+        "terminal": "handoff",
+        "handoff_reason": "report_requested"
+      },
+      "to": "report",
+      "carry": [
+        "prior_attempt",
+        "artifacts"
+      ],
+      "gate": {
+        "kind": "auto"
+      },
+      "announce": "Writing that up as a report."
+    }
+  ],
+  "sinks": [
+    {
+      "id": "answer",
+      "kind": "chat",
+      "when": {
+        "terminal": [
+          "complete"
+        ]
+      },
+      "channel": {
+        "type": "chat",
+        "target": {
+          "origin": true
+        }
+      },
+      "render": {
+        "template": "{{result.summary}}"
+      }
+    }
+  ],
+  "max_hops": 2,
+  "max_tier": "strong"
+}

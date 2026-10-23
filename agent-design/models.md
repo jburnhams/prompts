@@ -309,6 +309,9 @@ SQL-and-row-count answer form, the `input_rows` fan-out stub from `data.md`
 
 - **Anthropic API, Claude Platform on AWS:** `defer_loading` makes `Expand`'s
   tool reveal free of cache loss. Optional; the paths in §4a work everywhere.
+  A harness-triggered reveal (a monitor's `reveal`) uses mid-conversation
+  tool changes, a beta on current Opus, Fable and Sonnet 5.5 models
+  (2026-10-23; [`keel/tools-and-agents.md`](./keel/tools-and-agents.md) §4b).
 - **Bedrock `Converse`:** no deferral, no advisor tool. Sources are revealed as
   text; tools by the once-only array growth in a small economy run, or by
   `HandOff`. *Not verified:* how Bedrock orders and invalidates cache
@@ -381,7 +384,9 @@ Record tier, model ID and the price at the time on every result.
 
 - The tier→model mapping, the report keyword rule and the hop limit need a
   home in job config (`tools.md` "One job declares the tools" is the nearest
-  precedent).
+  precedent). *Placed by [Keel](./keel/README.md) (2026-10-23): the
+  tier map in `Deployment`, the keyword rule as a `request_matches` harness
+  trigger, the hop limit as `outputs.max_chain_depth`.*
 - A run's budget should count tokens by tier, so spend cannot hide in a cheap
   child.
 - Thinking and effort are separate from model choice. A tier may need an

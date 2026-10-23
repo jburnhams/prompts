@@ -1,0 +1,1558 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.example/schemas/run-spec.schema.json",
+  "title": "RunSpec",
+  "description": "Everything that defines one run, before params are bound: model, prompt, inputs, tools, the agents inside the run, the ending contract, outputs and authority. A template wraps one of these (template.schema.json); a run snapshots the bound, flattened result (run.schema.json ResolvedSpec). See ../run-spec.md §3.",
+  "type": "object",
+  "properties": {
+    "description": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "model": {
+      "$ref": "#/$defs/ModelSpec"
+    },
+    "system_prompt": {
+      "$ref": "#/$defs/PromptSpec"
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/InputSlot"
+      },
+      "description": "The task envelope, in order. The starting query is one of these: an input of kind instruction."
+    },
+    "context": {
+      "$ref": "#/$defs/ContextSpec"
+    },
+    "workspace": {
+      "$ref": "#/$defs/WorkspaceSpec"
+    },
+    "tools": {
+      "$ref": "#/$defs/ToolsSpec"
+    },
+    "human": {
+      "$ref": "#/$defs/HumanSpec"
+    },
+    "completion": {
+      "$ref": "#/$defs/CompletionSpec"
+    },
+    "hatches": {
+      "$ref": "#/$defs/HatchesSpec"
+    },
+    "budgets": {
+      "$ref": "#/$defs/Budgets"
+    },
+    "outputs": {
+      "$ref": "#/$defs/OutputsSpec"
+    },
+    "authority": {
+      "$ref": "#/$defs/AuthoritySpec"
+    },
+    "concurrency": {
+      "$ref": "#/$defs/ConcurrencySpec"
+    },
+    "labels": {
+      "$ref": "common.schema.json#/$defs/Labels"
+    },
+    "monitors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Monitor"
+      },
+      "description": "In-run monitors: signals the harness watches for during a run, and what it does (models.md §5 'harness triggers'). Not to be confused with a Trigger, which starts work."
+    },
+    "agents": {
+      "type": "object",
+      "properties": {
+        "orchestrator": {
+          "$ref": "#/$defs/OrchestratorDef"
+        }
+      },
+      "required": [
+        "orchestrator"
+      ],
+      "additionalProperties": {
+        "$ref": "#/$defs/SubAgentDef"
+      },
+      "propertyNames": {
+        "$ref": "common.schema.json#/$defs/Name"
+      },
+      "description": "The agents inside a run. orchestrator is the top-level agent and the only one that can end the run or reach a human. Every other key is a sub-agent it (or another agent) may spawn. ('Role' is reserved for RBAC; see taxonomy.md.)"
+    },
+    "stage_defaults": {
+      "type": "object",
+      "description": "How this template behaves as a stage when nothing overrides it: alone (a one-stage pipeline run) or in a pipeline whose stage leaves these unset. A pipeline stage's own retry or settle replaces the default as a whole.",
+      "properties": {
+        "retry": {
+          "$ref": "pipeline.schema.json#/$defs/Stage/properties/retry"
+        },
+        "settle": {
+          "$ref": "pipeline.schema.json#/$defs/Stage/properties/settle"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "model",
+    "system_prompt",
+    "agents",
+    "completion"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "ModelSpec": {
+      "type": "object",
+      "properties": {
+        "tier": {
+          "$ref": "common.schema.json#/$defs/BindableTier"
+        },
+        "effort": {
+          "$ref": "common.schema.json#/$defs/Effort"
+        },
+        "max_tier": {
+          "$ref": "common.schema.json#/$defs/Tier",
+          "description": "Ceiling for this run and for anything it continues into. The deployment ceiling still applies on top. Never bindable."
+        }
+      },
+      "required": [
+        "tier"
+      ],
+      "additionalProperties": false
+    },
+    "PromptSpec": {
+      "type": "object",
+      "description": "Fixed text plus generated blocks. The system prompt holds the base text and the capabilities block only; every other generated block, then the inputs, go into the opening user message, so every run of a template version shares one cacheable prefix (run-spec.md §3, §6). Prompt text has no placeholders.",
+      "properties": {
+        "base": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "ref": {
+                  "$ref": "common.schema.json#/$defs/VersionedRef"
+                }
+              },
+              "required": [
+                "ref"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "inline": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "inline"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "omit_sections": {
+          "type": "array",
+          "description": "Subtraction by heading (README decision 'Per-model prompt variation'). A section can be removed, never varied.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "heading": {
+                "type": "string"
+              },
+              "when": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "tool_absent": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "tool_absent"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "tier": {
+                        "$ref": "common.schema.json#/$defs/Tier"
+                      }
+                    },
+                    "required": [
+                      "tier"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "heading",
+              "when"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "generated": {
+          "type": "array",
+          "description": "Harness-generated blocks, in order. capabilities is rendered into the system prompt; the rest into the opening user message, before the inputs.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "env",
+              "capabilities",
+              "git_status",
+              "repo_context",
+              "data_overview"
+            ]
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "base"
+      ],
+      "additionalProperties": false
+    },
+    "InputSlot": {
+      "type": "object",
+      "description": "One tagged block of the task envelope. Anything not authored by harness or config is nonce-wrapped and sanitised.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,40}$",
+          "description": "The tag name the model sees."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "instruction",
+            "task_header",
+            "issue",
+            "pull_request",
+            "diff",
+            "comments",
+            "plan",
+            "prior_attempt",
+            "resumed_answer",
+            "other_replies",
+            "approved_action",
+            "findings",
+            "document",
+            "json"
+          ]
+        },
+        "source": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "param": {
+                  "$ref": "common.schema.json#/$defs/Name"
+                }
+              },
+              "required": [
+                "param"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Pre-fetched by the harness before turn 0, through a tool the job declares, under the run's credentials.",
+              "properties": {
+                "fetch": {
+                  "$ref": "common.schema.json#/$defs/ToolAddress"
+                },
+                "args": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "$ref": "common.schema.json#/$defs/ParamRef"
+                      },
+                      {
+                        "$ref": "common.schema.json#/$defs/Expr"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "fetch"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Filled by a continuation or a resume (../outputs.md §7). Absent on a fresh run.",
+              "properties": {
+                "carry": {
+                  "type": "string",
+                  "enum": [
+                    "plan",
+                    "prior_attempt",
+                    "resumed_answer",
+                    "other_replies",
+                    "approved_action",
+                    "findings",
+                    "spinoff_report"
+                  ]
+                }
+              },
+              "required": [
+                "carry"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Built by a harness component (the review diff builder, the comment-thread model).",
+              "properties": {
+                "builder": {
+                  "type": "string",
+                  "enum": [
+                    "pr_diff",
+                    "changed_files",
+                    "comment_threads",
+                    "task_header"
+                  ]
+                }
+              },
+              "required": [
+                "builder"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "trust": {
+          "$ref": "common.schema.json#/$defs/Trust"
+        },
+        "required": {
+          "type": "boolean",
+          "default": true
+        },
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "name",
+        "kind",
+        "source",
+        "trust"
+      ],
+      "additionalProperties": false
+    },
+    "ContextSpec": {
+      "type": "object",
+      "properties": {
+        "conventions": {
+          "type": "object",
+          "description": "Resolution against the context service (context-files.md §1b). A failed resolution means the run does not start.",
+          "properties": {
+            "tiers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "org",
+                  "team",
+                  "repo",
+                  "learned"
+                ]
+              },
+              "uniqueItems": true
+            },
+            "team": {
+              "$ref": "common.schema.json#/$defs/BindableString"
+            },
+            "paths": {
+              "$ref": "common.schema.json#/$defs/BindableStringList"
+            },
+            "at": {
+              "type": "string",
+              "enum": [
+                "working_tree",
+                "base_sha"
+              ],
+              "description": "base_sha for review: conventions are read where the PR cannot edit them."
+            },
+            "budget_bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 32768
+            },
+            "tags": {
+              "$ref": "common.schema.json#/$defs/BindableStringList",
+              "description": "Narrows the conventions every agent of the run gets, for the orchestrator's opening message, to sections carrying one of these tags (security, testing, data, …). Absent or empty: the whole corpus. Policy and untagged sections come back regardless. The context service owns the tag vocabulary and rejects a tag it has never seen."
+            }
+          },
+          "required": [
+            "tiers"
+          ],
+          "additionalProperties": false
+        },
+        "data_overview": {
+          "type": "object",
+          "description": "The quick analysis run's source list (system-prompts.md §8a).",
+          "properties": {
+            "sources_from": {
+              "$ref": "common.schema.json#/$defs/ToolAddress"
+            },
+            "max_listed": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 12
+            },
+            "announce_hidden": {
+              "type": "boolean",
+              "default": true,
+              "description": "Append 'N further sources are not listed here. If the question needs one, call Expand.'"
+            }
+          },
+          "required": [
+            "sources_from"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "WorkspaceSpec": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "checkout"
+            },
+            "repository": {
+              "$ref": "common.schema.json#/$defs/BindableString"
+            },
+            "base_ref": {
+              "$ref": "common.schema.json#/$defs/BindableString"
+            },
+            "target_branch": {
+              "$ref": "common.schema.json#/$defs/BindableString"
+            },
+            "head_sha": {
+              "$ref": "common.schema.json#/$defs/BindableString",
+              "description": "Review runs check out the PR head read-only."
+            },
+            "provision": {
+              "type": "string",
+              "enum": [
+                "worktree",
+                "clone",
+                "sparse_clone"
+              ],
+              "default": "worktree"
+            },
+            "writable": {
+              "type": "boolean",
+              "description": "false registers no write tools for any agent, whatever their grant says."
+            },
+            "write_scope": {
+              "$ref": "common.schema.json#/$defs/BindableStringList",
+              "description": "Path globs a write may touch. Outside it the run files a spinoff."
+            },
+            "scratch": {
+              "type": "boolean",
+              "default": true,
+              "description": "A per-run directory outside the working tree, named in <env>."
+            },
+            "retain": {
+              "type": "string",
+              "enum": [
+                "run",
+                "stage"
+              ],
+              "default": "stage",
+              "description": "How long the checkout outlives the run. stage: until the stage settles or is abandoned, so a pipeline sink's workspace-bound tool can still act on it after the run. run: discarded when the run ends."
+            }
+          },
+          "required": [
+            "kind",
+            "repository",
+            "writable"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ToolsSpec": {
+      "type": "object",
+      "description": "The run's declaration: the universe every agent's grant is a subset of. Nothing outside it can be granted, revealed or called.",
+      "properties": {
+        "servers": {
+          "type": "array",
+          "description": "MCP servers this job uses, pinned to a snapshot digest at publish time.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Name"
+              },
+              "snapshot": {
+                "$ref": "common.schema.json#/$defs/Digest",
+                "description": "Filled at publish if omitted in a draft."
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "tools.schema.json#/$defs/ToolGroup"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "ref": {
+                    "$ref": "common.schema.json#/$defs/VersionedRef"
+                  },
+                  "id": {
+                    "$ref": "common.schema.json#/$defs/Name",
+                    "description": "Id used in grants. Defaults to the group's name."
+                  }
+                },
+                "required": [
+                  "ref"
+                ],
+                "additionalProperties": false,
+                "description": "A saved tool group (tools.schema.json SavedToolGroup), by version."
+              }
+            ]
+          }
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "tools.schema.json#/$defs/HarnessCheck"
+          }
+        }
+      },
+      "required": [
+        "groups"
+      ],
+      "additionalProperties": false
+    },
+    "HumanSpec": {
+      "type": "object",
+      "properties": {
+        "ask_user": {
+          "type": "object",
+          "description": "Enabling this generates the harness/AskUser tool for the orchestrator. Calling it suspends the run and opens a gate.",
+          "properties": {
+            "kinds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "clarify",
+                  "approve"
+                ]
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "principal_set": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/PrincipalSetRule"
+              },
+              "minItems": 1
+            },
+            "clarify_from_participants": {
+              "type": "boolean",
+              "default": false,
+              "description": "Widen who may answer clarify questions only. approve is always principal-only."
+            },
+            "channels": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/ChannelRef"
+              },
+              "minItems": 1,
+              "description": "First is the conversation; the rest receive a mirror for the audit trail."
+            },
+            "max_suspensions": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 3
+            },
+            "expires_after_s": {
+              "type": "integer",
+              "minimum": 60,
+              "description": "Default from the deployment (7 days)."
+            },
+            "on_expiry": {
+              "type": "string",
+              "enum": [
+                "block_stage",
+                "abandon"
+              ],
+              "description": "Default from the deployment (block_stage): the stage is blocked for a person to retry or abandon. abandon: the pipeline run is abandoned with gate_expired."
+            }
+          },
+          "required": [
+            "kinds",
+            "principal_set",
+            "channels"
+          ],
+          "additionalProperties": false
+        },
+        "narrate": {
+          "type": "object",
+          "description": "Generates harness/Narrate (medium.md §2f).",
+          "properties": {
+            "max_entries": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 8
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "CompletionSpec": {
+      "type": "object",
+      "description": "The completion contract. The harness generates Complete from it, and one ending tool for every tool marked use: finish (tools-and-agents.md §4b). Termination is never a property of a tool's server.",
+      "properties": {
+        "form": {
+          "type": "string",
+          "enum": [
+            "tool",
+            "text"
+          ],
+          "default": "tool",
+          "description": "text: the run ends on an assistant message with no tool calls and status done. Allowed only with no report_schema, no checks, no spinoffs and no finish tools (the quick analysis run)."
+        },
+        "tool_name": {
+          "type": "string",
+          "default": "Complete",
+          "pattern": "^[A-Z][A-Za-z]{2,31}$"
+        },
+        "statuses": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/CompleteStatus"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "report_schema": {
+          "description": "JSON Schema for Complete.report. Inline or a registry ref.",
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "ref": {
+                  "$ref": "common.schema.json#/$defs/VersionedRef"
+                }
+              },
+              "required": [
+                "ref"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "inline": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "inline"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "summary_max_chars": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 2000
+        },
+        "spinoffs": {
+          "type": "object",
+          "description": "Enables report.spun_off. Each entry becomes a child pipeline run (../pipelines.md §7f).",
+          "properties": {
+            "max_per_run": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 2
+            },
+            "max_depth": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "description": "How deep a chain of spinoffs may go. 0: a spun-off run may not spin off."
+            },
+            "relations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "blocks_this",
+                  "follows_this"
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "complete": {
+          "type": "boolean",
+          "default": true,
+          "description": "Generate the generic Complete tool. false: the run can end only through a tool marked use: finish, AskUser, HandOff or the nudge."
+        },
+        "checks": {
+          "type": "array",
+          "description": "Completion checks: deterministic tests between the model's ending call and the run actually ending. Not to be confused with a Gate, which waits on a human.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "enum": [
+                  "first_done_checklist",
+                  "require_tool_called",
+                  "report_crosscheck",
+                  "provenance_closure"
+                ]
+              },
+              "on_status": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/CompleteStatus"
+                }
+              },
+              "config": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "statuses"
+      ],
+      "additionalProperties": false
+    },
+    "HatchesSpec": {
+      "type": "object",
+      "properties": {
+        "expand": {
+          "type": "object",
+          "description": "Generates harness/Expand: reveals granted-but-unlisted sources and tools. The run continues. Visibility only, never authority.",
+          "properties": {
+            "reveals": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Name"
+              },
+              "description": "Group ids (must be in the orchestrator's grant) plus the data overview's unlisted sources."
+            },
+            "max_results": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 8
+            },
+            "array_growth": {
+              "type": "object",
+              "description": "Providers with no deferred loading: the tools array may grow once, to this bundle, if the cached prefix is small (models.md §4a).",
+              "properties": {
+                "bundle": {
+                  "$ref": "common.schema.json#/$defs/Name"
+                },
+                "max_prefix_tokens": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "tiers": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/Tier"
+                  }
+                }
+              },
+              "required": [
+                "bundle",
+                "max_prefix_tokens"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "handoff": {
+          "type": "object",
+          "description": "Generates harness/HandOff. Each reason is an exit a pipeline wires to a next stage. Run on its own, a template has no wired exits, so HandOff is not generated.",
+          "properties": {
+            "reasons": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_]{0,40}$"
+                  },
+                  "situation": {
+                    "type": "string",
+                    "maxLength": 300,
+                    "description": "What the model can observe, never a service level or a model name (models.md §4c)."
+                  }
+                },
+                "required": [
+                  "id",
+                  "situation"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "reasons"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Budgets": {
+      "type": "object",
+      "description": "Crossing turns or context_high_water injects the final-turn nudge (formats.md §7). The others stop the run harness-side.",
+      "properties": {
+        "turns": {
+          "$ref": "common.schema.json#/$defs/BindableInteger"
+        },
+        "context_high_water_tokens": {
+          "$ref": "common.schema.json#/$defs/BindableInteger"
+        },
+        "wall_seconds": {
+          "$ref": "common.schema.json#/$defs/BindableInteger"
+        },
+        "tokens_by_tier": {
+          "type": "object",
+          "description": "Counted across the run and its children, so spend cannot hide in a cheap child (models.md §10).",
+          "properties": {
+            "economy": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "standard": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "strong": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "cost_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "subagents_total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "OutputsSpec": {
+      "type": "object",
+      "description": "What happens to a run's result. Sinks deliver it; continuations are edges back into this template. Edges between templates belong to a pipeline.",
+      "properties": {
+        "sinks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Sink"
+          }
+        },
+        "continuations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Continuation"
+          }
+        },
+        "max_chain_depth": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 3,
+          "description": "Hops across this template's own continuations. A pipeline has its own limit."
+        }
+      },
+      "additionalProperties": false
+    },
+    "When": {
+      "type": "object",
+      "properties": {
+        "terminal": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Terminal"
+          }
+        },
+        "status": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/CompleteStatus"
+          }
+        },
+        "expr": {
+          "$ref": "common.schema.json#/$defs/Expr"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Sink": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "when": {
+          "$ref": "#/$defs/When"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "comment",
+            "commit_status",
+            "webhook",
+            "chat",
+            "email",
+            "artifact_publish",
+            "dataset_write",
+            "tool"
+          ]
+        },
+        "channel": {
+          "$ref": "common.schema.json#/$defs/ChannelRef"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "webhook only. Registered host; signed body."
+        },
+        "render": {
+          "type": "object",
+          "description": "Harness-side formatting of the result. Mustache over the result object; output is Markdown and converted per channel.",
+          "properties": {
+            "template": {
+              "type": "string"
+            },
+            "attach": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "report_json",
+                  "evidence",
+                  "transcript_link"
+                ]
+              }
+            }
+          },
+          "required": [
+            "template"
+          ],
+          "additionalProperties": false
+        },
+        "idempotency_key": {
+          "$ref": "common.schema.json#/$defs/Expr"
+        },
+        "retry": {
+          "type": "object",
+          "properties": {
+            "max_attempts": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 5
+            },
+            "backoff_s": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 30
+            }
+          },
+          "additionalProperties": false
+        },
+        "tool": {
+          "$ref": "common.schema.json#/$defs/ToolAddress",
+          "description": "kind tool: a declared tool the harness calls after the run, such as a Jira transition, or a workspace-bound MCP tool acting on the stage's retained checkout."
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "$ref": "common.schema.json#/$defs/Expr"
+              },
+              {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              }
+            ]
+          }
+        },
+        "at": {
+          "type": "object",
+          "properties": {
+            "stage": {
+              "$ref": "common.schema.json#/$defs/Name"
+            },
+            "event": {
+              "type": "string",
+              "enum": [
+                "run_ended",
+                "settled",
+                "blocked",
+                "abandoned"
+              ]
+            }
+          },
+          "required": [
+            "stage",
+            "event"
+          ],
+          "additionalProperties": false,
+          "description": "Pipeline sinks only (P8). Without at, a pipeline sink is delivered once when the pipeline run ends; with at, when that stage's run ends, settles, blocks or is abandoned."
+        }
+      },
+      "required": [
+        "id",
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "Continuation": {
+      "type": "object",
+      "description": "An edge from this run's outcome back into the same template. approve then execute runs again in the same pipeline stage, without the transcript. A spinoff starts a child pipeline run of this template; blocks_this makes the current stage wait for it (../pipelines.md §7f).",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "on": {
+          "type": "object",
+          "properties": {
+            "terminal": {
+              "type": "string",
+              "enum": [
+                "complete",
+                "suspend"
+              ]
+            },
+            "status": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/CompleteStatus"
+              }
+            },
+            "answer": {
+              "type": "string",
+              "enum": [
+                "approve",
+                "decline",
+                "other"
+              ],
+              "description": "terminal = suspend: which gate outcome starts this edge."
+            },
+            "spinoff": {
+              "type": "string",
+              "enum": [
+                "blocks_this",
+                "follows_this"
+              ],
+              "description": "One continuation per report.spun_off entry of this relation."
+            },
+            "expr": {
+              "$ref": "common.schema.json#/$defs/Expr"
+            }
+          },
+          "required": [
+            "terminal"
+          ],
+          "additionalProperties": false
+        },
+        "target": {
+          "type": "object",
+          "properties": {
+            "template": {
+              "const": "self"
+            }
+          },
+          "required": [
+            "template"
+          ],
+          "additionalProperties": false
+        },
+        "params": {
+          "type": "object",
+          "description": "Target param name to an expression over this run (params, result, principal, event).",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "$ref": "common.schema.json#/$defs/Expr"
+              },
+              {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              }
+            ]
+          }
+        },
+        "carry": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "plan",
+              "prior_attempt",
+              "resumed_answer",
+              "other_replies",
+              "approved_action",
+              "findings",
+              "spinoff_report",
+              "artifacts"
+            ]
+          },
+          "description": "Envelope blocks the target receives (it must declare a matching carry input). Never the transcript: only resume carries a transcript."
+        },
+        "gate": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "auto"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "approval"
+                },
+                "principal_set": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/PrincipalSetRule"
+                  },
+                  "minItems": 1
+                },
+                "channel": {
+                  "$ref": "common.schema.json#/$defs/ChannelRef"
+                },
+                "bind": {
+                  "type": "string",
+                  "enum": [
+                    "report_hash",
+                    "plan_hash",
+                    "none"
+                  ],
+                  "default": "report_hash",
+                  "description": "The approval covers this content; if it changes, the approval lapses (formats.md §5a rule 4)."
+                },
+                "expires_after_s": {
+                  "type": "integer",
+                  "minimum": 60,
+                  "description": "Default from the deployment (7 days). On expiry the waiting stage is blocked."
+                }
+              },
+              "required": [
+                "kind",
+                "principal_set",
+                "channel"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "run_as": {
+          "type": "string",
+          "enum": [
+            "same",
+            "service"
+          ],
+          "default": "same",
+          "description": "A continuation never runs as a different user."
+        }
+      },
+      "required": [
+        "id",
+        "on",
+        "target",
+        "gate"
+      ],
+      "additionalProperties": false
+    },
+    "AuthoritySpec": {
+      "type": "object",
+      "description": "Whose authority a run uses (../authority.md §8).",
+      "properties": {
+        "run_as": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "user",
+              "service"
+            ]
+          },
+          "minItems": 1,
+          "description": "Principal types this template may run on behalf of."
+        },
+        "service_principal": {
+          "$ref": "common.schema.json#/$defs/PrincipalRef",
+          "description": "The agent's own identity: the actor in audit logs, and the principal for run_as service."
+        },
+        "delegation": {
+          "type": "object",
+          "description": "A user run with no live user session (schedules, events, continuations after the user left) needs a stored delegation.",
+          "properties": {
+            "max_ttl_days": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 90
+            },
+            "scopes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Upper bound on what a delegation for this template may carry."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "run_as",
+        "service_principal"
+      ],
+      "additionalProperties": false
+    },
+    "ConcurrencySpec": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "$ref": "common.schema.json#/$defs/Expr",
+          "description": "e.g. repository + '#' + target_branch."
+        },
+        "policy": {
+          "type": "string",
+          "enum": [
+            "queue",
+            "skip"
+          ],
+          "default": "queue"
+        },
+        "held_while_settling": {
+          "type": "boolean",
+          "default": true,
+          "description": "Keep the key while the stage waits for its settle event (the PR merging), so no other work starts on the same branch (orchestration.md §4's handoff rule)."
+        }
+      },
+      "required": [
+        "key"
+      ],
+      "additionalProperties": false
+    },
+    "Monitor": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "signal": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "consecutive_tool_errors",
+                "zero_rows_unexplained",
+                "turns_without_answer",
+                "unlisted_source_named",
+                "result_oversize",
+                "request_matches"
+              ]
+            },
+            "tool": {
+              "type": "string"
+            },
+            "threshold": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "match": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "request_matches: configured keywords, checked on the instruction input before turn 0."
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        "action": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "handoff": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "handoff"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "reveal": {
+                  "$ref": "common.schema.json#/$defs/Name"
+                }
+              },
+              "required": [
+                "reveal"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "note": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "required": [
+                "note"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "skip_to": {
+                  "type": "string",
+                  "description": "A handoff reason taken before turn 0."
+                }
+              },
+              "required": [
+                "skip_to"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "signal",
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "OrchestratorDef": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "type": "object",
+          "properties": {
+            "tier": {
+              "$ref": "common.schema.json#/$defs/BindableTier"
+            },
+            "effort": {
+              "$ref": "common.schema.json#/$defs/Effort"
+            }
+          },
+          "additionalProperties": false
+        },
+        "grant": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Name"
+          },
+          "description": "Group ids from tools.groups. Siblings, not a chain: a sub-agent's grant is a subset of the run's declaration, not of its spawner's."
+        },
+        "visibility": {
+          "type": "object",
+          "description": "Per-agent override of a group's or a tool's default visibility. Keys are group ids or tool addresses.",
+          "additionalProperties": {
+            "$ref": "tools.schema.json#/$defs/Visibility"
+          }
+        },
+        "spawns": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Name"
+          },
+          "description": "Sub-agents this agent may launch. Non-empty generates the Task tool with subagent_type limited to these."
+        },
+        "max_concurrent_children": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 8
+        }
+      },
+      "required": [
+        "grant"
+      ],
+      "additionalProperties": false
+    },
+    "SubAgentDef": {
+      "type": "object",
+      "description": "A sub-agent. Never has a human channel or a run-ending tool (tools.md 'No delegate has a human channel'); its report returns to its spawner.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Rendered into the Task tool's subagent_type description."
+        },
+        "prompt": {
+          "$ref": "#/$defs/PromptSpec"
+        },
+        "model": {
+          "type": "object",
+          "properties": {
+            "tier": {
+              "$ref": "common.schema.json#/$defs/Tier"
+            },
+            "effort": {
+              "$ref": "common.schema.json#/$defs/Effort"
+            },
+            "clamp_to_parent": {
+              "type": "boolean",
+              "default": true,
+              "description": "When true a child never runs above its spawner's tier."
+            }
+          },
+          "additionalProperties": false
+        },
+        "grant": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Name"
+          }
+        },
+        "visibility": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "tools.schema.json#/$defs/Visibility"
+          }
+        },
+        "spawn_args": {
+          "type": "object",
+          "description": "Extra structured arguments the spawner must pass (the validator's finding), as JSON Schema properties added to Task.",
+          "additionalProperties": {
+            "type": "object"
+          }
+        },
+        "report_schema": {
+          "description": "The sub-agent's final report, validated by the harness. A registry ref or an inline JSON Schema, as completion.report_schema.",
+          "$ref": "#/$defs/CompletionSpec/properties/report_schema"
+        },
+        "spawns": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Name"
+          },
+          "maxItems": 0,
+          "description": "No recursive delegation in v1."
+        },
+        "budgets": {
+          "$ref": "#/$defs/Budgets"
+        },
+        "scope": {
+          "type": "string",
+          "maxLength": 4000,
+          "description": "What this sub-agent is for, rendered into its opening message as a <scope> block before the spawner's brief. Lets several sub-agents share one prompt version (four review specialists, one reviewer prompt) while each keeps one cached system prompt."
+        },
+        "conventions": {
+          "type": "object",
+          "description": "Gives this sub-agent its own <conventions> block, rendered after its <scope> block and before the spawner's brief, resolved with the run's context.conventions (tiers, at) and these tags in place of the run's. Absent: no block, and the sub-agent sees only what the spawner's brief carries. Set by the template, never by the spawner or the sub-agent, and selects context only: a tag never adds a tool or a grant.",
+          "properties": {
+            "tags": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Name"
+              },
+              "description": "Absent or empty: the whole corpus. Not bindable."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "grant",
+        "prompt"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

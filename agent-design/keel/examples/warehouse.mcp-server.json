@@ -1,0 +1,19 @@
+{
+  "id": "warehouse",
+  "display": "Data warehouse",
+  "owner": { "type": "team", "id": "data-platform" },
+  "transport": { "kind": "streamable_http", "url": "https://mcp.warehouse.internal/mcp" },
+  "lifecycle": "shared",
+  "protocol_version": "2025-11-25",
+  "auth": {
+    "mode": "obo",
+    "issuer": "https://idp.example.com",
+    "audience": "warehouse-mcp",
+    "scopes": ["warehouse:read"],
+    "exchange": "rfc8693"
+  },
+  "instructions": "include_untrusted",
+  "description_cap_chars": 4096,
+  "limits": { "transport_bytes": 10485760, "context_chars": 20000, "timeout_s": 300 },
+  "drift_policy": "refuse"
+}

@@ -1,0 +1,72 @@
+{
+  "id": "sandbox",
+  "kind": "sandbox",
+  "tiers": {
+    "economy": {
+      "provider": "bedrock",
+      "model_id": "claude-haiku-5-5",
+      "vision": true
+    },
+    "standard": {
+      "provider": "bedrock",
+      "model_id": "claude-sonnet-5-5",
+      "effort": "medium",
+      "vision": true
+    },
+    "strong": {
+      "provider": "anthropic",
+      "model_id": "claude-opus-5-5",
+      "effort": "high",
+      "vision": true
+    }
+  },
+  "providers": {
+    "bedrock": {
+      "api": "bedrock_converse",
+      "deferred_tools": "none",
+      "cache_min_tokens": 1024,
+      "reveal": {
+        "mechanism": "none"
+      }
+    },
+    "anthropic": {
+      "api": "anthropic_messages",
+      "deferred_tools": "native",
+      "cache_min_tokens": 512,
+      "advisor": true,
+      "reveal": {
+        "mechanism": "tool_changes",
+        "beta": "mid-conversation-tool-changes-2026-07-01"
+      }
+    }
+  },
+  "max_tier": "strong",
+  "sandbox": {
+    "sinks": "record",
+    "actions": "record",
+    "mcp_writes": "allow",
+    "servers": {
+      "jira": "jira-sandbox"
+    }
+  },
+  "defaults": {
+    "budgets": {
+      "wall_seconds": 7200
+    },
+    "checks": [
+      {
+        "id": "input_sanitizer"
+      },
+      {
+        "id": "egress_allowlist"
+      }
+    ],
+    "policy": {
+      "gate_expires_after_s": 604800,
+      "on_gate_expiry": "block_stage",
+      "session_delegation_max_s": 86400,
+      "stranded_after_s": 3600,
+      "waiting_stale_after_s": 259200
+    }
+  }
+}

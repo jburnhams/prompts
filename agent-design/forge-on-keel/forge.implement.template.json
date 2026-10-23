@@ -1,0 +1,393 @@
+{
+  "name": "forge.implement",
+  "version": 1,
+  "title": "Forge: implement a ticket",
+  "description": "The coding entrypoint that changes code (system-prompts.md §1, implement). Edits a harness-provisioned checkout and leaves it for the committer. A sibling of forge.plan; a pipeline links them.",
+  "owner": {
+    "type": "team",
+    "id": "platform-agents"
+  },
+  "extends": {
+    "name": "forge.coding",
+    "version": 1
+  },
+  "params": {
+    "write_scope": {
+      "type": "string_list",
+      "trust": "config",
+      "default": [
+        "**"
+      ],
+      "pattern": "^(?!.*\\.\\.)(?!/)[A-Za-z0-9_./*{},-]{1,200}$",
+      "description": "Path globs this task may write, relative to the checkout. Narrower for spun-off tasks."
+    },
+    "turns": {
+      "type": "integer",
+      "trust": "config",
+      "default": 120,
+      "minimum": 10,
+      "maximum": 250
+    }
+  },
+  "spec": {
+    "model": {
+      "tier": "standard",
+      "effort": "high"
+    },
+    "system_prompt": {
+      "base": {
+        "ref": {
+          "name": "forge.implement",
+          "version": 1
+        }
+      },
+      "omit_sections": [
+        {
+          "heading": "Delegating",
+          "when": {
+            "tool_absent": "Task"
+          }
+        }
+      ],
+      "generated": [
+        "env",
+        "capabilities",
+        "git_status",
+        "repo_context"
+      ]
+    },
+    "inputs": [
+      {
+        "name": "task",
+        "kind": "task_header",
+        "source": {
+          "builder": "task_header"
+        },
+        "trust": "harness"
+      },
+      {
+        "name": "ticket",
+        "kind": "issue",
+        "source": {
+          "fetch": "mcp:jira/get_issue",
+          "args": {
+            "key": {
+              "$param": "issue_key"
+            }
+          }
+        },
+        "trust": "external",
+        "max_bytes": 65536
+      },
+      {
+        "name": "plan",
+        "kind": "plan",
+        "source": {
+          "carry": "plan"
+        },
+        "trust": "harness",
+        "required": false
+      },
+      {
+        "name": "prior_attempt",
+        "kind": "prior_attempt",
+        "source": {
+          "carry": "prior_attempt"
+        },
+        "trust": "harness",
+        "required": false
+      },
+      {
+        "name": "approved_action",
+        "kind": "approved_action",
+        "source": {
+          "carry": "approved_action"
+        },
+        "trust": "harness",
+        "required": false
+      },
+      {
+        "name": "resumed_answer",
+        "kind": "resumed_answer",
+        "source": {
+          "carry": "resumed_answer"
+        },
+        "trust": "principal",
+        "required": false
+      },
+      {
+        "name": "spinoff_report",
+        "kind": "json",
+        "source": {
+          "carry": "spinoff_report"
+        },
+        "trust": "harness",
+        "required": false
+      },
+      {
+        "name": "findings",
+        "kind": "findings",
+        "source": {
+          "carry": "findings"
+        },
+        "trust": "harness",
+        "required": false
+      }
+    ],
+    "context": {
+      "conventions": {
+        "paths": {
+          "$param": "write_scope"
+        }
+      }
+    },
+    "workspace": {
+      "writable": true,
+      "write_scope": {
+        "$param": "write_scope"
+      }
+    },
+    "human": {
+      "ask_user": {
+        "expires_after_s": 1209600,
+        "on_expiry": "abandon",
+        "kinds": [
+          "clarify",
+          "approve"
+        ]
+      }
+    },
+    "completion": {
+      "statuses": [
+        "done",
+        "skipped",
+        "failed",
+        "blocked",
+        "budget_exhausted"
+      ],
+      "report_schema": {
+        "ref": {
+          "name": "forge.report.implement",
+          "version": 1
+        }
+      },
+      "spinoffs": {
+        "max_per_run": 2,
+        "max_depth": 0,
+        "relations": [
+          "blocks_this",
+          "follows_this"
+        ]
+      },
+      "checks": [
+        {
+          "id": "first_done_checklist",
+          "on_status": [
+            "done"
+          ],
+          "config": {
+            "reset_on_tools": [
+              "Edit",
+              "Write",
+              "Bash"
+            ]
+          }
+        },
+        {
+          "id": "report_crosscheck"
+        }
+      ]
+    },
+    "budgets": {
+      "turns": {
+        "$param": "turns"
+      },
+      "context_high_water_tokens": 160000,
+      "wall_seconds": 5400,
+      "tokens_by_tier": {
+        "standard": 4000000,
+        "strong": 0
+      },
+      "subagents_total": 12
+    },
+    "outputs": {
+      "sinks": [
+        {
+          "id": "ticket_report",
+          "kind": "comment",
+          "when": {
+            "terminal": [
+              "complete"
+            ]
+          },
+          "channel": {
+            "type": "jira_comment",
+            "target": {
+              "$param": "issue_key"
+            }
+          },
+          "render": {
+            "template": "**Forge: {{status}}**\n\n{{summary}}\n\n{{#report.open_questions}}- {{.}}\n{{/report.open_questions}}",
+            "attach": [
+              "report_json",
+              "evidence"
+            ]
+          },
+          "idempotency_key": {
+            "cel": "run.id + ':ticket_report'"
+          }
+        }
+      ],
+      "continuations": [
+        {
+          "id": "execute_approved",
+          "on": {
+            "terminal": "suspend",
+            "answer": "approve"
+          },
+          "target": {
+            "template": "self"
+          },
+          "params": {
+            "issue_key": {
+              "cel": "params.issue_key"
+            },
+            "repository": {
+              "cel": "params.repository"
+            },
+            "base_branch": {
+              "cel": "params.base_branch"
+            },
+            "target_branch": {
+              "cel": "params.target_branch"
+            },
+            "write_scope": {
+              "cel": "params.write_scope"
+            }
+          },
+          "carry": [
+            "approved_action",
+            "resumed_answer"
+          ],
+          "gate": {
+            "kind": "auto"
+          }
+        },
+        {
+          "id": "spinoff_blocking",
+          "on": {
+            "terminal": "complete",
+            "status": [
+              "blocked"
+            ],
+            "spinoff": "blocks_this"
+          },
+          "target": {
+            "template": "self"
+          },
+          "params": {
+            "issue_key": {
+              "cel": "params.issue_key"
+            },
+            "repository": {
+              "cel": "params.repository"
+            },
+            "base_branch": {
+              "cel": "params.base_branch"
+            },
+            "target_branch": {
+              "cel": "params.target_branch"
+            },
+            "write_scope": {
+              "cel": "spinoff.paths"
+            },
+            "tags": {
+              "cel": "spinoff.tags"
+            }
+          },
+          "carry": [
+            "prior_attempt"
+          ],
+          "gate": {
+            "kind": "auto"
+          }
+        },
+        {
+          "id": "spinoff_following",
+          "on": {
+            "terminal": "complete",
+            "spinoff": "follows_this"
+          },
+          "target": {
+            "template": "self"
+          },
+          "params": {
+            "issue_key": {
+              "cel": "params.issue_key"
+            },
+            "repository": {
+              "cel": "params.repository"
+            },
+            "base_branch": {
+              "cel": "params.base_branch"
+            },
+            "target_branch": {
+              "cel": "params.target_branch + '-follow-' + string(spinoff.index)"
+            },
+            "write_scope": {
+              "cel": "spinoff.paths"
+            }
+          },
+          "carry": [
+            "prior_attempt"
+          ],
+          "gate": {
+            "kind": "approval",
+            "principal_set": [
+              "issue_assignee",
+              "issue_reporter"
+            ],
+            "channel": {
+              "type": "jira_comment",
+              "target": {
+                "$param": "issue_key"
+              }
+            },
+            "bind": "report_hash"
+          }
+        }
+      ],
+      "max_chain_depth": 3
+    },
+    "concurrency": {
+      "key": {
+        "cel": "params.repository + '#' + params.target_branch"
+      },
+      "policy": "queue",
+      "held_while_settling": true
+    },
+    "agents": {
+      "orchestrator": {
+        "grant": [
+          "core.read",
+          "core.write",
+          "core.shell",
+          "vision",
+          "jira.read"
+        ],
+        "spawns": [
+          "general-purpose"
+        ],
+        "max_concurrent_children": 4
+      },
+      "general-purpose": {
+        "grant": [
+          "core.read",
+          "core.write",
+          "core.shell",
+          "vision"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "principal": { "type": "user", "id": "a.analyst" },
+  "template": { "name": "lens.quick", "min_version": 1 },
+  "scopes": { "warehouse": ["warehouse:read"] },
+  "constraints": {},
+  "expires_at": "2027-01-21T00:00:00Z"
+}

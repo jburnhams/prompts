@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.example/registry/report_schema/lens.report.answer/1",
+  "title": "Analysis answer",
+  "description": "Complete.report for lens.investigate: the answer, each claim traced to the query behind it. New with Keel; ../../data.md §2f's provenance check reads claims[].refs and evidence.",
+  "type": "object",
+  "properties": {
+    "question": {
+      "type": "string"
+    },
+    "answer": {
+      "type": "string",
+      "description": "Markdown, figure first."
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "statement": {
+            "type": "string",
+            "description": "One claim, with its figure, as the user will read it."
+          },
+          "refs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^(table|artifact|run)://"
+            },
+            "description": "Where the figure came from. Every one must resolve with a produced_by (the provenance check)."
+          },
+          "sql": {
+            "type": "string"
+          },
+          "row_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "input_rows": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "statement",
+          "refs"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Readings of the question chosen, and units, periods and filters assumed."
+    },
+    "not_checked": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "question",
+    "answer",
+    "claims",
+    "assumptions",
+    "not_checked",
+    "evidence"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.example/registry/report_schema/forge.report.review/1",
+  "title": "Forge review report",
+  "description": "Complete.report for forge.review. From ../../formats.md §3b. findings and filtered together account for every candidate raised.",
+  "type": "object",
+  "properties": {
+    "pull_request": {
+      "type": "string"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "finding.v1.schema.json"
+      },
+      "description": "Confirmed (and, on a high-tier review, plausible) findings that were posted."
+    },
+    "filtered": {
+      "type": "array",
+      "items": {
+        "$ref": "finding.v1.schema.json"
+      },
+      "description": "Raised but not posted, with why. A dedup drop has verdict null."
+    },
+    "attention": {
+      "$ref": "attention.v1.schema.json"
+    },
+    "comment_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "thread_updates": {
+      "type": "array",
+      "description": "Phase 2 re-review sessions only (../../review.md §7b).",
+      "items": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          },
+          "action": {
+            "enum": [
+              "replied_fixed",
+              "replied_conceded",
+              "replied_standing_firm",
+              "left_open"
+            ]
+          },
+          "comment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "thread_id",
+          "action"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "pull_request",
+    "findings",
+    "filtered",
+    "attention",
+    "comment_urls"
+  ],
+  "additionalProperties": false
+}

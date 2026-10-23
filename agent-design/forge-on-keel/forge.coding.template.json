@@ -1,0 +1,315 @@
+{
+  "name": "forge.coding",
+  "version": 1,
+  "runnable": false,
+  "title": "Forge coding: shared base",
+  "description": "Not runnable. What forge.plan and forge.implement have in common: the ticket input, the checkout, the conventions, the tool declaration and harness checks, the delegate role, authority and the ledger. Neither sibling is a mode of the other; each is its own grant, prompt and model (taxonomy.md, 'Mode').",
+  "owner": {
+    "type": "team",
+    "id": "platform-agents"
+  },
+  "params": {
+    "issue_key": {
+      "type": "string",
+      "trust": "config",
+      "required": true,
+      "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+    },
+    "repository": {
+      "type": "string",
+      "trust": "config",
+      "required": true,
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    },
+    "base_branch": {
+      "type": "string",
+      "trust": "config",
+      "default": "main",
+      "pattern": "^[A-Za-z0-9_./-]{1,200}$"
+    },
+    "target_branch": {
+      "type": "string",
+      "trust": "config",
+      "required": true,
+      "pattern": "^[A-Za-z0-9_./-]{1,200}$"
+    },
+    "tags": {
+      "type": "string_list",
+      "trust": "config",
+      "default": [],
+      "subset_of": [
+        "security",
+        "testing",
+        "data",
+        "ux",
+        "performance",
+        "conventions"
+      ],
+      "description": "Conventions tags that apply to this task: they narrow which conventions sections the run gets."
+    }
+  },
+  "spec": {
+    "model": {
+      "tier": "standard",
+      "max_tier": "strong"
+    },
+    "inputs": [
+      {
+        "name": "task",
+        "kind": "task_header",
+        "source": {
+          "builder": "task_header"
+        },
+        "trust": "harness"
+      },
+      {
+        "name": "ticket",
+        "kind": "issue",
+        "source": {
+          "fetch": "mcp:jira/get_issue",
+          "args": {
+            "key": {
+              "$param": "issue_key"
+            }
+          }
+        },
+        "trust": "external",
+        "max_bytes": 65536
+      },
+      {
+        "name": "prior_attempt",
+        "kind": "prior_attempt",
+        "source": {
+          "carry": "prior_attempt"
+        },
+        "trust": "harness",
+        "required": false
+      },
+      {
+        "name": "resumed_answer",
+        "kind": "resumed_answer",
+        "source": {
+          "carry": "resumed_answer"
+        },
+        "trust": "principal",
+        "required": false
+      }
+    ],
+    "context": {
+      "conventions": {
+        "tiers": [
+          "org",
+          "team",
+          "repo",
+          "learned"
+        ],
+        "at": "working_tree",
+        "tags": {
+          "$param": "tags"
+        }
+      }
+    },
+    "workspace": {
+      "kind": "checkout",
+      "repository": {
+        "$param": "repository"
+      },
+      "base_ref": {
+        "$param": "base_branch"
+      },
+      "target_branch": {
+        "$param": "target_branch"
+      },
+      "provision": "worktree",
+      "writable": false,
+      "scratch": true
+    },
+    "tools": {
+      "servers": [
+        {
+          "id": "jira"
+        }
+      ],
+      "groups": [
+        {
+          "id": "core.read",
+          "visibility": "loaded",
+          "tools": [
+            {
+              "tool": "builtin/Read"
+            },
+            {
+              "tool": "builtin/Grep"
+            },
+            {
+              "tool": "builtin/List"
+            }
+          ]
+        },
+        {
+          "id": "core.write",
+          "visibility": "loaded",
+          "tools": [
+            {
+              "tool": "builtin/Edit"
+            },
+            {
+              "tool": "builtin/Write"
+            }
+          ]
+        },
+        {
+          "id": "core.shell",
+          "visibility": "loaded",
+          "tools": [
+            {
+              "tool": "builtin/Bash",
+              "limits": {
+                "timeout_s": 600,
+                "context_chars": 30000
+              }
+            }
+          ]
+        },
+        {
+          "id": "vision",
+          "visibility": "loaded",
+          "tools": [
+            {
+              "tool": "builtin/InspectImage"
+            }
+          ]
+        },
+        {
+          "id": "jira.read",
+          "visibility": "loaded",
+          "tools": [
+            {
+              "tool": "mcp:jira/get_issue",
+              "alias": "FetchJira",
+              "annotations": {
+                "read_only": true,
+                "idempotent": true,
+                "concurrency_safe": true,
+                "retry": "on_transport_error"
+              }
+            }
+          ]
+        },
+        {
+          "id": "jira.comment",
+          "visibility": "loaded",
+          "tools": [
+            {
+              "tool": "mcp:jira/add_comment",
+              "alias": "AddComment",
+              "annotations": {
+                "destructive": false,
+                "idempotent": false,
+                "retry": "never"
+              }
+            }
+          ]
+        }
+      ],
+      "checks": [
+        {
+          "id": "input_sanitizer"
+        },
+        {
+          "id": "git_write_blocklist"
+        },
+        {
+          "id": "read_before_edit"
+        },
+        {
+          "id": "completion_checklist"
+        },
+        {
+          "id": "post_run_crosscheck"
+        },
+        {
+          "id": "conventions_write_flag"
+        }
+      ]
+    },
+    "human": {
+      "ask_user": {
+        "kinds": [
+          "clarify"
+        ],
+        "principal_set": [
+          "issue_assignee",
+          "issue_reporter",
+          "requested_by"
+        ],
+        "channels": [
+          {
+            "type": "jira_comment",
+            "target": {
+              "$param": "issue_key"
+            }
+          }
+        ],
+        "max_suspensions": 3
+      },
+      "narrate": {
+        "max_entries": 8
+      }
+    },
+    "completion": {
+      "statuses": [
+        "done",
+        "failed",
+        "budget_exhausted"
+      ]
+    },
+    "authority": {
+      "run_as": [
+        "user",
+        "service"
+      ],
+      "service_principal": {
+        "type": "service",
+        "id": "forge-bot"
+      },
+      "delegation": {
+        "max_ttl_days": 90,
+        "scopes": [
+          "jira:read",
+          "jira:comment"
+        ]
+      }
+    },
+    "agents": {
+      "orchestrator": {
+        "grant": [
+          "core.read",
+          "jira.read"
+        ]
+      },
+      "general-purpose": {
+        "description": "Open-ended search or investigation you are not confident a direct Read/Grep/List will resolve quickly.",
+        "prompt": {
+          "base": {
+            "ref": {
+              "name": "forge.general-purpose",
+              "version": 1
+            }
+          },
+          "generated": [
+            "env",
+            "capabilities"
+          ]
+        },
+        "model": {
+          "tier": "standard",
+          "clamp_to_parent": true
+        },
+        "grant": [
+          "core.read"
+        ]
+      }
+    }
+  }
+}

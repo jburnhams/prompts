@@ -1,0 +1,532 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.example/schemas/trigger.schema.json",
+  "title": "Triggers",
+  "description": "A trigger turns an external occurrence into a RunRequest (or a ledger task). See ../triggers-and-runs.md §9.",
+  "$defs": {
+    "Trigger": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id",
+          "readOnly": true
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "owner": {
+          "$ref": "common.schema.json#/$defs/PrincipalRef"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "template": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "$ref": "common.schema.json#/$defs/Name"
+            },
+            "version": {
+              "anyOf": [
+                {
+                  "$ref": "common.schema.json#/$defs/Version"
+                },
+                {
+                  "const": "latest"
+                }
+              ],
+              "description": "A published version or latest. Triggers never start drafts and always run on the production deployment; a delegation may pin a version range, which wins."
+            }
+          },
+          "required": [
+            "name",
+            "version"
+          ],
+          "additionalProperties": false,
+          "description": "Exactly one of template and pipeline."
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "filter": {
+          "$ref": "common.schema.json#/$defs/Expr",
+          "description": "Over the event. False drops the firing as filtered."
+        },
+        "params": {
+          "type": "object",
+          "description": "Template param to an expression over the event, or a literal. Event text binds only to params whose trust is external.",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "$ref": "common.schema.json#/$defs/Expr"
+              },
+              {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "array"
+                ]
+              }
+            ]
+          }
+        },
+        "run_as": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "const": "service"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Act for a user with no live session: requires a delegation that covers this template and its scopes.",
+              "properties": {
+                "mode": {
+                  "const": "delegation"
+                },
+                "delegation_id": {
+                  "$ref": "common.schema.json#/$defs/Id"
+                }
+              },
+              "required": [
+                "mode",
+                "delegation_id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Act for the human behind the event (the comment author, the PR author), only if they hold a delegation for this template. Otherwise the firing is refused with delegation_missing.",
+              "properties": {
+                "mode": {
+                  "const": "event_actor"
+                },
+                "actor": {
+                  "$ref": "common.schema.json#/$defs/Expr"
+                },
+                "fallback": {
+                  "type": "string",
+                  "enum": [
+                    "refuse",
+                    "service"
+                  ],
+                  "default": "refuse"
+                }
+              },
+              "required": [
+                "mode",
+                "actor"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "manual sources only: the invoking user's live session, via a session delegation (run.schema.json RunRequest.run_as).",
+              "properties": {
+                "mode": {
+                  "const": "invoker"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "dedupe": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "$ref": "common.schema.json#/$defs/Expr"
+            },
+            "window_s": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "key",
+            "window_s"
+          ],
+          "additionalProperties": false
+        },
+        "concurrency": {
+          "type": "object",
+          "description": "On top of the template's own concurrency key.",
+          "properties": {
+            "key": {
+              "$ref": "common.schema.json#/$defs/Expr"
+            },
+            "max_running": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "policy": {
+              "type": "string",
+              "enum": [
+                "queue",
+                "skip",
+                "supersede_queued"
+              ],
+              "default": "queue",
+              "description": "supersede_queued drops a waiting firing for the same key in favour of the new one (a second push to a PR). A running run is never cancelled."
+            }
+          },
+          "required": [
+            "key"
+          ],
+          "additionalProperties": false
+        },
+        "rate_limit": {
+          "type": "object",
+          "properties": {
+            "per_hour": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "per_day": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "labels": {
+          "$ref": "common.schema.json#/$defs/Labels"
+        },
+        "created_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp",
+          "readOnly": true
+        },
+        "updated_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp",
+          "readOnly": true
+        },
+        "pipeline": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "$ref": "common.schema.json#/$defs/Name"
+            },
+            "version": {
+              "anyOf": [
+                {
+                  "$ref": "common.schema.json#/$defs/Version"
+                },
+                {
+                  "const": "latest"
+                }
+              ]
+            }
+          },
+          "required": [
+            "name",
+            "version"
+          ],
+          "additionalProperties": false
+        },
+        "origin": {
+          "type": "object",
+          "description": "Where outputs addressed to {origin: true} go. Defaults per provider: the issue for jira, the PR for bitbucket/github, the thread for chat.",
+          "properties": {
+            "channel": {
+              "$ref": "common.schema.json#/$defs/ChannelRef/properties/type"
+            },
+            "ref": {
+              "$ref": "common.schema.json#/$defs/Expr"
+            }
+          },
+          "required": [
+            "channel",
+            "ref"
+          ],
+          "additionalProperties": false
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "normal",
+            "high",
+            "urgent"
+          ],
+          "default": "normal"
+        }
+      },
+      "required": [
+        "name",
+        "owner",
+        "source",
+        "run_as"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "template"
+          ]
+        },
+        {
+          "required": [
+            "pipeline"
+          ]
+        }
+      ]
+    },
+    "Source": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "schedule"
+            },
+            "cron": {
+              "type": "string",
+              "description": "5-field cron."
+            },
+            "timezone": {
+              "type": "string",
+              "description": "IANA name. Required so DST is not a surprise."
+            },
+            "jitter_s": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "catch_up": {
+              "type": "string",
+              "enum": [
+                "none",
+                "latest"
+              ],
+              "default": "latest",
+              "description": "After downtime: skip missed slots, or fire once for the most recent."
+            },
+            "overlap": {
+              "type": "string",
+              "enum": [
+                "skip",
+                "queue"
+              ],
+              "default": "skip",
+              "description": "If the previous firing's run is still going."
+            },
+            "start_at": {
+              "$ref": "common.schema.json#/$defs/Timestamp"
+            },
+            "end_at": {
+              "$ref": "common.schema.json#/$defs/Timestamp"
+            }
+          },
+          "required": [
+            "kind",
+            "cron",
+            "timezone"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "event"
+            },
+            "provider": {
+              "type": "string",
+              "enum": [
+                "jira",
+                "bitbucket",
+                "github",
+                "ci",
+                "artifact",
+                "webhook"
+              ]
+            },
+            "types": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              },
+              "description": "Provider event types after normalisation: issue.transitioned, issue.labeled, pr.opened, pr.updated, pr.comment, pr.merged, pr.closed, build.failed, artifact.published, webhook.received."
+            },
+            "scope": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Projects, repositories or artifact ids the subscription covers."
+            },
+            "webhook_id": {
+              "type": "string",
+              "description": "provider = webhook: the registered inbound endpoint (its own secret)."
+            }
+          },
+          "required": [
+            "kind",
+            "provider",
+            "types"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "description": "Another template's runs ending. Use this to subscribe across owners; within one template, prefer a declared continuation.",
+          "properties": {
+            "kind": {
+              "const": "run_outcome"
+            },
+            "template": {
+              "$ref": "common.schema.json#/$defs/Name"
+            },
+            "terminal": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Terminal"
+              }
+            },
+            "status": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/CompleteStatus"
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "template"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "description": "A chat command, a UI button, a slash command. The invoking user is the principal if they hold a session; the trigger exists to bind params and policy to an entry point.",
+          "properties": {
+            "kind": {
+              "const": "manual"
+            },
+            "entry": {
+              "type": "string",
+              "enum": [
+                "api",
+                "chat_command",
+                "ui_button"
+              ]
+            },
+            "command": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "entry"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Firing": {
+      "type": "object",
+      "description": "Every time a trigger is evaluated. Kept even when nothing ran, so 'why did nothing happen' has an answer.",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "trigger_id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "event_ref": {
+          "type": "string"
+        },
+        "scheduled_for": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "started",
+            "queued",
+            "filtered",
+            "deduped",
+            "skipped_concurrency",
+            "rate_limited",
+            "refused",
+            "test"
+          ]
+        },
+        "refusal": {
+          "$ref": "common.schema.json#/$defs/RefusalCode"
+        },
+        "run_id": {
+          "$ref": "common.schema.json#/$defs/Id",
+          "description": "The first stage run."
+        },
+        "template": {
+          "$ref": "common.schema.json#/$defs/VersionedRef"
+        },
+        "pipeline_run_id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        }
+      },
+      "required": [
+        "id",
+        "trigger_id",
+        "at",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "Event": {
+      "type": "object",
+      "description": "The normalised event a trigger's expressions see as `event`. Payload is the provider body after signature check and sanitisation.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "actor": {
+          "$ref": "common.schema.json#/$defs/PrincipalRef",
+          "description": "Mapped from the provider account. Absent when unmappable."
+        },
+        "subject": {
+          "type": "string",
+          "description": "Issue key, PR ref, build id."
+        },
+        "payload": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "provider",
+        "type",
+        "at",
+        "payload"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.example/schemas/deployment.schema.json",
+  "title": "Deployment",
+  "description": "A Keel deployment: where runs execute. Per-deployment facts no template may override: the tier map, provider capabilities, ceilings, policy defaults. An installation has one production deployment and any number of sandboxes (triggers-and-runs.md §10a).",
+  "type": "object",
+  "properties": {
+    "tiers": {
+      "type": "object",
+      "properties": {
+        "economy": {
+          "$ref": "#/$defs/TierBinding"
+        },
+        "standard": {
+          "$ref": "#/$defs/TierBinding"
+        },
+        "strong": {
+          "$ref": "#/$defs/TierBinding"
+        }
+      },
+      "required": [
+        "economy",
+        "standard",
+        "strong"
+      ],
+      "additionalProperties": false
+    },
+    "providers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "api": {
+            "type": "string",
+            "enum": [
+              "anthropic_messages",
+              "bedrock_converse",
+              "vertex",
+              "openai_responses"
+            ]
+          },
+          "deferred_tools": {
+            "type": "string",
+            "enum": [
+              "native",
+              "client",
+              "none"
+            ]
+          },
+          "cache_min_tokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "advisor": {
+            "type": "boolean",
+            "default": false
+          },
+          "reveal": {
+            "type": "object",
+            "description": "How a hidden tool is revealed mid-run without changing the cached prefix (tools-and-agents.md §4b).",
+            "properties": {
+              "mechanism": {
+                "type": "string",
+                "enum": [
+                  "tool_changes",
+                  "additional_tools",
+                  "none"
+                ],
+                "description": "tool_changes: Anthropic's mid-conversation tool changes (a role: system message with a tool_addition referencing a defer_loading tool). additional_tools: OpenAI's client-executed tool search. none: hidden resolves to deferred, or to loaded."
+              },
+              "beta": {
+                "type": "string",
+                "description": "e.g. mid-conversation-tool-changes-2026-07-01."
+              }
+            },
+            "required": [
+              "mechanism"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "api",
+          "deferred_tools"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "max_tier": {
+      "$ref": "common.schema.json#/$defs/Tier"
+    },
+    "defaults": {
+      "type": "object",
+      "properties": {
+        "budgets": {
+          "$ref": "run-spec.schema.json#/$defs/Budgets"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "tools.schema.json#/$defs/HarnessCheck"
+          },
+          "description": "Added to every template's checks; a template cannot remove them."
+        },
+        "policy": {
+          "type": "object",
+          "description": "Platform defaults that templates and pipelines may override where they have a field for it (keel/decisions.md, 'Policy defaults').",
+          "properties": {
+            "gate_expires_after_s": {
+              "type": "integer",
+              "minimum": 60,
+              "default": 604800,
+              "description": "7 days."
+            },
+            "on_gate_expiry": {
+              "type": "string",
+              "enum": [
+                "block_stage",
+                "abandon"
+              ],
+              "default": "block_stage"
+            },
+            "session_delegation_max_s": {
+              "type": "integer",
+              "minimum": 60,
+              "default": 86400,
+              "description": "24 hours. Not overridable upward by a template."
+            },
+            "stranded_after_s": {
+              "type": "integer",
+              "minimum": 60,
+              "default": 3600,
+              "description": "A ready stage not started within this is stranded."
+            },
+            "waiting_stale_after_s": {
+              "type": "integer",
+              "minimum": 60,
+              "default": 259200,
+              "description": "3 days. A stage waiting longer than this is waiting_stale."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,40}$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "production",
+        "sandbox"
+      ],
+      "default": "production"
+    },
+    "sandbox": {
+      "type": "object",
+      "description": "Sandbox deployments only. What a run's effects do here.",
+      "properties": {
+        "sinks": {
+          "type": "string",
+          "enum": [
+            "record",
+            "deliver"
+          ],
+          "default": "record",
+          "description": "record: each delivery is stored with its rendered payload and state recorded, and nothing is sent."
+        },
+        "actions": {
+          "type": "string",
+          "enum": [
+            "record",
+            "allow"
+          ],
+          "default": "record",
+          "description": "Harness actions (open_pull_request, request_help) are recorded as if successful, with what they would have done."
+        },
+        "mcp_writes": {
+          "type": "string",
+          "enum": [
+            "deny",
+            "allow"
+          ],
+          "default": "deny",
+          "description": "Calls to tools not annotated read_only. allow only when every write server in the sandbox points at sandbox data (a test Jira project)."
+        },
+        "servers": {
+          "type": "object",
+          "description": "MCP server id to the server registration this sandbox uses instead, e.g. jira to jira-sandbox.",
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/Name"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "id",
+    "kind",
+    "tiers",
+    "providers",
+    "max_tier"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "TierBinding": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "model_id": {
+          "type": "string"
+        },
+        "effort": {
+          "$ref": "common.schema.json#/$defs/Effort"
+        },
+        "vision": {
+          "type": "boolean"
+        },
+        "supports_reveal": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this tier's model supports the provider's reveal mechanism. Anthropic's tool changes cover Opus 5, Opus 5.5, Opus 4.8, Fable 5 and 5.1 and Sonnet 5.5, not Sonnet 5; set false for a model outside the list."
+        }
+      },
+      "required": [
+        "provider",
+        "model_id"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

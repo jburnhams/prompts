@@ -1,0 +1,94 @@
+{
+  "name": "forge.plan",
+  "version": 1,
+  "title": "Forge: plan a ticket",
+  "description": "Read-only investigation ending in a posted plan, a no-action finding, or a question. A sibling of forge.implement, not a mode of it: it differs by grant (no write tools; AddComment), prompt, model and completion contract.",
+  "owner": {
+    "type": "team",
+    "id": "platform-agents"
+  },
+  "extends": {
+    "name": "forge.coding",
+    "version": 1
+  },
+  "params": {},
+  "spec": {
+    "model": {
+      "tier": "strong",
+      "effort": "high"
+    },
+    "system_prompt": {
+      "base": {
+        "ref": {
+          "name": "forge.plan",
+          "version": 1
+        }
+      },
+      "generated": [
+        "env",
+        "capabilities",
+        "git_status",
+        "repo_context"
+      ]
+    },
+    "completion": {
+      "statuses": [
+        "planned",
+        "done",
+        "failed",
+        "budget_exhausted"
+      ],
+      "report_schema": {
+        "ref": {
+          "name": "forge.report.plan",
+          "version": 1
+        }
+      },
+      "checks": [
+        {
+          "id": "require_tool_called",
+          "on_status": [
+            "planned",
+            "done"
+          ],
+          "config": {
+            "tool": "AddComment"
+          }
+        },
+        {
+          "id": "report_crosscheck"
+        }
+      ]
+    },
+    "budgets": {
+      "turns": 80,
+      "context_high_water_tokens": 160000,
+      "wall_seconds": 3600,
+      "tokens_by_tier": {
+        "strong": 2000000
+      }
+    },
+    "agents": {
+      "orchestrator": {
+        "grant": [
+          "core.read",
+          "core.shell",
+          "vision",
+          "jira.read",
+          "jira.comment"
+        ],
+        "spawns": [
+          "general-purpose"
+        ],
+        "max_concurrent_children": 4
+      },
+      "general-purpose": {
+        "grant": [
+          "core.read",
+          "core.shell",
+          "vision"
+        ]
+      }
+    }
+  }
+}

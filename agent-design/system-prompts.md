@@ -25,6 +25,15 @@ placeholder identity name (see the folder README).
 
 ---
 
+**On Keel** (2026-10-23): these prompts are registered from files in
+[`forge-on-keel/prompts/`](./forge-on-keel/prompts), and the analysis
+ones from [`keel/examples/prompts/`](./keel/examples/prompts). Keel renders
+per-run blocks into the opening message rather than the system prompt
+([`keel/run-spec.md`](./keel/run-spec.md) §3), so those files drop the
+`{{ENV_BLOCK}}` and `{{TASK_ENVELOPE}}` slots. §1 is split into
+`forge.plan` and `forge.implement`, with the mode switch removed. This
+file stays the design source; the registered files are derived from it.
+
 ## 1. Coding-mode system prompt
 
 ```
@@ -419,7 +428,7 @@ Review runs come in two harness-selected shapes sharing every wire
 format, the validator stage, and the reviewer core (`review.md` §6):
 **multi-stage** (§2a — a pure orchestrator fanning out to role
 specialists; the reference shape) and **single-stage** (§2b — one
-context finds with the broad lens, then runs the same tail). The §2b
+context finds with the broad scope, then runs the same tail). The §2b
 prompt is assembled from §2a's text plus §4's core via the named
 placeholders below, so the shapes cannot drift apart by edit
 accident.
@@ -482,7 +491,7 @@ standing procedure:
      documented conventions, only where you can quote the specific rule
      being broken. Skip this specialist entirely if step 2 found no
      project-conventions file scoped to the changed paths — its whole
-     lens is quoting documented rules, so with nothing to quote it can
+     job is quoting documented rules, so with nothing to quote it can
      only return an empty list at the cost of a full sub-agent run.
    - `reviewer` (role: `visual`) — what the PR's images show, and whether
      the diff matches them. Dispatch this specialist **only** when the PR
@@ -490,7 +499,7 @@ standing procedure:
      thread) or its diff touches UI-classified paths; skip it entirely
      otherwise, for the same reason the `conventions` specialist is
      skipped. It is the one specialist wired with `InspectImage`, and its
-     findings anchor to code like every other lens — an observation it
+     findings anchor to code like every other specialist — an observation it
      cannot tie to a line is not a finding (`review.md` §1c).
    Assemble each specialist's brief in the fixed format you were
    given for it: the envelope's PR block, description, diff, gates
@@ -602,7 +611,7 @@ section are the v1 pipeline; `review.md` §7b defines the deltas a
 ### 2b. Single-stage review prompt
 
 One context finds and orchestrates: it reviews the diff itself
-through every lens at once, then runs the same tail as the
+across every specialism at once, then runs the same tail as the
 multi-stage pipeline. Written as a composition of shared blocks
 rather than fresh text — every `{{…}}` below names text defined
 elsewhere in this document and included **verbatim** at assembly
@@ -625,7 +634,7 @@ are validators.
 1. {{ §2a step 1, verbatim — the skip check }}
 2. {{ §2a step 2, verbatim — read the project-conventions files
    scoped to the changed paths; here their contents inform your own
-   conventions lens rather than a specialist's brief }}
+   conventions specialist rather than a specialist's brief }}
 3. **Review the diff yourself.**
 
    {{REVIEWER_CORE — §4's shared core, with ROLE = all }}
@@ -711,7 +720,7 @@ beyond three types" entry.)
 ### The shared reviewer core (`{{REVIEWER_CORE}}`)
 
 ```
-You are reviewing one pull request through this lens: {{ROLE}}.
+You are reviewing one pull request as this specialist: {{ROLE}}.
 {{ROLE_SCOPE}}
 
 The working tree is checked out at the PR's head commit — the code the
@@ -813,7 +822,7 @@ Tool scope: `Read`, `Grep`, `List` only — no `Edit`, `Write`, or
 
 ```
 You are a Forge review specialist. You were spawned by Forge's review
-orchestrator to look at one pull request through exactly one lens.
+orchestrator to look at one pull request for exactly one specialism.
 You will not be able to send or receive further messages after your
 final report — read everything you need now. You cannot edit files or
 run commands; your tools are Read, Grep, and List only, for pulling in
@@ -839,7 +848,7 @@ return an empty list, not a note explaining that you looked.
 | `bugs` | multi-stage | "Logic errors, incorrect conditionals, off-by-one mistakes, and defects that make the changed code behave incorrectly — introduced by this diff, in the diff's own lines. Two checks to run every time: for each line the diff deletes or replaces, name what it guaranteed (a guard, an error path, a validation, a test case) and find where the new code guarantees it again — if nowhere, that is a candidate; and where the diff adds or changes a wrapper (a cache, proxy, decorator or adapter), check that every method calls the wrapped object rather than going back through a registry, session or global, which re-enters the wrapper or recurses, and that it forwards every method its callers use." |
 | `security` | multi-stage | "Vulnerabilities introduced by this diff: injection, auth/authz gaps, secret handling, unsafe deserialization, and similar — introduced by this diff, in the diff's own lines." |
 | `conventions` | multi-stage | "Violations of the project's own documented conventions (the text you were given alongside the diff) — only where you can quote the specific rule being broken and point to exactly where the diff breaks it." |
-| `all` | single-stage only (§2b) — a prompt-assembly value, never passed through the Task tool; its `role` enum is unchanged | "Everything the bugs, security, and conventions lenses cover: logic defects, vulnerabilities, and quotable convention violations introduced by this diff, including the bugs lens's two checks on removed lines and on wrappers. You are the only finder on this review — cover all three, and skip the conventions lens only if no conventions file applies to the changed paths." |
+| `all` | single-stage only (§2b) — a prompt-assembly value, never passed through the Task tool; its `role` enum is unchanged | "Everything the bugs, security, and conventions specialists cover: logic defects, vulnerabilities, and quotable convention violations introduced by this diff, including the bugs specialist's two checks on removed lines and on wrappers. You are the only finder on this review — cover all three, and skip the conventions specialist only if no conventions file applies to the changed paths." |
 
 ---
 

@@ -268,11 +268,11 @@ three-line change to a permission check deserves the deep pass more than
 a two-thousand-line rename. Anthropic sets review depth by the cost of a
 missed bug, not by size (§12, pattern 5). Replacing the threshold:
 
-| Triage tier | Run shape | Lenses |
+| Triage tier | Run shape | Specialists |
 |---|---|---|
-| low | single-stage (`all` lens) | — |
+| low | single-stage (`all` scope) | — |
 | medium | multi-stage | bugs, security, conventions (if a file is scoped), visual (if triggered) |
-| high | multi-stage | as medium, plus the security lens **always** runs, and the bugs lens is sampled twice (the `medium.md` §3c double-coverage option, enabled here first). *(Added 2026-10-19.)* `plausible` validator verdicts are posted, labelled, and a gap sweep runs after validation (`system-prompts.md` §2a step 5b) |
+| high | multi-stage | as medium, plus the security specialist **always** runs, and the bugs specialist is sampled twice (the `medium.md` §3c double-coverage option, enabled here first). *(Added 2026-10-19.)* `plausible` validator verdicts are posted, labelled, and a gap sweep runs after validation (`system-prompts.md` §2a step 5b) |
 
 Size still matters, through the existing per-file and run-level budget
 caps (`review.md` §2, `formats.md` §1b). Everything those caps elide goes
@@ -485,7 +485,7 @@ Two measures fall out of this for free:
 | Typed drivers (§11b) | `dimension` fixed list; default domain set | Repo-defined domains in the review policy | Domains derived from mined follow-up fixes and incidents (§8a) |
 | Required decisions (§11c) | `product_direction`, `security_boundary` | All five kinds, with `options` | — |
 | Proof axis (§11d) | `proof.path` reported | Proof rules raise tier | — |
-| Authority lens (§11e) | — | Authority-chain `<focus>` on `authority` drivers | — |
+| Authority specialist (§11e) | — | Authority-chain `<focus>` on `authority` drivers | — |
 
 
 ---
@@ -574,7 +574,7 @@ whether proof exists:
   `medium` and adds a `proof_sufficiency` decision. The failure mode
   `failure_modes.detected_by: "nothing"` is how a reviewer argues it.
 
-### 11e. The authority lens at high tier
+### 11e. The authority specialist at high tier
 
 When triage records an `authority` driver (the change creates, persists,
 transfers or consumes something that decides *who may cause what*), the
@@ -689,7 +689,7 @@ replaces the vaguer "trusted authors only" in §6.
   additions and deletions by change type) is reported separately in
   `attention.effort_minutes`. It never feeds the tier. It helps humans
   plan, and an `effort_minutes` far above the PR's tier is itself a hint
-  to split the PR (Codex's `code-review-change-size` lens).
+  to split the PR (Codex's `code-review-change-size` specialist).
 - **Residual risk** (CodeRabbit's "after review" label) is what the tier
   becomes once findings exist. Forge's `floor` is the inherent risk.
   Both are already in the block (`floor`, `tier`), and the status text

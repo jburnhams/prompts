@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.example/schemas/registry.schema.json",
+  "title": "Configuration registry manifest",
+  "description": "Maps the prompt and report-schema refs a configuration folder uses ({name, version}) to files in that folder, so a folder kept in git can be checked and published as a unit. Publishing a folder creates one registry version per entry. See ../run-spec.md §6.",
+  "type": "object",
+  "properties": {
+    "prompts": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_.-]{0,62}@[1-9][0-9]*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "derived_from": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "report_schemas": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_.-]{0,62}@[1-9][0-9]*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -387,10 +387,10 @@ design that can retire one.
    enough to justify the flat spelling in `future.md`?
 5. Does read-before-edit's full-view requirement on `Write` ever block a
    legitimate rewrite?
-6. **Does role specialization beat one broad lens at equal total spend?**
+6. **Does role specialization beat one broad finder at equal total spend?**
    The multi-stage and single-stage shapes (`review.md` §6) are wire-
    identical by construction, so this is directly A/B-able: same PRs,
-   same envelope, N specialists versus one `all`-lens finder given a
+   same envelope, N specialists versus one `all`-scope finder given a
    comparable budget. Measure recall against a seeded-defect fixture set
    and precision against the validator's reject rate, not finding count.
    The question is live because the field is split — most review tools

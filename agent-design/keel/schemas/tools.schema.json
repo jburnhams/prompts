@@ -1,0 +1,724 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.example/schemas/tools.schema.json",
+  "title": "Tool sources, groups and harness checks",
+  "description": "See ../tools-and-agents.md §4. An MCP server is a registry resource; a tool group is a named set of tool addresses; a harness check is enforcement that no role can opt out of.",
+  "$defs": {
+    "McpServer": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "display": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "owner": {
+          "$ref": "common.schema.json#/$defs/PrincipalRef"
+        },
+        "transport": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "stdio"
+                },
+                "command": {
+                  "type": "string"
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "env": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "#/$defs/SecretOrLiteral"
+                  }
+                }
+              },
+              "required": [
+                "kind",
+                "command"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "streamable_http"
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri",
+                  "pattern": "^https://"
+                }
+              },
+              "required": [
+                "kind",
+                "url"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "lifecycle": {
+          "type": "string",
+          "enum": [
+            "per_run",
+            "shared"
+          ],
+          "default": "per_run",
+          "description": "per_run starts a process per run, so the process boundary is the state boundary (adk.md §6). shared is for remote servers only."
+        },
+        "protocol_version": {
+          "type": "string",
+          "enum": [
+            "2025-06-18",
+            "2025-11-25"
+          ],
+          "description": "Pinned. Capped at what the pinned SDK speaks (adk.md §0)."
+        },
+        "auth": {
+          "$ref": "#/$defs/ServerAuth"
+        },
+        "instructions": {
+          "type": "string",
+          "enum": [
+            "ignore",
+            "include_untrusted"
+          ],
+          "default": "ignore",
+          "description": "The server's own instructions text. If included it is framed as untrusted context, never as system prompt."
+        },
+        "description_cap_chars": {
+          "type": "integer",
+          "minimum": 256,
+          "maximum": 16384,
+          "default": 4096
+        },
+        "limits": {
+          "$ref": "#/$defs/ToolLimits"
+        },
+        "egress": {
+          "type": "object",
+          "description": "Outbound hosts a stdio server's process may reach. Enforced by the sandbox, not by the server.",
+          "properties": {
+            "allow_hosts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "snapshot": {
+          "$ref": "#/$defs/ToolSnapshot"
+        },
+        "drift_policy": {
+          "type": "string",
+          "enum": [
+            "refuse",
+            "allow_removals",
+            "allow_description_changes"
+          ],
+          "default": "refuse",
+          "description": "What a run does when the live tools/list differs from the snapshot a template version pinned. Any input-schema or annotation change always refuses."
+        },
+        "workspace": {
+          "type": "string",
+          "enum": [
+            "none",
+            "bind"
+          ],
+          "default": "none",
+          "description": "bind: a per_run server process is started with the run's checkout mounted, so its tools can act on the working tree (commit, push, open a review). For a pipeline sink it is started against the stage's retained checkout. Its writes are its own; the git_write_blocklist check still stops the model's Bash from doing them."
+        }
+      },
+      "required": [
+        "id",
+        "transport",
+        "protocol_version",
+        "auth"
+      ],
+      "additionalProperties": false
+    },
+    "SecretOrLiteral": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "secret": {
+              "type": "string",
+              "description": "Secret-store path. Resolved into the server process, never into context."
+            }
+          },
+          "required": [
+            "secret"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ServerAuth": {
+      "description": "How calls to this server are authorised. See ../authority.md §8 for the confused-deputy rule on service credentials.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "none"
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "service"
+            },
+            "credential": {
+              "$ref": "#/$defs/SecretOrLiteral"
+            },
+            "principal": {
+              "$ref": "common.schema.json#/$defs/PrincipalRef",
+              "description": "The service identity calls appear as downstream."
+            },
+            "entitlement_check": {
+              "type": "string",
+              "enum": [
+                "none",
+                "harness_policy"
+              ],
+              "default": "none",
+              "description": "harness_policy: before each write call the harness checks the run's principal may perform it on that resource. Required for write tools in templates a user may run (../authority.md §8)."
+            }
+          },
+          "required": [
+            "mode",
+            "credential",
+            "principal"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "obo"
+            },
+            "issuer": {
+              "type": "string",
+              "format": "uri"
+            },
+            "audience": {
+              "type": "string"
+            },
+            "scopes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            },
+            "exchange": {
+              "type": "string",
+              "enum": [
+                "rfc8693",
+                "jwt_bearer"
+              ],
+              "default": "rfc8693",
+              "description": "How the broker turns the run's principal credential into a token for this audience. Done per call by the credential broker; the token never enters context."
+            }
+          },
+          "required": [
+            "mode",
+            "issuer",
+            "audience",
+            "scopes"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ToolSnapshot": {
+      "type": "object",
+      "description": "The tools/list result at discovery, frozen. A template version pins the digest.",
+      "properties": {
+        "digest": {
+          "$ref": "common.schema.json#/$defs/Digest"
+        },
+        "discovered_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "description_digest": {
+                "$ref": "common.schema.json#/$defs/Digest"
+              },
+              "input_schema_digest": {
+                "$ref": "common.schema.json#/$defs/Digest"
+              },
+              "annotations": {
+                "$ref": "#/$defs/Annotations"
+              }
+            },
+            "required": [
+              "name",
+              "description_digest",
+              "input_schema_digest"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "digest",
+        "discovered_at",
+        "tools"
+      ],
+      "additionalProperties": false
+    },
+    "Annotations": {
+      "type": "object",
+      "description": "Harness-relevant facts about a tool. A server's own annotations are hints; the template's are authoritative and may only make a tool look more dangerous. Unannotated MCP tools are treated as destructive, non-idempotent, not concurrency-safe and open-world.",
+      "properties": {
+        "read_only": {
+          "type": "boolean"
+        },
+        "destructive": {
+          "type": "boolean"
+        },
+        "idempotent": {
+          "type": "boolean"
+        },
+        "concurrency_safe": {
+          "type": "boolean"
+        },
+        "open_world": {
+          "type": "boolean"
+        },
+        "retry": {
+          "type": "string",
+          "enum": [
+            "never",
+            "on_transport_error"
+          ],
+          "description": "Defaults to never unless idempotent (adk.md §4)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "ToolLimits": {
+      "type": "object",
+      "description": "Two caps on two axes (cloudflare.md §2d). Values are rendered into the tool's description.",
+      "properties": {
+        "transport_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "context_chars": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeout_s": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "ToolRef": {
+      "type": "object",
+      "properties": {
+        "tool": {
+          "type": "string",
+          "pattern": "^(builtin|mcp:[a-z][a-z0-9_.-]{0,62})/([A-Za-z][A-Za-z0-9_.-]{0,127}|\\*)$",
+          "description": "builtin/Read, mcp:jira/get_issue, or mcp:jira/* (expanded against the pinned snapshot at publish time, then frozen). harness/ tools cannot be referenced: they are generated from contracts."
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Names removed from a * expansion."
+        },
+        "alias": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$",
+          "description": "Name the model sees. Must be unique within an agent's registered set."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 16384,
+          "description": "Replaces the server's description. Template text, so trusted."
+        },
+        "search_hint": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Shown for deferred tools in place of the schema."
+        },
+        "annotations": {
+          "$ref": "#/$defs/Annotations"
+        },
+        "limits": {
+          "$ref": "#/$defs/ToolLimits"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility",
+          "description": "Per-tool override of the group's default."
+        },
+        "params": {
+          "type": "object",
+          "description": "Per-argument overrides of how the model sees this tool. Keys are the server's argument names. Overrides may only narrow the server's input schema (rule R13); the executor validates the model's arguments against the overridden schema, merges fixed values, then validates against the server's schema.",
+          "additionalProperties": {
+            "$ref": "#/$defs/ParamOverride"
+          }
+        },
+        "use": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "call",
+              "finish"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "default": [
+            "call"
+          ],
+          "description": "How the agent may use this tool in this run. call: during the run, as an ordinary tool. finish: as an ending: the harness generates a separate run-ending tool for it (see finish). A built-in may allow only some uses (BuiltinTool.uses); an MCP tool allows both. Set in the run's configuration, never by the tool's server."
+        },
+        "finish": {
+          "type": "object",
+          "description": "Required when use includes finish. The ending this tool provides.",
+          "properties": {
+            "name": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Za-z]{2,31}$",
+              "description": "The name of the generated ending tool. Defaults to the alias when use is only finish, and to Finish + alias when the tool is also callable."
+            },
+            "description": {
+              "type": "string",
+              "maxLength": 1000,
+              "description": "Should say that calling it ends the run, and when to choose it over the other endings."
+            },
+            "status": {
+              "$ref": "common.schema.json#/$defs/CompleteStatus"
+            },
+            "report": {
+              "type": "boolean",
+              "default": false,
+              "description": "Add a report argument validated against completion.report_schema."
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Completion check ids to run before the call. Default: all whose on_status includes status."
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "links": {
+          "type": "object",
+          "description": "Stage links to write from this tool's result when it succeeds, as link name to an expression over result. How a PR opened by an MCP tool reaches a stage's settle wait without Keel knowing what a PR is.",
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/Expr"
+          }
+        }
+      },
+      "required": [
+        "tool"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "use": {
+                "contains": {
+                  "const": "finish"
+                }
+              }
+            },
+            "required": [
+              "use"
+            ]
+          },
+          "then": {
+            "required": [
+              "finish"
+            ]
+          }
+        }
+      ]
+    },
+    "ToolGroup": {
+      "type": "object",
+      "description": "A named set of tools. Groups are the unit of grant and of default visibility. May be inline in a spec or a registry resource referenced by name.",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ToolRef"
+          }
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Name"
+          },
+          "description": "Other groups, flattened at publish. Cycles are rejected."
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "tools"
+          ]
+        },
+        {
+          "required": [
+            "include"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "Visibility": {
+      "type": "string",
+      "enum": [
+        "loaded",
+        "deferred",
+        "hidden"
+      ],
+      "description": "Default for the group's tools. loaded: schema in context. deferred: name and search hint, loaded on request. hidden: nothing until a harness trigger or Expand reveals it. Visibility never grants (tools.md 'Granted, registered, visible')."
+    },
+    "HarnessCheck": {
+      "type": "object",
+      "description": "Enforcement at the tool boundary that applies to every agent. Not part of any grant, so no agent, param or prompt can remove it.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": [
+            "input_sanitizer",
+            "git_write_blocklist",
+            "read_before_edit",
+            "read_name_blocklist",
+            "completion_checklist",
+            "post_run_crosscheck",
+            "conventions_write_flag",
+            "secret_scan",
+            "egress_allowlist",
+            "anchor_validation"
+          ]
+        },
+        "config": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "ParamOverride": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "default": {
+          "description": "Shown to the model as the default and applied when it omits the argument."
+        },
+        "fixed": {
+          "description": "The harness supplies this value and removes the argument from the model's schema. A literal, a template param ({\"$param\": ...}, config trust only), or an expression over the run.",
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "array",
+                "object",
+                "null"
+              ]
+            },
+            {
+              "$ref": "common.schema.json#/$defs/ParamRef"
+            },
+            {
+              "$ref": "common.schema.json#/$defs/Expr"
+            }
+          ]
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "Remove the argument from the model's schema. Requires fixed, so the call never depends on a server default the template author did not choose."
+        },
+        "required": {
+          "const": true,
+          "description": "Make an optional argument required. The reverse is only possible with fixed."
+        },
+        "enum": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Must be a subset of the server's enum, if it has one."
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "max_length": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pattern": {
+          "type": "string"
+        }
+      },
+      "dependentRequired": {
+        "hidden": [
+          "fixed"
+        ]
+      },
+      "additionalProperties": false
+    },
+    "SavedToolGroup": {
+      "type": "object",
+      "description": "A tool group saved in the registry, versioned like a template, and used by reference from any spec. It brings its pinned servers into the using spec's declaration. A fixed value written as {\"$param\": name} must be a param of each template that uses the group.",
+      "properties": {
+        "name": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/Version"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "published",
+            "deprecated"
+          ],
+          "readOnly": true
+        },
+        "owner": {
+          "$ref": "common.schema.json#/$defs/PrincipalRef"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "servers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/Name"
+              },
+              "snapshot": {
+                "$ref": "common.schema.json#/$defs/Digest"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ToolRef"
+          }
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/VersionedRef"
+          }
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility"
+        },
+        "labels": {
+          "$ref": "common.schema.json#/$defs/Labels"
+        }
+      },
+      "required": [
+        "name",
+        "tools"
+      ],
+      "additionalProperties": false
+    },
+    "BuiltinTool": {
+      "type": "object",
+      "description": "An entry in Keel's built-in tool catalogue (tools-and-agents.md §4a). Not authored by templates; listed here so the uses each allows are part of the spec.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uses": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "call",
+              "finish"
+            ]
+          }
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "uses"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

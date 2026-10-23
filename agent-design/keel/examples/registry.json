@@ -1,0 +1,8 @@
+{
+  "prompts": {
+    "java.developer@1": {
+      "file": "prompts/java.developer.v1.md"
+    }
+  },
+  "report_schemas": {}
+}

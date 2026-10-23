@@ -1,0 +1,10 @@
+{
+  "template": { "name": "coding.java", "version": 1 },
+  "params": {
+    "repository": "payments/ledger-service",
+    "target_branch": "pay-812-idempotent-refunds",
+    "issue_key": "PAY-812",
+    "task": "Refunds can be applied twice when the provider callback retries. Make RefundService.apply idempotent on the provider's refund id and add a regression test."
+  },
+  "run_as": { "self": true }
+}

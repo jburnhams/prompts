@@ -1,0 +1,779 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.example/schemas/run.schema.json",
+  "title": "Runs",
+  "description": "A run is one template version executed with bound params under one principal. See ../outputs.md §7 and §10.",
+  "$defs": {
+    "RunRequest": {
+      "type": "object",
+      "description": "Body of POST /v1/runs. Exactly one of template, pipeline, adhoc. Every request creates a pipeline run; a template or adhoc request makes a one-stage one. Triggers and edges build the same object internally.",
+      "properties": {
+        "template": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "$ref": "common.schema.json#/$defs/Name"
+            },
+            "version": {
+              "anyOf": [
+                {
+                  "$ref": "common.schema.json#/$defs/Version"
+                },
+                {
+                  "const": "latest"
+                }
+              ],
+              "default": "latest",
+              "description": "A published version, latest, or on a sandbox deployment a draft version."
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "params": {
+          "type": "object"
+        },
+        "run_as": {
+          "description": "Omitted: the caller. A different user requires delegation_id; service requires the template to allow it and the caller to hold the run-as-service permission.",
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "self": {
+                  "const": true
+                }
+              },
+              "required": [
+                "self"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "service": {
+                  "const": true
+                }
+              },
+              "required": [
+                "service"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "delegation_id": {
+                  "$ref": "common.schema.json#/$defs/Id"
+                }
+              },
+              "required": [
+                "delegation_id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "invoker_session": {
+                  "const": true
+                }
+              },
+              "required": [
+                "invoker_session"
+              ],
+              "additionalProperties": false,
+              "description": "Chat and UI entry points: the caller's live session. The harness mints a session delegation scoped to this request and its pipeline, expiring when the pipeline run ends or after its cap, so later stages can still act for the user."
+            }
+          ]
+        },
+        "dry_run": {
+          "type": "boolean",
+          "default": false,
+          "description": "Resolve and validate only; returns the ResolvedSpec and diagnostics. Same as POST .../versions/{v}:render."
+        },
+        "labels": {
+          "$ref": "common.schema.json#/$defs/Labels"
+        },
+        "pipeline": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "$ref": "common.schema.json#/$defs/Name"
+            },
+            "version": {
+              "anyOf": [
+                {
+                  "$ref": "common.schema.json#/$defs/Version"
+                },
+                {
+                  "const": "latest"
+                }
+              ],
+              "default": "latest"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "adhoc": {
+          "type": "object",
+          "description": "An unsaved template body. The harness publishes it as adhoc.<digest> (content-addressed, so the same body is the same version), runs every publish rule, then runs it. Needs the runs:adhoc permission.",
+          "properties": {
+            "params": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "template.schema.json#/$defs/ParamSpec"
+              }
+            },
+            "spec": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "spec"
+          ],
+          "additionalProperties": false
+        },
+        "origin": {
+          "$ref": "common.schema.json#/$defs/Origin",
+          "description": "Set by triggers and chat adapters. An API caller may set only a channel it can post to."
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "normal",
+            "high",
+            "urgent"
+          ],
+          "default": "normal"
+        },
+        "deployment": {
+          "type": "string",
+          "description": "Deployment id. Default: the production deployment. A draft template, pipeline or saved group version may run only on a sandbox, as the caller (draft_requires_sandbox)."
+        }
+      },
+      "required": [
+        "params"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "template"
+          ]
+        },
+        {
+          "required": [
+            "pipeline"
+          ]
+        },
+        {
+          "required": [
+            "adhoc"
+          ]
+        }
+      ]
+    },
+    "ResolvedSpec": {
+      "type": "object",
+      "description": "What a run actually executes: the template's flat spec with params bound, tools expanded per agent, generated tools added, and provider strategy chosen. Immutable for the run.",
+      "properties": {
+        "template": {
+          "$ref": "common.schema.json#/$defs/VersionedRef"
+        },
+        "template_digest": {
+          "$ref": "common.schema.json#/$defs/Digest"
+        },
+        "digest": {
+          "$ref": "common.schema.json#/$defs/Digest"
+        },
+        "spec": {
+          "$ref": "run-spec.schema.json"
+        },
+        "agents": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "tier": {
+                "$ref": "common.schema.json#/$defs/Tier"
+              },
+              "model_id": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "deferred_tools": {
+                "type": "string",
+                "enum": [
+                  "native",
+                  "client",
+                  "none"
+                ]
+              },
+              "registered": {
+                "type": "array",
+                "description": "The fixed tools array for this agent, with each tool's visibility state at turn 0.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "address": {
+                      "$ref": "common.schema.json#/$defs/ToolAddress"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "visibility": {
+                      "$ref": "tools.schema.json#/$defs/Visibility"
+                    }
+                  },
+                  "required": [
+                    "address",
+                    "name",
+                    "visibility"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "reveal": {
+                "type": "string",
+                "enum": [
+                  "tool_changes",
+                  "additional_tools",
+                  "none"
+                ],
+                "description": "The reveal mechanism chosen for this agent. With none, any group declared hidden is resolved to deferred or loaded, recorded per tool in registered[].visibility."
+              }
+            },
+            "required": [
+              "tier",
+              "model_id",
+              "registered"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "template",
+        "digest",
+        "spec",
+        "agents"
+      ],
+      "additionalProperties": false
+    },
+    "Cause": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "api",
+            "trigger",
+            "edge",
+            "resume",
+            "retry",
+            "approved_action",
+            "dependency_cleared"
+          ]
+        },
+        "trigger_id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "firing_id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "parent_run_id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "gate_id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "event_ref": {
+          "type": "string",
+          "description": "Opaque id of the external event (webhook delivery id)."
+        },
+        "edge_id": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "continuation_id": {
+          "$ref": "common.schema.json#/$defs/Name",
+          "description": "approved_action: the template continuation that started it."
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "Run": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "template": {
+          "$ref": "common.schema.json#/$defs/VersionedRef"
+        },
+        "resolved_digest": {
+          "$ref": "common.schema.json#/$defs/Digest"
+        },
+        "params": {
+          "type": "object",
+          "description": "Sensitive params redacted."
+        },
+        "principal": {
+          "$ref": "common.schema.json#/$defs/PrincipalRef",
+          "description": "On whose behalf the run acts."
+        },
+        "requested_by": {
+          "$ref": "common.schema.json#/$defs/PrincipalRef",
+          "description": "Who asked: an API caller, a trigger's owner, the user who approved a gate."
+        },
+        "actor": {
+          "$ref": "common.schema.json#/$defs/PrincipalRef",
+          "description": "The agent's service identity, as it appears in downstream audit logs."
+        },
+        "delegation_id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "cause": {
+          "$ref": "#/$defs/Cause"
+        },
+        "lineage": {
+          "type": "object",
+          "properties": {
+            "root_run_id": {
+              "$ref": "common.schema.json#/$defs/Id"
+            },
+            "depth": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "resumes": {
+              "$ref": "common.schema.json#/$defs/Id",
+              "description": "Set on a resume: the suspended run whose transcript this one inherits."
+            }
+          },
+          "required": [
+            "root_run_id",
+            "depth"
+          ],
+          "additionalProperties": false
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "provisioning",
+            "running",
+            "finalizing",
+            "suspended",
+            "ended"
+          ]
+        },
+        "outcome": {
+          "$ref": "#/$defs/Outcome"
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/ArtifactStub"
+          }
+        },
+        "gate_id": {
+          "$ref": "common.schema.json#/$defs/Id",
+          "description": "Set while suspended."
+        },
+        "follow_ons": {
+          "type": "array",
+          "description": "What this run's outputs started.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "continuation_id": {
+                "$ref": "common.schema.json#/$defs/Name"
+              },
+              "run_id": {
+                "$ref": "common.schema.json#/$defs/Id"
+              },
+              "gate_id": {
+                "$ref": "common.schema.json#/$defs/Id"
+              },
+              "refused": {
+                "$ref": "common.schema.json#/$defs/RefusalCode"
+              },
+              "pipeline_run_id": {
+                "$ref": "common.schema.json#/$defs/Id",
+                "description": "A child pipeline run, for a spinoff."
+              }
+            },
+            "required": [
+              "continuation_id"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "deliveries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Delivery"
+          }
+        },
+        "labels": {
+          "$ref": "common.schema.json#/$defs/Labels"
+        },
+        "created_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "started_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "ended_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "origin": {
+          "$ref": "common.schema.json#/$defs/Origin"
+        },
+        "pipeline_run_id": {
+          "$ref": "common.schema.json#/$defs/Id",
+          "description": "Every run belongs to a pipeline run. A template run on its own is a one-stage pipeline run whose stage is named after the template."
+        },
+        "stage": {
+          "$ref": "common.schema.json#/$defs/Name",
+          "description": "The stage this run is an attempt at."
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Which attempt at the stage this is."
+        },
+        "deployment": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "template",
+        "resolved_digest",
+        "principal",
+        "actor",
+        "cause",
+        "lineage",
+        "state",
+        "created_at",
+        "pipeline_run_id",
+        "stage",
+        "attempt"
+      ],
+      "additionalProperties": false
+    },
+    "Outcome": {
+      "type": "object",
+      "description": "Set when the run reaches suspended or ended.",
+      "properties": {
+        "terminal": {
+          "$ref": "common.schema.json#/$defs/Terminal"
+        },
+        "status": {
+          "$ref": "common.schema.json#/$defs/CompleteStatus"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "report": {
+          "type": "object",
+          "description": "Validated against the spec's completion.report_schema."
+        },
+        "handoff": {
+          "type": "object",
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "why": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        "nudged": {
+          "type": "boolean",
+          "description": "The final-turn nudge fired before the terminal call."
+        },
+        "integrity": {
+          "type": "array",
+          "description": "Post-run cross-checks (git status vs files_changed, read-only diff, required posting).",
+          "items": {
+            "type": "object",
+            "properties": {
+              "check": {
+                "type": "string"
+              },
+              "result": {
+                "type": "string",
+                "enum": [
+                  "pass",
+                  "warn",
+                  "fail"
+                ]
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "check",
+              "result"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "refusal": {
+          "$ref": "common.schema.json#/$defs/RefusalCode",
+          "description": "Set when the harness ended or refused the run."
+        },
+        "report_digest": {
+          "$ref": "common.schema.json#/$defs/Digest",
+          "description": "What an approval gate binds to."
+        },
+        "finished_with": {
+          "type": "object",
+          "description": "Set when the run ended through a tool marked use: finish.",
+          "properties": {
+            "tool": {
+              "$ref": "common.schema.json#/$defs/ToolAddress"
+            },
+            "name": {
+              "type": "string"
+            },
+            "links": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "tool",
+            "name"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "terminal"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "terminal": {
+                "const": "complete"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "status",
+              "summary"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "terminal": {
+                "const": "handoff"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "handoff"
+            ]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "Usage": {
+      "type": "object",
+      "properties": {
+        "turns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tool_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "wall_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "subagents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "by_model": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "tier": {
+                "$ref": "common.schema.json#/$defs/Tier"
+              },
+              "model_id": {
+                "type": "string"
+              },
+              "input_tokens": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "output_tokens": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "cache_read_tokens": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "cache_write_tokens": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "price_snapshot": {
+                "type": "string",
+                "description": "Price table id at the time, so cost stays reproducible."
+              },
+              "agent": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "agent",
+              "tier",
+              "model_id"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "cost_usd_estimate": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "Delivery": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "sink_id": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "delivered",
+            "failed",
+            "skipped",
+            "recorded"
+          ]
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "external_ref": {
+          "type": "string",
+          "description": "Comment id, status id, message id."
+        },
+        "refusal": {
+          "$ref": "common.schema.json#/$defs/RefusalCode"
+        },
+        "last_error": {
+          "type": "string"
+        },
+        "recorded_payload": {
+          "type": "object",
+          "description": "Sandbox only: what would have been sent."
+        }
+      },
+      "required": [
+        "id",
+        "sink_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "RunEvent": {
+      "type": "object",
+      "description": "One item on GET /v1/runs/{id}/events (SSE; id = seq for Last-Event-ID resume).",
+      "properties": {
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "run_id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "state",
+            "turn",
+            "tool_call",
+            "tool_result",
+            "refusal",
+            "narrate",
+            "harness_note",
+            "reveal",
+            "nudge",
+            "gate_opened",
+            "artifact",
+            "usage",
+            "outcome",
+            "delivery",
+            "follow_on"
+          ]
+        },
+        "data": {
+          "type": "object",
+          "description": "Type-specific. tool_result carries size and status, never bodies; bodies are in the transcript, which needs a separate permission."
+        },
+        "agent": {
+          "type": "string",
+          "description": "orchestrator, or sub-agent name/child-index."
+        }
+      },
+      "required": [
+        "seq",
+        "at",
+        "run_id",
+        "type"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
