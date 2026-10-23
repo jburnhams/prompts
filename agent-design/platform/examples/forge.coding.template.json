@@ -138,7 +138,7 @@
       "provision": "worktree",
       "writable": false,
       "scratch": true,
-      "git_writes": "deny"
+      "git_writes": "none"
     },
     "tools": {
       "servers": [

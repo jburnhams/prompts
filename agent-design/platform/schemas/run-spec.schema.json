@@ -477,11 +477,20 @@
             "git_writes": {
               "type": "string",
               "enum": [
-                "deny",
-                "on_finish"
+                "none",
+                "via_action"
               ],
-              "default": "deny",
-              "description": "deny: no commit, push, branch or PR from the run; the committer downstream does it. on_finish: the harness commits, pushes and opens a PR when the model calls an open_pull_request finisher, after its gates pass, under harness-owned git identity. The model never runs git writes itself in either case."
+              "default": "none",
+              "description": "Whether an agent of this run can cause a push. none: no agent can (whatever the platform does with the tree after the run is the pipeline's, or an external committer's, business). via_action: agents may, only through action/open_pull_request, whether granted mid-run or wrapped by a finisher. The model never runs git writes itself in either case; the git_write_blocklist check applies regardless."
+            },
+            "retain": {
+              "type": "string",
+              "enum": [
+                "run",
+                "stage"
+              ],
+              "default": "stage",
+              "description": "How long the checkout outlives the run. stage: until the stage settles or is abandoned, so a pipeline sink can open the PR from it after the run. run: discarded when the run ends."
             }
           },
           "required": [
@@ -1018,7 +1027,7 @@
         },
         "tool": {
           "$ref": "common.schema.json#/$defs/ToolAddress",
-          "description": "kind tool: a declared tool the harness calls after the run, e.g. a Jira transition. Under the run's credentials."
+          "description": "kind tool: a declared tool the harness calls after the run: an MCP tool (a Jira transition) or a harness action (action/open_pull_request on the stage's retained checkout). Under the run's credentials."
         },
         "args": {
           "type": "object",
@@ -1309,7 +1318,7 @@
     },
     "Finisher": {
       "type": "object",
-      "description": "A tool the model may call to end the run by doing something. The harness generates a separate tool for it: the wrapped tool's (overridden) arguments under args, plus summary and optionally report. On a call the harness runs the completion checks first, then performs the action; if the action fails the error returns to the model and the run continues.",
+      "description": "A tool the model may call to end the run by doing something. The harness generates a separate tool for it: the wrapped tool's (overridden) arguments under args, plus summary and optionally report. On a call the harness runs the completion checks first, then calls the wrapped tool; if it fails the error returns to the model and the run continues.",
       "properties": {
         "id": {
           "$ref": "common.schema.json#/$defs/Name"
@@ -1325,47 +1334,24 @@
           "description": "Should say that calling it ends the run, and when to choose it over the other endings."
         },
         "action": {
-          "oneOf": [
-            {
-              "type": "object",
-              "properties": {
-                "tool": {
-                  "$ref": "common.schema.json#/$defs/ToolAddress"
-                },
-                "params": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "$ref": "tools.schema.json#/$defs/ParamOverride"
-                  },
-                  "description": "Overrides on top of the declared ToolRef's."
-                }
-              },
-              "required": [
-                "tool"
-              ],
-              "additionalProperties": false
+          "type": "object",
+          "description": "The tool this finisher wraps: an MCP tool or a harness action (action/open_pull_request), declared in tools.groups.",
+          "properties": {
+            "tool": {
+              "$ref": "common.schema.json#/$defs/ToolAddress"
             },
-            {
+            "params": {
               "type": "object",
-              "properties": {
-                "harness": {
-                  "type": "string",
-                  "enum": [
-                    "open_pull_request",
-                    "request_help"
-                  ]
-                },
-                "config": {
-                  "type": "object",
-                  "description": "open_pull_request: {base, draft, labels}. request_help: {channel} — posts and ends; nothing resumes."
-                }
+              "additionalProperties": {
+                "$ref": "tools.schema.json#/$defs/ParamOverride"
               },
-              "required": [
-                "harness"
-              ],
-              "additionalProperties": false
+              "description": "Overrides on top of the declared ToolRef's."
             }
-          ]
+          },
+          "required": [
+            "tool"
+          ],
+          "additionalProperties": false
         },
         "status": {
           "$ref": "common.schema.json#/$defs/CompleteStatus"

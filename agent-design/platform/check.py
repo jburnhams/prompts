@@ -328,22 +328,22 @@ def check_spec(where, params, spec):
     # R14 finishers
     if comp.get("complete") is False and not finishers:
         err(where, "R14 completion.complete is false but there are no finishers")
-    opens_pr = False
+    granted_tools = {t["tool"] for gid in {g for a in agents.values() for g in a.get("grant", [])} for t in tools_by_group.get(gid, [])}
+    finisher_tools = {f["action"]["tool"] for f in finishers}
     for f in finishers:
         if f["status"] not in comp["statuses"]:
             err(where, f"R14 finisher {f['id']} ends with status {f['status']}, not in completion.statuses")
         if f.get("report") and not comp.get("report_schema"):
             err(where, f"R14 finisher {f['id']} takes a report but there is no report_schema")
-        action = f["action"]
-        if "tool" in action and action["tool"] not in declared_tools:
-            err(where, f"R14 finisher {f['id']} wraps {action['tool']}, which tools.groups does not declare")
-        if action.get("harness") == "open_pull_request":
-            opens_pr = True
-            if not writable or ws.get("git_writes") != "on_finish":
-                err(where, f"R14 finisher {f['id']} opens a PR but the workspace is not writable with git_writes on_finish")
-    if ws.get("git_writes") == "on_finish" and not opens_pr:
-        err(where, "R14 git_writes on_finish without an open_pull_request finisher")
+        if f["action"]["tool"] not in declared_tools:
+            err(where, f"R14 finisher {f['id']} wraps {f['action']['tool']}, which tools.groups does not declare")
 
+    # R15 an agent can cause a push only through the PR action, and only when the workspace says so
+    agents_can_push = "action/open_pull_request" in (granted_tools | finisher_tools)
+    if agents_can_push and (not writable or ws.get("git_writes") != "via_action"):
+        err(where, "R15 an agent can reach action/open_pull_request but the workspace is not writable with git_writes via_action")
+    if ws.get("git_writes") == "via_action" and not agents_can_push:
+        err(where, "R15 git_writes via_action but no agent can reach action/open_pull_request")
 
 def r12(where, run_as, tool_addresses, servers):
     """Service credentials plus write tools plus user principals need a harness entitlement check."""
@@ -481,6 +481,14 @@ def check_pipeline(where, pipe, flat_specs, params_by_template, servers, base_te
             err(where, f"P8 {addr} names a server the pipeline does not declare")
     used = []
     for s in pipe.get("sinks", []):
+        if s["kind"] == "tool" and s.get("tool") == "action/open_pull_request":
+            st = s.get("at", {}).get("stage")
+            spec = specs.get(st, (None, None))[1] if st else None
+            ws = (spec or {}).get("workspace", {})
+            if not st:
+                err(where, f"P9 sink {s['id']} opens a PR but has no at: it must name the stage whose checkout it pushes")
+            elif spec and not (ws.get("kind") == "checkout" and ws.get("writable") and ws.get("retain", "stage") == "stage"):
+                err(where, f"P9 sink {s['id']} opens a PR from {st}, whose checkout is not writable and retained for the stage")
         if "at" in s and s["at"]["stage"] not in stages:
             err(where, f"P8 sink {s['id']} fires at unknown stage {s['at']['stage']}")
         if "at" in s and s["at"]["event"] == "settled" and "settle" not in stages.get(s["at"]["stage"], {}):

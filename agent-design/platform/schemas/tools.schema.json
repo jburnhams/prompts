@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://forge.example/schemas/tools.schema.json",
   "title": "Tool sources, groups and harness checks",
-  "description": "See ../../platform.md \u00a74. An MCP server is a registry resource; a tool group is a named set of tool addresses; a harness check is enforcement that no role can opt out of.",
+  "description": "See ../../platform.md §4. An MCP server is a registry resource; a tool group is a named set of tool addresses; a harness check is enforcement that no role can opt out of.",
   "$defs": {
     "McpServer": {
       "type": "object",
@@ -74,7 +74,7 @@
             "shared"
           ],
           "default": "per_run",
-          "description": "per_run starts a process per run, so the process boundary is the state boundary (adk.md \u00a76). shared is for remote servers only."
+          "description": "per_run starts a process per run, so the process boundary is the state boundary (adk.md §6). shared is for remote servers only."
         },
         "protocol_version": {
           "type": "string",
@@ -82,7 +82,7 @@
             "2025-06-18",
             "2025-11-25"
           ],
-          "description": "Pinned. Capped at what the pinned SDK speaks (adk.md \u00a70)."
+          "description": "Pinned. Capped at what the pinned SDK speaks (adk.md §0)."
         },
         "auth": {
           "$ref": "#/$defs/ServerAuth"
@@ -161,7 +161,7 @@
       ]
     },
     "ServerAuth": {
-      "description": "How calls to this server are authorised. See platform.md \u00a78 for the confused-deputy rule on service credentials.",
+      "description": "How calls to this server are authorised. See platform.md §8 for the confused-deputy rule on service credentials.",
       "oneOf": [
         {
           "type": "object",
@@ -195,7 +195,7 @@
                 "harness_policy"
               ],
               "default": "none",
-              "description": "harness_policy: before each write call the harness checks the run's principal may perform it on that resource. Required for write tools in templates a user may run (platform.md \u00a78)."
+              "description": "harness_policy: before each write call the harness checks the run's principal may perform it on that resource. Required for write tools in templates a user may run (platform.md §8)."
             }
           },
           "required": [
@@ -314,14 +314,14 @@
             "never",
             "on_transport_error"
           ],
-          "description": "Defaults to never unless idempotent (adk.md \u00a74)."
+          "description": "Defaults to never unless idempotent (adk.md §4)."
         }
       },
       "additionalProperties": false
     },
     "ToolLimits": {
       "type": "object",
-      "description": "Two caps on two axes (cloudflare.md \u00a72d). Values are rendered into the tool's description.",
+      "description": "Two caps on two axes (cloudflare.md §2d). Values are rendered into the tool's description.",
       "properties": {
         "transport_bytes": {
           "type": "integer",
@@ -343,8 +343,8 @@
       "properties": {
         "tool": {
           "type": "string",
-          "pattern": "^(builtin|mcp:[a-z][a-z0-9_.-]{0,62})/([A-Za-z][A-Za-z0-9_.-]{0,127}|\\*)$",
-          "description": "builtin/Read, mcp:jira/get_issue, or mcp:jira/* (expanded against the pinned snapshot at publish time, then frozen). harness/ tools cannot be referenced: they are generated from contracts."
+          "pattern": "^(builtin|action|mcp:[a-z][a-z0-9_.-]{0,62})/([A-Za-z][A-Za-z0-9_.-]{0,127}|\\*)$",
+          "description": "builtin/Read, action/open_pull_request, mcp:jira/get_issue, or mcp:jira/* (expanded against the pinned snapshot at publish time, then frozen). harness/ tools cannot be referenced: they are generated from contracts."
         },
         "exclude": {
           "type": "array",
@@ -606,6 +606,14 @@
         "tools"
       ],
       "additionalProperties": false
+    },
+    "HarnessAction": {
+      "type": "string",
+      "enum": [
+        "open_pull_request",
+        "request_help"
+      ],
+      "description": "Actions the harness implements and exposes as action/<name> tools. Like any tool they can be granted mid-run, wrapped by a finisher, or called by a sink after the run; argument overrides fix or narrow their arguments. open_pull_request(title, body, base?, draft?, labels?): commits the run's working tree, pushes the target branch and opens the PR under harness-owned git identity, then writes the stage's links.pull_request; needs a writable checkout, and when an agent of the run can reach it, workspace.git_writes: via_action. request_help(message, channel): posts to a channel; as a finisher it ends the run blocked."
     }
   }
 }

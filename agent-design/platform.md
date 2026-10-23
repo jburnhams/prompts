@@ -69,12 +69,12 @@ ask for help. Ask-for-help could also be used during the run."*
 `coding.java` sets `completion.complete: false` and declares three
 **finishers** (§5a):
 
-- `OpenPullRequest`: a harness action. It commits, pushes and opens the
-  PR under harness-owned git identity, which needs `git_writes:
-  on_finish`.
+- `OpenPullRequest`: wraps the harness action `action/open_pull_request`.
+  It commits, pushes and opens the PR under harness-owned git identity,
+  which needs `git_writes: via_action`.
 - `FinishWithJiraUpdate`: wraps `mcp:jira/update_issue`. The issue key
   is fixed and the transitions are narrowed.
-- `RequestHelp`: a harness action. It posts to the team channel and ends
+- `RequestHelp`: wraps `action/request_help`. It posts to the team channel and ends
   the run with status `blocked`.
 
 The model sees each one as a tool. Calling it runs the completion checks
@@ -157,7 +157,7 @@ spec just has to give it a field:
 | User on-behalf-of | `authority`, server `auth.mode: obo`, `Delegation` | new here, §8 |
 | **Inputs other than the query** | `inputs[]`: ticket, diff, comments, plan, prior attempt, approved action. Each is typed and has a trust level | `formats.md` §1, `context-files.md` §4 |
 | **Standing context** | `context.conventions` (tiers, kinds, paths, at which SHA) | `context-files.md` §1b |
-| **Workspace** | `workspace`: none, or a harness-provisioned checkout with `writable`, `write_scope`, scratch dir, `git_writes: deny` | README decision log, `orchestration.md` §4 |
+| **Workspace** | `workspace`: none, or a harness-provisioned checkout with `writable`, `write_scope`, scratch dir, `git_writes: none \| via_action`, `retain` | README decision log, `orchestration.md` §4 |
 | **Budgets** | `budgets`: turns, context high-water mark, wall time, tokens by tier, sub-agent count | `formats.md` §7, `models.md` §10 |
 | **Harness checks** | `tools.checks`: enforcement that no grant can remove | `tools.md` "Harness-side checks are not part of the subset" |
 | **Human channel** | `human.ask_user` (who may answer, where it goes) and `human.narrate` | `formats.md` §5a, `medium.md` §2f, §5c |
@@ -274,7 +274,11 @@ The fields, with the reason each is shaped the way it is:
   `context-files.md` §1b already says.
 - **`workspace`**: `none`, or `checkout`. `writable: false` registers no
   write tools for any agent, whatever the grants say (rule R9 rejects
-  the contradiction at publish). `git_writes` has one value, `deny`.
+  the contradiction at publish). `git_writes` says whether an agent of
+  the run can cause a push: `none`, or `via_action`, meaning only
+  through `action/open_pull_request` (§7g). `retain: stage` keeps the
+  checkout until the stage settles, so a pipeline can still open a PR
+  from it after the run.
 - **`tools`**: the job's declaration (§4).
 - **`agents`**: `orchestrator` plus named sub-agents (§4c).
 - **`human`**, **`completion`**, **`hatches`**: these generate tools (§5).
@@ -512,7 +516,8 @@ there's nothing to validate.
 Use case 0b asks for the opposite of a generic `Complete`: pick some
 real tools (update Jira, open a PR, ask for help) and make *those* the
 ways a run can end. That is a **finisher**: an entry in
-`completion.finishers` naming a declared tool or a harness action, the
+`completion.finishers` naming a declared tool (an MCP tool or a
+harness action, §7g), the
 status it ends with, and whether it takes a report.
 
 This keeps the reasons above intact, because the termination is still
@@ -542,16 +547,11 @@ contract, which is the right place for it.
   it grants to nobody. The model can move the ticket as its ending, and
   can't do it halfway through. Granting it as well would allow both,
   under two different names (R11).
-- **Two harness actions exist today.**
-  - `open_pull_request` commits, pushes and opens the PR with the
-    harness's git identity, signing and templates. It needs
-    `workspace.git_writes: on_finish` (R14). This is the platform form
-    of Forge's "the committer downstream does it": the model never runs
-    a git write itself, and the push happens only after the checks, from
-    the harness. Forge's own templates keep `deny` and the external
-    committer.
-  - `request_help` posts the report to a channel and ends with status
-    `blocked`. Nothing resumes.
+- **Harness actions are tools like any other** (§7g), so a finisher
+  wraps them the same way. `coding.java` ends with
+  `action/open_pull_request` or `action/request_help`. Both are
+  declared in a group granted to nobody, with their branch, labels and
+  channel fixed by argument overrides.
 - **`complete: false`** removes the generic `Complete`. The run can
   then end only through a finisher, `AskUser`, `HandOff`, or the
   final-turn nudge, which lists exactly the endings that exist.
@@ -829,6 +829,52 @@ may file, propose or report; it may not act on what it oversees.** A
 run proposes spinoffs in its report, and the pipeline starts them. A
 run never sees, retries, settles or abandons its own pipeline run.
 
+### 7g. Harness actions, and where a PR gets opened
+
+The platform doesn't decide who opens a PR. A configuration does. The
+platform provides **harness actions**: tools the harness implements
+rather than an MCP server, addressed `action/<name>`. Like any tool,
+an action can sit in any of three positions, and a configuration picks
+one per template or pipeline:
+
+| Position | How it's written | Who decides when | Example |
+|---|---|---|---|
+| **during the run** | the action in a granted group | the model, mid-run | a template that opens a draft PR early so CI runs while it keeps working |
+| **as the ending** | a finisher wrapping the action | the model, by choosing that ending; the completion checks run first | `coding.java`'s `OpenPullRequest` |
+| **after the run** | a pipeline sink `kind: tool` calling the action, `at` a stage's `run_ended` | the pipeline author, fixed by the outcome | `jira.plan-implement` opens the PR from implement's retained checkout |
+
+A fourth arrangement needs no action at all. An **external committer**
+picks up the retained working tree and links the PR back with
+`POST …/stages/{stage}:link`. Forge's original design did this.
+
+Whichever position opens the PR, `action/open_pull_request` writes
+`links.pull_request` on the stage. So a stage's `settle` watches
+`stage.links.pull_request` in every arrangement, and the rest of the
+pipeline doesn't care which one the configuration chose. Sinks at the
+same moment run in the order declared. `jira.plan-implement` opens the
+PR, then moves the ticket to In Review only if a PR was linked.
+
+The rules:
+
+- **The model never runs git writes itself.** The `git_write_blocklist`
+  check applies in every position. An action is the only way a push
+  happens, and it uses the harness's git identity, signing and PR
+  templates.
+- **`workspace.git_writes` is about the run's agents only.**
+  `via_action` is required when any agent can reach the action, granted
+  or wrapped by a finisher, and is an error when none can (R15). `none`
+  says no agent of this run can cause a push. It does not stop a
+  pipeline from opening a PR from the tree afterwards. That push is the
+  pipeline's, declared in its own `tools`, and checked by P9: the stage's
+  checkout must be writable and retained.
+- **Two actions exist today**:
+  - `open_pull_request` (title, body, base, draft, labels);
+  - `request_help` (message, channel): as a finisher it ends the run
+    `blocked`.
+
+  Argument overrides fix and hide whatever a configuration doesn't want
+  the model choosing, such as the base branch or the labels.
+
 ---
 
 ## 8. Principals and on-behalf-of
@@ -1035,7 +1081,8 @@ publish against the real snapshot.
 | R11 | tool names, after aliasing, are unique per agent, including finisher names and generated tools |
 | R12 | no write tool (granted, wrapped by a finisher, or called by a pipeline sink) on a service-credentialed server in anything users can run, unless the server has `entitlement_check: harness_policy` |
 | R13 | argument overrides only narrow: a hidden argument is fixed, an enum is a subset of the server's, a maximum only goes down; a fixed `$param` is a config param of the template; other overrides on a fixed argument are a warning |
-| R14 | finishers: `complete: false` needs at least one; each ends with a declared status; `report` needs a report schema; a wrapped tool is declared; `open_pull_request` needs a writable checkout with `git_writes: on_finish`, and `on_finish` needs an `open_pull_request` finisher |
+| R14 | finishers: `complete: false` needs at least one; each ends with a declared status; `report` needs a report schema; the wrapped tool is declared |
+| R15 | if any agent can reach `action/open_pull_request` (granted or through a finisher), the checkout is writable with `git_writes: via_action`; `via_action` with no agent able to reach it is an error |
 | P1 | a pipeline's entry and edges name real stages; every `pipeline.params.x` it reads is declared |
 | P2 | every exit an edge waits on (status, finisher, HandOff reason) exists in that stage's template; every HandOff reason of every stage is wired |
 | P3 | each edge's carry is accepted by the next stage's template |
@@ -1043,7 +1090,8 @@ publish against the real snapshot.
 | P5 | no stage runs above the pipeline's `max_tier` |
 | P6 | every stage is reachable, the graph is acyclic, and the longest path is within `max_hops` |
 | P7 | there is a principal type every stage allows |
-| P8 | pipeline sinks call only tools the pipeline declares, on servers it declares |
+| P8 | pipeline sinks call only tools the pipeline declares, on servers it declares; `at` names a real stage, and `settled` only a stage that settles |
+| P9 | a sink calling `action/open_pull_request` names its stage with `at`, and that stage's checkout is writable and retained for the stage |
 
 At resolve time, before a run starts: tool snapshot drift, delegation
 scope and consent digest, deployment tier ceiling, param values against
@@ -1173,11 +1221,10 @@ Recorded in the README decision log (2026-10-23 rows). In short:
   whose `follows_this` spinoff is approved days later. Today that edge
   refuses with `delegation_missing` unless the user holds a stored
   delegation.
-- **More harness finishers.** `open_pull_request` and `request_help`
-  are what the use cases need. Candidates are a draft PR (a config flag
-  today), publishing an artifact, and merging. Merging is deliberately
-  not on the list: it's an approval, and an agent can't approve its own
-  work.
+- **More harness actions.** `open_pull_request` and `request_help` are
+  what the use cases need. Candidates are updating an existing PR,
+  publishing an artifact, and merging. Merging is deliberately not on
+  the list: it's an approval, and an agent can't approve its own work.
 - **Draft runs.** Drafts run only with `dry_run`. A "run a draft
   against a sandbox deployment" mode is probably needed for eval
   (`eval.md`), and isn't specified.

@@ -2,7 +2,7 @@
   "name": "jira.plan-implement",
   "version": 1,
   "title": "Plan, then implement, a Jira ticket",
-  "description": "Use case 2. A plan stage, a principal-approved handover of the plan to an implement stage, and Jira kept up to date: In Review when implement finishes, Done when its PR merges.",
+  "description": "Use case 2. A plan stage, a principal-approved handover of the plan to an implement stage, then the pipeline itself opens the PR from implement's checkout and keeps Jira up to date: In Review when the PR is open, Done when it merges.",
   "owner": {
     "type": "team",
     "id": "platform-agents"
@@ -82,7 +82,7 @@
         "abandon_when": [
           "closed_unmerged"
         ],
-        "link_within_s": 86400
+        "link_within_s": 3600
       }
     }
   },
@@ -124,7 +124,7 @@
   ],
   "sinks": [
     {
-      "id": "jira_in_review",
+      "id": "open_pr",
       "kind": "tool",
       "at": {
         "stage": "implement",
@@ -137,6 +137,34 @@
         "status": [
           "done"
         ]
+      },
+      "tool": "action/open_pull_request",
+      "args": {
+        "title": {
+          "cel": "pipeline.params.issue_key + ': ' + result.report.suggested_commit_message.split('\\n')[0]"
+        },
+        "body": {
+          "cel": "result.summary"
+        }
+      }
+    },
+    {
+      "id": "jira_in_review",
+      "kind": "tool",
+      "at": {
+        "stage": "implement",
+        "event": "run_ended"
+      },
+      "when": {
+        "terminal": [
+          "complete"
+        ],
+        "status": [
+          "done"
+        ],
+        "expr": {
+          "cel": "has(stage.links.pull_request)"
+        }
       },
       "tool": "mcp:jira/update_issue",
       "args": {
@@ -192,6 +220,28 @@
             "annotations": {
               "idempotent": false,
               "retry": "never"
+            }
+          }
+        ]
+      },
+      {
+        "id": "pr",
+        "tools": [
+          {
+            "tool": "action/open_pull_request",
+            "annotations": {
+              "idempotent": false,
+              "retry": "never"
+            },
+            "params": {
+              "base": {
+                "fixed": "main",
+                "hidden": true
+              },
+              "draft": {
+                "fixed": false,
+                "hidden": true
+              }
             }
           }
         ]

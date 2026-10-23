@@ -122,7 +122,7 @@
         "$param": "target_branch"
       },
       "writable": true,
-      "git_writes": "on_finish"
+      "git_writes": "via_action"
     },
     "tools": {
       "servers": [
@@ -160,6 +160,51 @@
                     "In Review",
                     "Blocked"
                   ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "actions",
+          "visibility": "hidden",
+          "description": "Harness actions this template ends with. Declared, not granted: reachable only through the finishers.",
+          "tools": [
+            {
+              "tool": "action/open_pull_request",
+              "annotations": {
+                "idempotent": false,
+                "retry": "never"
+              },
+              "params": {
+                "draft": {
+                  "fixed": false,
+                  "hidden": true
+                },
+                "labels": {
+                  "fixed": [
+                    "agent"
+                  ],
+                  "hidden": true
+                },
+                "base": {
+                  "fixed": {
+                    "$param": "base_branch"
+                  },
+                  "hidden": true
+                }
+              }
+            },
+            {
+              "tool": "action/request_help",
+              "annotations": {
+                "idempotent": false,
+                "retry": "never"
+              },
+              "params": {
+                "channel": {
+                  "fixed": "#java-platform-agents",
+                  "hidden": true
                 }
               }
             }
@@ -223,13 +268,7 @@
           "name": "OpenPullRequest",
           "description": "Ends your run: commits your changes, pushes the branch and opens a pull request. Use when the task is done and verified.",
           "action": {
-            "harness": "open_pull_request",
-            "config": {
-              "draft": false,
-              "labels": [
-                "agent"
-              ]
-            }
+            "tool": "action/open_pull_request"
           },
           "status": "done",
           "report": true
@@ -249,13 +288,7 @@
           "name": "RequestHelp",
           "description": "Ends your run and hands the task to the team. Use only when you cannot finish and no single question would unblock you; for a question, use AskUser, which lets you continue.",
           "action": {
-            "harness": "request_help",
-            "config": {
-              "channel": {
-                "type": "chat",
-                "target": "#java-platform-agents"
-              }
-            }
+            "tool": "action/request_help"
           },
           "status": "blocked",
           "report": true

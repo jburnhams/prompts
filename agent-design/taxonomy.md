@@ -130,7 +130,9 @@ Forge's v1 `Task` tool. The platform's generated `Task` calls it
 **Workspace.** What the run may touch on disk: `none`, or a
 harness-provisioned **checkout** with `writable`, a **write scope**
 (path globs), a scratch directory outside the tree, and **git writes**
-`deny` or `on_finish`.
+`none` or `via_action` (whether an agent of the run can cause a push,
+only through `action/open_pull_request`), and **retain** (how long the
+checkout outlives the run).
 
 ---
 
@@ -144,6 +146,8 @@ schema.
 
 **Tool source.** Where a tool comes from:
 - `builtin`: harness-implemented file, shell and image tools.
+- `action`: harness actions with effects outside the run, such as
+  opening a PR.
 - `mcp:<server>`: an MCP server.
 - `harness`: generated from a contract (see **Generated tool**). These
   can't be put in a group.
@@ -267,15 +271,18 @@ tool loading.
 contract. It can be switched off (`complete: false`).
 
 **Finisher.** An ending the model chooses that also does something: it
-wraps a declared tool, or a **harness action**. The completion checks
+wraps a declared tool, which can be a **harness action**. The completion checks
 run first, then the action. If the action fails, the error goes back to
 the model and the run continues.
 
-**Harness action.** An action only the harness performs, used as a
-finisher:
+**Harness action.** A tool the harness implements rather than an MCP
+server, addressed `action/<name>`. Like any tool it can be granted
+mid-run, wrapped by a finisher, or called by a pipeline sink after the
+run. Which position is a configuration's choice, not the platform's.
 - `open_pull_request`: commit, push and open the PR under the
-  harness's git identity;
-- `request_help`: post the report and end with status `blocked`.
+  harness's git identity, and link it to the stage;
+- `request_help`: post to a channel; as a finisher it ends the run
+  `blocked`.
 
 **Status.** How a `complete` ending went: `done`, `planned`, `skipped`,
 `failed`, `blocked`, `budget_exhausted`.

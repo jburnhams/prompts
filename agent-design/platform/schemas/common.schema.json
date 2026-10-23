@@ -245,8 +245,8 @@
     },
     "ToolAddress": {
       "type": "string",
-      "pattern": "^(builtin|harness|mcp:[a-z][a-z0-9_.-]{0,62})/[A-Za-z][A-Za-z0-9_.-]{0,127}$",
-      "description": "source/name. builtin/Read, harness/Complete, mcp:jira/get_issue."
+      "pattern": "^(builtin|action|harness|mcp:[a-z][a-z0-9_.-]{0,62})/[A-Za-z][A-Za-z0-9_.-]{0,127}$",
+      "description": "source/name. builtin/Read, action/open_pull_request, harness/Complete, mcp:jira/get_issue."
     },
     "ChannelRef": {
       "type": "object",
