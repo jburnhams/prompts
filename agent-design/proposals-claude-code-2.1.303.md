@@ -13,7 +13,7 @@ research behind each item is in the cross-source documents, all updated
 | # | Proposal | Amends | Status |
 |---|---|---|---|
 | 1 | Tie the validator's bias to the tier, with a third verdict | `review.md` §5, §6; `formats.md` §4 | **Adopted** |
-| 2 | Add removed-behaviour and wrapper lenses to the bugs finder | `system-prompts.md` §4; `review.md` §4 | **Adopted** |
+| 2 | Add removed-behaviour and wrapper specialists to the bugs finder | `system-prompts.md` §4; `review.md` §4 | **Adopted** |
 | 3 | Tell finders not to pre-filter; add a gap sweep at `high` | `system-prompts.md` §4; `review.md` §6 | **Adopted** |
 | 4 | Run an approved action in a fresh run, not the resumed transcript | `formats.md` §5 | **Adopted** |
 | 5 | Make every approval question name the dangerous parameter | `formats.md` §5; `system-prompts.md` §1 | **Adopted** |
@@ -62,7 +62,7 @@ tier being computed, and `medium.md` §3e's outcome telemetry should
 record `plausible` separately from the start, so its acceptance rate can
 be measured before it is trusted.
 
-## 2. Add removed-behaviour and wrapper lenses to the bugs finder
+## 2. Add removed-behaviour and wrapper specialists to the bugs finder
 
 *Adopted 2026-10-19:* the `bugs` and `all` scope texts in `system-prompts.md` §4.
 
@@ -76,7 +76,7 @@ not back through a registry/session/global".
 
 **Proposal.** Add both as checklist items in the reviewer core's bugs
 section (`system-prompts.md` §4), not as new specialists: they are
-procedures the bugs lens runs, and new specialists would change the
+procedures the bugs specialist runs, and new specialists would change the
 fan-out that `review.md` §6a costs. The removed-behaviour item fits the
 diff construction already in `review.md` §2, which keeps old-side lines.
 

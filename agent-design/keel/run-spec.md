@@ -31,8 +31,8 @@ The fields, with the reason each is shaped the way it is:
   harness note, a nudge) is appended as a message, never written into
   what was already sent. A prompt's text therefore has no placeholders.
   It refers to "the first message" for its task. For a sub-agent, the
-  opening message is its `<lens>` block (from `kind_scope`, when spawned
-  with a kind) followed by the spawner's brief. This is what makes the
+  opening message is its `<scope>` block (from the sub-agent's `scope`)
+  followed by the spawner's brief. This is what makes the
   shared cache prefix in §6 true, and it is the shape Anthropic's API
   guidance gives for harnesses: freeze the rendered system prompt and
   announce per-session facts in the first user turn, then send deltas.
@@ -53,16 +53,14 @@ The fields, with the reason each is shaped the way it is:
   Anything not authored by `harness` or `config` is sanitised and
   nonce-wrapped.
 - **`context`**: the context-service resolution (`tiers`, `team`,
-  `paths`, `kinds`, `at: base_sha` for review) and, for analysis, the
-  data overview. A failed resolution means the run doesn't start, as
+  `paths`, `topics`, `at: base_sha` for review) and, for data
+  analysis, the data overview. A failed resolution means the run doesn't start, as
   `../context-files.md` §1b already says.
 - **`workspace`**: `none`, or `checkout`. `writable: false` registers no
   write tools for any agent, whatever the grants say (rule R9 rejects
-  the contradiction at publish). `git_writes` says whether an agent of
-  the run can cause a push: `none`, or `via_action`, meaning only
-  through `action/open_pull_request` (§7g). `retain: stage` keeps the
-  checkout until the stage settles, so a pipeline can still open a PR
-  from it after the run.
+  the contradiction at publish). `retain: stage` keeps the checkout
+  until the stage settles, so a pipeline sink's workspace-bound tool can
+  still act on it after the run (§7g).
 - **`tools`**: the job's declaration (§4).
 - **`agents`**: `orchestrator` plus named sub-agents (§4c).
 - **`human`**, **`completion`**, **`hatches`**: these generate tools (§5).
@@ -146,8 +144,7 @@ as `{name, version}` and are immutable once created
 (`POST /v1/prompts/{name}/versions`). A configuration kept in a folder
 lists the entries it uses in a `registry.json`
 ([`schemas/registry.schema.json`](./schemas/registry.schema.json)):
-each ref maps to a file in the folder, or, while the text is still being
-designed in a document, to that document's section. Rule R16 checks
+each ref maps to a file in the folder. Rule R16 checks
 every ref in every template resolves, and that every report schema is a
 valid JSON Schema.
 - **`:render`** shows exactly what a model would be given for a set of

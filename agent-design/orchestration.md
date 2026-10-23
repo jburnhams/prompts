@@ -525,7 +525,7 @@ It should be resisted, for four reasons:
 
 We already have more role structure than OpenClaw, which has none in
 code: `subagent_type` (`general-purpose` / `reviewer` / `validator`)
-with the reviewer's lens as a second key
+with the reviewer's specialist as a second key
 (`tools.md`; `context-files.md` §"Kinds"). The ledger adds no role. It
 adds a *dispatcher*, which is not an agent.
 

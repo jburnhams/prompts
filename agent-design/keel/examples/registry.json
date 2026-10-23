@@ -2,30 +2,7 @@
   "prompts": {
     "java.developer@1": {
       "file": "prompts/java.developer.v1.md"
-    },
-    "analysis.quick@1": {
-      "file": "prompts/analysis.quick.v1.md",
-      "derived_from": "../../system-prompts.md §8b, per-run placeholders removed"
-    },
-    "analysis.investigate@1": {
-      "file": "prompts/analysis.investigate.v1.md",
-      "derived_from": "../../system-prompts.md §8b–§8d (quick-run structure, prior-attempt paragraph, landing mandates)"
-    },
-    "analysis.report.collect@1": {
-      "file": "prompts/analysis.report.collect.v1.md",
-      "derived_from": "../../system-prompts.md §8b–§8d (quick-run structure, prior-attempt paragraph, landing mandates)"
-    },
-    "analysis.report.write@1": {
-      "file": "prompts/analysis.report.write.v1.md",
-      "derived_from": "../../system-prompts.md §8b–§8d (quick-run structure, prior-attempt paragraph, landing mandates)"
     }
   },
-  "report_schemas": {
-    "analysis.report.answer@1": {
-      "file": "reports/analysis-answer.v1.schema.json"
-    },
-    "analysis.report.document@1": {
-      "file": "reports/analysis-document.v1.schema.json"
-    }
-  }
+  "report_schemas": {}
 }

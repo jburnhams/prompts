@@ -550,20 +550,26 @@
           "$ref": "common.schema.json#/$defs/Digest",
           "description": "What an approval gate binds to."
         },
-        "finisher": {
+        "finished_with": {
           "type": "object",
-          "description": "Set when the run ended through a finisher.",
+          "description": "Set when the run ended through a tool marked use: finish.",
           "properties": {
-            "id": {
+            "tool": {
+              "$ref": "common.schema.json#/$defs/ToolAddress"
+            },
+            "name": {
               "type": "string"
             },
-            "external_ref": {
-              "type": "string",
-              "description": "What the action produced: a PR ref, an issue revision."
+            "links": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
             }
           },
           "required": [
-            "id"
+            "tool",
+            "name"
           ],
           "additionalProperties": false
         }

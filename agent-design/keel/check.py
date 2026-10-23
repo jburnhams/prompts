@@ -18,7 +18,7 @@ from referencing import Registry, Resource
 
 HERE = pathlib.Path(__file__).resolve().parent
 SCHEMAS = HERE / "schemas"
-EXAMPLES = [HERE / "examples", HERE.parent / "forge-on-keel"]
+EXAMPLES = [HERE / "examples", HERE.parent / "forge-on-keel", HERE.parent / "lens-on-keel"]
 BASE = "https://keel.example/schemas/"
 
 TIER_ORDER = {"economy": 0, "standard": 1, "strong": 2}
@@ -26,7 +26,11 @@ INPUT_ONLY_TRUST = {"principal", "external"}
 WRITE_TOOLS = {"builtin/Edit", "builtin/Write"}
 HARNESS_NAMES = {"Complete", "AskUser", "HandOff", "Expand", "Task", "Narrate"}
 # A $param is allowed under these grant-bearing sections only as a fixed tool argument.
-FIXED_ARG = re.compile(r"^/(tools/groups/\d+/tools/\d+|completion/finishers/\d+/action)/params/[^/]+/fixed$")
+FIXED_ARG = re.compile(r"^/tools/groups/\d+/tools/\d+/params/[^/]+/fixed$")
+# Keel's built-in tools and the uses each allows (tools-and-agents.md §4a).
+BUILTIN_USES = {"Read": {"call"}, "Edit": {"call"}, "Write": {"call"}, "Bash": {"call"}, "Grep": {"call"},
+                "List": {"call"}, "InspectImage": {"call"}, "RequestHelp": {"finish"}}
+RESERVED_FINISH_ARGS = {"summary", "report"}
 
 errors = []
 warnings = []
@@ -160,6 +164,23 @@ def tool_name(ref):
     return ref.get("alias") or ref["tool"].split("/", 1)[1]
 
 
+def uses(ref):
+    return set(ref.get("use", ["call"]))
+
+
+def finish_name(ref):
+    """The generated ending tool's name: finish.name, else the alias, else Finish + alias when also callable."""
+    if (ref.get("finish") or {}).get("name"):
+        return ref["finish"]["name"]
+    return tool_name(ref) if uses(ref) == {"finish"} else "Finish" + tool_name(ref)
+
+
+def finish_tools(spec, agent_name="orchestrator"):
+    _, tools_by_group = group_tools(spec)
+    agent = spec["agents"].get(agent_name, {})
+    return [t for gid in agent.get("grant", []) for t in tools_by_group.get(gid, []) if "finish" in uses(t)]
+
+
 def carry_inputs(spec):
     return {i["source"]["carry"] for i in spec.get("inputs", []) if "carry" in i["source"]}
 
@@ -188,8 +209,6 @@ def check_spec(where, params, spec):
     # R1 grants come only from the job's declaration
     for agent_name, agent in agents.items():
         grants = set(agent.get("grant", []))
-        for extra in agent.get("kind_grants", {}).values():
-            grants |= set(extra)
         for gid in sorted(grants - set(groups)):
             err(where, f"R1 agent {agent_name} grants undeclared group {gid}")
 
@@ -205,11 +224,6 @@ def check_spec(where, params, spec):
         for child in agent.get("spawns", []):
             if child not in agents or child == "orchestrator":
                 err(where, f"R3 agent {agent_name} spawns unknown agent {child}")
-        if agent_name != "orchestrator":
-            for field in ("kind_grants", "kind_scope"):
-                for kind in agent.get(field, {}):
-                    if kind not in agent.get("spawn_kinds", []):
-                        err(where, f"R3 agent {agent_name} {field} {kind} not in spawn_kinds")
 
     # R4 params: declared, bound by trust, constrained when config-bound
     for path, pname in walk_params(spec):
@@ -229,9 +243,11 @@ def check_spec(where, params, spec):
     # R5 completion form text is the bare form
     comp = spec["completion"]
     if comp.get("form") == "text":
-        for k in ("report_schema", "checks", "spinoffs", "finishers"):
+        for k in ("report_schema", "checks", "spinoffs"):
             if comp.get(k):
                 err(where, f"R5 completion.form text forbids {k}")
+        if finish_tools(spec):
+            err(where, "R5 completion.form text forbids tools marked use: finish")
         if comp["statuses"] != ["done"]:
             err(where, "R5 completion.form text allows statuses [done] only")
 
@@ -304,20 +320,15 @@ def check_spec(where, params, spec):
         if agent_name != "orchestrator" and agent["model"].get("clamp_to_parent", True) and isinstance(top, str) and TIER_ORDER[t] > TIER_ORDER[top]:
             warn(where, f"R10 agent {agent_name} asks for {t} but is clamped to its parent's {top}")
 
-    # R11 tool names unique per agent, including generated ones
-    finishers = comp.get("finishers", [])
+    # R11 tool names unique per agent, including generated ending tools
     for agent_name, agent in agents.items():
         names = {}
         for gid in agent.get("grant", []):
             for t in tools_by_group.get(gid, []):
-                n = tool_name(t)
-                if names.setdefault(n, t["tool"]) != t["tool"]:
-                    err(where, f"R11 agent {agent_name} sees two tools named {n}")
-        if agent_name == "orchestrator":
-            for f in finishers:
-                if f["name"] in names or f["name"] in HARNESS_NAMES:
-                    err(where, f"R11 finisher name {f['name']} collides with another tool")
-                names[f["name"]] = f["id"]
+                generated = ([tool_name(t)] if "call" in uses(t) else []) + ([finish_name(t)] if "finish" in uses(t) else [])
+                for n in generated:
+                    if n in HARNESS_NAMES or names.setdefault(n, t["tool"]) != t["tool"]:
+                        err(where, f"R11 agent {agent_name} sees two tools named {n}")
 
     # R13 argument overrides
     for gid, tools in tools_by_group.items():
@@ -326,25 +337,26 @@ def check_spec(where, params, spec):
                 if "fixed" in o and any(k in o for k in ("default", "enum", "description", "required")):
                     warn(where, f"R13 {t['tool']} argument {arg} is fixed, so its other overrides are never shown")
 
-    # R14 finishers
-    if comp.get("complete") is False and not finishers:
-        err(where, "R14 completion.complete is false but there are no finishers")
-    granted_tools = {t["tool"] for gid in {g for a in agents.values() for g in a.get("grant", [])} for t in tools_by_group.get(gid, [])}
-    finisher_tools = {f["action"]["tool"] for f in finishers}
-    for f in finishers:
-        if f["status"] not in comp["statuses"]:
-            err(where, f"R14 finisher {f['id']} ends with status {f['status']}, not in completion.statuses")
-        if f.get("report") and not comp.get("report_schema"):
-            err(where, f"R14 finisher {f['id']} takes a report but there is no report_schema")
-        if f["action"]["tool"] not in declared_tools:
-            err(where, f"R14 finisher {f['id']} wraps {f['action']['tool']}, which tools.groups does not declare")
-
-    # R15 an agent can cause a push only through the PR action, and only when the workspace says so
-    agents_can_push = "action/open_pull_request" in (granted_tools | finisher_tools)
-    if agents_can_push and (not writable or ws.get("git_writes") != "via_action"):
-        err(where, "R15 an agent can reach action/open_pull_request but the workspace is not writable with git_writes via_action")
-    if ws.get("git_writes") == "via_action" and not agents_can_push:
-        err(where, "R15 git_writes via_action but no agent can reach action/open_pull_request")
+    # R14 ending tools: how each tool may be used
+    for agent_name, agent in agents.items():
+        for gid in agent.get("grant", []):
+            for t in tools_by_group.get(gid, []):
+                src, name = t["tool"].split("/", 1)
+                if src == "builtin" and name in BUILTIN_USES and not uses(t) <= BUILTIN_USES[name]:
+                    err(where, f"R14 builtin/{name} allows only {sorted(BUILTIN_USES[name])}, not {sorted(uses(t))}")
+                if "finish" not in uses(t):
+                    continue
+                if agent_name != "orchestrator":
+                    err(where, f"R14 sub-agent {agent_name} is granted {t['tool']} for use as an ending; only the orchestrator ends a run")
+                fin = t.get("finish") or {}
+                if fin.get("status") not in comp["statuses"]:
+                    err(where, f"R14 {t['tool']} ends with status {fin.get('status')}, not in completion.statuses")
+                if fin.get("report") and not comp.get("report_schema"):
+                    err(where, f"R14 {t['tool']} takes a report but there is no report_schema")
+                for arg in RESERVED_FINISH_ARGS & set(t.get("params", {})):
+                    err(where, f"R14 {t['tool']} has an argument named {arg}, which an ending tool reserves")
+    if comp.get("complete") is False and not finish_tools(spec):
+        err(where, "R14 completion.complete is false but the orchestrator has no tool marked use: finish")
 
 def r12(where, run_as, tool_addresses, servers):
     """Service credentials plus write tools plus user principals need a harness entitlement check."""
@@ -365,7 +377,6 @@ def check_server_auth(where, spec, servers):
     by_address = {t["tool"]: t.get("annotations", {}) for tools in tools_by_group.values() for t in tools}
     used = {gid for agent in spec["agents"].values() for gid in agent.get("grant", [])}
     addresses = [(t["tool"], t.get("annotations", {})) for gid in used for t in tools_by_group.get(gid, [])]
-    addresses += [(f["action"]["tool"], by_address.get(f["action"]["tool"], {})) for f in spec["completion"].get("finishers", []) if "tool" in f["action"]]
     r12(where, spec.get("authority", {}).get("run_as", []), addresses, servers)
 
 
@@ -401,14 +412,14 @@ def check_pipeline(where, pipe, flat_specs, params_by_template, servers, base_te
         wired = {e["on"].get("handoff_reason") for e in out if e["on"]["terminal"] == "handoff"}
         for r in sorted(handoff_reasons(spec) - wired):
             err(where, f"P2 stage {sid} ({tname}) has HandOff reason {r} with no edge")
-        finisher_ids = {f["id"] for f in spec["completion"].get("finishers", [])}
+        finish_names = {finish_name(t) for t in finish_tools(spec)}
         for e in out:
             r = e["on"].get("handoff_reason")
             if r and r not in handoff_reasons(spec):
                 err(where, f"P2 edge {e['id']} uses HandOff reason {r}, which {tname} does not declare")
-            f = e["on"].get("finisher")
-            if f and f not in finisher_ids:
-                err(where, f"P2 edge {e['id']} uses finisher {f}, which {tname} does not declare")
+            f = e["on"].get("finished_with")
+            if f and f not in finish_names:
+                err(where, f"P2 edge {e['id']} waits for ending {f}, which {tname}'s orchestrator doesn't have")
             bad = set(e["on"].get("status", [])) - set(spec["completion"]["statuses"])
             if bad:
                 err(where, f"P2 edge {e['id']} waits for status {sorted(bad)}, which {tname} never ends with")
@@ -482,14 +493,15 @@ def check_pipeline(where, pipe, flat_specs, params_by_template, servers, base_te
             err(where, f"P8 {addr} names a server the pipeline does not declare")
     used = []
     for s in pipe.get("sinks", []):
-        if s["kind"] == "tool" and s.get("tool") == "action/open_pull_request":
+        server = servers.get(s.get("tool", "/").split("/", 1)[0][4:]) if s.get("tool", "").startswith("mcp:") else None
+        if s["kind"] == "tool" and server and server.get("workspace") == "bind":
             st = s.get("at", {}).get("stage")
             spec = specs.get(st, (None, None))[1] if st else None
             ws = (spec or {}).get("workspace", {})
             if not st:
-                err(where, f"P9 sink {s['id']} opens a PR but has no at: it must name the stage whose checkout it pushes")
-            elif spec and not (ws.get("kind") == "checkout" and ws.get("writable") and ws.get("retain", "stage") == "stage"):
-                err(where, f"P9 sink {s['id']} opens a PR from {st}, whose checkout is not writable and retained for the stage")
+                err(where, f"P9 sink {s['id']} calls a workspace-bound tool but has no at naming the stage whose checkout it acts on")
+            elif spec and not (ws.get("kind") == "checkout" and ws.get("retain", "stage") == "stage"):
+                err(where, f"P9 sink {s['id']} acts on {st}'s checkout, which is not retained for the stage")
         if "at" in s and s["at"]["stage"] not in stages:
             err(where, f"P8 sink {s['id']} fires at unknown stage {s['at']['stage']}")
         settles = "settle" in stages.get(s["at"]["stage"], {}) if "at" in s else False
@@ -553,14 +565,8 @@ def load_registries():
                     err(p.name, f"R16 {ref} is registered twice")
                 entries[kind][ref] = (d, entry)
     for ref, (d, entry) in entries["prompts"].items():
-        if "file" in entry:
-            if not (d / entry["file"]).exists():
-                err(ref, f"R16 prompt file {entry['file']} is missing")
-        else:
-            doc = (d / entry["doc"]).resolve()
-            num = entry["section"].lstrip("§")
-            if not doc.exists() or not re.search(rf"^#+ {re.escape(num)}\. ", doc.read_text(), re.M):
-                err(ref, f"R16 prompt source {entry['doc']} {entry['section']} not found")
+        if not (d / entry["file"]).exists():
+            err(ref, f"R16 prompt file {entry['file']} is missing")
     for ref, (d, entry) in entries["report_schemas"].items():
         f = d / entry["file"]
         if not f.exists():
@@ -580,8 +586,6 @@ def check_refs(where, spec, registry):
         key = f"{ref['name']}@{ref['version']}"
         if key not in registry[kind]:
             err(where, f"R16 {path} refers to {key}, which no registry.json lists")
-        elif kind == "prompts" and registry[kind][key][1].get("status") == "draft_fragment":
-            warn(where, f"R16 {path} uses {key}, still a draft fragment in {registry[kind][key][1]['doc']}")
     base = (spec.get("system_prompt") or {}).get("base", {})
     if "ref" in base:
         need("prompts", base["ref"], "/system_prompt")

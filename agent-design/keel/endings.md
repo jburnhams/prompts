@@ -1,6 +1,6 @@
 # Keel: how a run ends
 
-Generated ending tools, and finishers. Part of [Keel](./README.md). Section numbers are shared across Keel's files, so a reference like §7f means the same section everywhere; [the README](./README.md#files) lists which file holds each.
+Generated ending tools, and tools marked as endings. Part of [Keel](./README.md). Section numbers are shared across Keel's files, so a reference like §7f means the same section everywhere; [the README](./README.md#files) lists which file holds each.
 
 ---
 
@@ -13,7 +13,7 @@ tool as run-ending.
 | Contract in the spec | Generated tool | Ends the run? | What the harness does on the call |
 |---|---|---|---|
 | `completion` | `harness/Complete` (or `tool_name`), unless `complete: false` | yes: `complete` | validates `report` against `report_schema`, runs the completion `checks`, files spinoffs, evaluates sinks and continuations |
-| `completion.finishers[]` | one tool per finisher, under its `name` | yes: `complete`, with `outcome.finisher` set | completion checks, then the wrapped tool or harness action; on failure, back to the model (§5a) |
+| a tool marked `use: finish` | one ending tool per such tool (§5a) | yes: `complete`, with `outcome.finished_with` set | completion checks, then the tool's call; on failure, back to the model |
 | `human.ask_user` | `harness/AskUser` | yes: `suspend` | opens a gate, posts to `channels`, records who may answer |
 | `hatches.handoff` | `harness/HandOff`, its `reason` enum = the declared reason ids | yes: `handoff` | starts the continuation wired to that reason |
 | `hatches.expand` | `harness/Expand` | no | reveals granted groups and sources |
@@ -48,58 +48,56 @@ what Forge's three entrypoints vary.
 **`form: "text"`** covers the quick analysis run (`../models.md` §3): the
 run ends on an assistant message with no tool calls, with status
 `done`, and that message becomes `outcome.summary`. R5 limits it to
-specs with no report schema, completion checks, spinoffs or finishers, because
+specs with no report schema, completion checks, spinoffs or ending tools, because
 there's nothing to validate.
 
-### 5a. Finishers: choosing the ending from a set of tools
+### 5a. Tools marked as endings
 
 Use case 0b asks for the opposite of a generic `Complete`: pick some
 real tools (update Jira, open a PR, ask for help) and make *those* the
-ways a run can end. That is a **finisher**: an entry in
-`completion.finishers` naming a declared tool (an MCP tool or a
-harness action, §7g), the
-status it ends with, and whether it takes a report.
+ways a run can end. A run's tools are one list, and **each entry says
+how the agent may use it**: `use: ["call"]` (the default) during the
+run, `["finish"]` only as an ending, or `["call", "finish"]` both. The
+marking is part of the run's configuration, on the tool's entry in the
+template or the saved tool group, and its `finish` block says which
+status the ending gives and whether it takes a report.
 
 This keeps the reasons above intact, because the termination is still
-the harness's, not the tool's. The tool doesn't know it's a finisher,
-and the same MCP tool can be a finisher in one template and an ordinary
-mid-run tool in another. What the author marks is the *ending*, in the
-contract, which is the right place for it.
+the harness's, not the tool's. The tool's server doesn't know it's an
+ending, and the same MCP tool can be an ending in one template and an
+ordinary tool in another. What the author marks is how *this run* may
+use it.
 
-- **The model sees a separate generated tool.** It takes `summary`,
-  `report` when `report: true`, and `args`: the wrapped tool's
-  arguments with the finisher's and the `ToolRef`'s overrides applied.
-  The arguments are nested under `args` so that no server argument can
-  collide with `summary`. That costs a nested object in the call, which
-  `agent-tool-implementations.md` §3g measures as slightly less reliable
-  to emit, and it's the price of not reserving names in every server's
-  schema.
-- **Completion checks run before the action, not after.** The
-  first-`done` checklist, `report_crosscheck` and the rest fire on the
-  finisher call.
-  A PR is opened, or Jira is moved, only after they pass. For an
-  irreversible action that order is the whole point.
-- **A failed action doesn't end the run.** The error goes back to the
-  model with a `finisher_failed` refusal code, and the run continues:
-  it can fix the problem, or pick another ending.
-- **A finisher's tool is declared, not granted.** `FinishWithJiraUpdate`
-  wraps `mcp:jira/update_issue`, which `coding.java` declares in a group
-  it grants to nobody. The model can move the ticket as its ending, and
-  can't do it halfway through. Granting it as well would allow both,
-  under two different names (R11).
-- **Harness actions are tools like any other** (§7g), so a finisher
-  wraps them the same way. `coding.java` ends with
-  `action/open_pull_request` or `action/request_help`. Both are
-  declared in a group granted to nobody, with their branch, labels and
-  channel fixed by argument overrides.
-- **`complete: false`** removes the generic `Complete`. The run can
-  then end only through a finisher, `AskUser`, `HandOff`, or the
+- **The model sees a separate generated tool for each ending.** It takes
+  the tool's own arguments, with overrides applied, plus `summary`, and
+  `report` when `report: true`. Arguments are flat, so `summary` and
+  `report` are reserved: publish refuses a tool with an argument of
+  either name (R14). Its name is `finish.name`; otherwise the tool's name
+  when it's only an ending, or `Finish` + its name when it's callable
+  too.
+- **Grant means available; `use` means how.** An ending tool is granted
+  like any other. Marking it only `finish` is how `coding.java` lets the
+  model move the Jira ticket as its ending but never halfway through.
+  Only the orchestrator may be granted ending tools; a sub-agent never
+  ends a run.
+- **Some built-ins allow only some uses.** Keel's built-in catalogue
+  (`tools-and-agents.md` §4a) says which: `Read` can only be called,
+  `RequestHelp` can only end a run. MCP tools allow both.
+- **Completion checks run before the call, not after.** The first-`done`
+  checklist, `report_crosscheck` and the rest fire when the model calls
+  the ending. A PR is opened, or Jira is moved, only after they pass. For
+  an irreversible ending that order is the whole point.
+- **A failed call doesn't end the run.** The error goes back to the
+  model with a `finish_failed` refusal code, and the run continues: it
+  can fix the problem, or pick another ending.
+- **`complete: false`** removes the generic `Complete`. The run can then
+  end only through an ending tool, `AskUser`, `HandOff`, or the
   final-turn nudge, which lists exactly the endings that exist.
 
-**Ask for help during the run, or as the ending.** These are
-different, and both are useful. `AskUser` mid-run suspends and resumes
-the same task with its context, which is right for a question. A
-`request_help` finisher ends the run and hands the task to a person,
-which is right when no single answer would unblock it. Their
-descriptions say so, because the model choosing between them is the
-point.
+**Ask for help during the run, or as the ending.** These are different,
+and both are useful. `AskUser` mid-run suspends and resumes the same task
+with its context, which is right for a question. `RequestHelp`, a
+built-in that is only an ending, hands the task to a person through a
+channel and ends the run `blocked`, which is right when no single answer
+would unblock it. Their descriptions say so, because the model choosing
+between them is the point.

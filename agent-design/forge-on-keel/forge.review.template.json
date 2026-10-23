@@ -31,21 +31,6 @@
       "trust": "config",
       "required": true,
       "pattern": "^[0-9a-f]{40}$"
-    },
-    "lenses": {
-      "type": "string_list",
-      "trust": "config",
-      "default": [
-        "bugs",
-        "security",
-        "conventions"
-      ],
-      "subset_of": [
-        "bugs",
-        "security",
-        "conventions",
-        "visual"
-      ]
     }
   },
   "spec": {
@@ -123,9 +108,6 @@
           "repo",
           "learned"
         ],
-        "kinds": {
-          "$param": "lenses"
-        },
         "at": "base_sha"
       }
     },
@@ -142,8 +124,7 @@
       },
       "provision": "sparse_clone",
       "writable": false,
-      "scratch": true,
-      "git_writes": "none"
+      "scratch": true
     },
     "tools": {
       "servers": [
@@ -297,56 +278,13 @@
           "pr.comment"
         ],
         "spawns": [
-          "reviewer",
+          "bugs_reviewer",
+          "security_reviewer",
+          "conventions_reviewer",
+          "visual_reviewer",
           "validator"
         ],
         "max_concurrent_children": 8
-      },
-      "reviewer": {
-        "description": "Read-only specialist. Pass role to choose the lens.",
-        "prompt": {
-          "base": {
-            "ref": {
-              "name": "forge.reviewer",
-              "version": 1
-            }
-          },
-          "generated": [
-            "env",
-            "capabilities",
-            "repo_context"
-          ]
-        },
-        "model": {
-          "tier": "economy",
-          "clamp_to_parent": true
-        },
-        "grant": [
-          "core.read"
-        ],
-        "spawn_kinds": [
-          "bugs",
-          "security",
-          "conventions",
-          "visual"
-        ],
-        "kind_grants": {
-          "visual": [
-            "vision"
-          ]
-        },
-        "report_schema": {
-          "ref": {
-            "name": "forge.finding-list",
-            "version": 1
-          }
-        },
-        "kind_scope": {
-          "bugs": "Logic errors, incorrect conditionals, off-by-one mistakes, and defects that make the changed code behave incorrectly — introduced by this diff, in the diff's own lines. Two checks to run every time: for each line the diff deletes or replaces, name what it guaranteed (a guard, an error path, a validation, a test case) and find where the new code guarantees it again — if nowhere, that is a candidate; and where the diff adds or changes a wrapper (a cache, proxy, decorator or adapter), check that every method calls the wrapped object rather than going back through a registry, session or global, which re-enters the wrapper or recurses, and that it forwards every method its callers use.",
-          "security": "Vulnerabilities introduced by this diff: injection, auth/authz gaps, secret handling, unsafe deserialization, and similar — introduced by this diff, in the diff's own lines.",
-          "conventions": "Violations of the project's own documented conventions (the text you were given alongside the diff) — only where you can quote the specific rule being broken and point to exactly where the diff breaks it.",
-          "visual": "What the PR's images show, and whether the diff matches them: a mockup the change doesn't implement, a screenshot of a defect the change doesn't fix. Use InspectImage. Anchor every finding to the line of code that produces what the image shows; an observation you cannot tie to a line is not a finding."
-        }
       },
       "validator": {
         "description": "Read-only. Checks exactly one candidate finding against the code, not against the finder's argument.",
@@ -375,6 +313,127 @@
             "description": "The candidate, in the review-finding schema."
           }
         }
+      },
+      "bugs_reviewer": {
+        "description": "Specialist: logic defects introduced by the diff.",
+        "prompt": {
+          "base": {
+            "ref": {
+              "name": "forge.reviewer",
+              "version": 1
+            }
+          },
+          "generated": [
+            "env",
+            "capabilities",
+            "repo_context"
+          ]
+        },
+        "model": {
+          "tier": "economy",
+          "clamp_to_parent": true
+        },
+        "grant": [
+          "core.read"
+        ],
+        "report_schema": {
+          "ref": {
+            "name": "forge.finding-list",
+            "version": 1
+          }
+        },
+        "scope": "Logic errors, incorrect conditionals, off-by-one mistakes, and defects that make the changed code behave incorrectly — introduced by this diff, in the diff's own lines. Two checks to run every time: for each line the diff deletes or replaces, name what it guaranteed (a guard, an error path, a validation, a test case) and find where the new code guarantees it again — if nowhere, that is a candidate; and where the diff adds or changes a wrapper (a cache, proxy, decorator or adapter), check that every method calls the wrapped object rather than going back through a registry, session or global, which re-enters the wrapper or recurses, and that it forwards every method its callers use."
+      },
+      "security_reviewer": {
+        "description": "Specialist: vulnerabilities introduced by the diff.",
+        "prompt": {
+          "base": {
+            "ref": {
+              "name": "forge.reviewer",
+              "version": 1
+            }
+          },
+          "generated": [
+            "env",
+            "capabilities",
+            "repo_context"
+          ]
+        },
+        "model": {
+          "tier": "economy",
+          "clamp_to_parent": true
+        },
+        "grant": [
+          "core.read"
+        ],
+        "report_schema": {
+          "ref": {
+            "name": "forge.finding-list",
+            "version": 1
+          }
+        },
+        "scope": "Vulnerabilities introduced by this diff: injection, auth/authz gaps, secret handling, unsafe deserialization, and similar — introduced by this diff, in the diff's own lines."
+      },
+      "conventions_reviewer": {
+        "description": "Specialist: violations of the project's documented conventions. Spawn only when a conventions file applies to the changed paths.",
+        "prompt": {
+          "base": {
+            "ref": {
+              "name": "forge.reviewer",
+              "version": 1
+            }
+          },
+          "generated": [
+            "env",
+            "capabilities",
+            "repo_context"
+          ]
+        },
+        "model": {
+          "tier": "economy",
+          "clamp_to_parent": true
+        },
+        "grant": [
+          "core.read"
+        ],
+        "report_schema": {
+          "ref": {
+            "name": "forge.finding-list",
+            "version": 1
+          }
+        },
+        "scope": "Violations of the project's own documented conventions (the text you were given alongside the diff) — only where you can quote the specific rule being broken and point to exactly where the diff breaks it."
+      },
+      "visual_reviewer": {
+        "description": "Specialist: whether the diff matches the PR's images. Spawn only when the PR carries an image or touches UI paths.",
+        "prompt": {
+          "base": {
+            "ref": {
+              "name": "forge.reviewer",
+              "version": 1
+            }
+          },
+          "generated": [
+            "env",
+            "capabilities",
+            "repo_context"
+          ]
+        },
+        "model": {
+          "tier": "economy",
+          "clamp_to_parent": true
+        },
+        "grant": [
+          "core.read",
+          "vision"
+        ],
+        "report_schema": {
+          "ref": {
+            "name": "forge.finding-list",
+            "version": 1
+          }
+        },
+        "scope": "What the PR's images show, and whether the diff matches them: a mockup the change doesn't implement, a screenshot of a defect the change doesn't fix. Use InspectImage. Anchor every finding to the line of code that produces what the image shows; an observation you cannot tie to a line is not a finding."
       }
     }
   }

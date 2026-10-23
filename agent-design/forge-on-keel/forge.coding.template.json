@@ -33,20 +33,19 @@
       "required": true,
       "pattern": "^[A-Za-z0-9_./-]{1,200}$"
     },
-    "kinds": {
+    "topics": {
       "type": "string_list",
       "trust": "config",
       "default": [],
       "subset_of": [
-        "bugs",
         "security",
-        "conventions",
-        "visual",
+        "testing",
+        "data",
         "ux",
         "performance",
-        "testing",
-        "data"
-      ]
+        "conventions"
+      ],
+      "description": "Conventions topics that apply to this task."
     }
   },
   "spec": {
@@ -104,10 +103,10 @@
           "repo",
           "learned"
         ],
-        "kinds": {
-          "$param": "kinds"
-        },
-        "at": "working_tree"
+        "at": "working_tree",
+        "topics": {
+          "$param": "topics"
+        }
       }
     },
     "workspace": {
@@ -123,8 +122,7 @@
       },
       "provision": "worktree",
       "writable": false,
-      "scratch": true,
-      "git_writes": "none"
+      "scratch": true
     },
     "tools": {
       "servers": [

@@ -348,7 +348,7 @@ design, and the harness may express it either way:
   not an exact accounting) — this shape follows the deployed model's
   actual window rather than a number picked for one model and left
   stale after a model swap, and it can additionally divide by
-  `(1 + number of specialist lenses)` to account for the diff being
+  `(1 + number of specialists)` to account for the diff being
   copied into every specialist's `Task` prompt in v1 (see `medium.md`'s
   "Diff-as-file instead of diff-in-prompt-thrice" entry for the fix
   that would remove that multiplier).

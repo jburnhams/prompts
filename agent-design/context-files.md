@@ -491,13 +491,13 @@ names, and unifying them is worth doing before a third appears:
 | Where it appears | Spelling | What it selects |
 |---|---|---|
 | `Task`, spawning a review specialist | `role` | which scope paragraph the reviewer core runs with |
-| A review finding | `role` | provenance — which lens raised it |
-| Prose throughout `review.md` | "lens" | the same thing, as a concept |
+| A review finding | `role` | provenance — which specialist raised it |
+| Prose throughout `review.md` | "specialist" (now "specialist") | the same thing, as a concept |
 | This service, later | `kinds` | which corpus sections come back |
 
 They are one open, service-validated string set — `bugs`, `security`,
 `conventions`, `visual`, `ux`, `performance`, `testing`, `data` — not four
-parallel taxonomies. "Lens" is retained as the prose word for *a kind in
+parallel taxonomies. "Lens" was retained (until 2026-10-23, now "specialist") as the prose word for *a kind in
 its scoping use*, and `role` stays as the field name in the two schemas
 that already ship it, because renaming a live field for tidiness is churn
 this folder's supersession discipline exists to discourage. What changes is
@@ -512,7 +512,7 @@ kinds  ──►  context sections   (this service — reserved, next subsection
        ──►  tool grants        (which tools the spawn is wired with — v1)
 ```
 
-The third is live as of the `visual` lens: it is the one review kind wired
+The third is live as of the `visual` specialist: it is the one review kind wired
 with `InspectImage` (`../agent-design/review.md` §1c). That supersedes the
 narrower formulation recorded a day earlier — "tool scope is keyed on the
 `(subagent_type, role)` pair" — which was the same mechanism stated as a
@@ -714,7 +714,7 @@ deterministic filters, in order:
    already bounded *which sections exist* in the response; `applies_to`
    decides which of those apply to this run's files.
 2. **`scope`** — matched against the run mode, and in a multi-stage review
-   against each specialist's lens (`review.md` §4), so a security-scoped
+   against each specialist's specialist (`review.md` §4), so a security-scoped
    section reaches the specialist that can act on it rather than all five.
    When the request already named `kinds`, this is a no-op for the common
    case and a backstop for the rest: the harness still filters, because a
@@ -1192,10 +1192,10 @@ on it thinking to, which is the same "sometimes it won't" the design
 rejects in §8 for path-only inlining.
 
 **A review specialist does not**, and that stays as `review.md` §1 has it:
-only the `conventions` lens gets the text, because it is the only lens that
+only the `conventions` specialist gets the text, because it is the only specialist that
 reviews against it. The reason is the fan-out — the root file transcluded
 into every specialist's brief is the same bytes multiplied by the team
-size, for four lenses that have no use for them. A `bugs` specialist does
+size, for four specialists that have no use for them. A `bugs` specialist does
 not need the house import ordering.
 
 So the rule is not "sub-agents inherit" or "sub-agents don't", it is
@@ -1480,7 +1480,7 @@ already logged, and already distinguishable from repository content.
 | (new) | First-match collision **reports the shadowed file** | §1, §10 — the rule without the reporting is the invisibility this document faults the field for |
 | (new) | Oversize files cut at a **heading** boundary, dropped section names listed | §2 — a line cut can strip a rule's qualifier and leave the rule; the model cannot tell |
 | `review.md` §4: conventions "scoped to the changed paths" (undefined) | Root file + every conventions file on a path down to each changed file's directory, deduped | §5 — §1's walk with the changed set standing in for cwd |
-| (new) | Coding sub-agents inherit conventions verbatim; review specialists stay scoped to the `conventions` lens | §8a — inherit when the sub-agent does the same job, scope when it does a different one |
+| (new) | Coding sub-agents inherit conventions verbatim; review specialists stay scoped to the `conventions` specialist | §8a — inherit when the sub-agent does the same job, scope when it does a different one |
 | `medium.md`: structural write protection as a conditional upgrade | Shipped in v1 — `Edit`/`Write` refuse against a loaded conventions path absent a dispatch override | §10a — §5 supplies the reason not to wait for the post-run flag to fire first |
 | Earlier draft of this document: no tier above the repository, org rules routed to `review.md`'s `<focus>` | **Three tiers** — org, team, repo — with org and team supplied by a context service at task start | §1a, §1b. The original argument ("a dispatched run has no user") only ever applied to the *user* tier; `<focus>` is a few sentences of per-run direction and review-only, so an org coding standard had nowhere to go at all |
 | (new) | Precedence is two axes: `policy` from above beats the repo, `default` from above loses to it | §1a — collapsing them forces a choice between a repo that can opt out of security policy and an org that dictates naming to a vendored fork |

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://keel.example/schemas/registry.schema.json",
   "title": "Configuration registry manifest",
-  "description": "Maps the prompt and report-schema refs a configuration folder uses ({name, version}) to their text, so a folder kept in git can be checked and published as a unit. Publishing a folder creates one registry version per entry. See ../run-spec.md §3.",
+  "description": "Maps the prompt and report-schema refs a configuration folder uses ({name, version}) to files in that folder, so a folder kept in git can be checked and published as a unit. Publishing a folder creates one registry version per entry. See ../run-spec.md §6.",
   "type": "object",
   "properties": {
     "prompts": {
@@ -11,47 +11,19 @@
         "pattern": "^[a-z][a-z0-9_.-]{0,62}@[1-9][0-9]*$"
       },
       "additionalProperties": {
-        "oneOf": [
-          {
-            "type": "object",
-            "properties": {
-              "file": {
-                "type": "string"
-              },
-              "derived_from": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "file"
-            ],
-            "additionalProperties": false
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
           },
-          {
-            "type": "object",
-            "description": "The prompt is the fenced block in a design document's section. Allowed while the text is still being designed there.",
-            "properties": {
-              "doc": {
-                "type": "string"
-              },
-              "section": {
-                "type": "string"
-              },
-              "status": {
-                "enum": [
-                  "complete",
-                  "draft_fragment"
-                ]
-              }
-            },
-            "required": [
-              "doc",
-              "section",
-              "status"
-            ],
-            "additionalProperties": false
+          "derived_from": {
+            "type": "string"
           }
-        ]
+        },
+        "required": [
+          "file"
+        ],
+        "additionalProperties": false
       }
     },
     "report_schemas": {

@@ -138,7 +138,7 @@
           "done"
         ]
       },
-      "tool": "action/open_pull_request",
+      "tool": "mcp:scm/open_pull_request",
       "args": {
         "title": {
           "cel": "pipeline.params.issue_key + ': ' + result.report.suggested_commit_message.split('\\n')[0]"
@@ -209,6 +209,9 @@
     "servers": [
       {
         "id": "jira"
+      },
+      {
+        "id": "scm"
       }
     ],
     "groups": [
@@ -228,7 +231,7 @@
         "id": "pr",
         "tools": [
           {
-            "tool": "action/open_pull_request",
+            "tool": "mcp:scm/open_pull_request",
             "annotations": {
               "idempotent": false,
               "retry": "never"
@@ -241,6 +244,11 @@
               "draft": {
                 "fixed": false,
                 "hidden": true
+              }
+            },
+            "links": {
+              "pull_request": {
+                "cel": "result.url"
               }
             }
           }

@@ -384,9 +384,6 @@
             "paths": {
               "$ref": "common.schema.json#/$defs/BindableStringList"
             },
-            "kinds": {
-              "$ref": "common.schema.json#/$defs/BindableStringList"
-            },
             "at": {
               "type": "string",
               "enum": [
@@ -399,6 +396,10 @@
               "type": "integer",
               "minimum": 0,
               "default": 32768
+            },
+            "topics": {
+              "$ref": "common.schema.json#/$defs/BindableStringList",
+              "description": "Tags on context-service sections (security, testing, data, …) that narrow which apply. The context service owns the tag vocabulary."
             }
           },
           "required": [
@@ -487,15 +488,6 @@
               "default": true,
               "description": "A per-run directory outside the working tree, named in <env>."
             },
-            "git_writes": {
-              "type": "string",
-              "enum": [
-                "none",
-                "via_action"
-              ],
-              "default": "none",
-              "description": "Whether an agent of this run can cause a push. none: no agent can (whatever the platform does with the tree after the run is the pipeline's, or an external committer's, business). via_action: agents may, only through action/open_pull_request, whether granted mid-run or wrapped by a finisher. The model never runs git writes itself in either case; the git_write_blocklist check applies regardless."
-            },
             "retain": {
               "type": "string",
               "enum": [
@@ -503,7 +495,7 @@
                 "stage"
               ],
               "default": "stage",
-              "description": "How long the checkout outlives the run. stage: until the stage settles or is abandoned, so a pipeline sink can open the PR from it after the run. run: discarded when the run ends."
+              "description": "How long the checkout outlives the run. stage: until the stage settles or is abandoned, so a pipeline sink's workspace-bound tool can still act on it after the run. run: discarded when the run ends."
             }
           },
           "required": [
@@ -660,7 +652,7 @@
     },
     "CompletionSpec": {
       "type": "object",
-      "description": "The completion contract. The harness generates the run-ending tools from it: Complete, and one tool per finisher. Termination is never a property of a tool itself (../endings.md §5).",
+      "description": "The completion contract. The harness generates Complete from it, and one ending tool for every tool marked use: finish (tools-and-agents.md §4b). Termination is never a property of a tool's server.",
       "properties": {
         "form": {
           "type": "string",
@@ -669,7 +661,7 @@
             "text"
           ],
           "default": "tool",
-          "description": "text: the run ends on an assistant message with no tool calls and status done. Allowed only with no report_schema, no checks and no spinoffs (the quick analysis run)."
+          "description": "text: the run ends on an assistant message with no tool calls and status done. Allowed only with no report_schema, no checks, no spinoffs and no finish tools (the quick analysis run)."
         },
         "tool_name": {
           "type": "string",
@@ -749,14 +741,7 @@
         "complete": {
           "type": "boolean",
           "default": true,
-          "description": "Generate the generic Complete tool. false: the run can end only through a finisher (or AskUser, HandOff, the nudge)."
-        },
-        "finishers": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Finisher"
-          },
-          "description": "Ending actions the model chooses between, each wrapping a declared tool or a harness action (../endings.md §5a)."
+          "description": "Generate the generic Complete tool. false: the run can end only through a tool marked use: finish, AskUser, HandOff or the nudge."
         },
         "checks": {
           "type": "array",
@@ -1041,7 +1026,7 @@
         },
         "tool": {
           "$ref": "common.schema.json#/$defs/ToolAddress",
-          "description": "kind tool: a declared tool the harness calls after the run: an MCP tool (a Jira transition) or a harness action (action/open_pull_request on the stage's retained checkout). Under the run's credentials."
+          "description": "kind tool: a declared tool the harness calls after the run, such as a Jira transition, or a workspace-bound MCP tool acting on the stage's retained checkout."
         },
         "args": {
           "type": "object",
@@ -1331,67 +1316,6 @@
       ],
       "additionalProperties": false
     },
-    "Finisher": {
-      "type": "object",
-      "description": "A tool the model may call to end the run by doing something. The harness generates a separate tool for it: the wrapped tool's (overridden) arguments under args, plus summary and optionally report. On a call the harness runs the completion checks first, then calls the wrapped tool; if it fails the error returns to the model and the run continues.",
-      "properties": {
-        "id": {
-          "$ref": "common.schema.json#/$defs/Name"
-        },
-        "name": {
-          "type": "string",
-          "pattern": "^[A-Z][A-Za-z]{2,31}$",
-          "description": "The tool name the model sees. Must not collide with any other tool the orchestrator has."
-        },
-        "description": {
-          "type": "string",
-          "maxLength": 1000,
-          "description": "Should say that calling it ends the run, and when to choose it over the other endings."
-        },
-        "action": {
-          "type": "object",
-          "description": "The tool this finisher wraps: an MCP tool or a harness action (action/open_pull_request), declared in tools.groups.",
-          "properties": {
-            "tool": {
-              "$ref": "common.schema.json#/$defs/ToolAddress"
-            },
-            "params": {
-              "type": "object",
-              "additionalProperties": {
-                "$ref": "tools.schema.json#/$defs/ParamOverride"
-              },
-              "description": "Overrides on top of the declared ToolRef's."
-            }
-          },
-          "required": [
-            "tool"
-          ],
-          "additionalProperties": false
-        },
-        "status": {
-          "$ref": "common.schema.json#/$defs/CompleteStatus"
-        },
-        "report": {
-          "type": "boolean",
-          "default": false,
-          "description": "Add a report argument validated against completion.report_schema."
-        },
-        "checks": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Completion check ids to run before the action. Default: all whose on_status includes status."
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "action",
-        "status"
-      ],
-      "additionalProperties": false
-    },
     "Monitor": {
       "type": "object",
       "properties": {
@@ -1523,13 +1447,6 @@
             "$ref": "tools.schema.json#/$defs/Visibility"
           }
         },
-        "kinds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Kinds this agent covers. Declared here or at spawn by the spawner, never by the agent itself."
-        },
         "spawns": {
           "type": "array",
           "items": {
@@ -1589,23 +1506,6 @@
             "$ref": "tools.schema.json#/$defs/Visibility"
           }
         },
-        "spawn_kinds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Kinds the spawner may pass at spawn (Task.kind; Forge's v1 Task schema names this argument differently). Each may add grants from kind_grants."
-        },
-        "kind_grants": {
-          "type": "object",
-          "description": "Kind to extra group ids, the tool half of 'Kinds: one vocabulary, three resolutions'. Harness config only.",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "$ref": "common.schema.json#/$defs/Name"
-            }
-          }
-        },
         "spawn_args": {
           "type": "object",
           "description": "Extra structured arguments the spawner must pass (the validator's finding), as JSON Schema properties added to Task.",
@@ -1628,13 +1528,10 @@
         "budgets": {
           "$ref": "#/$defs/Budgets"
         },
-        "kind_scope": {
-          "type": "object",
-          "description": "Kind to the scope text a sub-agent spawned with that kind is given: the prompt half of 'kinds: one vocabulary, three resolutions'. Rendered into the sub-agent's opening message as a <lens> block before the spawner's brief, so the system prompt stays one per sub-agent. Template text, so trusted.",
-          "additionalProperties": {
-            "type": "string",
-            "maxLength": 4000
-          }
+        "scope": {
+          "type": "string",
+          "maxLength": 4000,
+          "description": "What this sub-agent is for, rendered into its opening message as a <scope> block before the spawner's brief. Lets several sub-agents share one prompt version (four review specialists, one reviewer prompt) while each keeps one cached system prompt."
         }
       },
       "required": [

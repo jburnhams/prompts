@@ -1,6 +1,6 @@
 # Keel: outputs
 
-Results, sinks, continuations, gates and harness actions. Part of [Keel](./README.md). Section numbers are shared across Keel's files, so a reference like §7f means the same section everywhere; [the README](./README.md#files) lists which file holds each.
+Results, sinks, continuations, gates, and where a PR gets opened. Part of [Keel](./README.md). Section numbers are shared across Keel's files, so a reference like §7f means the same section everywhere; [the README](./README.md#files) lists which file holds each.
 
 ---
 
@@ -30,7 +30,7 @@ the completion check `require_tool_called` confirms it happened.
 
 `Run.outcome`: `terminal` (`complete | suspend | handoff |
 infra_failure | stopped`), `status`, `summary`, `report` (validated),
-`handoff {reason, why}`, `finisher {id, external_ref}`, `nudged`, the post-run `integrity` checks, a
+`handoff {reason, why}`, `finished_with {tool, name, links}`, `nudged`, the post-run `integrity` checks, a
 `refusal` code if the harness ended it, and `report_digest` for
 approvals to bind to. Artifacts are listed on the run. Everything
 downstream reads this one object, so sinks and continuations never
@@ -69,8 +69,8 @@ their own, and wiring is a separate, versioned thing.
 | `blocks_this` spinoff (`../orchestration.md` §6) | template continuation | `complete`, `blocked`, `spinoff: blocks_this` | a child pipeline run; this stage waits on it | `prior_attempt` | `auto` |
 | `follows_this` spinoff | template continuation | `complete`, `spinoff: follows_this` | a child pipeline run | `prior_attempt` | `approval` |
 | plan → implement (`../formats.md` §6) | pipeline [`jira.plan-implement`](../forge-on-keel/jira-plan-implement.pipeline.json) | `complete`, `planned` | `implement` | `plan` | `approval`, `bind: plan_hash` (gated), or `auto` (auto-chained) |
-| HandOff `too_complex` (`../models.md` §4b) | pipeline [`analysis`](./examples/analysis.pipeline.json) | `handoff`, reason | `investigate` | `prior_attempt` | `auto` |
-| HandOff `report_requested` | pipeline `analysis` | `handoff`, reason | `report` | `prior_attempt`, `artifacts` | `auto` |
+| HandOff `too_complex` (`../models.md` §4b) | pipeline [`lens`](../lens-on-keel/lens.pipeline.json) | `handoff`, reason | `investigate` | `prior_attempt` | `auto` |
+| HandOff `report_requested` | pipeline `lens` | `handoff`, reason | `report` | `prior_attempt`, `artifacts` | `auto` |
 | review → fix (`../medium.md` §1b) | pipeline [`pr.review-fix`](../forge-on-keel/pr-review-fix.pipeline.json) | `complete`, `done`, an expression on findings | `fix` | `findings` | `approval` by the PR author |
 
 The rules that keep this safe, for both kinds:
@@ -122,48 +122,37 @@ me" across every template. `POST /v1/gates/{id}/replies` is the single
 reply path for the UI and for every channel adapter, which is
 `../medium.md` §5c's multi-channel delivery without a new tool.
 
-### 7g. Harness actions, and where a PR gets opened
+### 7g. Where a PR gets opened
 
-Keel doesn't decide who opens a PR. A configuration does.
-Keel provides **harness actions**: tools the harness implements
-rather than an MCP server, addressed `action/<name>`. Like any tool,
-an action can sit in any of three positions, and a configuration picks
-one per template or pipeline:
+Keel doesn't know what a pull request is. A configuration grants a tool
+that opens one, usually from an MCP server bound to the workspace
+(`tools-and-agents.md` §4a), and decides where it sits:
 
 | Position | How it's written | Who decides when | Example |
 |---|---|---|---|
-| **during the run** | the action in a granted group | the model, mid-run | a template that opens a draft PR early so CI runs while it keeps working |
-| **as the ending** | a finisher wrapping the action | the model, by choosing that ending; the completion checks run first | `coding.java`'s `OpenPullRequest` |
-| **after the run** | a pipeline sink `kind: tool` calling the action, `at` a stage's `run_ended` | the pipeline author, fixed by the outcome | `jira.plan-implement` opens the PR from implement's retained checkout |
+| **during the run** | the tool granted with `use: ["call"]` | the model, mid-run | a template that opens a draft PR early so CI runs while it keeps working |
+| **as the ending** | the tool granted with `use: ["finish"]` | the model, by choosing that ending; the completion checks run first | `coding.java`'s `OpenPullRequest` |
+| **after the run** | a pipeline sink `kind: tool` calling it, `at` a stage's `run_ended` | the pipeline author, fixed by the outcome | `jira.plan-implement` opens the PR from implement's retained checkout |
 
-A fourth arrangement needs no action at all. An **external committer**
+A fourth arrangement needs no tool at all. An **external committer**
 picks up the retained working tree and links the PR back with
 `POST …/stages/{stage}:link`. Forge's original design did this.
 
-Whichever position opens the PR, `action/open_pull_request` writes
-`links.pull_request` on the stage. So a stage's `settle` watches
-`stage.links.pull_request` in every arrangement, and the rest of the
-pipeline doesn't care which one the configuration chose. Sinks at the
-same moment run in the order declared. `jira.plan-implement` opens the
-PR, then moves the ticket to In Review only if a PR was linked.
+Whichever position opens the PR, the tool's `links` mapping writes
+`stage.links.pull_request`, and the stage's `settle` watches that link.
+So the rest of the pipeline doesn't care which arrangement the
+configuration chose. Sinks at the same moment run in the order declared:
+`jira.plan-implement` opens the PR, then moves the ticket to In Review
+only if a link was written.
 
 The rules:
 
 - **The model never runs git writes itself.** The `git_write_blocklist`
-  check applies in every position. An action is the only way a push
-  happens, and it uses the harness's git identity, signing and PR
-  templates.
-- **`workspace.git_writes` is about the run's agents only.**
-  `via_action` is required when any agent can reach the action, granted
-  or wrapped by a finisher, and is an error when none can (R15). `none`
-  says no agent of this run can cause a push. It does not stop a
-  pipeline from opening a PR from the tree afterwards. That push is the
-  pipeline's, declared in its own `tools`, and checked by P9: the stage's
-  checkout must be writable and retained.
-- **Two actions exist today**:
-  - `open_pull_request` (title, body, base, draft, labels);
-  - `request_help` (message, channel): as a finisher it ends the run
-    `blocked`.
-
-  Argument overrides fix and hide whatever a configuration doesn't want
-  the model choosing, such as the base branch or the labels.
+  check applies to its `Bash` in every position. A push happens only
+  through a granted tool whose server is bound to the workspace.
+- **That tool is governed like any other write tool**: declared and
+  pinned, its arguments narrowed (the base branch and labels fixed and
+  hidden), its credentials subject to R12. With OBO it opens the PR as
+  the user.
+- **A sink that acts on a checkout names the stage** (`at`), and that
+  stage's checkout must be retained (P9).

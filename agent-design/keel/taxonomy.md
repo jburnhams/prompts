@@ -22,6 +22,11 @@ PR, answer a data question), and the configurations that do it: its
 templates, pipelines and triggers. Use cases share Keel's vocabulary
 and never extend it.
 
+**Lens.** A set of data-analysis use cases on Keel: answer a question
+quickly, investigate it, write a report (`../lens-on-keel/`). Before
+2026-10-23 "lens" was Forge's word for a review specialism; that use is
+retired (§10).
+
 **Forge.** A set of use cases on Keel: plan, implement, review, fix. Not
 a separate system and not an extension of Keel (`../forge-on-keel/`).
 
@@ -143,20 +148,18 @@ higher-privilege one.
 learned), resolved by the context service for a ref.
 *Where:* `context.conventions`, `../context-files.md`.
 
-**Kind.** One open vocabulary: `bugs`, `security`, `conventions`,
-`visual`, … A kind selects context sections, prompt scope and extra
-tool grants for a sub-agent. Kinds are declared by whoever spawns the sub-agent,
-never by the agent about itself.
-*Older words:* **lens** (`../review.md`), and the `role` argument of
-Forge's v1 `Task` tool. Keel's generated `Task` calls it
-`kind`.
+**Topic.** A tag on a context-service section (`security`, `testing`,
+`data`, …) that narrows which conventions apply to a run
+(`context.conventions.topics`). The context service owns the tags.
+
+**Scope** (of a sub-agent). What a sub-agent is for, rendered into its
+opening message as a `<scope>` block. Lets several sub-agents share one
+prompt version, each with its own scope and grant.
 
 **Workspace.** What the run may touch on disk: `none`, or a
 harness-provisioned **checkout** with `writable`, a **write scope**
 (path globs), a scratch directory outside the tree, and **git writes**
-`none` or `via_action` (whether an agent of the run can cause a push,
-only through `action/open_pull_request`), and **retain** (how long the
-checkout outlives the run).
+and **retain** (how long the checkout outlives the run).
 
 ---
 
@@ -170,8 +173,6 @@ schema.
 
 **Tool source.** Where a tool comes from:
 - `builtin`: harness-implemented file, shell and image tools.
-- `action`: harness actions with effects outside the run, such as
-  opening a PR.
 - `mcp:<server>`: an MCP server.
 - `harness`: generated from a contract (see **Generated tool**). These
   can't be put in a group.
@@ -215,7 +216,7 @@ carrying its own pinned servers.
 
 **Declaration.** Every tool and server a template lists in
 `tools.groups` and `tools.servers`, granted or not. Nothing outside it
-can be granted, revealed, wrapped by a finisher, or called.
+can be granted, revealed, or called.
 *Older word:* "the job's declaration" (`../tools.md`).
 
 **Grant.** The groups an agent may call (`agents.<a>.grant`), each a
@@ -234,7 +235,7 @@ now:
 Visibility never grants.
 
 **Generated tool.** A tool the harness builds from a contract:
-`Complete`, each finisher, `AskUser`, `HandOff`, `Expand`, `Task`,
+`Complete`, one ending tool per tool marked `use: finish`, `AskUser`, `HandOff`, `Expand`, `Task`,
 `Narrate`.
 
 **Harness check.** Enforcement at the tool boundary for every agent,
@@ -257,12 +258,6 @@ not from its spawner's grant.
 
 **Task.** The generated tool an agent uses to spawn a sub-agent. "Task"
 is otherwise informal, for the work a run is given; it isn't a record.
-
-**Kind scope.** The text a sub-agent spawned with a kind is given about
-that lens, in a `<lens>` block of its opening message.
-
-**Kind grant.** Extra groups a sub-agent gets when spawned with a given
-kind (`visual` → `vision`).
 
 **Tier.** `economy`, `standard` or `strong`. Templates name tiers, never
 models.
@@ -296,7 +291,7 @@ tool loading.
 
 **Ending.** Any way a run stops. The kind of ending is the
 **terminal**:
-- `complete`: through `Complete` or a finisher;
+- `complete`: through `Complete` or an ending tool;
 - `suspend`: through `AskUser`;
 - `handoff`: through `HandOff`;
 - `infra_failure` and `stopped`: harness-side.
@@ -304,19 +299,25 @@ tool loading.
 **Complete.** The generic ending tool, generated from the completion
 contract. It can be switched off (`complete: false`).
 
-**Finisher.** An ending the model chooses that also does something: it
-wraps a declared tool, which can be a **harness action**. The completion checks
-run first, then the action. If the action fails, the error goes back to
-the model and the run continues.
+**Use** (of a tool). How the agent may use a tool in this run, marked
+on its entry in the run's configuration: `call` (during the run),
+`finish` (as an ending), or both. Keel's built-ins may allow only some
+uses: `RequestHelp` is only an ending.
 
-**Harness action.** A tool the harness implements rather than an MCP
-server, addressed `action/<name>`. Like any tool it can be granted
-mid-run, wrapped by a finisher, or called by a pipeline sink after the
-run. Which position is a configuration's choice, not Keel's.
-- `open_pull_request`: commit, push and open the PR under the
-  harness's git identity, and link it to the stage;
-- `request_help`: post to a channel; as a finisher it ends the run
-  `blocked`.
+**Ending tool.** The run-ending tool the harness generates for a tool
+marked `use: finish`. The completion checks run first, then the tool. If
+the tool fails, the error goes back to the model and the run continues.
+Its arguments are the tool's own, plus `summary` and optionally
+`report`, which are reserved.
+*Older word:* finisher (the first draft of Keel, 2026-10-23).
+
+**Workspace binding.** An MCP server started with the run's checkout
+mounted (`workspace: bind`), so its tools can act on the working tree:
+commit, push, open a review. Keel itself knows nothing about pull
+requests.
+
+**Link** (from a tool). A field of a tool's result written to the
+stage's links (`ToolRef.links`), such as the URL of a PR it opened.
 
 **Status.** How a `complete` ending went: `done`, `planned`, `skipped`,
 `failed`, `blocked`, `budget_exhausted`.
@@ -349,7 +350,7 @@ started with (`../models.md` §4):
   stronger stage.
 
 **Exit.** Something a template can end with that a pipeline can wire:
-a status, a finisher, a HandOff **reason**, or a gate answer.
+a status, an ending tool, a HandOff **reason**, or a gate answer.
 
 **Monitor.** A signal the harness watches during a run (two failed
 queries in a row, zero rows, too many turns), and what it does: hand
@@ -368,7 +369,7 @@ result, never mixed into the data.
 **Role.** An RBAC role: a set of permission groups, assigned to a
 **team**. A user has what their teams' roles grant. Roles live in the
 RBAC system, outside this spec. This is the only meaning of "role".
-*Not:* an agent; a kind.
+*Not:* an agent; a sub-agent's scope.
 
 **Team.** A group of users in the RBAC system. Roles are assigned to
 teams. A gate's principal set can name a team, which is read for
@@ -432,7 +433,7 @@ report, an action). If the content changes, the approval lapses.
 
 **Ask for help.** Two different things:
 - `AskUser`, during the run: the run resumes with the answer.
-- The `request_help` finisher, as the ending: a person takes the task.
+- `RequestHelp`, a built-in ending: a person takes the task.
 
 **Narrate.** A tool for a few short progress entries per run, kept as a
 durable narrative.
@@ -442,7 +443,7 @@ durable narrative.
 ## 7. What a run leads to
 
 **Outcome.** The record of how a run ended: terminal, status, summary,
-report, finisher, handoff reason, integrity checks, refusal.
+report, the ending tool, handoff reason, integrity checks, refusal.
 *Older word:* "result" (prose).
 
 **Effect.** Something the model does to the world during a run, through
@@ -582,7 +583,10 @@ never sees it.
 |---|---|---|
 | **mode** | "Plan" and "implement" are two templates. What makes one investigate and the other write code is its tools, prompt, model and ending contract, and the pipeline runs them in order. No field, tag or prompt line says "you are in plan mode". | the template's name; "configured to plan" if you need a verb. The word survives only in two unrelated field names, `auth.mode` and `run_as.mode`, which mean "credential kind" and "whose authority" |
 | **job** | `../tools.md` says "the agent job declares the tools". That is the template's declaration | **template**, **declaration** |
-| **lens** | the same thing as a kind | **kind** |
+| **lens** (a review specialism) | it's now the name of the data-analysis use cases | **specialist**, a sub-agent with a `scope` |
+| **kind** | one word did three jobs at spawn time (prompt scope, extra tools, conventions sections), and nobody found it easy to explain | a sub-agent per specialist, with its own **scope** and grant; **topics** for conventions |
+| **finisher** | a separate list beside the tools, when the tools themselves can say how they may be used | a tool marked **use: finish** (its **ending tool**) |
+| **harness action** | made Keel know about pull requests | an MCP tool, on a **workspace-bound** server where it needs the checkout; Keel **built-ins** for Keel's own concepts |
 | **landing** | a stage reached by a handoff | **stage** |
 | **harness trigger** | collided with **trigger** | **monitor** |
 | **completion gate** | collided with **gate** | **completion check** |
@@ -598,7 +602,7 @@ never sees it.
 Resolved on review: `handoff` (the ledger state is gone; it's
 **settling**), `Task` (no ledger, so `Task` is only the spawn tool, and
 "task" stays informal for the work a run is given), and `role` (RBAC
-only; the spawn argument is `kind`). The rest are left as they are,
+only). The rest are left as they are,
 each with its reason:
 
 | Word | Meanings | Decision |

@@ -1,19 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://keel.example/registry/report_schema/analysis.report.document/1",
-  "title": "Analysis report document",
-  "description": "Complete.report for analysis.report: a written report whose every figure is a claim with refs.",
+  "$id": "https://keel.example/registry/report_schema/lens.report.answer/1",
+  "title": "Analysis answer",
+  "description": "Complete.report for lens.investigate: the answer, each claim traced to the query behind it. New with Keel; ../../data.md §2f's provenance check reads claims[].refs and evidence.",
   "type": "object",
   "properties": {
     "question": {
       "type": "string"
     },
-    "title": {
-      "type": "string"
-    },
-    "document_markdown": {
+    "answer": {
       "type": "string",
-      "description": "The report as published by the publish sink."
+      "description": "Markdown, figure first."
     },
     "claims": {
       "type": "array",
@@ -52,12 +49,18 @@
         "additionalProperties": false
       }
     },
-    "caveats": {
+    "assumptions": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "Including the explore run's NOT CHECKED items the writer did not check itself."
+      "description": "Readings of the question chosen, and units, periods and filters assumed."
+    },
+    "not_checked": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "evidence": {
       "type": "array",
@@ -68,10 +71,10 @@
   },
   "required": [
     "question",
-    "title",
-    "document_markdown",
+    "answer",
     "claims",
-    "caveats",
+    "assumptions",
+    "not_checked",
     "evidence"
   ],
   "additionalProperties": false

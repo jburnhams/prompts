@@ -12,11 +12,36 @@ Schema: [`tools.schema.json`](./schemas/tools.schema.json).
 
 There are three namespaces in a tool address:
 
-- `builtin/Read`: in-process harness tools (`Read`, `Edit`, `Write`,
-  `Bash`, `Grep`, `List`, `InspectImage`).
+- `builtin/<Tool>`: Keel's built-in tools, implemented by the harness
+  itself. Not every tool is MCP.
 - `mcp:<server>/<tool>`: anything served by a registered MCP server.
 - `harness/<Tool>`: tools generated from contracts (§5). These can't be
   referenced in a group, so no one can grant `Complete` to a sub-agent.
+
+**The built-in catalogue**, with the uses each allows (§5a). A template
+can narrow a tool's uses; it can't widen them.
+
+| Tool | Uses | What |
+|---|---|---|
+| `Read`, `Grep`, `List` | call | read the working tree and other refs |
+| `Edit`, `Write` | call | change the working tree; never registered on a read-only workspace |
+| `Bash` | call | run commands, with the git-write blocklist applied |
+| `InspectImage` | call | look at an image through the sighted sub-model |
+| `RequestHelp` | finish | post to a channel and end the run `blocked` |
+
+**Keel knows nothing about pull requests**, or any other domain object.
+Opening one is an MCP tool like any other, such as
+`mcp:scm/open_pull_request`, granted for use during the run, as an
+ending, or both. Two generic mechanisms are what make that work:
+
+- **A server can be bound to the workspace** (`workspace: bind`). A
+  per-run server process starts with the run's checkout mounted, so its
+  tools can commit, push and open a review from the working tree. For a
+  pipeline sink it starts against the stage's retained checkout. The
+  model still can't run git writes through `Bash`.
+- **A tool's result can write stage links** (`ToolRef.links`, e.g.
+  `pull_request: result.url`). A stage's settle wait then watches that
+  link, whoever opened the PR.
 
 An `McpServer` records the transport, the pinned protocol version
 (capped at what the SDK speaks, `../adk.md` §0), the auth mode (§8),
@@ -43,6 +68,9 @@ composition). A `ToolRef` can:
   `FetchJira`);
 - replace its description;
 - set its visibility, overriding the group's;
+- say how the agent may use it (`use`: `call`, `finish`, or both, §5a),
+  and what ending it gives;
+- map fields of its result to stage links (`links`);
 - set limits and override annotations;
 - override its **arguments** (`params`).
 
@@ -92,7 +120,7 @@ finding that retries make non-idempotent tools dangerous, as a field.
 
 | Question | Field | Enforced |
 |---|---|---|
-| Granted | `agents.<a>.grant[]` (+ `kind_grants` for the kind given at spawn) ⊆ `tools.groups` | at the executor, every call |
+| Granted | `agents.<a>.grant[]` ⊆ `tools.groups` | at the executor, every call |
 | Registered | derived at resolve: grant + generated tools, as one fixed array per agent (`ResolvedSpec.agents.<a>.registered`) | provider validation |
 | Visible | `ToolGroup.visibility`, overridden by `agents.<a>.visibility` | nothing; it shapes what the model tries |
 
@@ -139,18 +167,20 @@ generates `Task`, with `subagent_type` limited to those sub-agents and
 each one's `description` as the enum text. Sub-agents add:
 
 - a `prompt`;
-- `spawn_kinds`: the kinds a spawner may pass. Forge's v1 `Task` schema
-  carries the kind in a field it calls `role`; Keel's generated
-  `Task` calls it `kind`;
-- `kind_grants`: the tool half of "kinds: one vocabulary, three
-  resolutions";
-- `kind_scope`: the prompt half. Each kind's scope text is rendered into
-  the sub-agent's opening message as a `<lens>` block, before the
-  spawner's brief. The system prompt stays one per sub-agent, so it
-  caches across every lens;
+- a `scope`: what this sub-agent is for, rendered into its opening
+  message as a `<scope>` block before the spawner's brief. Several
+  sub-agents can share one prompt version this way, each with its own
+  scope and grant. Forge's four review specialists share
+  `forge.reviewer@1`, and `visual_reviewer` alone is granted `vision`;
 - `spawn_args`: extra required `Task` fields, such as the validator's
   `finding`;
 - a `report_schema` the harness validates.
+
+There are no "kinds" in Keel. Forge's design used one vocabulary (kind,
+role, lens) to pick a specialist's prompt scope, its extra tools and its
+conventions sections at spawn time. Each of those has a plain home now:
+a sub-agent definition per specialist, its own grant, and
+`context.conventions.topics` for tagging which conventions apply.
 
 The rules from `../tools.md` §"One job declares the tools", and where each
 is enforced:
@@ -158,9 +188,8 @@ is enforced:
 - **Siblings, not a chain.** Every agent's grant is checked against
   `tools.groups`, not against its spawner's grant (R1). A data
   sub-agent can hold a server the orchestrator never sees.
-- **Only the job grants.** Kind→tools lives in `kind_grants`, which is
-  template config. A conventions file can tag sections with kinds. It
-  can't add a `kind_grants` entry.
+- **Only the template grants.** A conventions file can tag sections with
+  topics; it can't add a grant to anything.
 - **No delegate has a human channel.** `human`, `completion` and
   `hatches` generate tools for the orchestrator only, and `harness/`
   tools can't be put in a group.

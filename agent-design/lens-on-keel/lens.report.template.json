@@ -1,14 +1,14 @@
 {
-  "name": "analysis.report",
+  "name": "lens.report",
   "version": 1,
   "title": "Data report",
-  "description": "The stage the analysis pipeline enters on report_requested: collect on economy, write on strong (data.md §2g's explore then answer). The writer is a sub-agent so the two tiers live in one run with one result.",
+  "description": "The stage the lens pipeline enters on report_requested: collect on economy, write on strong (data.md §2g's explore then answer). The writer is a sub-agent so the two tiers live in one run with one result.",
   "owner": {
     "type": "team",
     "id": "data-platform"
   },
   "extends": {
-    "name": "analysis.investigate",
+    "name": "lens.investigate",
     "version": 1
   },
   "params": {
@@ -27,7 +27,7 @@
     "system_prompt": {
       "base": {
         "ref": {
-          "name": "analysis.report.collect",
+          "name": "lens.report.collect",
           "version": 1
         }
       },
@@ -65,7 +65,7 @@
       ],
       "report_schema": {
         "ref": {
-          "name": "analysis.report.document",
+          "name": "lens.report.document",
           "version": 1
         }
       },
@@ -114,7 +114,7 @@
         "prompt": {
           "base": {
             "ref": {
-              "name": "analysis.report.write",
+              "name": "lens.report.write",
               "version": 1
             }
           },

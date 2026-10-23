@@ -23,16 +23,21 @@ case shares. Each choice below is Forge's, made with what Keel provides.
 
 - **Who opens the PR.** `forge.implement` run alone leaves its working
   tree for an external committer, which links the PR back. Inside
-  `jira.plan-implement`, the pipeline opens it with
-  `action/open_pull_request` after implement ends. Neither Forge
-  template lets its agents push (`git_writes: none`).
+  `jira.plan-implement`, the pipeline opens it after implement ends,
+  with `mcp:scm/open_pull_request` from a server bound to the stage's
+  checkout. Neither Forge template grants its agents a tool that can
+  push.
+- **Review specialists** are four sub-agents (`bugs_reviewer`,
+  `security_reviewer`, `conventions_reviewer`, `visual_reviewer`) that
+  share the `forge.reviewer` prompt, each with its own `scope`.
+  `visual_reviewer` alone is granted `vision`.
 - **Plan approval** is gated and bound to the plan's hash, rather than
   auto-chained.
 - **Review runs as the service identity**; plan and implement run as the
   person who assigned the ticket, under their delegation.
 
-Forge's own documents still use some older words (mode, job, lens,
-landing, ledger, `Task.role`). [`../keel/taxonomy.md`](../keel/taxonomy.md)
+Forge's own documents still use some older words (mode, job, kind,
+landing, ledger, `Task.role`); "lens" in them now reads "specialist". [`../keel/taxonomy.md`](../keel/taxonomy.md)
 §10 maps each to the Keel term.
 
 ---
@@ -46,9 +51,9 @@ The files are the mapping, and [`../keel/check.py`](../keel/check.py) passes on 
 | coding `implement` | [`forge.implement`](./forge.implement.template.json) |
 | what Forge calls the coding modes | three templates: the base [`forge.coding`](./forge.coding.template.json) (`runnable: false`) and its siblings [`forge.plan`](./forge.plan.template.json) (read-only, `jira.comment` granted, `require_tool_called: AddComment`, strong tier) and `forge.implement` |
 | plan → implement handoff | pipeline [`jira.plan-implement`](./jira-plan-implement.pipeline.json), edge gated on `plan_hash` |
-| review, multi-stage | [`forge.review`](./forge.review.template.json): `reviewer` with `spawn_kinds` and `kind_grants.visual = [vision]`, `validator` at `strong` with `clamp_to_parent: false`, attention tier as a `commit_status` sink |
+| review, multi-stage | [`forge.review`](./forge.review.template.json): four specialist sub-agents sharing one prompt, each with a `scope`, `visual_reviewer` granted `vision`, `validator` at `strong` with `clamp_to_parent: false`, attention tier as a `commit_status` sink |
 | review → fix | pipeline [`pr.review-fix`](./pr-review-fix.pipeline.json), approval by the PR author |
-| the `analyse` entrypoint: quick run and the stages it hands off to | pipeline [`analysis`](../keel/examples/analysis.pipeline.json): [`analysis.quick`](../keel/examples/analysis.quick.template.json) → [`analysis.investigate`](../keel/examples/analysis.investigate.template.json) / [`analysis.report`](../keel/examples/analysis.report.template.json) |
+| the `analyse` entrypoint (`../data.md` §2g) | no longer Forge's: it is [Lens](../lens-on-keel/README.md), a separate set of use cases |
 | "the job declares the tools; each sub-agent gets a subset" | `tools.groups` + `agents.*.grant`, R1 |
 | `AddComment` absent in `implement` | declared in `tools.groups`, not granted to the orchestrator |
 | AskUser `approve` → fresh execute run | continuation `execute_approved`, `carry: [approved_action, resumed_answer]`, no transcript |

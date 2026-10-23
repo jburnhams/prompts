@@ -1,5 +1,5 @@
 {
-  "template": { "name": "analysis.quick", "version": "latest" },
+  "template": { "name": "lens.quick", "version": "latest" },
   "params": { "question": "What was revenue last month?" },
   "labels": { "surface": "chat" }
 }

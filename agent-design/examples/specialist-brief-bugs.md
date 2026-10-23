@@ -1,7 +1,7 @@
 # Example: specialist brief (`bugs` role)
 
 The exact `Task` call the review orchestrator makes in pipeline step 3
-for the `bugs` lens, against the PR in
+for the `bugs` specialist, against the PR in
 `review-envelope-initial.md`. The specialist's instructions and output
 schema live in its system prompt (`system-prompts.md` §4); the brief
 carries only data, assembled by verbatim transclusion (`review.md` §4).

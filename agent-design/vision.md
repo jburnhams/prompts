@@ -452,7 +452,7 @@ change later rather than a schema change.
    `Complete` requires `evidence`. Cline's prose version of the same loop is
    voluntary and nothing checks it.
 3. **Reviewer sight** — **resolved and in v1, not a direction.** A fourth
-   specialist lens, `visual`, is the one review role with `InspectImage`
+   specialist, `visual`, is the one review role with `InspectImage`
    wired, fanned out conditionally when the PR carries an image or touches
    UI paths (`review.md` §1c). The validator stays text-only deliberately:
    granting it sight would dissolve §5's independence rule rather than serve
@@ -467,7 +467,7 @@ change later rather than a schema change.
   front-end review actually does. It needs cross-run artifact persistence
   (`artifacts.md` §10) and a baseline-management story, and it should wait
   for both.
-- **A visual `ticket_compliance` lens.** `medium.md` §3a's lens becomes
+- **A visual `ticket_compliance` specialist.** `medium.md` §3a's specialist becomes
   partly visual when the ticket carries a mockup. Comparing an
   implementation to a comp is the hardest item on this list and has no prior
   art anywhere in the collection. Named, not scheduled.

@@ -35,34 +35,34 @@ standing procedure:
    PR title/description, and changed-file list (see `formats.md`) — you
    do not need to re-fetch these. If the repository has a
    project-conventions file, read the ones scoped to the changed paths;
-   pass their contents (not just their paths) to any specialist whose
-   kind depends on them.
-3. **Launch specialists in parallel.** Dispatch one Task call per kind
+   pass their contents (not just their paths) to any specialist that
+   depends on them.
+3. **Launch specialists in parallel.** Dispatch one Task call per specialist
    below, all in the same turn:
-   - `reviewer` (kind: `bugs`) — logic errors and defects introduced by
+   - `bugs_reviewer` — logic errors and defects introduced by
      this diff.
-   - `reviewer` (kind: `security`) — vulnerabilities introduced by this
+   - `security_reviewer` — vulnerabilities introduced by this
      diff.
-   - `reviewer` (kind: `conventions`) — violations of the project's own
+   - `conventions_reviewer` — violations of the project's own
      documented conventions, only where you can quote the specific rule
      being broken. Skip this specialist entirely if step 2 found no
      project-conventions file scoped to the changed paths — its whole
-     lens is quoting documented rules, so with nothing to quote it can
+     job is quoting documented rules, so with nothing to quote it can
      only return an empty list at the cost of a full sub-agent run.
-   - `reviewer` (kind: `visual`) — what the PR's images show, and whether
+   - `visual_reviewer` — what the PR's images show, and whether
      the diff matches them. Dispatch this specialist **only** when the PR
      carries at least one image artifact (on its description or on a
      thread) or its diff touches UI-classified paths; skip it entirely
      otherwise, for the same reason the `conventions` specialist is
      skipped. It is the one specialist wired with `InspectImage`, and its
-     findings anchor to code like every other lens — an observation it
+     findings anchor to code like every other specialist's — an observation it
      cannot tie to a line is not a finding (`review.md` §1c).
    Assemble each specialist's brief in the fixed format you were
    given for it: the envelope's PR block, description, diff, gates
    block, and existing-comments block (when the PR has any)
    transcluded **verbatim** — never paraphrased, summarized, or
-   trimmed — plus the relevant convention text for the `conventions`
-   kind, and at most a few sentences of your own `<focus>` direction.
+   trimmed — plus the relevant convention text for
+   `conventions_reviewer`, and at most a few sentences of your own `<focus>` direction.
    The description and existing-comments blocks are copied **whole,
    including their own opening and closing tags**: those tags carry a
    nonce, and you do not write them yourself. Never lift the contents
@@ -106,8 +106,8 @@ standing procedure:
    posted comment will catch a specialist's mistake — see
    `code-review-approaches.md` for why this matters more in a hands-off
    pipeline than an interactive one.
-5b. **Sweep (`high` tier only).** Dispatch one more `reviewer` Task with
-   the `bugs` kind and the list of kept findings, asking only for
+5b. **Sweep (`high` tier only).** Dispatch one more `bugs_reviewer` Task
+   with the list of kept findings, asking only for
    defects not already on it, up to 8. Send each new candidate through
    step 4's dedup and step 5's validator like any other. If it returns
    nothing, that is the expected result; it is not asked to pad.

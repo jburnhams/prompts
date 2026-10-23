@@ -12,7 +12,7 @@ that configure them on Keel. They're in
 such as who opens a PR, Keel only provides the means.
 
 **One vocabulary.** Keel owns every integration and capability a
-configuration can use: events, channels, harness actions, input
+configuration can use: events, channels, built-in tools, input
 builders, completion and harness checks, monitor signals. Use cases
 share all of it and never add their own. A data-analysis pipeline can
 use the same Jira events, PR action and file tools as Forge's, and a
@@ -32,8 +32,8 @@ there.
 | this file | §0–§2 | the four use cases, the concept list, the layers |
 | [`run-spec.md`](./run-spec.md) | §3, §6 | What defines a run, and how a template makes it reusable. |
 | [`tools-and-agents.md`](./tools-and-agents.md) | §4 | Tool sources, groups, grants, visibility, agents and harness checks. |
-| [`endings.md`](./endings.md) | §5 | Generated ending tools, and finishers. |
-| [`outputs.md`](./outputs.md) | §7 (7a–7d, 7g) | Results, sinks, continuations, gates and harness actions. |
+| [`endings.md`](./endings.md) | §5 | Generated ending tools, and tools marked as endings. |
+| [`outputs.md`](./outputs.md) | §7 (7a–7d, 7g) | Results, sinks, continuations, gates, and where a PR gets opened. |
 | [`pipelines.md`](./pipelines.md) | §7e, §7f | Template stages wired together, and the pipeline run as the durable record of work. |
 | [`authority.md`](./authority.md) | §8, §12a | Principals, on-behalf-of, delegations, and permissions in the RBAC system. |
 | [`triggers-and-runs.md`](./triggers-and-runs.md) | §9, §10 | What starts work, and the life of a run. |
@@ -53,7 +53,7 @@ there.
 Each one is a set of files in `keel/examples/` that `check.py`
 passes. The first pass of this spec handled the third and fourth. The
 first two exposed three gaps, now closed: saved tool groups with
-per-tool settings, finishers, and pipelines.
+per-tool settings, tools marked as endings, and pipelines.
 
 ### 0a. A saved tool group for Java agents, used against a repo
 
@@ -97,20 +97,24 @@ the task details."*
 selected other tools as the final options: update Jira, create a PR,
 ask for help. Ask-for-help could also be used during the run."*
 
-`coding.java` sets `completion.complete: false` and declares three
-**finishers** (§5a):
+A run's tools are one list, and each entry is marked with how the agent
+may use it: during the run, as an ending, or both (§5a). `coding.java`
+sets `completion.complete: false` and grants three tools marked
+`use: ["finish"]`:
 
-- `OpenPullRequest`: wraps the harness action `action/open_pull_request`.
-  It commits, pushes and opens the PR under harness-owned git identity,
-  which needs `git_writes: via_action`.
-- `FinishWithJiraUpdate`: wraps `mcp:jira/update_issue`. The issue key
-  is fixed and the transitions are narrowed.
-- `RequestHelp`: wraps `action/request_help`. It posts to the team channel and ends
-  the run with status `blocked`.
+- `OpenPullRequest`: `mcp:scm/open_pull_request`, from an MCP server
+  bound to the run's checkout ([`scm.mcp-server.json`](./examples/scm.mcp-server.json)).
+  It commits, pushes and opens the PR as the user (OBO). Keel knows
+  nothing about pull requests; the tool's `links` mapping writes the
+  PR's URL to the stage, which is what the merge wait watches.
+- `FinishWithJiraUpdate`: `mcp:jira/update_issue`. The issue key is
+  fixed and the transitions are narrowed.
+- `RequestHelp`: a Keel built-in that can only be an ending. It posts to
+  the team channel and ends the run with status `blocked`.
 
-The model sees each one as a tool. Calling it runs the completion checks
-first, then the action. If the action fails, the error comes back to
-the model and the run continues.
+The model sees each one as an ending tool. Calling it runs the
+completion checks first, then the tool. If the tool fails, the error
+comes back to the model and the run continues.
 
 **Ask-for-help is two things, and the spec keeps them apart.** *During*
 the run, it's `AskUser`: the run suspends and resumes with the answer
@@ -149,14 +153,17 @@ finishes it updates Jira."*
 a cheap model with only a few tools, finds the job is harder, and hands
 over to a more powerful agent with more tools."*
 
-- **The trigger** is [`chat-data.trigger.json`](./examples/chat-data.trigger.json):
+This is **Lens**, a set of data-analysis use cases on Keel
+([`../lens-on-keel/`](../lens-on-keel)).
+
+- **The trigger** is [`chat-data.trigger.json`](../lens-on-keel/chat-data.trigger.json):
   a `manual` `chat_command`, with `run_as: invoker` and `origin` set to
   the chat thread.
-- **The pipeline** is [`analysis`](./examples/analysis.pipeline.json).
-  Its entry is `analysis.quick`: economy tier, four tools, the hatches
+- **The pipeline** is [`lens`](../lens-on-keel/lens.pipeline.json).
+  Its entry is `lens.quick`: economy tier, four tools, the hatches
   from `../models.md`. Its `HandOff` reasons are wired to
-  `analysis.investigate` (standard tier, every source, the full tool
-  set) and `analysis.report`. Each edge `announce`s to the thread
+  `lens.investigate` (standard tier, every source, the full tool
+  set) and `lens.report`. Each edge `announce`s to the thread
   ("Taking a closer look…"). The answer goes back to the thread through
   a sink targeting `{origin: true}`, whichever stage produced it.
 - **Acting for the user throughout**: `invoker` mints a session
@@ -179,7 +186,7 @@ spec just has to give it a field:
 | MCP servers | `McpServer` registry resource; a spec lists the ones it uses, pinned to a tool snapshot | `../adk.md`, `../tools.md` |
 | Tools, tool groups | `ToolRef`, `ToolGroup` (the unit of grant), and `SavedToolGroup`: versioned, reusable across templates, with per-tool argument overrides | `../tools.md` |
 | Visibility and deferral | `Visibility` per group, per tool, and overridable per agent; the provider flag sits in deployment | `../tools.md` "Granted, registered, visible" |
-| Completion tools | `completion` (with `finishers`), `human.ask_user`, `hatches.handoff`. The harness **generates** these tools (§5) | `../formats.md` §3, §5; `../models.md` §4b |
+| Completion tools | `completion`, tools marked `use: finish`, `human.ask_user`, `hatches.handoff`. The harness **generates** these tools (§5) | `../formats.md` §3, §5; `../models.md` §4b |
 | **Pipelines** | `Pipeline`: template stages wired exit to entry, with their own sinks | new here, §7e |
 | System prompt | `PromptSpec`: versioned fixed text, subtraction by heading, generated blocks | `../system-prompts.md` §6–§7 |
 | Starting query | an `inputs[]` entry of kind `instruction`, filled from a param | `../formats.md` §1 |
@@ -188,7 +195,7 @@ spec just has to give it a field:
 | User on-behalf-of | `authority`, server `auth.mode: obo`, `Delegation` | new here, §8 |
 | **Inputs other than the query** | `inputs[]`: ticket, diff, comments, plan, prior attempt, approved action. Each is typed and has a trust level | `../formats.md` §1, `../context-files.md` §4 |
 | **Standing context** | `context.conventions` (tiers, kinds, paths, at which SHA) | `../context-files.md` §1b |
-| **Workspace** | `workspace`: none, or a harness-provisioned checkout with `writable`, `write_scope`, scratch dir, `git_writes: none \| via_action`, `retain` | README decision log, `../orchestration.md` §4 |
+| **Workspace** | `workspace`: none, or a harness-provisioned checkout with `writable`, `write_scope`, scratch dir, `retain` | README decision log, `../orchestration.md` §4 |
 | **Budgets** | `budgets`: turns, context high-water mark, wall time, tokens by tier, sub-agent count | `../formats.md` §7, `../models.md` §10 |
 | **Harness checks** | `tools.checks`: enforcement that no grant can remove | `../tools.md` "Harness-side checks are not part of the subset" |
 | **Human channel** | `human.ask_user` (who may answer, where it goes) and `human.narrate` | `../formats.md` §5a, `../medium.md` §2f, §5c |

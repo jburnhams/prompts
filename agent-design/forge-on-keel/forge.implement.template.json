@@ -149,12 +149,12 @@
     },
     "human": {
       "ask_user": {
+        "expires_after_s": 1209600,
+        "on_expiry": "abandon",
         "kinds": [
           "clarify",
           "approve"
-        ],
-        "expires_after_s": 1209600,
-        "on_expiry": "abandon"
+        ]
       }
     },
     "completion": {
@@ -301,7 +301,7 @@
             "write_scope": {
               "cel": "spinoff.paths"
             },
-            "kinds": {
+            "topics": {
               "cel": "spinoff.kinds"
             }
           },

@@ -756,7 +756,7 @@ consumer has to detect by reading prose.
 
 **Applies to both entrypoints.** Coding runs narrate their
 investigation, approach, and pivots. Review runs narrate the shape of
-the diff, which lenses were run, and why candidates were dropped —
+the diff, which specialists were run, and why candidates were dropped —
 which also gives the `filtered[]` report field a prose counterpart
 explaining the *reasoning*, not just the verdict.
 
@@ -856,16 +856,16 @@ which is why it is tracked here rather than treated as table stakes.
 
 ## 3. Review pipeline upgrades
 
-### 3a. Ticket context in review mode, and a `ticket_compliance` lens
+### 3a. Ticket context in review mode, and a `ticket_compliance` specialist
 
 **What**: the review envelope optionally carries the PR's linked Jira
 issue (`<ticket>`, same pre-fetched shape as coding mode's), located
 by the harness from the branch name/PR title convention. When present,
-a fourth specialist lens becomes available: `ticket_compliance` —
+a fourth specialist becomes available: `ticket_compliance` —
 does the diff actually do what the ticket asked, are the acceptance
 criteria met, is anything in the AC silently unaddressed. Skipped
 entirely when no ticket is linked, exactly like the `conventions`
-lens with no conventions file.
+specialist with no conventions file.
 
 **Why**: this is the review-side payoff of being an Atlassian-stack
 agent — the ticket is *right there*. Precedent: PR-Agent's `/review`
@@ -887,9 +887,9 @@ the bugs-shaped schema onto it.
 **What**: the harness writes the diff to a scratch-dir file as well as
 (or eventually instead of) inlining it per specialist; specialists get
 the changed-file list, their role, and the diff path, and `Read` the
-slices they need. Removes the `(1 + lenses)` duplication multiplier
+slices they need. Removes the `(1 + specialists)` duplication multiplier
 from the large-diff threshold math (`formats.md` §1b) — which the
-fan-out of this file's new lenses (§3a, §3c) makes strictly worse,
+fan-out of this file's new specialists (§3a, §3c) makes strictly worse,
 hence the promotion from `future.md`.
 
 **Measure, don't assume**: the stated cost is specialists starting
@@ -898,7 +898,7 @@ compare finding recall before switching the default. The orchestrator
 keeps the inlined diff either way — its skip/dispatch decisions and
 specialist-brief construction need it.
 
-### 3c. Double coverage on the bugs lens
+### 3c. Double coverage on the bugs specialist
 
 **What**: run two `bugs` specialists in parallel and let the existing
 dedup + validator machinery absorb the overlap — Anthropic's own
@@ -1081,13 +1081,13 @@ full scope, `rebased="true"`), and the one-round cap on standing-firm
 replies is load-bearing: a bot that argues in rounds destroys the
 trust the validator pass exists to protect.
 
-### 3g. An `interface_scope` lens
+### 3g. An `interface_scope` specialist
 
-**What**: a fifth specialist lens covering the claims v1's three roles
+**What**: a fifth specialist covering the claims v1's three roles
 structurally cannot make. `bugs` requires the code to be wrong,
 `security` requires a vulnerability, and `conventions` requires a
 quotable documented rule — so a diff that adds a correct, secure,
-convention-compliant API nobody needs passes all three. The lens asks
+convention-compliant API nobody needs passes all three. The specialist asks
 one question in two directions:
 
 - **Is this used?** Map each new abstraction, state machine, option,
@@ -1104,22 +1104,22 @@ one question in two directions:
 
 **Why**: lifted from `dsh-code-review` and `dsh-find-simplifications`
 (`../deepseek-harness/`), which are the only sources in the collection
-that state the inverse direction at all. It is a good *specialist* lens
+that state the inverse direction at all. It is a good *specialist* specialist
 rather than a prompt line because it is mechanically checkable — the
 finding is "this symbol has no production caller," which a `Grep` can
 support or refute — which also makes it unusually validator-friendly
 compared with the taste-adjacent findings it superficially resembles.
 
 **Gotcha**: it needs the consumer corpus, not just the diff, so it is
-the first lens whose cost scales with repository size rather than diff
-size — and it is the lens most likely to produce findings an author
+the first specialist whose cost scales with repository size rather than diff
+size — and it is the specialist most likely to produce findings an author
 disputes on roadmap grounds ("that's for the next PR"). Ship it with
 `class: suggestion` as the default and require a named production
 consumer in the rationale before it may claim `defect`; the
 speculative-generality argument is legitimate but it is an argument,
 not a defect, unless the symbol is genuinely unreachable. Gate the
-whole lens on `3e`'s finding-outcome telemetry showing the other three
-lenses are not already saturating reviewer attention.
+whole specialist on `3e`'s finding-outcome telemetry showing the other three
+specialists are not already saturating reviewer attention.
 
 ---
 
@@ -1338,7 +1338,7 @@ issues themselves, written well enough that plan/implement runs (and
 humans) can consume them. They compose rather than overlap: a
 PO-authored story with crisp acceptance criteria is exactly what the
 coding entrypoint wants as input and what the `ticket_compliance`
-lens (§3a) reviews against. This track sits upstream of the entire
+specialist (§3a) reviews against. This track sits upstream of the entire
 existing pipeline, which is what makes it a flywheel: better tickets
 in, better implementation and review out.
 
@@ -1474,7 +1474,7 @@ rule included).
 Deliberately listed under the PO section but **wired wherever
 reading matters**: coding mode (the design doc a ticket links is
 context plan mode should read, and today can't), review mode
-*optionally* for the `conventions`/`ticket_compliance` lenses (an
+*optionally* for the `conventions`/`ticket_compliance` specialists (an
 ADR space is a conventions file that outgrew the repo — but wire it
 to the orchestrator's context-gathering step, not the specialists,
 to keep their scopes narrow), and PO mode as a primary input.

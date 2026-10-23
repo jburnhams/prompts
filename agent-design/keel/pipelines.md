@@ -17,7 +17,7 @@ stages, edges, sinks, tools, max_hops, max_tier}`.
   `write_scope` comes from the plan's report. P4 checks every route into
   every stage binds its template's required params.
 - **Edges wire exits.** `on` names exactly one exit of the `from` stage:
-  a status, a finisher id, a HandOff reason, or a gate answer, plus an
+  a status, an ending tool, a HandOff reason, or a gate answer, plus an
   optional expression. P2 checks every exit named is one that template
   really has, and every HandOff reason is wired.
 - **Pipeline sinks run once, when the pipeline ends**, with `stage` and

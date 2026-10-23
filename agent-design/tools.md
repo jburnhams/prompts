@@ -36,7 +36,7 @@ Availability by role:
 
 **Tool scope is keyed on the `(subagent_type, kinds)` pair, not on
 `subagent_type` alone** — where a reviewer's kind is the `role` it was
-spawned with. `role`, "lens" and the context service's `kinds` are one
+spawned with. `role`, "lens" (renamed "specialist" on 2026-10-23, when Lens became a product name) and the context service's `kinds` are one
 open vocabulary under three spellings, and a kind resolves to three
 payloads: prompt scope, tool grants, and (reserved) context sections.
 [`context-files.md`](./context-files.md)'s "Kinds: one vocabulary, three
@@ -50,13 +50,13 @@ agent about itself mid-run.
 
 The concrete consequence: This supersedes the earlier phrasing that
 "`reviewer` and `validator` sub-agent types get `Read`/`Grep`/`List` only":
-true for three of the four reviewer lenses, and not for `visual`, which is
-the one lens that needs `InspectImage` (`review.md` §1c). Both fields are
+true for three of the four reviewer specialists, and not for `visual`, which is
+the one specialist that needs `InspectImage` (`review.md` §1c). Both fields are
 model-supplied enums the harness validates and maps to a tool set, so
 keying on the pair is exactly as structural as keying on the type — the
 gate is the harness's mapping table either way, not the argument. Widening
 the key rather than minting a fourth sub-agent type keeps one reviewer core
-parameterised by lens, which is the property `system-prompts.md` §4 exists
+parameterised by specialism, which is the property `system-prompts.md` §4 exists
 to preserve.
 
 The validator is deliberately *not* given sight even for validating a
@@ -1243,7 +1243,7 @@ Code's own tool contract carries an `aliases` field for.
 > calling: `general-purpose` (coding mode only — full tool parity,
 > for open-ended search/investigation you're not confident a direct
 > Read/Grep/List will resolve quickly); `reviewer` (review mode only —
-> read-only, takes a `role` field selecting which lens to review
+> read-only, takes a `role` field selecting which specialist to review
 > through); `validator` (review mode only — read-only, checks exactly
 > one candidate finding).
 >
@@ -1275,7 +1275,7 @@ Code's own tool contract carries an `aliases` field for.
       "subagent_type": { "type": "string", "enum": ["general-purpose", "reviewer", "validator"] },
       "description": { "type": "string", "description": "A short (3-5 word) label for this call." },
       "prompt": { "type": "string", "description": "The complete, self-contained task for the sub-agent, including exactly what it should return." },
-      "role": { "type": "string", "enum": ["bugs", "security", "conventions", "visual"], "description": "Required when subagent_type is \"reviewer\": the lens that specialist reviews through. \"visual\" is spawned only when the PR carries an image artifact or touches UI-classified paths, and is the one lens whose specialist is wired with InspectImage." },
+      "role": { "type": "string", "enum": ["bugs", "security", "conventions", "visual"], "description": "Required when subagent_type is \"reviewer\": the specialist that specialist reviews through. \"visual\" is spawned only when the PR carries an image artifact or touches UI-classified paths, and is the one specialist whose specialist is wired with InspectImage." },
       "finding": { "type": "object", "description": "Required when subagent_type is \"validator\": the single candidate finding to check, in the review-finding schema (see formats.md)." }
     },
     "required": ["subagent_type", "description", "prompt"],

@@ -99,9 +99,9 @@ queued → provisioning → running ⇄ finalizing → ended
   `resumes` for a resume. `GET /v1/runs?root_run_id=` is everything one
   request led to. A stage run also carries `pipeline_run_id` and
   `stage`.
-- **Finishers** set `outcome.finisher` (`{id, external_ref}`, e.g. the
-  PR it opened), so a pipeline edge or sink can tell which ending was
-  chosen.
+- **Ending tools** set `outcome.finished_with` (the tool, the ending's
+  name, and any links its result wrote), so a pipeline edge or sink can
+  tell which ending was chosen.
 
 ---
 
@@ -119,7 +119,7 @@ effects do there:
 | Effect | Default | Meaning |
 |---|---|---|
 | sinks | `record` | every delivery is stored with its rendered payload and state `recorded`; nothing is sent |
-| harness actions | `record` | `open_pull_request` and `request_help` are recorded with what they would have done, and the run continues as if they succeeded |
+| ending and built-in effects | `record` | `RequestHelp`'s post, and any tool on a workspace-bound server, are recorded with what they would have done, and the run continues as if they succeeded |
 | MCP writes | `deny` | a call to a tool not annotated `read_only` is refused with `sandbox_write_blocked`, unless set to `allow` |
 | servers | — | substitutes, e.g. `jira` → `jira-sandbox`, so a sandbox that allows writes writes to test data |
 

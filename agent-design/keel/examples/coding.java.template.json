@@ -103,11 +103,11 @@
           "team",
           "repo"
         ],
-        "kinds": [
+        "at": "working_tree",
+        "topics": [
           "conventions",
           "testing"
-        ],
-        "at": "working_tree"
+        ]
       }
     },
     "workspace": {
@@ -121,13 +121,15 @@
       "target_branch": {
         "$param": "target_branch"
       },
-      "writable": true,
-      "git_writes": "via_action"
+      "writable": true
     },
     "tools": {
       "servers": [
         {
           "id": "jira"
+        },
+        {
+          "id": "scm"
         }
       ],
       "groups": [
@@ -139,42 +141,23 @@
           "id": "java"
         },
         {
-          "id": "jira.write",
-          "visibility": "hidden",
+          "id": "endings",
+          "description": "The ways this agent may end its run. Granted with use: finish only, so none of them can be called mid-run.",
           "tools": [
             {
-              "tool": "mcp:jira/update_issue",
+              "tool": "mcp:scm/open_pull_request",
               "annotations": {
                 "idempotent": false,
                 "retry": "never"
               },
-              "params": {
-                "key": {
-                  "fixed": {
-                    "$param": "issue_key"
-                  },
-                  "hidden": true
-                },
-                "transition": {
-                  "enum": [
-                    "In Review",
-                    "Blocked"
-                  ]
-                }
-              }
-            }
-          ]
-        },
-        {
-          "id": "actions",
-          "visibility": "hidden",
-          "description": "Harness actions this template ends with. Declared, not granted: reachable only through the finishers.",
-          "tools": [
-            {
-              "tool": "action/open_pull_request",
-              "annotations": {
-                "idempotent": false,
-                "retry": "never"
+              "use": [
+                "finish"
+              ],
+              "finish": {
+                "name": "OpenPullRequest",
+                "description": "Ends your run: commits your changes, pushes the branch and opens a pull request. Use when the task is done and verified.",
+                "status": "done",
+                "report": true
               },
               "params": {
                 "draft": {
@@ -193,13 +176,53 @@
                   },
                   "hidden": true
                 }
+              },
+              "links": {
+                "pull_request": {
+                  "cel": "result.url"
+                }
               }
             },
             {
-              "tool": "action/request_help",
+              "tool": "mcp:jira/update_issue",
               "annotations": {
                 "idempotent": false,
                 "retry": "never"
+              },
+              "use": [
+                "finish"
+              ],
+              "finish": {
+                "name": "FinishWithJiraUpdate",
+                "description": "Ends your run with a Jira update and no pull request: for a task whose answer is a finding, not a code change.",
+                "status": "done",
+                "report": true
+              },
+              "params": {
+                "key": {
+                  "fixed": {
+                    "$param": "issue_key"
+                  },
+                  "hidden": true
+                },
+                "transition": {
+                  "enum": [
+                    "In Review",
+                    "Blocked"
+                  ]
+                }
+              }
+            },
+            {
+              "tool": "builtin/RequestHelp",
+              "use": [
+                "finish"
+              ],
+              "finish": {
+                "name": "RequestHelp",
+                "description": "Ends your run and hands the task to the team. Use only when you cannot finish and no single question would unblock you; for a question, use AskUser, which lets you continue.",
+                "status": "blocked",
+                "report": true
               },
               "params": {
                 "channel": {
@@ -262,38 +285,6 @@
           "version": 1
         }
       },
-      "finishers": [
-        {
-          "id": "open_pr",
-          "name": "OpenPullRequest",
-          "description": "Ends your run: commits your changes, pushes the branch and opens a pull request. Use when the task is done and verified.",
-          "action": {
-            "tool": "action/open_pull_request"
-          },
-          "status": "done",
-          "report": true
-        },
-        {
-          "id": "update_jira",
-          "name": "FinishWithJiraUpdate",
-          "description": "Ends your run with a Jira update and no pull request: for a task whose answer is a finding, not a code change.",
-          "action": {
-            "tool": "mcp:jira/update_issue"
-          },
-          "status": "done",
-          "report": true
-        },
-        {
-          "id": "request_help",
-          "name": "RequestHelp",
-          "description": "Ends your run and hands the task to the team. Use only when you cannot finish and no single question would unblock you; for a question, use AskUser, which lets you continue.",
-          "action": {
-            "tool": "action/request_help"
-          },
-          "status": "blocked",
-          "report": true
-        }
-      ],
       "checks": [
         {
           "id": "first_done_checklist",
@@ -353,7 +344,8 @@
     "agents": {
       "orchestrator": {
         "grant": [
-          "java"
+          "java",
+          "endings"
         ]
       }
     },

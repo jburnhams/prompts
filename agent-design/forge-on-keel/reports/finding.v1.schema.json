@@ -5,17 +5,18 @@
   "description": "From ../../formats.md §4. Raised by a reviewer with verdict null, then judged by the validator.",
   "type": "object",
   "properties": {
+    "raised_by": {
+      "enum": [
+        "bugs_reviewer",
+        "security_reviewer",
+        "conventions_reviewer",
+        "visual_reviewer",
+        "single_stage"
+      ],
+      "description": "Which specialist raised it. ../../formats.md §4 calls this field role."
+    },
     "id": {
       "type": "string"
-    },
-    "role": {
-      "enum": [
-        "bugs",
-        "security",
-        "conventions",
-        "visual"
-      ],
-      "description": "The kind it was raised under (the field keeps Forge's name)."
     },
     "file": {
       "type": "string"
@@ -82,7 +83,7 @@
     }
   },
   "required": [
-    "role",
+    "raised_by",
     "file",
     "line",
     "severity",

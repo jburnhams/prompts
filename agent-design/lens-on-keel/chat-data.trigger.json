@@ -1,11 +1,11 @@
 {
-  "name": "chat.ask-data",
+  "name": "chat.ask-lens",
   "owner": {
     "type": "team",
     "id": "data-platform"
   },
   "pipeline": {
-    "name": "analysis",
+    "name": "lens",
     "version": "latest"
   },
   "source": {

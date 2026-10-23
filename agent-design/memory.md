@@ -474,7 +474,7 @@ A note on per-role scoping: Claude Code stores memory per sub-agent type
 (`agent-memory/<agentType>/`, three scopes, its own `MEMORY.md`) and it is
 a good fit for our fixed review roles — a `security` finder accumulating its
 own `review_signal`s. It needs no new mechanism: `scope` on the section and
-the lens name on the request is the same `kinds` narrowing the fan-out
+the specialist name on the request is the same `kinds` narrowing the fan-out
 already uses. Worth doing when there is enough signal per role to be worth
 separating, not before.
 
@@ -690,7 +690,7 @@ Each step is useful alone, and each is a prerequisite for the next.
   a requirement, not a design. It is the one piece here that genuinely
   belongs to the service rather than to this document.
 - **Per-role learning scopes** (§5a) — worth doing when there is enough
-  per-lens signal to separate; the mechanism is already available.
+  per-specialist signal to separate; the mechanism is already available.
 - **Whether a promoted `ReportProblem` should be able to become a learned
   section** — i.e. whether a human triaging "the `edit` tool mangles CRLF"
   can publish a *workaround* as a `tool`-subject learning rather than

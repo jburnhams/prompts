@@ -231,7 +231,7 @@
             },
             "ref": {
               "$ref": "common.schema.json#/$defs/Expr",
-              "description": "What to watch, e.g. stage.links.pull_request (written back by the committer) or result.finisher.external_ref."
+              "description": "What to watch, usually stage.links.pull_request, written by the tool that opened it (ToolRef.links) or by an external committer through :link."
             },
             "done_when": {
               "type": "array",
@@ -297,15 +297,15 @@
                 "$ref": "common.schema.json#/$defs/CompleteStatus"
               }
             },
-            "finisher": {
-              "type": "string",
-              "description": "A finisher id of the from stage's template."
-            },
             "handoff_reason": {
               "type": "string"
             },
             "expr": {
               "$ref": "common.schema.json#/$defs/Expr"
+            },
+            "finished_with": {
+              "type": "string",
+              "description": "The ending tool's name (a tool marked use: finish in the from stage's template)."
             }
           },
           "required": [
@@ -671,16 +671,10 @@
         },
         "links": {
           "type": "object",
-          "description": "Written back once by something downstream, through POST .../stages/{stage}:link. The committer writes the PR here.",
-          "properties": {
-            "pull_request": {
-              "type": "string"
-            },
-            "commit": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+          "description": "Facts written to the stage once: by a tool's links mapping when it succeeds, or from downstream through POST …/stages/{stage}:link. Open names; pull_request is the one settle usually watches.",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "outcome": {
           "$ref": "run.schema.json#/$defs/Outcome",

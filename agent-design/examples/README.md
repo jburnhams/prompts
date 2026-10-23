@@ -73,7 +73,7 @@ The walkthrough above is the multi-stage shape. Run single-stage
 changes — that's the point: the envelope in
 `review-envelope-initial.md` *is* the finder's brief (no transclusion
 step), one context raises f-1, f-2, and the payload-logging candidate
-itself under the `all` lens, dedups the logging candidate against
+itself under the `all` scope, dedups the logging candidate against
 Bob's thread, and dispatches the exact `validator-brief.md` payloads
 for f-1 and f-2. Same findings posted, same `filtered` accounting,
 same report — one finder context instead of three plus an
