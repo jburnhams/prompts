@@ -2,7 +2,7 @@
   "name": "analysis.report",
   "version": 1,
   "title": "Data report",
-  "description": "The report_requested landing: collect on economy, write on strong (data.md §2g's explore then answer). The writer is a sub-agent role so the two tiers live in one run with one result.",
+  "description": "The stage the analysis pipeline enters on report_requested: collect on economy, write on strong (data.md §2g's explore then answer). The writer is a sub-agent so the two tiers live in one run with one result.",
   "owner": {
     "type": "team",
     "id": "data-platform"
