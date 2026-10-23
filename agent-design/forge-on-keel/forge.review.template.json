@@ -100,7 +100,7 @@
         "name": "diff",
         "kind": "diff",
         "source": {
-          "builder": "review_diff"
+          "builder": "pr_diff"
         },
         "trust": "external",
         "max_bytes": 400000

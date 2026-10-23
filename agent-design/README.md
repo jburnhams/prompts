@@ -470,12 +470,13 @@ does not need lifecycle folders or a format gate):
    RBAC permissions, triggers, the publish rules and the API, as prose,
    JSON Schema and OpenAPI, with generic examples and a checker. Its own
    [`taxonomy.md`](./keel/taxonomy.md) and
-   [`decisions.md`](./keel/decisions.md). Keel knows nothing about
-   coding; Forge is a configuration of it.
-18. [`forge-on-keel/`](./forge-on-keel/README.md) — Forge written as Keel
-   templates, pipelines and triggers, with the choices Forge makes that
-   Keel leaves open (who opens a PR, how plans are approved, whose
-   authority each run uses).
+   [`decisions.md`](./keel/decisions.md). Keel owns one shared
+   vocabulary of integrations and capabilities, and knows nothing about
+   any particular use case.
+18. [`forge-on-keel/`](./forge-on-keel/README.md) — Forge's use cases
+   (plan, implement, review, fix) as Keel templates, pipelines and
+   triggers, with the choices Forge makes that Keel leaves open (who
+   opens a PR, how plans are approved, whose authority each run uses).
 
 **Proposals from Claude Code v2.1.303:**
 [`proposals-claude-code-2.1.303.md`](./proposals-claude-code-2.1.303.md)

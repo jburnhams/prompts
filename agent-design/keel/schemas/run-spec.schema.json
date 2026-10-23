@@ -311,7 +311,7 @@
                 "builder": {
                   "type": "string",
                   "enum": [
-                    "review_diff",
+                    "pr_diff",
                     "changed_files",
                     "comment_threads",
                     "task_header"

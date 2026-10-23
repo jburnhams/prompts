@@ -15,6 +15,23 @@ and how each was settled.
 
 ## 1. Defining an agent
 
+**Keel.** The generic agent platform this taxonomy belongs to.
+
+**Use case.** A kind of work people want done (plan a ticket, review a
+PR, answer a data question), and the configurations that do it: its
+templates, pipelines and triggers. Use cases share Keel's vocabulary
+and never extend it.
+
+**Forge.** A set of use cases on Keel: plan, implement, review, fix. Not
+a separate system and not an extension of Keel (`../forge-on-keel/`).
+
+**Configuration.** The Keel resources a use case is made of: templates,
+saved tool groups, pipelines, triggers.
+
+**Integration.** Something Keel connects to, named for that thing and
+not for a use case: Jira, Bitbucket and GitHub events and channels, the
+PR action, an MCP server. Every use case can use every integration.
+
 **Agent.** One model context inside a run, with its own prompt, tools
 and tier. Every run has an **orchestrator** agent, and may spawn
 **sub-agents**. Informally, "the data agent" or "the plan agent" means

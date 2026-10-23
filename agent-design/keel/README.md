@@ -5,10 +5,21 @@ defining agents, running them, wiring them together, and starting them
 from events. It knows nothing about coding, tickets or reviews. Those
 come from configurations built on it.
 
-**Forge**, the coding and review agent the rest of `agent-design/`
-describes, is one such configuration. Its templates and pipelines are in
-[`../forge-on-keel/`](../forge-on-keel), and where Forge decides
-something (for example, who opens a PR), Keel only provides the means.
+**Forge** is a set of use cases (plan a ticket, implement it, review a
+PR, fix what review found) and the templates, pipelines and triggers
+that configure them on Keel. They're in
+[`../forge-on-keel/`](../forge-on-keel). Where Forge decides something,
+such as who opens a PR, Keel only provides the means.
+
+**One vocabulary.** Keel owns every integration and capability a
+configuration can use: events, channels, harness actions, input
+builders, completion and harness checks, monitor signals. Use cases
+share all of it and never add their own. A data-analysis pipeline can
+use the same Jira events, PR action and file tools as Forge's, and a
+pipeline can mix stages from different use cases. Anything new (an
+event source, a channel, an action) is added to Keel, named for the
+integration rather than the use case that first needed it
+([`decisions.md`](./decisions.md), "One vocabulary").
 
 **Status: proposal, 2026-10-23.** Terms are defined in
 [`taxonomy.md`](./taxonomy.md); every word below means what it says

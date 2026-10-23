@@ -1,9 +1,12 @@
 # Forge on Keel
 
-Forge, the coding and review agent specified in the rest of
-[`agent-design/`](../README.md), written as one configuration of
-[Keel](../keel/README.md). Nothing here is a Keel rule; each choice below
-is Forge's, made with what Keel provides.
+**Forge is a set of use cases on [Keel](../keel/README.md)**: plan a
+ticket, implement it, review a PR, and fix what review found. This
+folder holds their templates, pipelines and triggers. The rest of
+[`agent-design/`](../README.md) describes how those use cases behave:
+prompts, tool contracts, formats. Forge adds no events, channels,
+actions or checks of its own. It uses Keel's, which every other use
+case shares. Each choice below is Forge's, made with what Keel provides.
 
 | File | What |
 |---|---|

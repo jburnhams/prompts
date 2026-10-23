@@ -61,10 +61,37 @@ when each was decided.
 | No ledger (2026-10-23, on review) | **The pipeline run is the durable record of work; every run belongs to one**, and a template run on its own is a one-stage pipeline run. Stage records carry the ledger's jobs: attempts and a retry policy, `waiting_on`, a `settle` wait on the PR (the ledger's `handoff`), spinoffs as child pipeline runs, concurrency held while settling, health queries, the caps (`pipelines.md` §7f). **Supersedes** the ledger as a mechanism (`../orchestration.md`, and the ledger rows above from *The layer above a run* through *Reopening an abandoned ticket*); their rules are kept and mapped in §7f's table | Keeping a ledger beside pipelines, with a pipeline run deciding which stage is next and a task deciding whether and when it runs | Two durable stores with overlapping states (waiting/parked, running) would have had to agree, and the examples already showed the seam: a trigger "creating a task" for a pipeline had no defined meaning. Folding the ledger in also moved the end-of-work Jira update to when the PR merges, rather than when the agent stops |
 | Role means RBAC (2026-10-23, on review) | **"Role" means only an RBAC role** (a set of permission groups, assigned to a team, held by its members), which lives outside this spec. The contexts inside a run are **agents** (orchestrator, sub-agents); the run-level spec is renamed `RunSpec`; the spawn argument is `kind`; the platform names the permissions it checks (`authority.md` §12a) | Keeping `roles` for the orchestrator and sub-agents | The deployment has an RBAC system where role already means something, and permissions sit right next to agents in every authority discussion, so the two senses would meet in the same sentences |
 | Name and layout (2026-10-23, on review) | **The platform is named Keel; its docs live in `agent-design/keel/`, split by area with section numbers shared across files, and Forge's configuration lives in `agent-design/forge-on-keel/`**. Keel's own decisions and taxonomy move with it | The names Anvil and Plinth; a top-level folder beside `agent-design/` | A name stops "the platform" and "Forge" blurring in every sentence. Anvil pairs with Forge but reads as coding-flavoured, which is the line the split exists to draw. Keeping the folder inside `agent-design/` was the owner's call, trading a cleaner separation for less movement |
+| One vocabulary (2026-10-23, on review) | **Keel owns one shared vocabulary of integrations and capabilities (events, channels, harness actions, input builders, checks, monitor signals); use cases never extend it.** A name says what it integrates, not which use case first needed it (the PR-diff builder was renamed from `review_diff` to `pr_diff`). Forge is a set of use cases and their configurations, not an extension of Keel | Per-deployment registered catalogues, with Forge's vocabulary as one pack among several (proposed in this session, not adopted) | The same tools, events and actions serve Forge and data-analysis use cases alike, and pipelines mix them. Per-use-case vocabularies would make that mixing a matter of reconciling packs, and would hide shared integrations behind use-case names |
 
 ---
 
 ## 15. Open
+
+### Platform decisions still to make
+
+1. **A template's own run defaults.** Run on its own, a template is a
+   one-stage pipeline run with one attempt and no settle wait. Should a
+   template be able to declare a default `retry` and `settle`, which a
+   pipeline stage overrides? Recommended: yes. Otherwise anything that
+   opens a PR must be wrapped in a pipeline just to wait for the merge.
+2. **Late approvals.** When a gate is answered after the person who
+   started the work has left, there is no live session to act with.
+   Recommended: the follow-up runs as the **approver**, who is present
+   when they approve. The alternatives are refusing unless a stored
+   delegation exists (today's rule), or minting a stored delegation for
+   every user-started run.
+3. **Policy defaults.** Gate expiry and what expiry does, the session
+   delegation's cap, and the thresholds for `stranded` and
+   `waiting_stale`. These need platform defaults that templates and
+   pipelines can override; the examples use placeholders.
+4. **Retrying `failed`.** The default retries running out of budget,
+   infrastructure failure and a lost lease, but not a genuine failure,
+   which blocks the stage for a human. Confirm.
+5. **Two scope limits.** Pipelines are paths (no loops, parallel
+   branches or joins), and harness expressions are CEL. Both are easy to
+   keep and hard to change once configurations depend on them. Confirm.
+
+### Work items
 
 - **Where report schemas live.** They're registry refs here. Forge's
   report shapes are in `../formats.md` §3 as prose plus JSON. They need
