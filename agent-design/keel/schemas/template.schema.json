@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://forge.example/schemas/template.schema.json",
+  "$id": "https://keel.example/schemas/template.schema.json",
   "title": "Template",
-  "description": "A versioned, publishable RunSpec with declared parameters. Published versions are immutable. See ../../platform.md §6.",
+  "description": "A versioned, publishable RunSpec with declared parameters. Published versions are immutable. See ../run-spec.md §6.",
   "type": "object",
   "properties": {
     "name": {
@@ -117,7 +117,7 @@
   "$defs": {
     "ParamSpec": {
       "type": "object",
-      "description": "A typed parameter. Its trust decides where it may bind: external and principal params bind to inputs only; config params may bind to config slots, constrained so they narrow and never widen (platform.md §6).",
+      "description": "A typed parameter. Its trust decides where it may bind: external and principal params bind to inputs only; config params may bind to config slots, constrained so they narrow and never widen (../run-spec.md §6).",
       "properties": {
         "type": {
           "type": "string",

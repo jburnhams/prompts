@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://forge.example/schemas/deployment.schema.json",
+  "$id": "https://keel.example/schemas/deployment.schema.json",
   "title": "Deployment",
-  "description": "Per-deployment facts no template may override: the tier map, provider capabilities, ceilings. See ../../platform.md §3e.",
+  "description": "Per-deployment facts no template may override: the tier map, provider capabilities, ceilings. See ../run-spec.md §3e.",
   "type": "object",
   "properties": {
     "tiers": {

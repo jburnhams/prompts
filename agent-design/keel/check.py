@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Validate the platform examples against the schemas, then run the
-publish-time rules from platform.md §11 that a JSON Schema cannot express.
+"""Validate Keel's examples, and Forge's configuration in ../forge-on-keel, against the schemas, then run the
+publish-time rules from rules.md §11 that a JSON Schema cannot express.
 
-    python3 -I agent-design/platform/check.py
+    python3 -I agent-design/keel/check.py
 
 Needs jsonschema>=4.18 and PyYAML. Exits 1 on any error.
 """
@@ -18,8 +18,8 @@ from referencing import Registry, Resource
 
 HERE = pathlib.Path(__file__).resolve().parent
 SCHEMAS = HERE / "schemas"
-EXAMPLES = HERE / "examples"
-BASE = "https://forge.example/schemas/"
+EXAMPLES = [HERE / "examples", HERE.parent / "forge-on-keel"]
+BASE = "https://keel.example/schemas/"
 
 TIER_ORDER = {"economy": 0, "standard": 1, "strong": 2}
 INPUT_ONLY_TRUST = {"principal", "external"}
@@ -539,7 +539,7 @@ def main():
         Draft202012Validator.check_schema(json.loads(path.read_text()))
     check_openapi()
 
-    docs = {p.name: json.loads(p.read_text()) for p in sorted(EXAMPLES.glob("*.json"))}
+    docs = {p.name: json.loads(p.read_text()) for d in EXAMPLES for p in sorted(d.glob("*.json"))}
     templates, servers, saved, pipelines = {}, {}, {}, {}
     kinds = [
         (".template.json", "template.schema.json"),

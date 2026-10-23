@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://forge.example/schemas/trigger.schema.json",
+  "$id": "https://keel.example/schemas/trigger.schema.json",
   "title": "Triggers",
-  "description": "A trigger turns an external occurrence into a RunRequest (or a ledger task). See ../../platform.md §9.",
+  "description": "A trigger turns an external occurrence into a RunRequest (or a ledger task). See ../triggers-and-runs.md §9.",
   "$defs": {
     "Trigger": {
       "type": "object",

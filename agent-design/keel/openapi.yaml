@@ -4,7 +4,7 @@ info:
   version: 0.1.0
   description: |
     Resources and operations for defining agents, running them, and wiring
-    them to triggers and outputs. Read ../platform.md first: this file is the
+    them to triggers and outputs. Read README.md first: this file is the
     wire contract, that file is why it is shaped this way.
 
     Conventions:
@@ -18,7 +18,7 @@ info:
       a different author or principal; acting for someone else goes through a
       delegation.
     - Authorisation is the RBAC system's. This API names permissions
-      (platform.md §12a); a role there is a set of permission groups,
+      (authority.md §12a); a role there is a set of permission groups,
       assigned to a team, and a user has what their teams' roles grant.
       Nothing in this API, a template or a run defines or changes roles.
 servers:
@@ -227,7 +227,7 @@ paths:
     post:
       tags: [Templates]
       operationId: validateTemplate
-      description: Runs every publish rule (platform.md §11) on a template body without storing it. Pipelines are checked at :publish.
+      description: Runs every publish rule (rules.md §11) on a template body without storing it. Pipelines are checked at :publish.
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: "schemas/template.schema.json" } } }
@@ -367,7 +367,7 @@ paths:
     post:
       tags: [Pipelines]
       operationId: publishPipeline
-      description: Pins stage template versions and runs P1–P8 (platform.md §11).
+      description: Pins stage template versions and runs P1–P8 (rules.md §11).
       responses:
         "200": { description: Published, content: { application/json: { schema: { $ref: "schemas/pipeline.schema.json" } } } }
         "422": { $ref: "#/components/responses/Diagnostics" }
@@ -784,7 +784,7 @@ components:
       type: object
       properties:
         severity: { type: string, enum: [error, warning] }
-        rule: { type: string, description: "R1..R14 or P1..P8 from platform.md §11, or schema." }
+        rule: { type: string, description: "R1..R14 or P1..P8 from rules.md §11, or schema." }
         path: { type: string }
         code: { $ref: "schemas/common.schema.json#/$defs/RefusalCode" }
         message: { type: string }

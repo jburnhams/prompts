@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://forge.example/schemas/principal.schema.json",
+  "$id": "https://keel.example/schemas/principal.schema.json",
   "title": "Delegation",
-  "description": "A user's standing consent for a template to act on their behalf when they are not present (schedules, events, continuations). See ../../platform.md \u00a78.",
+  "description": "A user's standing consent for a template to act on their behalf when they are not present (schedules, events, continuations). See ../README.md \u00a78.",
   "$defs": {
     "Delegation": {
       "type": "object",

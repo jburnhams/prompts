@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://forge.example/schemas/tools.schema.json",
+  "$id": "https://keel.example/schemas/tools.schema.json",
   "title": "Tool sources, groups and harness checks",
-  "description": "See ../../platform.md §4. An MCP server is a registry resource; a tool group is a named set of tool addresses; a harness check is enforcement that no role can opt out of.",
+  "description": "See ../tools-and-agents.md §4. An MCP server is a registry resource; a tool group is a named set of tool addresses; a harness check is enforcement that no role can opt out of.",
   "$defs": {
     "McpServer": {
       "type": "object",
@@ -161,7 +161,7 @@
       ]
     },
     "ServerAuth": {
-      "description": "How calls to this server are authorised. See platform.md §8 for the confused-deputy rule on service credentials.",
+      "description": "How calls to this server are authorised. See ../authority.md §8 for the confused-deputy rule on service credentials.",
       "oneOf": [
         {
           "type": "object",
@@ -195,7 +195,7 @@
                 "harness_policy"
               ],
               "default": "none",
-              "description": "harness_policy: before each write call the harness checks the run's principal may perform it on that resource. Required for write tools in templates a user may run (platform.md §8)."
+              "description": "harness_policy: before each write call the harness checks the run's principal may perform it on that resource. Required for write tools in templates a user may run (../authority.md §8)."
             }
           },
           "required": [

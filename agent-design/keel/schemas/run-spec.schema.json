@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://forge.example/schemas/run-spec.schema.json",
+  "$id": "https://keel.example/schemas/run-spec.schema.json",
   "title": "RunSpec",
-  "description": "Everything that defines one run, before params are bound: model, prompt, inputs, tools, the agents inside the run, the ending contract, outputs and authority. A template wraps one of these (template.schema.json); a run snapshots the bound, flattened result (run.schema.json ResolvedSpec). See ../../platform.md §3.",
+  "description": "Everything that defines one run, before params are bound: model, prompt, inputs, tools, the agents inside the run, the ending contract, outputs and authority. A template wraps one of these (template.schema.json); a run snapshots the bound, flattened result (run.schema.json ResolvedSpec). See ../run-spec.md §3.",
   "type": "object",
   "properties": {
     "description": {
@@ -110,7 +110,7 @@
     },
     "PromptSpec": {
       "type": "object",
-      "description": "Fixed text plus generated blocks. Params never reach this text, so every run of a template version shares one cacheable prefix (platform.md §6, invariant 3).",
+      "description": "Fixed text plus generated blocks. Params never reach this text, so every run of a template version shares one cacheable prefix (../run-spec.md §6, invariant 3).",
       "properties": {
         "base": {
           "oneOf": [
@@ -284,7 +284,7 @@
             },
             {
               "type": "object",
-              "description": "Filled by a continuation or a resume (platform.md §7). Absent on a fresh run.",
+              "description": "Filled by a continuation or a resume (../outputs.md §7). Absent on a fresh run.",
               "properties": {
                 "carry": {
                   "type": "string",
@@ -646,7 +646,7 @@
     },
     "CompletionSpec": {
       "type": "object",
-      "description": "The completion contract. The harness generates the run-ending tools from it: Complete, and one tool per finisher. Termination is never a property of a tool itself (platform.md §5).",
+      "description": "The completion contract. The harness generates the run-ending tools from it: Complete, and one tool per finisher. Termination is never a property of a tool itself (../endings.md §5).",
       "properties": {
         "form": {
           "type": "string",
@@ -706,7 +706,7 @@
         },
         "spinoffs": {
           "type": "object",
-          "description": "Enables report.spun_off. Each entry becomes a child pipeline run (platform.md §7f).",
+          "description": "Enables report.spun_off. Each entry becomes a child pipeline run (../pipelines.md §7f).",
           "properties": {
             "max_per_run": {
               "type": "integer",
@@ -742,7 +742,7 @@
           "items": {
             "$ref": "#/$defs/Finisher"
           },
-          "description": "Ending actions the model chooses between, each wrapping a declared tool or a harness action (platform.md §5a)."
+          "description": "Ending actions the model chooses between, each wrapping a declared tool or a harness action (../endings.md §5a)."
         },
         "checks": {
           "type": "array",
@@ -1078,7 +1078,7 @@
     },
     "Continuation": {
       "type": "object",
-      "description": "An edge from this run's outcome back into the same template. approve then execute runs again in the same pipeline stage, without the transcript. A spinoff starts a child pipeline run of this template; blocks_this makes the current stage wait for it (platform.md §7f).",
+      "description": "An edge from this run's outcome back into the same template. approve then execute runs again in the same pipeline stage, without the transcript. A spinoff starts a child pipeline run of this template; blocks_this makes the current stage wait for it (../pipelines.md §7f).",
       "properties": {
         "id": {
           "$ref": "common.schema.json#/$defs/Name"
@@ -1246,7 +1246,7 @@
     },
     "AuthoritySpec": {
       "type": "object",
-      "description": "Whose authority a run uses (platform.md §8).",
+      "description": "Whose authority a run uses (../authority.md §8).",
       "properties": {
         "run_as": {
           "type": "array",

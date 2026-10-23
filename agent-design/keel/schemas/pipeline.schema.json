@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://forge.example/schemas/pipeline.schema.json",
+  "$id": "https://keel.example/schemas/pipeline.schema.json",
   "title": "Pipeline",
-  "description": "A versioned graph of template stages, and the durable record of work across runs. Stages are templates used as they are; edges wire one stage's exits to the next stage. A pipeline run holds retries, waits, settling and spinoffs (platform.md §7e, §7f). It replaces the run ledger of orchestration.md.",
+  "description": "A versioned graph of template stages, and the durable record of work across runs. Stages are templates used as they are; edges wire one stage's exits to the next stage. A pipeline run holds retries, waits, settling and spinoffs (../pipelines.md §7e, §7f). It replaces the run ledger of orchestration.md.",
   "type": "object",
   "properties": {
     "name": {

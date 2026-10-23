@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://forge.example/schemas/run.schema.json",
+  "$id": "https://keel.example/schemas/run.schema.json",
   "title": "Runs",
-  "description": "A run is one template version executed with bound params under one principal. See ../../platform.md §7 and §10.",
+  "description": "A run is one template version executed with bound params under one principal. See ../outputs.md §7 and §10.",
   "$defs": {
     "RunRequest": {
       "type": "object",

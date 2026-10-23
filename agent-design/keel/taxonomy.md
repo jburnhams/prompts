@@ -1,9 +1,9 @@
 # Taxonomy
 
-**Status: proposal, 2026-10-23.** One meaning per word, for the agent
-platform ([`platform.md`](./platform.md)) and the Forge documents it
-builds on. Where an older document in this folder uses a different word
-for the same thing, the entry says so. That way the older documents
+**Status: proposal, 2026-10-23.** One meaning per word, for
+[Keel](./README.md) and for the configurations built on it, Forge first.
+Where one of Forge's documents (in `../`) uses a different word for the
+same thing, the entry says so. That way the older documents
 don't have to be rewritten, and a reader of either can find their way.
 
 Each entry gives the meaning, then *Not*: what it gets confused with,
@@ -28,7 +28,7 @@ params are bound: the model, the prompt, the inputs, the tools, the
 agents, the ending contract, the outputs and the authority.
 *Older word:* `AgentSpec`, renamed when "agent" came to mean one
 context inside a run.
-*Where:* `platform/schemas/run-spec.schema.json`.
+*Where:* `schemas/run-spec.schema.json`.
 
 **Template.** A run spec with a name, a version, and declared
 **params**. It is the thing you save, review, publish and run.
@@ -89,7 +89,7 @@ is the same for every run of a template version.
 
 **Capability block.** The generated block that states what the run can
 do, one line per tool family present, computed from the registered
-tools (`system-prompts.md` §7).
+tools (`../system-prompts.md` §7).
 
 **Omitted section.** A prompt section removed by heading under a stated
 condition, such as a tool being absent. A section can be removed, never
@@ -101,7 +101,7 @@ source and a trust level.
 
 **Envelope.** All of a run's inputs together, in order: the task the
 run is about. Untrusted blocks carry the run's **nonce** on both tags.
-*Where:* `formats.md` §1.
+*Where:* `../formats.md` §1.
 
 **Starting query.** The input of kind `instruction`: the user's
 question or the task details. Filled from a `principal` param.
@@ -117,14 +117,14 @@ higher-privilege one.
 
 **Conventions.** Standing written instructions (org, team, repo,
 learned), resolved by the context service for a ref.
-*Where:* `context.conventions`, `context-files.md`.
+*Where:* `context.conventions`, `../context-files.md`.
 
 **Kind.** One open vocabulary: `bugs`, `security`, `conventions`,
 `visual`, … A kind selects context sections, prompt scope and extra
 tool grants for a sub-agent. Kinds are declared by whoever spawns the sub-agent,
 never by the agent about itself.
-*Older words:* **lens** (`review.md`), and the `role` argument of
-Forge's v1 `Task` tool. The platform's generated `Task` calls it
+*Older words:* **lens** (`../review.md`), and the `role` argument of
+Forge's v1 `Task` tool. Keel's generated `Task` calls it
 `kind`.
 
 **Workspace.** What the run may touch on disk: `none`, or a
@@ -192,7 +192,7 @@ carrying its own pinned servers.
 **Declaration.** Every tool and server a template lists in
 `tools.groups` and `tools.servers`, granted or not. Nothing outside it
 can be granted, revealed, wrapped by a finisher, or called.
-*Older word:* "the job's declaration" (`tools.md`).
+*Older word:* "the job's declaration" (`../tools.md`).
 
 **Grant.** The groups an agent may call (`agents.<a>.grant`), each a
 subset of the declaration. Checked by the executor on every call.
@@ -278,7 +278,7 @@ the model and the run continues.
 **Harness action.** A tool the harness implements rather than an MCP
 server, addressed `action/<name>`. Like any tool it can be granted
 mid-run, wrapped by a finisher, or called by a pipeline sink after the
-run. Which position is a configuration's choice, not the platform's.
+run. Which position is a configuration's choice, not Keel's.
 - `open_pull_request`: commit, push and open the PR under the
   harness's git identity, and link it to the stage;
 - `request_help`: post to a channel; as a finisher it ends the run
@@ -298,8 +298,8 @@ the run actually ending: the first-`done` checklist,
 `require_tool_called`, `report_crosscheck`, `provenance_closure`.
 *Where:* `completion.checks`.
 *Not:* a **gate** (§6), a **harness check** (§3).
-*Older word:* "completion gate" (`tools.md`, the first draft of the
-platform spec).
+*Older word:* "completion gate" (`../tools.md`, and the first draft of
+Keel).
 
 **Budget.** A limit on turns, context, wall time, tokens by tier, cost
 or sub-agents. Turns and context end in the **final-turn nudge**.
@@ -308,7 +308,7 @@ or sub-agents. Turns and context end in the **final-turn nudge**.
 endings that exist, so every run ends with a report.
 
 **Hatch.** Either of the two tools a quick run uses to get more than it
-started with (`models.md` §4):
+started with (`../models.md` §4):
 - **Expand** reveals more granted sources and tools, and the run
   continues.
 - **HandOff** ends the run with a reason, so a pipeline can start a
@@ -321,7 +321,7 @@ a status, a finisher, a HandOff **reason**, or a gate answer.
 queries in a row, zero rows, too many turns), and what it does: hand
 off, reveal, or add a harness note.
 *Where:* `monitors[]`.
-*Older word:* "harness trigger" (`models.md` §5).
+*Older word:* "harness trigger" (`../models.md` §5).
 *Not:* a **trigger** (§8).
 
 **Harness note.** Harness-written text in its own field of a tool
@@ -340,9 +340,9 @@ RBAC system, outside this spec. This is the only meaning of "role".
 teams. A gate's principal set can name a team, which is read for
 membership only.
 
-**Permission.** A named action the platform checks with RBAC:
+**Permission.** A named action Keel checks with RBAC:
 `runs:create`, `runs:adhoc`, `runs:as-service`, `templates:publish`, …
-(`platform.md` §12a). A permission lets you start or change something.
+(`authority.md` §12a). A permission lets you start or change something.
 It never widens what a run may do: that is the template's grant and the
 principal's own access.
 
@@ -427,7 +427,7 @@ template: approve then execute, a spinoff.
 
 **Pipeline.** A versioned graph of **stages** joined by **edges**, with
 its own sinks. It is a path, with no loops, branches or joins.
-*Older word:* "landing" (`models.md`) for a stage reached by a handoff.
+*Older word:* "landing" (`../models.md`) for a stage reached by a handoff.
 
 **Stage.** A template used unchanged inside a pipeline, with its params
 bound from the pipeline.
@@ -459,7 +459,7 @@ run, a concurrency key held elsewhere, a timer, or its settle event.
 **Settle.** A stage whose run ended `done` but whose work isn't
 finished until something external happens, such as its PR merging.
 The stage is `settling` until then, and holds its concurrency key.
-*Older word:* the ledger state `handoff` (`orchestration.md`).
+*Older word:* the ledger state `handoff` (`../orchestration.md`).
 
 **Link.** A fact written back to a stage once, by something
 downstream: the committer's PR, a commit.
@@ -499,7 +499,7 @@ nothing.
 **Concurrency key.** The value that decides whether two pieces of work
 contend, such as `repository#branch`. Set on triggers and templates,
 and held by a stage while it runs and settles.
-*Older word:* `owner` on a ledger task (`orchestration.md` §2).
+*Older word:* `owner` on a ledger task (`../orchestration.md` §2).
 
 **Expression.** A CEL expression the harness evaluates. Never shown to
 or written by the model.
@@ -544,7 +544,7 @@ never sees it.
 | Word | Why not | Use instead |
 |---|---|---|
 | **mode** | "Plan" and "implement" are two templates. What makes one investigate and the other write code is its tools, prompt, model and ending contract, and the pipeline runs them in order. No field, tag or prompt line says "you are in plan mode". | the template's name; "configured to plan" if you need a verb. The word survives only in two unrelated field names, `auth.mode` and `run_as.mode`, which mean "credential kind" and "whose authority" |
-| **job** | `tools.md` says "the agent job declares the tools". That is the template's declaration | **template**, **declaration** |
+| **job** | `../tools.md` says "the agent job declares the tools". That is the template's declaration | **template**, **declaration** |
 | **lens** | the same thing as a kind | **kind** |
 | **landing** | a stage reached by a handoff | **stage** |
 | **harness trigger** | collided with **trigger** | **monitor** |

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://forge.example/schemas/common.schema.json",
+  "$id": "https://keel.example/schemas/common.schema.json",
   "title": "Shared definitions",
-  "description": "Types used by more than one resource. See ../../platform.md §3.",
+  "description": "Types used by more than one resource. See ../run-spec.md §3.",
   "$defs": {
     "Name": {
       "type": "string",
@@ -82,7 +82,7 @@
         "cel"
       ],
       "additionalProperties": false,
-      "description": "A CEL expression. Evaluated by the harness over a documented context (platform.md §9). Never evaluated by or shown to the model."
+      "description": "A CEL expression. Evaluated by the harness over a documented context (../triggers-and-runs.md §9). Never evaluated by or shown to the model."
     },
     "ParamRef": {
       "type": "object",
