@@ -2,41 +2,133 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://forge.example/schemas/principal.schema.json",
   "title": "Delegation",
-  "description": "A user's standing consent for a template to act on their behalf when they are not present (schedules, events, continuations). See ../../platform.md §8.",
+  "description": "A user's standing consent for a template to act on their behalf when they are not present (schedules, events, continuations). See ../../platform.md \u00a78.",
   "$defs": {
     "Delegation": {
       "type": "object",
       "properties": {
-        "id": { "$ref": "common.schema.json#/$defs/Id", "readOnly": true },
-        "principal": { "$ref": "common.schema.json#/$defs/PrincipalRef", "description": "The user granting it. Always the authenticated caller of POST /v1/delegations." },
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id",
+          "readOnly": true
+        },
+        "principal": {
+          "$ref": "common.schema.json#/$defs/PrincipalRef",
+          "description": "The user granting it. Always the authenticated caller of POST /v1/delegations."
+        },
         "template": {
           "type": "object",
           "properties": {
-            "name": { "$ref": "common.schema.json#/$defs/Name" },
-            "min_version": { "$ref": "common.schema.json#/$defs/Version" },
-            "max_version": { "$ref": "common.schema.json#/$defs/Version", "description": "Omitted: versions published later need fresh consent only if they widen scopes or servers." }
+            "name": {
+              "$ref": "common.schema.json#/$defs/Name"
+            },
+            "min_version": {
+              "$ref": "common.schema.json#/$defs/Version"
+            },
+            "max_version": {
+              "$ref": "common.schema.json#/$defs/Version",
+              "description": "Omitted: versions published later need fresh consent only if they widen scopes or servers."
+            }
           },
-          "required": ["name", "min_version"],
+          "required": [
+            "name",
+            "min_version"
+          ],
           "additionalProperties": false
         },
         "scopes": {
           "type": "object",
           "description": "MCP server id to the OBO scopes consented for it. Must be within the template's declared scopes.",
-          "additionalProperties": { "type": "array", "items": { "type": "string" } }
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         },
         "constraints": {
           "type": "object",
           "description": "Optional narrowing on params, as param name to allowed values (a repository, a project).",
-          "additionalProperties": { "type": "array" }
+          "additionalProperties": {
+            "type": "array"
+          }
         },
-        "consented_spec_digest": { "$ref": "common.schema.json#/$defs/Digest", "description": "Of the servers, scopes and write tools shown at consent. A later version whose digest of these differs needs re-consent." },
-        "state": { "type": "string", "enum": ["active", "revoked", "expired"], "readOnly": true },
-        "expires_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
-        "created_at": { "$ref": "common.schema.json#/$defs/Timestamp", "readOnly": true },
-        "revoked_at": { "$ref": "common.schema.json#/$defs/Timestamp", "readOnly": true }
+        "consented_spec_digest": {
+          "$ref": "common.schema.json#/$defs/Digest",
+          "description": "Of the servers, scopes and write tools shown at consent. A later version whose digest of these differs needs re-consent."
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "active",
+            "revoked",
+            "expired"
+          ],
+          "readOnly": true
+        },
+        "expires_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "created_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp",
+          "readOnly": true
+        },
+        "revoked_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp",
+          "readOnly": true
+        },
+        "pipeline": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "$ref": "common.schema.json#/$defs/Name"
+            },
+            "min_version": {
+              "$ref": "common.schema.json#/$defs/Version"
+            },
+            "max_version": {
+              "$ref": "common.schema.json#/$defs/Version"
+            }
+          },
+          "required": [
+            "name",
+            "min_version"
+          ],
+          "additionalProperties": false,
+          "description": "A pipeline delegation covers every stage template at the versions that pipeline version pins."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "stored",
+            "session"
+          ],
+          "default": "stored",
+          "readOnly": true,
+          "description": "session: minted by the harness for one invoker-started pipeline run; not creatable through the API."
+        },
+        "pipeline_run_id": {
+          "$ref": "common.schema.json#/$defs/Id",
+          "readOnly": true
+        }
       },
-      "required": ["template", "scopes", "expires_at"],
-      "additionalProperties": false
+      "required": [
+        "scopes",
+        "expires_at"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "template"
+          ]
+        },
+        {
+          "required": [
+            "pipeline"
+          ]
+        }
+      ],
+      "description": "A user's consent for a template or pipeline to act on their behalf."
     }
   }
 }

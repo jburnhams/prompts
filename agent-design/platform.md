@@ -1,9 +1,10 @@
 # Agent platform: data models and APIs
 
-**Status: proposal, 2026-10-23.** This turns the Forge design into
-resources a service could store and an API could serve. It doesn't
-change what Forge does. It says where each decision already made in this
-folder lives as data, who may change it, and when.
+**Status: proposal, 2026-10-23, revised the same day against four use
+cases (§0).** This turns the Forge design into resources a service could
+store and an API could serve. It doesn't change what Forge does. It says
+where each decision already made in this folder lives as data, who may
+change it, and when.
 
 | File | What it is |
 |---|---|
@@ -12,6 +13,122 @@ folder lives as data, who may change it, and when.
 | [`platform/openapi.yaml`](./platform/openapi.yaml) | the API, OpenAPI 3.1, referencing those schemas |
 | [`platform/examples/`](./platform/examples) | Forge's three entrypoints and the quick-analysis path written as templates, plus triggers, servers, a delegation and a deployment |
 | [`platform/check.py`](./platform/check.py) | validates every example against the schemas, then runs the publish rules in §11. `python3 -I agent-design/platform/check.py` |
+
+---
+
+## 0. Four use cases, end to end
+
+Each one is a set of files in `platform/examples/` that `check.py`
+passes. The first pass of this spec handled the third and fourth. The
+first two exposed three gaps, now closed: saved tool groups with
+per-tool settings, finishers, and pipelines.
+
+### 0a. A saved tool group for Java agents, used against a repo
+
+*"I define a tool group for Java coding agents from several MCP servers,
+control each tool's visibility, override its params and other settings
+to change how the agent sees it, and save it. Then I run an agent with
+that group against a repo, with a saved Java prompt and a query with
+the task details."*
+
+- **The group** is [`java-coding.tool-group.json`](./platform/examples/java-coding.tool-group.json),
+  a `SavedToolGroup`, version 3. It has built-in file and shell tools,
+  `maven/run_goal`, two `jdtls` navigation tools, `sonar/search_issues`
+  and `jira/get_issue`, and it pins each server's snapshot. Per tool,
+  you can set:
+  - a new name (`run_goal` → `Maven`);
+  - a new description;
+  - visibility: the language-server and Sonar tools are `deferred` with
+    a search hint, while the rest are `loaded`;
+  - annotations and limits;
+  - **argument overrides**. For example, `goal` is narrowed to four
+    values; `offline`, `settings_file` and `project_dir` are fixed and
+    hidden; Sonar's `project_key` is fixed to the run's `repository`
+    param; `page_size` is capped at 50 with a default of 20.
+
+  `:preview` shows each tool exactly as the model will see it (§4b).
+- **The agent** is [`coding.java`](./platform/examples/coding.java.template.json).
+  It uses the group by reference (`{ref: {name: java.coding, version: 3},
+  id: java}`), the saved prompt `java.developer@4`, and params for the
+  repository, branch, issue and **`task`**. `task` is the starting
+  query: an `instruction` input with `trust: principal`.
+- **The run** is one request:
+  [`run-request.java.json`](./platform/examples/run-request.java.json).
+  If you'd rather not save a template first, `POST /v1/runs` also takes
+  an `adhoc` body. The harness publishes it as `adhoc.<digest>` and runs
+  every publish rule on it, so an ad-hoc run is as checked and as
+  auditable as a saved one (§6).
+
+### 0b. Choosing how the run ends: Complete, update Jira, open a PR, ask for help
+
+*"When the task is finished it calls Complete. I could instead have
+selected other tools as the final options: update Jira, create a PR,
+ask for help. Ask-for-help could also be used during the run."*
+
+`coding.java` sets `completion.complete: false` and declares three
+**finishers** (§5a):
+
+- `OpenPullRequest`: a harness action. It commits, pushes and opens the
+  PR under harness-owned git identity, which needs `git_writes:
+  on_finish`.
+- `FinishWithJiraUpdate`: wraps `mcp:jira/update_issue`. The issue key
+  is fixed and the transitions are narrowed.
+- `RequestHelp`: a harness action. It posts to the team channel and ends
+  the run with status `blocked`.
+
+The model sees each one as a tool. Calling it runs the completion gates
+first, then the action. If the action fails, the error comes back to
+the model and the run continues.
+
+**Ask-for-help is two things, and the spec keeps them apart.** *During*
+the run, it's `AskUser`: the run suspends and resumes with the answer
+and its context intact. *As an ending*, it's `RequestHelp`: the run is
+over and a person takes the task. The tool descriptions tell the model
+which is which. Both can be enabled in one template, as they are here.
+
+### 0c. A plan → implement pipeline, triggered by Jira, updating Jira at the end
+
+*"A template for an agent pipeline: a plan job that hands over to an
+implement job. Triggered by a Jira ticket being assigned; when it
+finishes it updates Jira."*
+
+- **The pipeline** is [`jira.plan-implement`](./platform/examples/jira-plan-implement.pipeline.json)
+  (§7e). It has two stages, `forge.plan` and `forge.implement`, each
+  used unchanged. One edge, `plan_approved`, goes from plan's
+  `planned` status to implement. It carries the plan, and it is gated
+  on the assignee or reporter approving that exact plan (`bind:
+  plan_hash`).
+- **The end-of-pipeline Jira update** is a sink on the pipeline, not on
+  either template. It's a `tool` sink calling `mcp:jira/update_issue`
+  with transition `In Review` when implement ends `done`, plus a
+  summary comment whichever stage the pipeline ended in. Run on its
+  own, `forge.implement` doesn't touch Jira's status. That belongs to
+  this pipeline.
+- **The trigger** is [`jira-assigned.trigger.json`](./platform/examples/jira-assigned.trigger.json):
+  `issue.assigned` to `forge-bot`. It runs as the person who assigned
+  it (`event_actor`), only if they hold a delegation for this pipeline,
+  and replies go to the issue (`origin`).
+
+### 0d. A chat message to a cheap data agent that hands over to a stronger one
+
+*"A user sends a chat message, which triggers a data agent. It starts on
+a cheap model with only a few tools, finds the job is harder, and hands
+over to a more powerful agent with more tools."*
+
+- **The trigger** is [`chat-data.trigger.json`](./platform/examples/chat-data.trigger.json):
+  a `manual` `chat_command`, with `run_as: invoker` and `origin` set to
+  the chat thread.
+- **The pipeline** is [`analysis`](./platform/examples/analysis.pipeline.json).
+  Its entry is `analysis.quick`: economy tier, four tools, the hatches
+  from `models.md`. Its `HandOff` reasons are wired to
+  `analysis.investigate` (standard tier, every source, the full tool
+  set) and `analysis.report`. Each edge `announce`s to the thread
+  ("Taking a closer look…"). The answer goes back to the thread through
+  a sink targeting `{origin: true}`, whichever stage produced it.
+- **Acting for the user throughout**: `invoker` mints a session
+  delegation scoped to this pipeline run (§8). The investigate stage
+  can then still query the warehouse as the user after the chat
+  request itself has returned.
 
 ---
 
@@ -26,9 +143,10 @@ spec just has to give it a field:
 | Concept | Where it lives | Already decided in |
 |---|---|---|
 | MCP servers | `McpServer` registry resource; a spec lists the ones it uses, pinned to a tool snapshot | `adk.md`, `tools.md` |
-| Tools, tool groups | `ToolRef`, `ToolGroup` (the unit of grant) | `tools.md` |
-| Visibility and deferral | `Visibility` per group, overridable per role; the provider flag sits in deployment | `tools.md` "Granted, registered, visible" |
-| Completion tools | `completion`, `human.ask_user`, `hatches.handoff`. The harness **generates** these tools (§5) | `formats.md` §3, §5; `models.md` §4b |
+| Tools, tool groups | `ToolRef`, `ToolGroup` (the unit of grant), and `SavedToolGroup`: versioned, reusable across templates, with per-tool argument overrides | `tools.md` |
+| Visibility and deferral | `Visibility` per group, per tool, and overridable per role; the provider flag sits in deployment | `tools.md` "Granted, registered, visible" |
+| Completion tools | `completion` (with `finishers`), `human.ask_user`, `hatches.handoff`. The harness **generates** these tools (§5) | `formats.md` §3, §5; `models.md` §4b |
+| **Pipelines** | `Pipeline`: template stages wired exit to entry, with their own sinks | new here, §7e |
 | System prompt | `PromptSpec`: versioned fixed text, subtraction by heading, generated blocks | `system-prompts.md` §6–§7 |
 | Starting query | an `inputs[]` entry of kind `instruction`, filled from a param | `formats.md` §1 |
 | Model | a **tier** plus a ceiling. The deployment maps tiers to model ids | `models.md` §2.5 |
@@ -62,18 +180,21 @@ switch inside one spec.
 ```
  Deployment ─────────── tier→model map, provider flags, ceilings, mandatory checks
      │
- Registry ───────────── McpServer (+ ToolSnapshot), ToolGroup, prompts, report schemas
+ Registry ───────────── McpServer (+ ToolSnapshot), SavedToolGroup, prompts, report schemas
      │  referenced, pinned by digest
      ▼
  Template@version ───── params + AgentSpec      (immutable once published)
+     │        │
+     │        └──► Pipeline@version ── stages (templates) + edges + pipeline sinks
      │  bind params, resolve for this principal and deployment
      ▼
  Run ────────────────── ResolvedSpec snapshot + state + outcome + usage
-     │       ▲                    │
+     │       ▲                    │                    (a PipelineRun groups stage runs)
      │       │ creates            │ outcome feeds
      │   Trigger ◄── Event        ├──► Sinks           (deliveries)
-     │   (schedule, event,        ├──► Continuations   (more runs, or tasks)
-     │    run_outcome, manual)    └──► Gates           (a human decides first)
+     │   (schedule, event,        ├──► Continuations   (back into the same template)
+     │    run_outcome, manual)    ├──► Pipeline edges  (to the next stage)
+     │                            └──► Gates           (a human decides first)
      ▼
  Task (ledger) ──────── an obligation across runs: attempts, deps, lease
  Delegation ─────────── a user's standing consent for a template to act for them
@@ -81,9 +202,10 @@ switch inside one spec.
 
 This is a deliberately short chain. An **AgentSpec** is everything
 about a run. A **Template** is an AgentSpec with named holes and a
-version. A **Run** is one template version with the holes filled, under
-one principal. A **Trigger** decides when a run starts. **Outputs**
-decide what the run leads to.
+version. A **Pipeline** wires templates together without changing them.
+A **Run** is one template version with the holes filled, under one
+principal. A **Trigger** decides when a run or pipeline starts.
+**Outputs** decide what the run leads to.
 
 Most of the safety story is in one table: **who may change what, and
 when.**
@@ -195,10 +317,49 @@ server redeploys.
 ### 4b. Groups, grants and visibility
 
 A `ToolGroup` is a named set of `ToolRef`s (with `include` for
-composition). A `ToolRef` can rename a tool for the model (`alias`:
-`mcp:jira/get_issue` becomes `FetchJira`), replace its description,
-set limits, and override annotations. `mcp:x/*` is allowed in drafts
-and is expanded against the snapshot, then frozen, at publish.
+composition). A `ToolRef` can:
+
+- rename a tool for the model (`alias`: `mcp:jira/get_issue` becomes
+  `FetchJira`);
+- replace its description;
+- set its visibility, overriding the group's;
+- set limits and override annotations;
+- override its **arguments** (`params`).
+
+`mcp:x/*` is allowed in drafts and is expanded against the snapshot,
+then frozen, at publish.
+
+**A group can be inline in a spec, or saved.** A `SavedToolGroup` is a
+registry resource with a name, a version, an owner and the server
+snapshots it pins. A spec uses it as `{ref: {name, version}, id}`, and
+publishing inlines it, so the resolved spec has one shape whichever way
+it was written. The saved group brings its servers into the template's
+declaration. A fixed argument written as `{"$param": "repository"}`
+must be a param of every template that uses the group, and R4 checks it
+there like any other config binding. `:preview` returns each tool as
+the model will see it.
+
+**Argument overrides change what the model sees and can only narrow
+what it can do.** Per argument, a `ParamOverride` can:
+
+- replace `description` or `default`;
+- make it `required`;
+- narrow it: `enum` to a subset, a lower `maximum` or a higher
+  `minimum`, a `max_length`, a `pattern`;
+- **fix** it: a literal, a config param, or an expression over the run.
+  A fixed value is supplied by the harness, and `hidden: true` removes
+  the argument from the model's schema entirely. `hidden` requires
+  `fixed`, so a call never depends on a server default the author
+  didn't choose.
+
+The executor validates the model's arguments against the overridden
+schema, merges the fixed values, then validates the result against the
+server's own schema. R13 is checked against the pinned snapshot at
+publish: an enum must be a subset of the server's, a maximum can only go
+down. Narrowing is what makes overrides safe to hand to template
+authors. Renaming an argument is not supported. It would need a
+two-way mapping in every error the server returns, and nothing in the
+use cases needs it.
 
 **Annotations are authoritative from the job, hints from the server**,
 and an override may only make a tool look more dangerous. An
@@ -277,7 +438,8 @@ tool as run-ending.
 
 | Contract in the spec | Generated tool | Ends the run? | What the harness does on the call |
 |---|---|---|---|
-| `completion` | `harness/Complete` (or `tool_name`) | yes: `complete` | validates `report` against `report_schema`, runs `gates`, files spinoffs, evaluates sinks and continuations |
+| `completion` | `harness/Complete` (or `tool_name`), unless `complete: false` | yes: `complete` | validates `report` against `report_schema`, runs `gates`, files spinoffs, evaluates sinks and continuations |
+| `completion.finishers[]` | one tool per finisher, under its `name` | yes: `complete`, with `outcome.finisher` set | gates, then the wrapped tool or harness action; on failure, back to the model (§5a) |
 | `human.ask_user` | `harness/AskUser` | yes: `suspend` | opens a gate, posts to `channels`, records who may answer |
 | `hatches.handoff` | `harness/HandOff`, its `reason` enum = the declared reason ids | yes: `handoff` | starts the continuation wired to that reason |
 | `hatches.expand` | `harness/Expand` | no | reveals granted groups and sources |
@@ -311,8 +473,65 @@ what Forge's three entrypoints vary.
 
 **`form: "text"`** covers the quick analysis run (`models.md` §3): the
 run ends on an assistant message with no tool calls, with status
-`done`. R5 limits it to specs with no report schema, no gates and no
-spinoffs, because there's nothing to validate.
+`done`, and that message becomes `outcome.summary`. R5 limits it to
+specs with no report schema, gates, spinoffs or finishers, because
+there's nothing to validate.
+
+### 5a. Finishers: choosing the ending from a set of tools
+
+Use case 0b asks for the opposite of a generic `Complete`: pick some
+real tools (update Jira, open a PR, ask for help) and make *those* the
+ways a run can end. That is a **finisher**: an entry in
+`completion.finishers` naming a declared tool or a harness action, the
+status it ends with, and whether it takes a report.
+
+This keeps the reasons above intact, because the termination is still
+the harness's, not the tool's. The tool doesn't know it's a finisher,
+and the same MCP tool can be a finisher in one template and an ordinary
+mid-run tool in another. What the author marks is the *ending*, in the
+contract, which is the right place for it.
+
+- **The model sees a separate generated tool.** It takes `summary`,
+  `report` when `report: true`, and `args`: the wrapped tool's
+  arguments with the finisher's and the `ToolRef`'s overrides applied.
+  The arguments are nested under `args` so that no server argument can
+  collide with `summary`. That costs a nested object in the call, which
+  `agent-tool-implementations.md` §3g measures as slightly less reliable
+  to emit, and it's the price of not reserving names in every server's
+  schema.
+- **Gates run before the action, not after.** The first-`done`
+  checklist, `report_crosscheck` and the rest fire on the finisher call.
+  A PR is opened, or Jira is moved, only after they pass. For an
+  irreversible action that order is the whole point.
+- **A failed action doesn't end the run.** The error goes back to the
+  model with a `finisher_failed` refusal code, and the run continues:
+  it can fix the problem, or pick another ending.
+- **A finisher's tool is declared, not granted.** `FinishWithJiraUpdate`
+  wraps `mcp:jira/update_issue`, which `coding.java` declares in a group
+  it grants to nobody. The model can move the ticket as its ending, and
+  can't do it halfway through. Granting it as well would allow both,
+  under two different names (R11).
+- **Two harness actions exist today.**
+  - `open_pull_request` commits, pushes and opens the PR with the
+    harness's git identity, signing and templates. It needs
+    `workspace.git_writes: on_finish` (R14). This is the platform form
+    of Forge's "the committer downstream does it": the model never runs
+    a git write itself, and the push happens only after the gates, from
+    the harness. Forge's own templates keep `deny` and the external
+    committer.
+  - `request_help` posts the report to a channel and ends with status
+    `blocked`. Nothing resumes.
+- **`complete: false`** removes the generic `Complete`. The run can
+  then end only through a finisher, `AskUser`, `HandOff`, or the
+  final-turn nudge, which lists exactly the endings that exist.
+
+**Ask for help during the run, or as the ending.** These are
+different, and both are useful. `AskUser` mid-run suspends and resumes
+the same task with its context, which is right for a question. A
+`request_help` finisher ends the run and hands the task to a person,
+which is right when no single answer would unblock it. Their
+descriptions say so, because the model choosing between them is the
+point.
 
 ---
 
@@ -365,19 +584,28 @@ anything take no params.
   placeholder nonces) without running anything. It's what you diff when
   someone asks why a run behaved the way it did.
 
+**Ad-hoc runs** (use case 0a's "just run it"): `POST /v1/runs` with
+`adhoc: {params, spec}` instead of `template`. The harness publishes the
+body as `adhoc.<digest>`, a content-addressed version (the same body is
+the same version and shares its prompt cache), runs every rule, then
+runs it. The body can reference saved tool groups and saved prompts like
+any template. It needs a `runs:adhoc` permission, because it skips the
+review a named template gets. It never skips a rule.
+
 ---
 
 ## 7. Outputs: tools, chaining, or something else?
 
-**All three, but they're three different things, and the line between
-them is who decides.**
+**All three, but they're different things, and the line between them
+is who decides.**
 
 | | Decided by | When | Mechanism | Forge examples |
 |---|---|---|---|---|
 | **Effects** | the model | during the run | a granted **tool** | `AddComment` in plan and review runs; a warehouse write |
 | **Result** | the model, inside a contract | at the end | the terminal call → `Run.outcome` | `Complete.report`, `HandOff.reason`, artifacts in `evidence` |
 | **Sinks** | the template | after the run, fixed by outcome | harness **delivery** | posting `summary` to the ticket; the attention tier as a commit status; publishing a report |
-| **Continuations** | the template declares the edges; the outcome (and sometimes a human) picks one | after the run | a new **run** or **task** | plan → implement; HandOff landings; approve → execute; spinoffs; review → fix |
+| **Continuations** | the template declares edges back into itself; the outcome (and sometimes a human) picks one | after the run | a new **run** or **task** of the same template | approve → execute; spinoffs |
+| **Pipeline edges** | the pipeline declares them; the outcome picks one | after a stage | the next **stage** | plan → implement; HandOff landings; review → fix |
 
 The rule for effects versus sinks: **if the model decides whether,
 what, or where to post, it's a tool. If posting is a fixed consequence
@@ -392,7 +620,7 @@ model's choice of content, so it's an effect, and
 
 `Run.outcome`: `terminal` (`complete | suspend | handoff |
 infra_failure | stopped`), `status`, `summary`, `report` (validated),
-`handoff {reason, why}`, `nudged`, the post-run `integrity` checks, a
+`handoff {reason, why}`, `finisher {id, external_ref}`, `nudged`, the post-run `integrity` checks, a
 `refusal` code if the harness ended it, and `report_digest` for
 approvals to bind to. Artifacts are listed on the run. Everything
 downstream reads this one object, so sinks and continuations never
@@ -402,58 +630,72 @@ parse prose.
 
 `{id, when, kind, channel, render, idempotency_key, retry}`. Kinds:
 `comment`, `commit_status`, `webhook`, `chat`, `email`,
-`artifact_publish`, `dataset_write`. `render` is a Mustache template
+`artifact_publish`, `dataset_write`, and `tool`, which calls a declared
+tool after the run (a Jira transition) with arguments from the result.
+`render` is a Mustache template
 over the result, written by the template author, and the output is
 Markdown converted per channel. That matches the decision that comment
 bodies are always Markdown, with conversion harness-side. Every
 delivery is a `Delivery` record with its own retry state, so a Jira
-outage loses nothing and can be retried by id.
+outage loses nothing and can be retried by id. A channel target of
+`{origin: true}` is wherever the request came from (the chat thread, the
+issue, the PR), which the trigger records as `Run.origin`.
 
-### 7c. Continuations
+### 7c. Continuations and pipeline edges
 
-`{id, on, target, params, carry, gate, via, run_as}`. One structure
-covers every inter-run edge this folder had specified separately:
+There is one rule for every inter-run edge, and two places to write
+one. **A continuation is an edge back into the same template**
+(`target: self`). **An edge to a different template belongs to a
+pipeline** (§7e). The first pass of this spec let a template's
+continuations name any template. Use case 0c showed why that's wrong:
+`forge.plan` then hard-wired `forge.implement`, and `forge.implement`
+would have had to carry "update Jira when done" for every caller,
+including callers that don't want it. Templates are now reusable on
+their own, and wiring is a separate, versioned thing.
 
-| Edge | `on` | `target` | `carry` | `gate` |
-|---|---|---|---|---|
-| plan → implement (`formats.md` §6) | `complete`, `planned` | `forge.implement` | `plan` | `approval`, `bind: plan_hash` (gated pattern), or `auto` (auto-chained) |
-| approve → execute (`formats.md` §5) | `suspend`, `answer: approve` | `self` | `approved_action`, `resumed_answer` | `auto` (the gate was the question) |
-| `blocks_this` spinoff (`orchestration.md` §6) | `complete`, `blocked`, `spinoff: blocks_this` | `self`, `via: task` | `prior_attempt` | `auto` |
-| `follows_this` spinoff | `complete`, `spinoff: follows_this` | `self`, `via: task` | `prior_attempt` | `approval` |
-| HandOff `too_complex` (`models.md` §4b) | `handoff`, reason | `analysis.investigate` | `prior_attempt` | `auto` |
-| HandOff `report_requested` | `handoff`, reason | `analysis.report` | `prior_attempt`, `artifacts` | `auto` |
-| review → fix (`medium.md` §1b) | `complete`, `done`, an expression on findings | `forge.implement`, `via: task` | `findings` | `approval` by the PR author |
+| Edge | Lives in | `on` | to | `carry` | `gate` |
+|---|---|---|---|---|---|
+| approve → execute (`formats.md` §5) | template continuation | `suspend`, `answer: approve` | `self` | `approved_action`, `resumed_answer` | `auto` (the gate was the question) |
+| `blocks_this` spinoff (`orchestration.md` §6) | template continuation | `complete`, `blocked`, `spinoff: blocks_this` | `self`, `via: task` | `prior_attempt` | `auto` |
+| `follows_this` spinoff | template continuation | `complete`, `spinoff: follows_this` | `self`, `via: task` | `prior_attempt` | `approval` |
+| plan → implement (`formats.md` §6) | pipeline [`jira.plan-implement`](./platform/examples/jira-plan-implement.pipeline.json) | `complete`, `planned` | `implement` | `plan` | `approval`, `bind: plan_hash` (gated), or `auto` (auto-chained) |
+| HandOff `too_complex` (`models.md` §4b) | pipeline [`analysis`](./platform/examples/analysis.pipeline.json) | `handoff`, reason | `investigate` | `prior_attempt` | `auto` |
+| HandOff `report_requested` | pipeline `analysis` | `handoff`, reason | `report` | `prior_attempt`, `artifacts` | `auto` |
+| review → fix (`medium.md` §1b) | pipeline [`pr.review-fix`](./platform/examples/pr-review-fix.pipeline.json) | `complete`, `done`, an expression on findings | `fix`, `via: task` | `findings` | `approval` by the PR author |
 
-The rules that keep this safe:
+The rules that keep this safe, for both kinds:
 
-- **The model chooses among declared edges. It never names a target.**
-  `HandOff.reason` is an enum generated from the edges. `spun_off` is a
-  proposal the edge turns into a task. No result field can name a
-  template (`continuation_undeclared`). This is `orchestration.md` §8's
+- **The model chooses among declared exits. It never names a target.**
+  `HandOff.reason` is an enum of the template's declared reasons, and a
+  pipeline must wire every one (P2). Run on its own, a template has no
+  wired exits, so `HandOff` is not generated. `spun_off` is a proposal
+  the edge turns into a task. No result field can name a template
+  (`continuation_undeclared`). This is `orchestration.md` §8's
   invariant, "a role may file, propose or report; it may not act on
   what it oversees", stated as a schema.
 - **Carry is what crosses, and never a transcript.** The target must
-  declare a matching `carry` input (R7), so context crosses only
+  declare a matching `carry` input (R7, P3), so context crosses only
   through typed envelope blocks, as `formats.md` §6 already requires.
-  The one exception is **resume**, which is not a continuation: a
-  `clarify` answer resumes the same template with the suspended run's
-  transcript (`Run.lineage.resumes`). It's built in because it's the
-  one case where the transcript has to survive.
-- **Bounded.** `max_chain_depth` counts hops from the root request
-  (resume excluded). Every target lands at or below the root's
-  `max_tier` (R7), and below the deployment ceiling at run time
-  (`tier_ceiling`). `models.md`'s "at most two hand-offs" is
-  `max_chain_depth: 2` on `analysis.quick`.
-- **Gated edges open a `Gate`.** Approval gates bind to
-  `report_hash` or `plan_hash`, and the approval lapses if the content
-  changes (`formats.md` §5a rule 4).
-- **`run_as` is `same` or `service`, never someone else.** A
-  continuation can't move work to a different user's authority.
+  The one exception is **resume**, which is neither: a `clarify` answer
+  resumes the same template with the suspended run's transcript
+  (`Run.lineage.resumes`). It's built in because it's the one case where
+  the transcript has to survive.
+- **Bounded.** `max_chain_depth` limits a template's own continuations;
+  a pipeline's `max_hops` limits its longest path, and its graph must be
+  acyclic (P6). Every stage lands at or below the pipeline's `max_tier`
+  (P5), and below the deployment ceiling at run time (`tier_ceiling`).
+  `models.md`'s "at most two hand-offs" is `max_hops: 2` on `analysis`.
+- **Gated edges open a `Gate`.** Approval gates bind to `report_hash`
+  or `plan_hash`, and the approval lapses if the content changes
+  (`formats.md` §5a rule 4).
+- **Never someone else's authority.** A continuation's `run_as` is
+  `same` or `service`. A pipeline runs every stage as the pipeline
+  run's principal, and P7 requires a principal type every stage allows.
 
 **Chaining across owners.** A `run_outcome` trigger (§9) lets one team
-start its template when another team's template finishes, without
-editing the other template. Inside one template, prefer a continuation:
-the edge is then in the version that was reviewed.
+start its template or pipeline when another team's finishes, without
+editing either. When you own both ends, prefer a pipeline: the edge is
+then in a version that was reviewed.
 
 ### 7d. Gates
 
@@ -468,6 +710,44 @@ each reply is matched on, the replies (each with harness-asserted
 me" across every template. `POST /v1/gates/{id}/replies` is the single
 reply path for the UI and for every channel adapter, which is
 `medium.md` §5c's multi-channel delivery without a new tool.
+
+### 7e. Pipelines
+
+[`pipeline.schema.json`](./platform/schemas/pipeline.schema.json). A
+pipeline is versioned like a template: `{name, version, params, entry,
+stages, edges, sinks, tools, max_hops, max_tier}`.
+
+- **Stages are templates, used unchanged.** A stage names a template
+  (`version: "pinned"` resolves at publish) and binds its params from
+  `pipeline.params`, `origin` and `principal`. An edge into a stage can
+  add params from the previous `result`. For example, implement's
+  `write_scope` comes from the plan's report. P4 checks every route into
+  every stage binds its template's required params.
+- **Edges wire exits.** `on` names exactly one exit of the `from` stage:
+  a status, a finisher id, a HandOff reason, or a gate answer, plus an
+  optional expression. P2 checks every exit named is one that template
+  really has, and every HandOff reason is wired.
+- **Pipeline sinks run once, when the pipeline ends**, with `stage` and
+  `result` set to the last stage's. The Jira update in use case 0c and
+  the chat answer in 0d are pipeline sinks, so whichever stage ends the
+  pipeline, the person hears back once, in one place. A pipeline that
+  calls tools in its sinks declares them in its own `tools`. That
+  declaration is never granted to a stage (P8).
+- **`announce`** posts a line to the origin channel when an edge is
+  taken. This is `models.md` §4c's "what the user sees" row ("Taking a
+  closer look"), now on the edge that causes it.
+- **A `PipelineRun`** groups the stage runs: the principal, the
+  delegation, the origin, the stages in order with the edge that started
+  each, any gate between stages, the final outcome, and the pipeline's
+  deliveries. Each stage run is an ordinary `Run` with `pipeline_run_id`
+  and `stage` set, and its own events stream.
+
+**Not a workflow engine.** There are no loops, no parallel branches and
+no joins. Each stage ends in one exit, and at most one edge fires, so
+the run is always a path through the graph. Fan-out lives inside a run,
+where Forge already has it (`Task`, the review team). Nothing in the
+use cases needs more, and a join would have to answer what "both stages
+done" means when one was gated and the other wasn't.
 
 ---
 
@@ -511,7 +791,7 @@ Monday, a Jira event, or a continuation that starts after the user has
 gone home has no live session to exchange. A `Delegation` is the user's
 stored consent:
 
-- it is for one template from `min_version`;
+- it is for one template or one pipeline, from `min_version`;
 - it carries OBO scopes per server, within what the template declares;
 - it can constrain params ("only repository X");
 - it carries `consented_spec_digest`, a digest of the servers, scopes
@@ -528,11 +808,19 @@ Triggers choose `run_as`:
 - `service`: the review trigger.
 - `delegation`: the weekly digest. It names a delegation its owner
   granted.
-- `event_actor`: the Jira trigger. The person who moved the ticket is
-  the principal, but only if they hold a delegation for this template;
-  otherwise `fallback: refuse`. This is deliberately not "run as
+- `event_actor`: the Jira trigger. The person who assigned the ticket
+  is the principal, but only if they hold a delegation for this
+  pipeline; otherwise `fallback: refuse`. This is deliberately not "run as
   whoever commented". Mapping a provider account to an IdP subject is
   necessary, and it isn't sufficient: consent is still needed.
+- `invoker`: the chat trigger, and `manual` sources only. The user is
+  present, so no stored consent is needed. But a pipeline's later stages
+  may outlive the chat request, so the harness mints a **session
+  delegation**: scoped to this one pipeline run, the user's current
+  session scopes, the template's or pipeline's declared scopes, and
+  expiring when the pipeline run ends or at a cap. It's created from the
+  live session, so there is nothing for the user to approve, and it
+  can't be reused by any other request.
 
 **Gates use the same identities.** Who may answer is a
 `PrincipalSetRule` list (`principal`, `requested_by`,
@@ -546,15 +834,18 @@ An empty resolved set is said in the posted question.
 ## 9. Triggers
 
 [`trigger.schema.json`](./platform/schemas/trigger.schema.json). A
-trigger is `{owner, template, source, filter, params, run_as, dedupe,
-concurrency, rate_limit, creates}`.
+trigger is `{owner, template | pipeline, source, filter, params,
+origin, run_as, dedupe, concurrency, rate_limit, creates}`. It starts a
+template or a pipeline. `origin` records where the request came from:
+the issue, the PR, the chat thread. Each provider has a default, and
+outputs addressed to `{origin: true}` go there.
 
 | Source | For | Notes |
 |---|---|---|
 | `schedule` | digests, sweeps, check-back-later | `cron` with a required IANA `timezone`, `jitter_s`, `catch_up: none \| latest`, `overlap: skip \| queue`, start and end |
 | `event` | Jira transitions, PR opened/updated/commented/merged, build failed, artifact published, generic signed webhooks | normalised `Event`, signature-checked and sanitised at `POST /v1/events/{provider}` |
 | `run_outcome` | chaining across owners | another template's terminal and status |
-| `manual` | chat commands, UI buttons | binds params and policy to an entry point; the invoking user is the principal |
+| `manual` | chat commands, UI buttons | binds params and policy to an entry point; `run_as: invoker` makes the invoking user the principal |
 
 **Expressions are CEL**, evaluated by the harness, never by or for the
 model. They can be checked for cost before they run, and they can't
@@ -565,7 +856,9 @@ loop. The variables:
 | trigger `filter`, `params`, `dedupe.key`, `concurrency.key`, `run_as.actor` | `event` |
 | spec `concurrency.key`, sink `idempotency_key`, `ChannelRef.target` | `params`, `principal`, `run` |
 | continuation `on.expr`, `params` | `params`, `result`, `principal`, `run`, and `spinoff` (with `index`, `title`, `paths`, `kinds`) on spinoff edges |
-| sink `when.expr` | `params`, `result`, `run` |
+| sink `when.expr`, sink `args` | `params`, `result`, `run`; on a pipeline sink also `pipeline`, `stage` |
+| pipeline stage `params`, edge `params`, edge `on.expr` | `pipeline`, `origin`, `principal`; on an edge also `result` |
+| a fixed tool argument | `params`, `run` (including `run.workspace.path`) |
 
 Free text from `event` can only reach params with `trust: external`,
 which can only bind to inputs (§6). So a PR title can become a
@@ -630,14 +923,21 @@ queued → provisioning → running ⇄ finalizing → ended
   has its own permission and is audited.
 - **Lineage**: `root_run_id` and `depth` across continuations, and
   `resumes` for a resume. `GET /v1/runs?root_run_id=` is everything one
-  request led to.
+  request led to. A stage run also carries `pipeline_run_id` and
+  `stage`.
+- **Finishers** set `outcome.finisher` (`{id, external_ref}`, e.g. the
+  PR it opened), so a pipeline edge or sink can tell which ending was
+  chosen.
 
 ---
 
 ## 11. Publish rules
 
 The checks a JSON Schema can't express. `:validate` and `:publish` run
-them; `check.py` implements each one against the examples.
+them; `check.py` implements each one against the examples. The one part
+it can't do is R13's comparison with a server's own input schema: the
+example snapshots carry digests rather than schemas. That half runs at
+publish against the real snapshot.
 
 | Rule | Checks |
 |---|---|
@@ -646,13 +946,23 @@ them; `check.py` implements each one against the examples.
 | R3 | the spawn graph names real roles; `kind_grants` keys are in `spawn_kinds` |
 | R4 | params: declared; `external`/`principal` bind only to inputs; config-bound params are constrained; grant-bearing fields take no params |
 | R5 | `completion.form: text` has no report schema, gates or spinoffs, and status `done` only |
-| R6 | HandOff reasons and handoff continuations match one to one; harness-trigger handoffs name declared reasons |
-| R7 | continuations: the target exists, its required params are bound, its carry inputs accept what is carried, spinoff edges have spinoffs enabled and a ledger, and the landing tier is within `max_tier`; `approve` questions have an execute edge |
+| R6 | harness-trigger handoffs name declared reasons; a template with HandOff reasons that no pipeline wires is a warning, since alone it has no HandOff |
+| R7 | continuations (to `self` only, by schema): required params bound, carry inputs accept what is carried, spinoff edges have spinoffs enabled and a ledger; `approve` questions have an execute edge |
 | R8 | `Expand` reveals only what the orchestrator is granted; `array_growth.bundle` is revealable; hidden groups have a reveal path (warning) |
 | R9 | a read-only or absent workspace grants no `Edit`/`Write` |
 | R10 | literal tiers are within `max_tier`; a clamped child above its parent is a warning |
-| R11 | tool names, after aliasing, are unique per role |
-| R12 | no write tool on a service-credentialed server in a template users can run, unless the server has `entitlement_check: harness_policy` |
+| R11 | tool names, after aliasing, are unique per role, including finisher names and generated tools |
+| R12 | no write tool (granted, wrapped by a finisher, or called by a pipeline sink) on a service-credentialed server in anything users can run, unless the server has `entitlement_check: harness_policy` |
+| R13 | argument overrides only narrow: a hidden argument is fixed, an enum is a subset of the server's, a maximum only goes down; a fixed `$param` is a config param of the template; other overrides on a fixed argument are a warning |
+| R14 | finishers: `complete: false` needs at least one; each ends with a declared status; `report` needs a report schema; a wrapped tool is declared; `open_pull_request` needs a writable checkout with `git_writes: on_finish`, and `on_finish` needs an `open_pull_request` finisher |
+| P1 | a pipeline's entry and edges name real stages; every `pipeline.params.x` it reads is declared |
+| P2 | every exit an edge waits on (status, finisher, HandOff reason) exists in that stage's template; every HandOff reason of every stage is wired |
+| P3 | each edge's carry is accepted by the next stage's template |
+| P4 | every route into every stage (the entry, and each incoming edge) binds that template's required params, and only params it declares |
+| P5 | no stage runs above the pipeline's `max_tier` |
+| P6 | every stage is reachable, the graph is acyclic, and the longest path is within `max_hops` |
+| P7 | there is a principal type every stage allows |
+| P8 | pipeline sinks call only tools the pipeline declares, on servers it declares |
 
 At resolve time, before a run starts: tool snapshot drift, delegation
 scope and consent digest, deployment tier ceiling, param values against
@@ -671,9 +981,12 @@ pagination. `:verb` for actions.
 | Resource | Operations |
 |---|---|
 | MCP servers | CRUD, `:discover` (new snapshot + diff), `snapshots/{digest}` |
-| Tool groups, prompts, report schemas | versioned create, get |
+| Tool groups | versions: draft create/replace, get, `:publish` (pins snapshots, checks R13), `:preview` (each tool as the model sees it) |
+| Prompts, report schemas | versioned create, get |
 | Templates | list, versions, draft create/replace, `:validate`, `:publish`, `:deprecate`, `:render` |
-| Runs | create (or `dry_run`), get, list (by template, state, principal, root, task), `events` (SSE), `transcript`, `artifacts`, `:stop`, delivery `:retry` |
+| Pipelines | list, versions, draft create, get, `:publish` (P1–P8) |
+| Pipeline runs | list, get (stage runs, gate, outcome), `:stop` |
+| Runs | create for a template, a pipeline or an `adhoc` body (or `dry_run`), get, list (by template, state, principal, root, task), `events` (SSE), `transcript`, `artifacts`, `:stop`, delivery `:retry` |
 | Gates | list (`answerable_by=me`), get, `replies`, `:cancel` |
 | Tasks | list (with `health=` for `orchestration.md` §7's queries), file, get, `:retry`, `:abandon` |
 | Triggers | CRUD, `:fire` (test by default), `:pause`, `:resume`, `firings` |
@@ -695,9 +1008,11 @@ The examples are the mapping, and `check.py` passes on them:
 | Forge | Platform |
 |---|---|
 | coding `implement` | [`forge.implement`](./platform/examples/forge.implement.template.json) |
-| coding `plan` | [`forge.plan`](./platform/examples/forge.plan.template.json), `extends` implement, read-only workspace, `jira.comment` granted, `require_tool_called: AddComment`, gated edge to implement bound to `plan_hash` |
-| review, multi-stage | [`forge.review`](./platform/examples/forge.review.template.json): `reviewer` with `spawn_kinds` and `kind_grants.visual = [vision]`, `validator` at `strong` with `clamp_to_parent: false`, attention tier as a `commit_status` sink, review → fix as an approval-gated continuation |
-| analysis quick run and landings | [`analysis.quick`](./platform/examples/analysis.quick.template.json) → [`analysis.investigate`](./platform/examples/analysis.investigate.template.json) / [`analysis.report`](./platform/examples/analysis.report.template.json) |
+| coding `plan` | [`forge.plan`](./platform/examples/forge.plan.template.json), `extends` implement, read-only workspace, `jira.comment` granted, `require_tool_called: AddComment` |
+| plan → implement handoff | pipeline [`jira.plan-implement`](./platform/examples/jira-plan-implement.pipeline.json), edge gated on `plan_hash` |
+| review, multi-stage | [`forge.review`](./platform/examples/forge.review.template.json): `reviewer` with `spawn_kinds` and `kind_grants.visual = [vision]`, `validator` at `strong` with `clamp_to_parent: false`, attention tier as a `commit_status` sink |
+| review → fix | pipeline [`pr.review-fix`](./platform/examples/pr-review-fix.pipeline.json), approval by the PR author |
+| analysis quick run and landings | pipeline [`analysis`](./platform/examples/analysis.pipeline.json): [`analysis.quick`](./platform/examples/analysis.quick.template.json) → [`analysis.investigate`](./platform/examples/analysis.investigate.template.json) / [`analysis.report`](./platform/examples/analysis.report.template.json) |
 | "the job declares, roles get subsets" | `tools.groups` + `roles.*.grant`, R1 |
 | `AddComment` absent in `implement` | declared in `tools.groups`, not granted to the orchestrator |
 | AskUser `approve` → fresh execute run | continuation `execute_approved`, `carry: [approved_action, resumed_answer]`, no transcript |
@@ -713,8 +1028,14 @@ Recorded in the README decision log (2026-10-23 rows). In short:
 - Mode is a template, not a field: `extends` plus narrowing replaces
   `mode`.
 - Terminal tools are generated from contracts, never flagged (§5).
-- Outputs split into effects (tools), result, sinks and continuations,
-  by who decides (§7). Every inter-run edge is a declared continuation.
+- Outputs split into effects (tools), result, sinks, continuations and
+  pipeline edges, by who decides (§7). Every inter-run edge is declared.
+- *Revised against the use cases:* finishers let a template choose its
+  endings from real tools while the harness keeps termination (§5a);
+  saved tool groups carry per-tool visibility and narrowing argument
+  overrides (§4b); continuations go back into the same template only,
+  and edges between templates belong to pipelines (§7c, §7e); `invoker`
+  mints a session delegation for one pipeline run (§8).
 - Params never reach prompt text; trust decides where they bind;
   grant-bearing fields take no params (§6).
 - MCP tool lists are pinned by snapshot digest per template version
@@ -729,18 +1050,25 @@ Recorded in the README decision log (2026-10-23 rows). In short:
   report shapes are in `formats.md` §3 as prose plus JSON. They need
   extracting into versioned schemas before `:publish` can validate
   against them.
-- **Delegation for continuations.** A continuation with `run_as: same`
-  after the user's session has ended needs a delegation. The current
-  rule is that the root run's delegation (if any) is inherited and
-  checked against the target template. If there was none, the edge
-  refuses with `delegation_missing`. Whether an interactive root run
-  should mint a short-lived delegation automatically is not decided.
+- **Delegation for continuations.** Mostly settled by `invoker`'s
+  session delegation (§8), which covers a pipeline started from chat or
+  the UI. Still open: a template run directly from the API by a user,
+  whose `follows_this` spinoff is approved days later. Today that edge
+  refuses with `delegation_missing` unless the user holds a stored
+  delegation.
+- **More harness finishers.** `open_pull_request` and `request_help`
+  are what the use cases need. Candidates are a draft PR (a config flag
+  today), publishing an artifact, and merging. Merging is deliberately
+  not on the list: it's an approval, and an agent can't approve its own
+  work.
 - **Draft runs.** Drafts run only with `dry_run`. A "run a draft
   against a sandbox deployment" mode is probably needed for eval
   (`eval.md`), and isn't specified.
-- **Group registry versioning** is sketched (`{ref: {name, version}}`)
-  but publish-time expansion of a shared group into a template's frozen
-  spec isn't argued for here beyond "same as `extends`".
+- **A saved group's new version** doesn't reach templates until they
+  are re-published against it. That's the right default for review, and
+  it makes "roll a fix to the Java group out to fifty templates" a
+  bulk re-publish. A `:republish-dependents` operation is probably
+  wanted and isn't specified.
 - **Hidden-tool reveal on Anthropic** is still unverified
   (`tools.md` rule 3), so `visibility: hidden` may resolve to `deferred`
   on that provider. The resolver records what it chose.

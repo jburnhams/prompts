@@ -1,0 +1,365 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.example/schemas/pipeline.schema.json",
+  "title": "Pipeline",
+  "description": "A versioned graph of template stages. Stages are templates used as they are; edges wire one stage's exits (statuses, finishers, HandOff reasons, gate answers) to the next stage. See ../../platform.md \u00a77e.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "$ref": "common.schema.json#/$defs/Name"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/Version"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published",
+        "deprecated"
+      ],
+      "readOnly": true
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "owner": {
+      "$ref": "common.schema.json#/$defs/PrincipalRef"
+    },
+    "params": {
+      "type": "object",
+      "description": "The pipeline's own params, the same ParamSpec as a template's. Stages read them as pipeline.params.",
+      "propertyNames": {
+        "$ref": "common.schema.json#/$defs/Name"
+      },
+      "additionalProperties": {
+        "$ref": "template.schema.json#/$defs/ParamSpec"
+      }
+    },
+    "entry": {
+      "$ref": "common.schema.json#/$defs/Name"
+    },
+    "stages": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "common.schema.json#/$defs/Name"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/Stage"
+      },
+      "minProperties": 1
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Edge"
+      }
+    },
+    "sinks": {
+      "type": "array",
+      "description": "Delivered once, when the pipeline run ends. `stage` and `result` in expressions are the last stage's.",
+      "items": {
+        "$ref": "agent-spec.schema.json#/$defs/Sink"
+      }
+    },
+    "max_hops": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 3
+    },
+    "max_tier": {
+      "$ref": "common.schema.json#/$defs/Tier",
+      "description": "No stage may run above this; also checked against each stage template's own max_tier."
+    },
+    "resolved": {
+      "readOnly": true,
+      "type": "object",
+      "properties": {
+        "stages": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/VersionedRef"
+          }
+        },
+        "digest": {
+          "$ref": "common.schema.json#/$defs/Digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "labels": {
+      "$ref": "common.schema.json#/$defs/Labels"
+    },
+    "tools": {
+      "$ref": "agent-spec.schema.json#/$defs/ToolsSpec",
+      "description": "Tools the pipeline's own sinks call (a Jira transition at the end). Never granted to a stage."
+    }
+  },
+  "required": [
+    "name",
+    "params",
+    "entry",
+    "stages",
+    "edges"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Stage": {
+      "type": "object",
+      "properties": {
+        "template": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "$ref": "common.schema.json#/$defs/Name"
+            },
+            "version": {
+              "anyOf": [
+                {
+                  "$ref": "common.schema.json#/$defs/Version"
+                },
+                {
+                  "const": "pinned"
+                }
+              ]
+            }
+          },
+          "required": [
+            "name",
+            "version"
+          ],
+          "additionalProperties": false
+        },
+        "params": {
+          "type": "object",
+          "description": "The stage template's params, as expressions over pipeline.params, origin and principal. An edge into the stage may add or override them from the previous result.",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "$ref": "common.schema.json#/$defs/Expr"
+              },
+              {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "array"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "template"
+      ],
+      "additionalProperties": false
+    },
+    "Edge": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "from": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "on": {
+          "type": "object",
+          "description": "Exactly one exit of the from stage.",
+          "properties": {
+            "terminal": {
+              "$ref": "common.schema.json#/$defs/Terminal"
+            },
+            "status": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/CompleteStatus"
+              }
+            },
+            "finisher": {
+              "type": "string",
+              "description": "A finisher id of the from stage's template."
+            },
+            "handoff_reason": {
+              "type": "string"
+            },
+            "expr": {
+              "$ref": "common.schema.json#/$defs/Expr"
+            }
+          },
+          "required": [
+            "terminal"
+          ],
+          "additionalProperties": false
+        },
+        "to": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "$ref": "common.schema.json#/$defs/Expr"
+              },
+              {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "array"
+                ]
+              }
+            ]
+          }
+        },
+        "carry": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "plan",
+              "prior_attempt",
+              "findings",
+              "artifacts"
+            ]
+          },
+          "description": "Envelope blocks the next stage receives; it must declare a matching carry input. Never a transcript."
+        },
+        "gate": {
+          "$ref": "agent-spec.schema.json#/$defs/Continuation/properties/gate"
+        },
+        "announce": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Posted to the origin channel when the edge is taken, e.g. 'Taking a closer look, this will take a few minutes.'"
+        },
+        "via": {
+          "type": "string",
+          "enum": [
+            "run",
+            "task"
+          ],
+          "default": "run"
+        }
+      },
+      "required": [
+        "id",
+        "from",
+        "on",
+        "to",
+        "gate"
+      ],
+      "additionalProperties": false
+    },
+    "PipelineRun": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "pipeline": {
+          "$ref": "common.schema.json#/$defs/VersionedRef"
+        },
+        "params": {
+          "type": "object"
+        },
+        "principal": {
+          "$ref": "common.schema.json#/$defs/PrincipalRef"
+        },
+        "requested_by": {
+          "$ref": "common.schema.json#/$defs/PrincipalRef"
+        },
+        "delegation_id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "origin": {
+          "$ref": "common.schema.json#/$defs/Origin"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "running",
+            "waiting",
+            "ended"
+          ],
+          "description": "waiting: on a gate between stages."
+        },
+        "stages": {
+          "type": "array",
+          "description": "Stage runs in order.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "stage": {
+                "$ref": "common.schema.json#/$defs/Name"
+              },
+              "run_id": {
+                "$ref": "common.schema.json#/$defs/Id"
+              },
+              "task_id": {
+                "$ref": "common.schema.json#/$defs/Id"
+              },
+              "via_edge": {
+                "$ref": "common.schema.json#/$defs/Name"
+              }
+            },
+            "required": [
+              "stage"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "gate_id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "outcome": {
+          "type": "object",
+          "description": "The last stage's outcome, plus which stage it was.",
+          "properties": {
+            "stage": {
+              "$ref": "common.schema.json#/$defs/Name"
+            },
+            "run_outcome": {
+              "$ref": "run.schema.json#/$defs/Outcome"
+            },
+            "refusal": {
+              "$ref": "common.schema.json#/$defs/RefusalCode"
+            }
+          },
+          "required": [
+            "stage"
+          ],
+          "additionalProperties": false
+        },
+        "deliveries": {
+          "type": "array",
+          "items": {
+            "$ref": "run.schema.json#/$defs/Delivery"
+          }
+        },
+        "created_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "ended_at": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "id",
+        "pipeline",
+        "principal",
+        "state",
+        "stages",
+        "created_at"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

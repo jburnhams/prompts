@@ -2,77 +2,144 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://forge.example/schemas/agent-spec.schema.json",
   "title": "AgentSpec",
-  "description": "Everything that defines one agent run, before parameters are bound. A template wraps one of these (template.schema.json); a run snapshots the bound, flattened result (run.schema.json ResolvedSpec). See ../../platform.md §3.",
+  "description": "Everything that defines one agent run, before parameters are bound. A template wraps one of these (template.schema.json); a run snapshots the bound, flattened result (run.schema.json ResolvedSpec). See ../../platform.md \u00a73.",
   "type": "object",
   "properties": {
-    "description": { "type": "string", "maxLength": 2000 },
-    "model": { "$ref": "#/$defs/ModelSpec" },
-    "system_prompt": { "$ref": "#/$defs/PromptSpec" },
+    "description": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "model": {
+      "$ref": "#/$defs/ModelSpec"
+    },
+    "system_prompt": {
+      "$ref": "#/$defs/PromptSpec"
+    },
     "inputs": {
       "type": "array",
-      "items": { "$ref": "#/$defs/InputSlot" },
+      "items": {
+        "$ref": "#/$defs/InputSlot"
+      },
       "description": "The task envelope, in order. The starting query is one of these: an input of kind instruction."
     },
-    "context": { "$ref": "#/$defs/ContextSpec" },
-    "workspace": { "$ref": "#/$defs/WorkspaceSpec" },
-    "tools": { "$ref": "#/$defs/ToolsSpec" },
+    "context": {
+      "$ref": "#/$defs/ContextSpec"
+    },
+    "workspace": {
+      "$ref": "#/$defs/WorkspaceSpec"
+    },
+    "tools": {
+      "$ref": "#/$defs/ToolsSpec"
+    },
     "roles": {
       "type": "object",
-      "properties": { "orchestrator": { "$ref": "#/$defs/RoleSpec" } },
-      "required": ["orchestrator"],
-      "additionalProperties": { "$ref": "#/$defs/SubagentRoleSpec" },
-      "propertyNames": { "$ref": "common.schema.json#/$defs/Name" },
+      "properties": {
+        "orchestrator": {
+          "$ref": "#/$defs/RoleSpec"
+        }
+      },
+      "required": [
+        "orchestrator"
+      ],
+      "additionalProperties": {
+        "$ref": "#/$defs/SubagentRoleSpec"
+      },
+      "propertyNames": {
+        "$ref": "common.schema.json#/$defs/Name"
+      },
       "description": "orchestrator is the top-level context. Every other key is a sub-agent role it (or another role) may spawn."
     },
-    "human": { "$ref": "#/$defs/HumanSpec" },
-    "completion": { "$ref": "#/$defs/CompletionSpec" },
-    "hatches": { "$ref": "#/$defs/HatchesSpec" },
+    "human": {
+      "$ref": "#/$defs/HumanSpec"
+    },
+    "completion": {
+      "$ref": "#/$defs/CompletionSpec"
+    },
+    "hatches": {
+      "$ref": "#/$defs/HatchesSpec"
+    },
     "harness_triggers": {
       "type": "array",
-      "items": { "$ref": "#/$defs/HarnessTrigger" },
-      "description": "Signals the harness acts on without the model calling anything (models.md §5)."
+      "items": {
+        "$ref": "#/$defs/HarnessTrigger"
+      },
+      "description": "Signals the harness acts on without the model calling anything (models.md \u00a75)."
     },
-    "budgets": { "$ref": "#/$defs/Budgets" },
-    "outputs": { "$ref": "#/$defs/OutputsSpec" },
-    "authority": { "$ref": "#/$defs/AuthoritySpec" },
-    "concurrency": { "$ref": "#/$defs/ConcurrencySpec" },
-    "ledger": { "$ref": "#/$defs/LedgerSpec" },
-    "labels": { "$ref": "common.schema.json#/$defs/Labels" }
+    "budgets": {
+      "$ref": "#/$defs/Budgets"
+    },
+    "outputs": {
+      "$ref": "#/$defs/OutputsSpec"
+    },
+    "authority": {
+      "$ref": "#/$defs/AuthoritySpec"
+    },
+    "concurrency": {
+      "$ref": "#/$defs/ConcurrencySpec"
+    },
+    "ledger": {
+      "$ref": "#/$defs/LedgerSpec"
+    },
+    "labels": {
+      "$ref": "common.schema.json#/$defs/Labels"
+    }
   },
-  "required": ["model", "system_prompt", "roles", "completion"],
+  "required": [
+    "model",
+    "system_prompt",
+    "roles",
+    "completion"
+  ],
   "additionalProperties": false,
-
   "$defs": {
     "ModelSpec": {
       "type": "object",
       "properties": {
-        "tier": { "$ref": "common.schema.json#/$defs/BindableTier" },
-        "effort": { "$ref": "common.schema.json#/$defs/Effort" },
+        "tier": {
+          "$ref": "common.schema.json#/$defs/BindableTier"
+        },
+        "effort": {
+          "$ref": "common.schema.json#/$defs/Effort"
+        },
         "max_tier": {
           "$ref": "common.schema.json#/$defs/Tier",
           "description": "Ceiling for this run and for anything it continues into. The deployment ceiling still applies on top. Never bindable."
         }
       },
-      "required": ["tier"],
+      "required": [
+        "tier"
+      ],
       "additionalProperties": false
     },
-
     "PromptSpec": {
       "type": "object",
-      "description": "Fixed text plus generated blocks. Params never reach this text, so every run of a template version shares one cacheable prefix (platform.md §6, invariant 3).",
+      "description": "Fixed text plus generated blocks. Params never reach this text, so every run of a template version shares one cacheable prefix (platform.md \u00a76, invariant 3).",
       "properties": {
         "base": {
           "oneOf": [
             {
               "type": "object",
-              "properties": { "ref": { "$ref": "common.schema.json#/$defs/VersionedRef" } },
-              "required": ["ref"],
+              "properties": {
+                "ref": {
+                  "$ref": "common.schema.json#/$defs/VersionedRef"
+                }
+              },
+              "required": [
+                "ref"
+              ],
               "additionalProperties": false
             },
             {
               "type": "object",
-              "properties": { "inline": { "type": "string", "minLength": 1 } },
-              "required": ["inline"],
+              "properties": {
+                "inline": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "inline"
+              ],
               "additionalProperties": false
             }
           ]
@@ -83,140 +150,352 @@
           "items": {
             "type": "object",
             "properties": {
-              "heading": { "type": "string" },
+              "heading": {
+                "type": "string"
+              },
               "when": {
                 "oneOf": [
-                  { "type": "object", "properties": { "tool_absent": { "type": "string" } }, "required": ["tool_absent"], "additionalProperties": false },
-                  { "type": "object", "properties": { "tier": { "$ref": "common.schema.json#/$defs/Tier" } }, "required": ["tier"], "additionalProperties": false }
+                  {
+                    "type": "object",
+                    "properties": {
+                      "tool_absent": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "tool_absent"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "tier": {
+                        "$ref": "common.schema.json#/$defs/Tier"
+                      }
+                    },
+                    "required": [
+                      "tier"
+                    ],
+                    "additionalProperties": false
+                  }
                 ]
               }
             },
-            "required": ["heading", "when"],
+            "required": [
+              "heading",
+              "when"
+            ],
             "additionalProperties": false
           }
         },
         "generated": {
           "type": "array",
           "description": "Harness-generated blocks appended in this order.",
-          "items": { "type": "string", "enum": ["env", "capabilities", "git_status", "repo_context", "data_overview"] },
+          "items": {
+            "type": "string",
+            "enum": [
+              "env",
+              "capabilities",
+              "git_status",
+              "repo_context",
+              "data_overview"
+            ]
+          },
           "uniqueItems": true
         }
       },
-      "required": ["base"],
+      "required": [
+        "base"
+      ],
       "additionalProperties": false
     },
-
     "InputSlot": {
       "type": "object",
       "description": "One tagged block of the task envelope. Anything not authored by harness or config is nonce-wrapped and sanitised.",
       "properties": {
-        "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,40}$", "description": "The tag name the model sees." },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,40}$",
+          "description": "The tag name the model sees."
+        },
         "kind": {
           "type": "string",
-          "enum": ["instruction", "task_header", "issue", "pull_request", "diff", "comments", "plan", "prior_attempt", "resumed_answer", "other_replies", "approved_action", "findings", "document", "json"]
+          "enum": [
+            "instruction",
+            "task_header",
+            "issue",
+            "pull_request",
+            "diff",
+            "comments",
+            "plan",
+            "prior_attempt",
+            "resumed_answer",
+            "other_replies",
+            "approved_action",
+            "findings",
+            "document",
+            "json"
+          ]
         },
         "source": {
           "oneOf": [
             {
               "type": "object",
-              "properties": { "param": { "$ref": "common.schema.json#/$defs/Name" } },
-              "required": ["param"],
+              "properties": {
+                "param": {
+                  "$ref": "common.schema.json#/$defs/Name"
+                }
+              },
+              "required": [
+                "param"
+              ],
               "additionalProperties": false
             },
             {
               "type": "object",
               "description": "Pre-fetched by the harness before turn 0, through a tool the job declares, under the run's credentials.",
               "properties": {
-                "fetch": { "$ref": "common.schema.json#/$defs/ToolAddress" },
-                "args": { "type": "object", "additionalProperties": { "anyOf": [{ "$ref": "common.schema.json#/$defs/ParamRef" }, { "$ref": "common.schema.json#/$defs/Expr" }, { "type": ["string", "number", "boolean"] }] } }
+                "fetch": {
+                  "$ref": "common.schema.json#/$defs/ToolAddress"
+                },
+                "args": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "$ref": "common.schema.json#/$defs/ParamRef"
+                      },
+                      {
+                        "$ref": "common.schema.json#/$defs/Expr"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number",
+                          "boolean"
+                        ]
+                      }
+                    ]
+                  }
+                }
               },
-              "required": ["fetch"],
+              "required": [
+                "fetch"
+              ],
               "additionalProperties": false
             },
             {
               "type": "object",
-              "description": "Filled by a continuation or a resume (platform.md §7). Absent on a fresh run.",
-              "properties": { "carry": { "type": "string", "enum": ["plan", "prior_attempt", "resumed_answer", "other_replies", "approved_action", "findings", "spinoff_report"] } },
-              "required": ["carry"],
+              "description": "Filled by a continuation or a resume (platform.md \u00a77). Absent on a fresh run.",
+              "properties": {
+                "carry": {
+                  "type": "string",
+                  "enum": [
+                    "plan",
+                    "prior_attempt",
+                    "resumed_answer",
+                    "other_replies",
+                    "approved_action",
+                    "findings",
+                    "spinoff_report"
+                  ]
+                }
+              },
+              "required": [
+                "carry"
+              ],
               "additionalProperties": false
             },
             {
               "type": "object",
               "description": "Built by a harness component (the review diff builder, the comment-thread model).",
-              "properties": { "builder": { "type": "string", "enum": ["review_diff", "changed_files", "comment_threads", "task_header"] } },
-              "required": ["builder"],
+              "properties": {
+                "builder": {
+                  "type": "string",
+                  "enum": [
+                    "review_diff",
+                    "changed_files",
+                    "comment_threads",
+                    "task_header"
+                  ]
+                }
+              },
+              "required": [
+                "builder"
+              ],
               "additionalProperties": false
             }
           ]
         },
-        "trust": { "$ref": "common.schema.json#/$defs/Trust" },
-        "required": { "type": "boolean", "default": true },
-        "max_bytes": { "type": "integer", "minimum": 1 }
+        "trust": {
+          "$ref": "common.schema.json#/$defs/Trust"
+        },
+        "required": {
+          "type": "boolean",
+          "default": true
+        },
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
       },
-      "required": ["name", "kind", "source", "trust"],
+      "required": [
+        "name",
+        "kind",
+        "source",
+        "trust"
+      ],
       "additionalProperties": false
     },
-
     "ContextSpec": {
       "type": "object",
       "properties": {
         "conventions": {
           "type": "object",
-          "description": "Resolution against the context service (context-files.md §1b). A failed resolution means the run does not start.",
+          "description": "Resolution against the context service (context-files.md \u00a71b). A failed resolution means the run does not start.",
           "properties": {
-            "tiers": { "type": "array", "items": { "type": "string", "enum": ["org", "team", "repo", "learned"] }, "uniqueItems": true },
-            "team": { "$ref": "common.schema.json#/$defs/BindableString" },
-            "paths": { "$ref": "common.schema.json#/$defs/BindableStringList" },
-            "kinds": { "$ref": "common.schema.json#/$defs/BindableStringList" },
-            "at": { "type": "string", "enum": ["working_tree", "base_sha"], "description": "base_sha for review: conventions are read where the PR cannot edit them." },
-            "budget_bytes": { "type": "integer", "minimum": 0, "default": 32768 }
+            "tiers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "org",
+                  "team",
+                  "repo",
+                  "learned"
+                ]
+              },
+              "uniqueItems": true
+            },
+            "team": {
+              "$ref": "common.schema.json#/$defs/BindableString"
+            },
+            "paths": {
+              "$ref": "common.schema.json#/$defs/BindableStringList"
+            },
+            "kinds": {
+              "$ref": "common.schema.json#/$defs/BindableStringList"
+            },
+            "at": {
+              "type": "string",
+              "enum": [
+                "working_tree",
+                "base_sha"
+              ],
+              "description": "base_sha for review: conventions are read where the PR cannot edit them."
+            },
+            "budget_bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 32768
+            }
           },
-          "required": ["tiers"],
+          "required": [
+            "tiers"
+          ],
           "additionalProperties": false
         },
         "data_overview": {
           "type": "object",
-          "description": "The quick analysis run's source list (system-prompts.md §8a).",
+          "description": "The quick analysis run's source list (system-prompts.md \u00a78a).",
           "properties": {
-            "sources_from": { "$ref": "common.schema.json#/$defs/ToolAddress" },
-            "max_listed": { "type": "integer", "minimum": 0, "default": 12 },
-            "announce_hidden": { "type": "boolean", "default": true, "description": "Append 'N further sources are not listed here. If the question needs one, call Expand.'" }
+            "sources_from": {
+              "$ref": "common.schema.json#/$defs/ToolAddress"
+            },
+            "max_listed": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 12
+            },
+            "announce_hidden": {
+              "type": "boolean",
+              "default": true,
+              "description": "Append 'N further sources are not listed here. If the question needs one, call Expand.'"
+            }
           },
-          "required": ["sources_from"],
+          "required": [
+            "sources_from"
+          ],
           "additionalProperties": false
         }
       },
       "additionalProperties": false
     },
-
     "WorkspaceSpec": {
       "oneOf": [
         {
           "type": "object",
-          "properties": { "kind": { "const": "none" } },
-          "required": ["kind"],
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          },
+          "required": [
+            "kind"
+          ],
           "additionalProperties": false
         },
         {
           "type": "object",
           "properties": {
-            "kind": { "const": "checkout" },
-            "repository": { "$ref": "common.schema.json#/$defs/BindableString" },
-            "base_ref": { "$ref": "common.schema.json#/$defs/BindableString" },
-            "target_branch": { "$ref": "common.schema.json#/$defs/BindableString" },
-            "head_sha": { "$ref": "common.schema.json#/$defs/BindableString", "description": "Review runs check out the PR head read-only." },
-            "provision": { "type": "string", "enum": ["worktree", "clone", "sparse_clone"], "default": "worktree" },
-            "writable": { "type": "boolean", "description": "false registers no write tools for any role, whatever their grant says." },
-            "write_scope": { "$ref": "common.schema.json#/$defs/BindableStringList", "description": "Path globs a write may touch. Outside it the run files a spinoff." },
-            "scratch": { "type": "boolean", "default": true, "description": "A per-run directory outside the working tree, named in <env>." },
-            "git_writes": { "const": "deny", "description": "v1 has one value. Commit, push, branch and PR creation belong to the committer downstream." }
+            "kind": {
+              "const": "checkout"
+            },
+            "repository": {
+              "$ref": "common.schema.json#/$defs/BindableString"
+            },
+            "base_ref": {
+              "$ref": "common.schema.json#/$defs/BindableString"
+            },
+            "target_branch": {
+              "$ref": "common.schema.json#/$defs/BindableString"
+            },
+            "head_sha": {
+              "$ref": "common.schema.json#/$defs/BindableString",
+              "description": "Review runs check out the PR head read-only."
+            },
+            "provision": {
+              "type": "string",
+              "enum": [
+                "worktree",
+                "clone",
+                "sparse_clone"
+              ],
+              "default": "worktree"
+            },
+            "writable": {
+              "type": "boolean",
+              "description": "false registers no write tools for any role, whatever their grant says."
+            },
+            "write_scope": {
+              "$ref": "common.schema.json#/$defs/BindableStringList",
+              "description": "Path globs a write may touch. Outside it the run files a spinoff."
+            },
+            "scratch": {
+              "type": "boolean",
+              "default": true,
+              "description": "A per-run directory outside the working tree, named in <env>."
+            },
+            "git_writes": {
+              "type": "string",
+              "enum": [
+                "deny",
+                "on_finish"
+              ],
+              "default": "deny",
+              "description": "deny: no commit, push, branch or PR from the run; the committer downstream does it. on_finish: the harness commits, pushes and opens a PR when the model calls an open_pull_request finisher, after its gates pass, under harness-owned git identity. The model never runs git writes itself in either case."
+            }
           },
-          "required": ["kind", "repository", "writable"],
+          "required": [
+            "kind",
+            "repository",
+            "writable"
+          ],
           "additionalProperties": false
         }
       ]
     },
-
     "ToolsSpec": {
       "type": "object",
       "description": "The job's declaration: the universe every role's grant is a subset of. Nothing outside it can be granted, revealed or called.",
@@ -227,10 +506,17 @@
           "items": {
             "type": "object",
             "properties": {
-              "id": { "$ref": "common.schema.json#/$defs/Name" },
-              "snapshot": { "$ref": "common.schema.json#/$defs/Digest", "description": "Filled at publish if omitted in a draft." }
+              "id": {
+                "$ref": "common.schema.json#/$defs/Name"
+              },
+              "snapshot": {
+                "$ref": "common.schema.json#/$defs/Digest",
+                "description": "Filled at publish if omitted in a draft."
+              }
             },
-            "required": ["id"],
+            "required": [
+              "id"
+            ],
             "additionalProperties": false
           }
         },
@@ -238,92 +524,182 @@
           "type": "array",
           "items": {
             "oneOf": [
-              { "$ref": "tools.schema.json#/$defs/ToolGroup" },
+              {
+                "$ref": "tools.schema.json#/$defs/ToolGroup"
+              },
               {
                 "type": "object",
-                "properties": { "ref": { "$ref": "common.schema.json#/$defs/VersionedRef" } },
-                "required": ["ref"],
-                "additionalProperties": false
+                "properties": {
+                  "ref": {
+                    "$ref": "common.schema.json#/$defs/VersionedRef"
+                  },
+                  "id": {
+                    "$ref": "common.schema.json#/$defs/Name",
+                    "description": "Id used in grants. Defaults to the group's name."
+                  }
+                },
+                "required": [
+                  "ref"
+                ],
+                "additionalProperties": false,
+                "description": "A saved tool group (tools.schema.json SavedToolGroup), by version."
               }
             ]
           }
         },
-        "checks": { "type": "array", "items": { "$ref": "tools.schema.json#/$defs/HarnessCheck" } }
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "tools.schema.json#/$defs/HarnessCheck"
+          }
+        }
       },
-      "required": ["groups"],
+      "required": [
+        "groups"
+      ],
       "additionalProperties": false
     },
-
     "RoleSpec": {
       "type": "object",
       "properties": {
         "model": {
           "type": "object",
-          "properties": { "tier": { "$ref": "common.schema.json#/$defs/BindableTier" }, "effort": { "$ref": "common.schema.json#/$defs/Effort" } },
+          "properties": {
+            "tier": {
+              "$ref": "common.schema.json#/$defs/BindableTier"
+            },
+            "effort": {
+              "$ref": "common.schema.json#/$defs/Effort"
+            }
+          },
           "additionalProperties": false
         },
         "grant": {
           "type": "array",
-          "items": { "$ref": "common.schema.json#/$defs/Name" },
+          "items": {
+            "$ref": "common.schema.json#/$defs/Name"
+          },
           "description": "Group ids from tools.groups. Siblings, not a chain: a sub-agent's grant is a subset of the job's declaration, not of its spawner's."
         },
         "visibility": {
           "type": "object",
           "description": "Per-role override of a group's or a tool's default visibility. Keys are group ids or tool addresses.",
-          "additionalProperties": { "$ref": "tools.schema.json#/$defs/Visibility" }
+          "additionalProperties": {
+            "$ref": "tools.schema.json#/$defs/Visibility"
+          }
         },
-        "kinds": { "type": "array", "items": { "type": "string" }, "description": "Kinds this role covers. Declared here or at spawn by the spawner, never by the agent." },
+        "kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Kinds this role covers. Declared here or at spawn by the spawner, never by the agent."
+        },
         "spawns": {
           "type": "array",
-          "items": { "$ref": "common.schema.json#/$defs/Name" },
+          "items": {
+            "$ref": "common.schema.json#/$defs/Name"
+          },
           "description": "Sub-agent roles this role may launch. Non-empty generates the Task tool with subagent_type limited to these."
         },
-        "max_concurrent_children": { "type": "integer", "minimum": 1, "default": 8 }
+        "max_concurrent_children": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 8
+        }
       },
-      "required": ["grant"],
+      "required": [
+        "grant"
+      ],
       "additionalProperties": false
     },
-
     "SubagentRoleSpec": {
       "type": "object",
       "description": "A sub-agent role. Never has a human channel or a run-ending tool (tools.md 'No delegate has a human channel'); its report returns to its spawner.",
       "properties": {
-        "description": { "type": "string", "maxLength": 500, "description": "Rendered into the Task tool's subagent_type description." },
-        "prompt": { "$ref": "#/$defs/PromptSpec" },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Rendered into the Task tool's subagent_type description."
+        },
+        "prompt": {
+          "$ref": "#/$defs/PromptSpec"
+        },
         "model": {
           "type": "object",
           "properties": {
-            "tier": { "$ref": "common.schema.json#/$defs/Tier" },
-            "effort": { "$ref": "common.schema.json#/$defs/Effort" },
-            "clamp_to_parent": { "type": "boolean", "default": true, "description": "When true a child never runs above its spawner's tier." }
+            "tier": {
+              "$ref": "common.schema.json#/$defs/Tier"
+            },
+            "effort": {
+              "$ref": "common.schema.json#/$defs/Effort"
+            },
+            "clamp_to_parent": {
+              "type": "boolean",
+              "default": true,
+              "description": "When true a child never runs above its spawner's tier."
+            }
           },
           "additionalProperties": false
         },
-        "grant": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Name" } },
-        "visibility": { "type": "object", "additionalProperties": { "$ref": "tools.schema.json#/$defs/Visibility" } },
+        "grant": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Name"
+          }
+        },
+        "visibility": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "tools.schema.json#/$defs/Visibility"
+          }
+        },
         "spawn_kinds": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Kinds the spawner may pass at spawn (Task.role). Each may add grants from kind_grants."
         },
         "kind_grants": {
           "type": "object",
           "description": "Kind to extra group ids, the tool half of 'Kinds: one vocabulary, three resolutions'. Harness config only.",
-          "additionalProperties": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Name" } }
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "common.schema.json#/$defs/Name"
+            }
+          }
         },
         "spawn_args": {
           "type": "object",
           "description": "Extra structured arguments the spawner must pass (the validator's finding), as JSON Schema properties added to Task.",
-          "additionalProperties": { "type": "object" }
+          "additionalProperties": {
+            "type": "object"
+          }
         },
-        "report_schema": { "type": "object", "description": "JSON Schema for the child's final report, validated by the harness." },
-        "spawns": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Name" }, "maxItems": 0, "description": "No recursive delegation in v1." },
-        "budgets": { "$ref": "#/$defs/Budgets" }
+        "report_schema": {
+          "type": "object",
+          "description": "JSON Schema for the child's final report, validated by the harness."
+        },
+        "spawns": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Name"
+          },
+          "maxItems": 0,
+          "description": "No recursive delegation in v1."
+        },
+        "budgets": {
+          "$ref": "#/$defs/Budgets"
+        }
       },
-      "required": ["grant", "prompt"],
+      "required": [
+        "grant",
+        "prompt"
+      ],
       "additionalProperties": false
     },
-
     "HumanSpec": {
       "type": "object",
       "properties": {
@@ -331,76 +707,214 @@
           "type": "object",
           "description": "Enabling this generates the harness/AskUser tool for the orchestrator. Calling it suspends the run and opens a gate.",
           "properties": {
-            "kinds": { "type": "array", "items": { "type": "string", "enum": ["clarify", "approve"] }, "minItems": 1, "uniqueItems": true },
-            "principal_set": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/PrincipalSetRule" }, "minItems": 1 },
-            "clarify_from_participants": { "type": "boolean", "default": false, "description": "Widen who may answer clarify questions only. approve is always principal-only." },
-            "channels": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/ChannelRef" }, "minItems": 1, "description": "First is the conversation; the rest receive a mirror for the audit trail." },
-            "max_suspensions": { "type": "integer", "minimum": 1, "default": 3 },
-            "expires_after_s": { "type": "integer", "minimum": 60 },
-            "on_expiry": { "type": "string", "enum": ["fail", "abandon_task"], "default": "fail" }
+            "kinds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "clarify",
+                  "approve"
+                ]
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "principal_set": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/PrincipalSetRule"
+              },
+              "minItems": 1
+            },
+            "clarify_from_participants": {
+              "type": "boolean",
+              "default": false,
+              "description": "Widen who may answer clarify questions only. approve is always principal-only."
+            },
+            "channels": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/ChannelRef"
+              },
+              "minItems": 1,
+              "description": "First is the conversation; the rest receive a mirror for the audit trail."
+            },
+            "max_suspensions": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 3
+            },
+            "expires_after_s": {
+              "type": "integer",
+              "minimum": 60
+            },
+            "on_expiry": {
+              "type": "string",
+              "enum": [
+                "fail",
+                "abandon_task"
+              ],
+              "default": "fail"
+            }
           },
-          "required": ["kinds", "principal_set", "channels"],
+          "required": [
+            "kinds",
+            "principal_set",
+            "channels"
+          ],
           "additionalProperties": false
         },
         "narrate": {
           "type": "object",
-          "description": "Generates harness/Narrate (medium.md §2f).",
-          "properties": { "max_entries": { "type": "integer", "minimum": 1, "default": 8 } },
+          "description": "Generates harness/Narrate (medium.md \u00a72f).",
+          "properties": {
+            "max_entries": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 8
+            }
+          },
           "additionalProperties": false
         }
       },
       "additionalProperties": false
     },
-
     "CompletionSpec": {
       "type": "object",
-      "description": "The completion contract. The harness generates the run-ending tool from it; authors cannot mark arbitrary tools as terminal (platform.md §5).",
+      "description": "The completion contract. The harness generates the run-ending tools from it: Complete, and one tool per finisher. Termination is never a property of a tool itself (platform.md \u00a75).",
       "properties": {
         "form": {
           "type": "string",
-          "enum": ["tool", "text"],
+          "enum": [
+            "tool",
+            "text"
+          ],
           "default": "tool",
           "description": "text: the run ends on an assistant message with no tool calls and status done. Allowed only with no report_schema, no gates and no spinoffs (the quick analysis run)."
         },
-        "tool_name": { "type": "string", "default": "Complete", "pattern": "^[A-Z][A-Za-z]{2,31}$" },
-        "statuses": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/CompleteStatus" }, "minItems": 1, "uniqueItems": true },
+        "tool_name": {
+          "type": "string",
+          "default": "Complete",
+          "pattern": "^[A-Z][A-Za-z]{2,31}$"
+        },
+        "statuses": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/CompleteStatus"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
         "report_schema": {
           "description": "JSON Schema for Complete.report. Inline or a registry ref.",
           "oneOf": [
-            { "type": "object", "properties": { "ref": { "$ref": "common.schema.json#/$defs/VersionedRef" } }, "required": ["ref"], "additionalProperties": false },
-            { "type": "object", "properties": { "inline": { "type": "object" } }, "required": ["inline"], "additionalProperties": false }
+            {
+              "type": "object",
+              "properties": {
+                "ref": {
+                  "$ref": "common.schema.json#/$defs/VersionedRef"
+                }
+              },
+              "required": [
+                "ref"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "inline": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "inline"
+              ],
+              "additionalProperties": false
+            }
           ]
         },
-        "summary_max_chars": { "type": "integer", "minimum": 1, "default": 2000 },
+        "summary_max_chars": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 2000
+        },
         "gates": {
           "type": "array",
           "description": "Deterministic checks between the model's terminal call and the run actually ending.",
           "items": {
             "type": "object",
             "properties": {
-              "id": { "type": "string", "enum": ["first_done_checklist", "require_tool_called", "report_crosscheck", "provenance_closure"] },
-              "on_status": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/CompleteStatus" } },
-              "config": { "type": "object" }
+              "id": {
+                "type": "string",
+                "enum": [
+                  "first_done_checklist",
+                  "require_tool_called",
+                  "report_crosscheck",
+                  "provenance_closure"
+                ]
+              },
+              "on_status": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/CompleteStatus"
+                }
+              },
+              "config": {
+                "type": "object"
+              }
             },
-            "required": ["id"],
+            "required": [
+              "id"
+            ],
             "additionalProperties": false
           }
         },
         "spinoffs": {
           "type": "object",
-          "description": "Enables report.spun_off (orchestration.md §6).",
+          "description": "Enables report.spun_off (orchestration.md \u00a76).",
           "properties": {
-            "max_per_run": { "type": "integer", "minimum": 0, "default": 2 },
-            "max_depth": { "type": "integer", "minimum": 0, "default": 0 },
-            "relations": { "type": "array", "items": { "type": "string", "enum": ["blocks_this", "follows_this"] } }
+            "max_per_run": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 2
+            },
+            "max_depth": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "relations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "blocks_this",
+                  "follows_this"
+                ]
+              }
+            }
           },
           "additionalProperties": false
+        },
+        "complete": {
+          "type": "boolean",
+          "default": true,
+          "description": "Generate the generic Complete tool. false: the run can end only through a finisher (or AskUser, HandOff, the nudge)."
+        },
+        "finishers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Finisher"
+          },
+          "description": "Ending actions the model chooses between, each wrapping a declared tool or a harness action (platform.md \u00a75a)."
         }
       },
-      "required": ["statuses"],
+      "required": [
+        "statuses"
+      ],
       "additionalProperties": false
     },
-
     "HatchesSpec": {
       "type": "object",
       "properties": {
@@ -408,17 +922,40 @@
           "type": "object",
           "description": "Generates harness/Expand: reveals granted-but-unlisted sources and tools. The run continues. Visibility only, never authority.",
           "properties": {
-            "reveals": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Name" }, "description": "Group ids (must be in the orchestrator's grant) plus the data overview's unlisted sources." },
-            "max_results": { "type": "integer", "minimum": 1, "default": 8 },
+            "reveals": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Name"
+              },
+              "description": "Group ids (must be in the orchestrator's grant) plus the data overview's unlisted sources."
+            },
+            "max_results": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 8
+            },
             "array_growth": {
               "type": "object",
-              "description": "Providers with no deferred loading: the tools array may grow once, to this bundle, if the cached prefix is small (models.md §4a).",
+              "description": "Providers with no deferred loading: the tools array may grow once, to this bundle, if the cached prefix is small (models.md \u00a74a).",
               "properties": {
-                "bundle": { "$ref": "common.schema.json#/$defs/Name" },
-                "max_prefix_tokens": { "type": "integer", "minimum": 0 },
-                "tiers": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Tier" } }
+                "bundle": {
+                  "$ref": "common.schema.json#/$defs/Name"
+                },
+                "max_prefix_tokens": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "tiers": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/Tier"
+                  }
+                }
               },
-              "required": ["bundle", "max_prefix_tokens"],
+              "required": [
+                "bundle",
+                "max_prefix_tokens"
+              ],
               "additionalProperties": false
             }
           },
@@ -426,7 +963,7 @@
         },
         "handoff": {
           "type": "object",
-          "description": "Generates harness/HandOff. Its reason enum is exactly the ids below; each names a continuation with on.terminal = handoff.",
+          "description": "Generates harness/HandOff. Each reason is an exit a pipeline wires to a next stage. Run on its own, a template has no wired exits, so HandOff is not generated.",
           "properties": {
             "reasons": {
               "type": "array",
@@ -434,229 +971,671 @@
               "items": {
                 "type": "object",
                 "properties": {
-                  "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,40}$" },
-                  "situation": { "type": "string", "maxLength": 300, "description": "What the model can observe, never a service level or a model name (models.md §4c)." }
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_]{0,40}$"
+                  },
+                  "situation": {
+                    "type": "string",
+                    "maxLength": 300,
+                    "description": "What the model can observe, never a service level or a model name (models.md \u00a74c)."
+                  }
                 },
-                "required": ["id", "situation"],
+                "required": [
+                  "id",
+                  "situation"
+                ],
                 "additionalProperties": false
               }
             }
           },
-          "required": ["reasons"],
+          "required": [
+            "reasons"
+          ],
           "additionalProperties": false
         }
       },
       "additionalProperties": false
     },
-
     "HarnessTrigger": {
       "type": "object",
       "properties": {
-        "id": { "$ref": "common.schema.json#/$defs/Name" },
+        "id": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
         "signal": {
           "type": "object",
           "properties": {
-            "kind": { "type": "string", "enum": ["consecutive_tool_errors", "zero_rows_unexplained", "turns_without_answer", "unlisted_source_named", "result_oversize", "request_matches"] },
-            "tool": { "type": "string" },
-            "threshold": { "type": "integer", "minimum": 1 },
-            "match": { "type": "array", "items": { "type": "string" }, "description": "request_matches: configured keywords, checked on the instruction input before turn 0." }
+            "kind": {
+              "type": "string",
+              "enum": [
+                "consecutive_tool_errors",
+                "zero_rows_unexplained",
+                "turns_without_answer",
+                "unlisted_source_named",
+                "result_oversize",
+                "request_matches"
+              ]
+            },
+            "tool": {
+              "type": "string"
+            },
+            "threshold": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "match": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "request_matches: configured keywords, checked on the instruction input before turn 0."
+            }
           },
-          "required": ["kind"],
+          "required": [
+            "kind"
+          ],
           "additionalProperties": false
         },
         "action": {
           "oneOf": [
-            { "type": "object", "properties": { "handoff": { "type": "string" } }, "required": ["handoff"], "additionalProperties": false },
-            { "type": "object", "properties": { "reveal": { "$ref": "common.schema.json#/$defs/Name" } }, "required": ["reveal"], "additionalProperties": false },
-            { "type": "object", "properties": { "note": { "type": "string", "maxLength": 300 } }, "required": ["note"], "additionalProperties": false },
-            { "type": "object", "properties": { "skip_to": { "type": "string", "description": "A handoff reason taken before turn 0." } }, "required": ["skip_to"], "additionalProperties": false }
+            {
+              "type": "object",
+              "properties": {
+                "handoff": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "handoff"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "reveal": {
+                  "$ref": "common.schema.json#/$defs/Name"
+                }
+              },
+              "required": [
+                "reveal"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "note": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "required": [
+                "note"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "skip_to": {
+                  "type": "string",
+                  "description": "A handoff reason taken before turn 0."
+                }
+              },
+              "required": [
+                "skip_to"
+              ],
+              "additionalProperties": false
+            }
           ]
         }
       },
-      "required": ["id", "signal", "action"],
+      "required": [
+        "id",
+        "signal",
+        "action"
+      ],
       "additionalProperties": false
     },
-
     "Budgets": {
       "type": "object",
-      "description": "Crossing turns or context_high_water injects the final-turn nudge (formats.md §7). The others stop the run harness-side.",
+      "description": "Crossing turns or context_high_water injects the final-turn nudge (formats.md \u00a77). The others stop the run harness-side.",
       "properties": {
-        "turns": { "$ref": "common.schema.json#/$defs/BindableInteger" },
-        "context_high_water_tokens": { "$ref": "common.schema.json#/$defs/BindableInteger" },
-        "wall_seconds": { "$ref": "common.schema.json#/$defs/BindableInteger" },
+        "turns": {
+          "$ref": "common.schema.json#/$defs/BindableInteger"
+        },
+        "context_high_water_tokens": {
+          "$ref": "common.schema.json#/$defs/BindableInteger"
+        },
+        "wall_seconds": {
+          "$ref": "common.schema.json#/$defs/BindableInteger"
+        },
         "tokens_by_tier": {
           "type": "object",
-          "description": "Counted across the run and its children, so spend cannot hide in a cheap child (models.md §10).",
+          "description": "Counted across the run and its children, so spend cannot hide in a cheap child (models.md \u00a710).",
           "properties": {
-            "economy": { "type": "integer", "minimum": 0 },
-            "standard": { "type": "integer", "minimum": 0 },
-            "strong": { "type": "integer", "minimum": 0 }
+            "economy": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "standard": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "strong": {
+              "type": "integer",
+              "minimum": 0
+            }
           },
           "additionalProperties": false
         },
-        "cost_usd": { "type": "number", "minimum": 0 },
-        "subagents_total": { "type": "integer", "minimum": 0 }
+        "cost_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "subagents_total": {
+          "type": "integer",
+          "minimum": 0
+        }
       },
       "additionalProperties": false
     },
-
     "OutputsSpec": {
       "type": "object",
-      "description": "What happens to a run's result. Sinks deliver it; continuations start more work from it. Both are harness-executed and declared here; the model chooses among declared edges only (platform.md §7).",
+      "description": "What happens to a run's result when the template runs on its own or as a pipeline stage. Sinks deliver it; continuations are edges back into this template. Cross-template edges are a pipeline's.",
       "properties": {
-        "sinks": { "type": "array", "items": { "$ref": "#/$defs/Sink" } },
-        "continuations": { "type": "array", "items": { "$ref": "#/$defs/Continuation" } },
-        "max_chain_depth": { "type": "integer", "minimum": 0, "default": 3, "description": "Hops from the root request across continuations of every kind except resume." }
+        "sinks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Sink"
+          }
+        },
+        "continuations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Continuation"
+          }
+        },
+        "max_chain_depth": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 3,
+          "description": "Hops across this template's own continuations. A pipeline has its own limit."
+        }
       },
       "additionalProperties": false
     },
-
     "When": {
       "type": "object",
       "properties": {
-        "terminal": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Terminal" } },
-        "status": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/CompleteStatus" } },
-        "expr": { "$ref": "common.schema.json#/$defs/Expr" }
+        "terminal": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Terminal"
+          }
+        },
+        "status": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/CompleteStatus"
+          }
+        },
+        "expr": {
+          "$ref": "common.schema.json#/$defs/Expr"
+        }
       },
       "additionalProperties": false
     },
-
     "Sink": {
       "type": "object",
       "properties": {
-        "id": { "$ref": "common.schema.json#/$defs/Name" },
-        "when": { "$ref": "#/$defs/When" },
-        "kind": { "type": "string", "enum": ["comment", "commit_status", "webhook", "chat", "email", "artifact_publish", "dataset_write"] },
-        "channel": { "$ref": "common.schema.json#/$defs/ChannelRef" },
-        "url": { "type": "string", "format": "uri", "description": "webhook only. Registered host; signed body." },
+        "id": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "when": {
+          "$ref": "#/$defs/When"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "comment",
+            "commit_status",
+            "webhook",
+            "chat",
+            "email",
+            "artifact_publish",
+            "dataset_write",
+            "tool"
+          ]
+        },
+        "channel": {
+          "$ref": "common.schema.json#/$defs/ChannelRef"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "webhook only. Registered host; signed body."
+        },
         "render": {
           "type": "object",
           "description": "Harness-side formatting of the result. Mustache over the result object; output is Markdown and converted per channel.",
           "properties": {
-            "template": { "type": "string" },
-            "attach": { "type": "array", "items": { "type": "string", "enum": ["report_json", "evidence", "transcript_link"] } }
+            "template": {
+              "type": "string"
+            },
+            "attach": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "report_json",
+                  "evidence",
+                  "transcript_link"
+                ]
+              }
+            }
           },
-          "required": ["template"],
+          "required": [
+            "template"
+          ],
           "additionalProperties": false
         },
-        "idempotency_key": { "$ref": "common.schema.json#/$defs/Expr" },
+        "idempotency_key": {
+          "$ref": "common.schema.json#/$defs/Expr"
+        },
         "retry": {
           "type": "object",
-          "properties": { "max_attempts": { "type": "integer", "minimum": 1, "default": 5 }, "backoff_s": { "type": "integer", "minimum": 1, "default": 30 } },
+          "properties": {
+            "max_attempts": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 5
+            },
+            "backoff_s": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 30
+            }
+          },
           "additionalProperties": false
+        },
+        "tool": {
+          "$ref": "common.schema.json#/$defs/ToolAddress",
+          "description": "kind tool: a declared tool the harness calls after the run, e.g. a Jira transition. Under the run's credentials."
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "$ref": "common.schema.json#/$defs/Expr"
+              },
+              {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              }
+            ]
+          }
         }
       },
-      "required": ["id", "kind"],
+      "required": [
+        "id",
+        "kind"
+      ],
       "additionalProperties": false
     },
-
     "Continuation": {
       "type": "object",
-      "description": "A declared edge from this run's outcome to more work. Plan to implement, HandOff landings, approve-and-execute, spinoffs and review-to-fix are all continuations.",
+      "description": "An edge from this run's outcome back into the same template: approve then execute, spinoffs. Edges to other templates belong to a pipeline (pipeline.schema.json), so a template stays reusable on its own.",
       "properties": {
-        "id": { "$ref": "common.schema.json#/$defs/Name" },
+        "id": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
         "on": {
           "type": "object",
           "properties": {
-            "terminal": { "$ref": "common.schema.json#/$defs/Terminal" },
-            "status": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/CompleteStatus" } },
-            "handoff_reason": { "type": "string" },
-            "answer": { "type": "string", "enum": ["approve", "decline", "other"], "description": "terminal = suspend: which gate outcome starts this edge." },
-            "spinoff": { "type": "string", "enum": ["blocks_this", "follows_this"], "description": "One continuation per report.spun_off entry of this relation." },
-            "expr": { "$ref": "common.schema.json#/$defs/Expr" }
+            "terminal": {
+              "type": "string",
+              "enum": [
+                "complete",
+                "suspend"
+              ]
+            },
+            "status": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/CompleteStatus"
+              }
+            },
+            "answer": {
+              "type": "string",
+              "enum": [
+                "approve",
+                "decline",
+                "other"
+              ],
+              "description": "terminal = suspend: which gate outcome starts this edge."
+            },
+            "spinoff": {
+              "type": "string",
+              "enum": [
+                "blocks_this",
+                "follows_this"
+              ],
+              "description": "One continuation per report.spun_off entry of this relation."
+            },
+            "expr": {
+              "$ref": "common.schema.json#/$defs/Expr"
+            }
           },
-          "required": ["terminal"],
+          "required": [
+            "terminal"
+          ],
           "additionalProperties": false
         },
         "target": {
           "type": "object",
           "properties": {
-            "template": { "type": "string", "description": "A template name, or self." },
-            "version": {
-              "anyOf": [{ "$ref": "common.schema.json#/$defs/Version" }, { "const": "pinned" }],
-              "description": "pinned: resolved to a concrete version when this template version is published, so the graph is fixed per version."
+            "template": {
+              "const": "self"
             }
           },
-          "required": ["template", "version"],
+          "required": [
+            "template"
+          ],
           "additionalProperties": false
         },
         "params": {
           "type": "object",
           "description": "Target param name to an expression over this run (params, result, principal, event).",
-          "additionalProperties": { "anyOf": [{ "$ref": "common.schema.json#/$defs/Expr" }, { "type": ["string", "number", "boolean"] }] }
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "$ref": "common.schema.json#/$defs/Expr"
+              },
+              {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              }
+            ]
+          }
         },
         "carry": {
           "type": "array",
-          "items": { "type": "string", "enum": ["plan", "prior_attempt", "resumed_answer", "other_replies", "approved_action", "findings", "spinoff_report", "artifacts"] },
+          "items": {
+            "type": "string",
+            "enum": [
+              "plan",
+              "prior_attempt",
+              "resumed_answer",
+              "other_replies",
+              "approved_action",
+              "findings",
+              "spinoff_report",
+              "artifacts"
+            ]
+          },
           "description": "Envelope blocks the target receives (it must declare a matching carry input). Never the transcript: only resume carries a transcript."
         },
         "gate": {
           "oneOf": [
-            { "type": "object", "properties": { "kind": { "const": "auto" } }, "required": ["kind"], "additionalProperties": false },
             {
               "type": "object",
               "properties": {
-                "kind": { "const": "approval" },
-                "principal_set": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/PrincipalSetRule" }, "minItems": 1 },
-                "channel": { "$ref": "common.schema.json#/$defs/ChannelRef" },
-                "bind": { "type": "string", "enum": ["report_hash", "plan_hash", "none"], "default": "report_hash", "description": "The approval covers this content; if it changes, the approval lapses (formats.md §5a rule 4)." },
-                "expires_after_s": { "type": "integer", "minimum": 60 }
+                "kind": {
+                  "const": "auto"
+                }
               },
-              "required": ["kind", "principal_set", "channel"],
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "approval"
+                },
+                "principal_set": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/PrincipalSetRule"
+                  },
+                  "minItems": 1
+                },
+                "channel": {
+                  "$ref": "common.schema.json#/$defs/ChannelRef"
+                },
+                "bind": {
+                  "type": "string",
+                  "enum": [
+                    "report_hash",
+                    "plan_hash",
+                    "none"
+                  ],
+                  "default": "report_hash",
+                  "description": "The approval covers this content; if it changes, the approval lapses (formats.md \u00a75a rule 4)."
+                },
+                "expires_after_s": {
+                  "type": "integer",
+                  "minimum": 60
+                }
+              },
+              "required": [
+                "kind",
+                "principal_set",
+                "channel"
+              ],
               "additionalProperties": false
             }
           ]
         },
-        "via": { "type": "string", "enum": ["run", "task"], "default": "run", "description": "task files a ledger task that the dispatcher runs; run starts one directly." },
-        "run_as": { "type": "string", "enum": ["same", "service"], "default": "same", "description": "A continuation never runs as a different user." }
+        "via": {
+          "type": "string",
+          "enum": [
+            "run",
+            "task"
+          ],
+          "default": "run",
+          "description": "task files a ledger task that the dispatcher runs; run starts one directly."
+        },
+        "run_as": {
+          "type": "string",
+          "enum": [
+            "same",
+            "service"
+          ],
+          "default": "same",
+          "description": "A continuation never runs as a different user."
+        }
       },
-      "required": ["id", "on", "target", "gate"],
+      "required": [
+        "id",
+        "on",
+        "target",
+        "gate"
+      ],
       "additionalProperties": false
     },
-
     "AuthoritySpec": {
       "type": "object",
-      "description": "Whose authority a run uses (platform.md §8).",
+      "description": "Whose authority a run uses (platform.md \u00a78).",
       "properties": {
         "run_as": {
           "type": "array",
-          "items": { "type": "string", "enum": ["user", "service"] },
+          "items": {
+            "type": "string",
+            "enum": [
+              "user",
+              "service"
+            ]
+          },
           "minItems": 1,
           "description": "Principal types this template may run on behalf of."
         },
-        "service_principal": { "$ref": "common.schema.json#/$defs/PrincipalRef", "description": "The agent's own identity: the actor in audit logs, and the principal for run_as service." },
+        "service_principal": {
+          "$ref": "common.schema.json#/$defs/PrincipalRef",
+          "description": "The agent's own identity: the actor in audit logs, and the principal for run_as service."
+        },
         "delegation": {
           "type": "object",
           "description": "A user run with no live user session (schedules, events, continuations after the user left) needs a stored delegation.",
           "properties": {
-            "max_ttl_days": { "type": "integer", "minimum": 1, "default": 90 },
-            "scopes": { "type": "array", "items": { "type": "string" }, "description": "Upper bound on what a delegation for this template may carry." }
+            "max_ttl_days": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 90
+            },
+            "scopes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Upper bound on what a delegation for this template may carry."
+            }
           },
           "additionalProperties": false
         }
       },
-      "required": ["run_as", "service_principal"],
+      "required": [
+        "run_as",
+        "service_principal"
+      ],
       "additionalProperties": false
     },
-
     "ConcurrencySpec": {
       "type": "object",
       "properties": {
-        "key": { "$ref": "common.schema.json#/$defs/Expr", "description": "e.g. repository + '#' + target_branch (orchestration.md §4)." },
-        "policy": { "type": "string", "enum": ["queue", "skip"], "default": "queue" },
-        "handoff_occupies": { "type": "boolean", "default": true }
+        "key": {
+          "$ref": "common.schema.json#/$defs/Expr",
+          "description": "e.g. repository + '#' + target_branch (orchestration.md \u00a74)."
+        },
+        "policy": {
+          "type": "string",
+          "enum": [
+            "queue",
+            "skip"
+          ],
+          "default": "queue"
+        },
+        "handoff_occupies": {
+          "type": "boolean",
+          "default": true
+        }
       },
-      "required": ["key"],
+      "required": [
+        "key"
+      ],
       "additionalProperties": false
     },
-
     "LedgerSpec": {
       "type": "object",
       "description": "Run inside a ledger task (orchestration.md). Required for spinoffs and via: task continuations.",
       "properties": {
-        "max_attempts": { "type": "integer", "minimum": 1, "default": 2 },
-        "tasks_per_issue": { "type": "integer", "minimum": 1, "default": 8 }
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 2
+        },
+        "tasks_per_issue": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 8
+        }
       },
+      "additionalProperties": false
+    },
+    "Finisher": {
+      "type": "object",
+      "description": "A tool the model may call to end the run by doing something. The harness generates a separate tool for it: the wrapped tool's (overridden) arguments under args, plus summary and optionally report. On a call the harness runs the completion gates first, then performs the action; if the action fails the error returns to the model and the run continues.",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z]{2,31}$",
+          "description": "The tool name the model sees. Must not collide with any other tool the orchestrator has."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Should say that calling it ends the run, and when to choose it over the other endings."
+        },
+        "action": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "tool": {
+                  "$ref": "common.schema.json#/$defs/ToolAddress"
+                },
+                "params": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "tools.schema.json#/$defs/ParamOverride"
+                  },
+                  "description": "Overrides on top of the declared ToolRef's."
+                }
+              },
+              "required": [
+                "tool"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "harness": {
+                  "type": "string",
+                  "enum": [
+                    "open_pull_request",
+                    "request_help"
+                  ]
+                },
+                "config": {
+                  "type": "object",
+                  "description": "open_pull_request: {base, draft, labels}. request_help: {channel} \u2014 posts and ends; nothing resumes."
+                }
+              },
+              "required": [
+                "harness"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "status": {
+          "$ref": "common.schema.json#/$defs/CompleteStatus"
+        },
+        "report": {
+          "type": "boolean",
+          "default": false,
+          "description": "Add a report argument validated against completion.report_schema."
+        },
+        "gates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Gate ids from completion.gates to run before the action. Default: all gates whose on_status includes status."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "action",
+        "status"
+      ],
       "additionalProperties": false
     }
   }

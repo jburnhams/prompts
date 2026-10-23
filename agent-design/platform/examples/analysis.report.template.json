@@ -2,36 +2,110 @@
   "name": "analysis.report",
   "version": 1,
   "title": "Data report",
-  "description": "The report_requested landing: collect on economy, write on strong (data.md §2g's explore then answer). The writer is a sub-agent role so the two tiers live in one run with one result.",
-  "owner": { "type": "team", "id": "data-platform" },
-  "extends": { "name": "analysis.investigate", "version": 1 },
+  "description": "The report_requested landing: collect on economy, write on strong (data.md \u00a72g's explore then answer). The writer is a sub-agent role so the two tiers live in one run with one result.",
+  "owner": {
+    "type": "team",
+    "id": "data-platform"
+  },
+  "extends": {
+    "name": "analysis.investigate",
+    "version": 1
+  },
   "params": {
-    "question": { "type": "string", "trust": "principal", "required": true, "max_length": 4000 }
+    "question": {
+      "type": "string",
+      "trust": "principal",
+      "required": true,
+      "max_length": 4000
+    }
   },
   "spec": {
-    "model": { "tier": "economy", "max_tier": "strong" },
+    "model": {
+      "tier": "economy",
+      "max_tier": "strong"
+    },
     "system_prompt": {
-      "base": { "ref": { "name": "analysis.report.collect", "version": 1 } },
-      "generated": ["env", "capabilities", "data_overview"]
+      "base": {
+        "ref": {
+          "name": "analysis.report.collect",
+          "version": 1
+        }
+      },
+      "generated": [
+        "env",
+        "capabilities",
+        "data_overview"
+      ]
     },
     "inputs": [
-      { "name": "question", "kind": "instruction", "source": { "param": "question" }, "trust": "principal" },
-      { "name": "prior_attempt", "kind": "prior_attempt", "source": { "carry": "prior_attempt" }, "trust": "harness", "required": false }
+      {
+        "name": "question",
+        "kind": "instruction",
+        "source": {
+          "param": "question"
+        },
+        "trust": "principal"
+      },
+      {
+        "name": "prior_attempt",
+        "kind": "prior_attempt",
+        "source": {
+          "carry": "prior_attempt"
+        },
+        "trust": "harness",
+        "required": false
+      }
     ],
     "roles": {
-      "orchestrator": { "grant": ["sql.core", "sql.extended"], "spawns": ["writer"], "max_concurrent_children": 1 },
+      "orchestrator": {
+        "grant": [
+          "sql.core",
+          "sql.extended"
+        ],
+        "spawns": [
+          "writer"
+        ],
+        "max_concurrent_children": 1
+      },
       "writer": {
         "description": "Writes the report from the refs you collected. Pass the refs and the question; it cannot query.",
-        "prompt": { "base": { "ref": { "name": "analysis.report.write", "version": 1 } }, "generated": ["env", "capabilities"] },
-        "model": { "tier": "strong", "clamp_to_parent": false },
+        "prompt": {
+          "base": {
+            "ref": {
+              "name": "analysis.report.write",
+              "version": 1
+            }
+          },
+          "generated": [
+            "env",
+            "capabilities"
+          ]
+        },
+        "model": {
+          "tier": "strong",
+          "clamp_to_parent": false
+        },
         "grant": []
       }
     },
     "completion": {
       "form": "tool",
-      "statuses": ["done", "failed", "budget_exhausted"],
-      "report_schema": { "ref": { "name": "analysis.report.document", "version": 1 } },
-      "gates": [{ "id": "provenance_closure" }]
+      "statuses": [
+        "done",
+        "failed",
+        "budget_exhausted"
+      ],
+      "report_schema": {
+        "ref": {
+          "name": "analysis.report.document",
+          "version": 1
+        }
+      },
+      "gates": [
+        {
+          "id": "provenance_closure"
+        }
+      ]
     },
     "hatches": null,
     "outputs": {
@@ -39,18 +113,22 @@
         {
           "id": "publish",
           "kind": "artifact_publish",
-          "when": { "terminal": ["complete"], "status": ["done"] },
-          "render": { "template": "{{report.document_markdown}}", "attach": ["evidence"] }
-        },
-        {
-          "id": "notify",
-          "kind": "chat",
-          "when": { "terminal": ["complete"] },
-          "channel": { "type": "chat", "target": { "cel": "principal.id" } },
-          "render": { "template": "{{summary}}" }
+          "when": {
+            "terminal": [
+              "complete"
+            ],
+            "status": [
+              "done"
+            ]
+          },
+          "render": {
+            "template": "{{report.document_markdown}}",
+            "attach": [
+              "evidence"
+            ]
+          }
         }
-      ],
-      "continuations": []
+      ]
     }
   }
 }

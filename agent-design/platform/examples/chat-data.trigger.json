@@ -1,0 +1,12 @@
+{
+  "name": "chat.ask-data",
+  "owner": { "type": "team", "id": "data-platform" },
+  "pipeline": { "name": "analysis", "version": "latest" },
+  "source": { "kind": "manual", "entry": "chat_command", "command": "/data" },
+  "params": { "question": { "cel": "event.payload.text" } },
+  "origin": { "channel": "chat", "ref": { "cel": "event.payload.thread_id" } },
+  "run_as": { "mode": "invoker" },
+  "concurrency": { "key": { "cel": "event.actor.id" }, "max_running": 3, "policy": "queue" },
+  "rate_limit": { "per_hour": 60 },
+  "creates": "run"
+}

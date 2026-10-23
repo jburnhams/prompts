@@ -1,17 +1,63 @@
 {
   "name": "bitbucket.pr-review",
-  "owner": { "type": "team", "id": "platform-agents" },
-  "template": { "name": "forge.review", "version": 1 },
-  "source": { "kind": "event", "provider": "bitbucket", "types": ["pr.opened", "pr.updated"], "scope": ["payments/*", "platform/*"] },
-  "filter": { "cel": "!event.payload.draft && event.payload.author.type != 'bot'" },
-  "params": {
-    "pull_request": { "cel": "event.subject" },
-    "repository": { "cel": "event.payload.repository" },
-    "base_sha": { "cel": "event.payload.merge_base_sha" },
-    "head_sha": { "cel": "event.payload.head_sha" }
+  "owner": {
+    "type": "team",
+    "id": "platform-agents"
   },
-  "run_as": { "mode": "service" },
-  "dedupe": { "key": { "cel": "event.subject + '@' + event.payload.head_sha" }, "window_s": 86400 },
-  "concurrency": { "key": { "cel": "event.subject" }, "max_running": 1, "policy": "supersede_queued" },
-  "creates": "run"
+  "source": {
+    "kind": "event",
+    "provider": "bitbucket",
+    "types": [
+      "pr.opened",
+      "pr.updated"
+    ],
+    "scope": [
+      "payments/*",
+      "platform/*"
+    ]
+  },
+  "filter": {
+    "cel": "!event.payload.draft && event.payload.author.type != 'bot'"
+  },
+  "params": {
+    "pull_request": {
+      "cel": "event.subject"
+    },
+    "repository": {
+      "cel": "event.payload.repository"
+    },
+    "base_sha": {
+      "cel": "event.payload.merge_base_sha"
+    },
+    "head_sha": {
+      "cel": "event.payload.head_sha"
+    }
+  },
+  "run_as": {
+    "mode": "service"
+  },
+  "dedupe": {
+    "key": {
+      "cel": "event.subject + '@' + event.payload.head_sha"
+    },
+    "window_s": 86400
+  },
+  "concurrency": {
+    "key": {
+      "cel": "event.subject"
+    },
+    "max_running": 1,
+    "policy": "supersede_queued"
+  },
+  "creates": "run",
+  "pipeline": {
+    "name": "pr.review-fix",
+    "version": 1
+  },
+  "origin": {
+    "channel": "bitbucket_pr",
+    "ref": {
+      "cel": "event.subject"
+    }
+  }
 }

@@ -262,6 +262,11 @@ subsequent doc assumes.
 | Tool snapshots (2026-10-23) | **A template version pins each MCP server's `tools/list` by digest; a changed input schema or annotation refuses the run** (`platform.md` §4a) | Trusting the live list at run start | A server redeploy would otherwise change a published, reviewed template's tool surface with nobody publishing anything |
 | On-behalf-of (2026-10-23) | **Three identities per run (principal, requested_by, actor); OBO by per-call token exchange; a stored, versioned, revocable `Delegation` for absent users; and no write tool on a service credential in a user-runnable template without a harness entitlement check** (`platform.md` §8, rule R12) | Service credentials everywhere; running event-triggered work as whoever caused the event | A service credential in a user-run template is a confused deputy, and mapping an event's author to an account says who they are, not that they consented |
 | Tier→model map (2026-10-23) | **In a `Deployment` resource, with provider capabilities and the global ceiling** — closes `models.md` §10's first open point | In each template | The same template version should run on Bedrock and the Anthropic API without a new version |
+| Finishers (2026-10-23, revised against use cases) | **A template may name real tools or harness actions as its endings** (`completion.finishers`, `complete: false` to drop the generic `Complete`): the harness generates a separate tool per finisher, runs the completion gates before the action, and returns a failed action to the model; `open_pull_request` and `request_help` are the two harness actions (`platform.md` §5a). **Narrows** the *Completion tools* row above: termination is still never a property of a tool, but the author now chooses which actions end a run | A `terminal` flag on the tool (rejected in that row, for the same reasons); keeping `Complete` the only ending and doing Jira/PR updates as sinks | The use case is the model choosing *how* to end (open a PR, or just update the ticket, or hand to a person), which a fixed sink cannot express. Marking the ending in the contract rather than on the tool keeps every reason the earlier row gave, and running gates before the action is what makes an irreversible ending safe |
+| Cross-template edges (2026-10-23, revised against use cases) | **A template's continuations go back into the same template only; edges between templates live in a versioned `Pipeline`, with its own sinks** (`platform.md` §7c, §7e). **Supersedes** the part of the *Outputs* row above that made plan → implement, HandOff landings and review → fix template continuations | Template continuations naming any template (that row as first written) | `forge.plan` hard-wired `forge.implement`, and "update Jira when the pipeline ends" had nowhere to live except a template that is also run on its own. Pipelines are a path, not a workflow engine: no loops, branches or joins |
+| Saved tool groups (2026-10-23, revised against use cases) | **A versioned `SavedToolGroup` with per-tool visibility and argument overrides that only narrow**: describe, default, require, restrict, or fix and hide; renaming an argument is not supported (`platform.md` §4b, rule R13) | Inline groups only; overrides that can widen or rename | Narrowing is what makes the overrides safe to hand to group authors, and checking them against the pinned snapshot makes "narrow" checkable rather than a convention |
+| Invoker sessions (2026-10-23, revised against use cases) | **A chat or UI request runs as the invoking user through a session delegation minted for that one pipeline run** (`platform.md` §8) | Requiring a stored delegation for every chat user; running later stages as the service | A cheap stage that hands off may finish after the chat request returns, and the stronger stage must still query as the user, not as the bot |
+| Ad-hoc runs (2026-10-23, revised against use cases) | **An unsaved spec is published as a content-addressed `adhoc.<digest>` version and checked by every rule before it runs** (`platform.md` §6) | Running an unvalidated inline spec | "Pick a group, a prompt and a repo and go" should not be a way around the publish rules |
 
 ## What's deliberately not in v1
 
@@ -471,11 +476,15 @@ does not need lifecycle folders or a format gate):
    delegations and deployment, as JSON Schema under `platform/schemas/`
    and OpenAPI in `platform/openapi.yaml`, with every Forge entrypoint
    written as a template in `platform/examples/` and a checker
-   (`platform/check.py`) for the twelve publish rules. Answers three
-   questions the earlier documents left open: how a completion tool is
-   defined (generated from a contract, §5), what an output is (four
-   things split by who decides, §7), and how a run acts on behalf of a
-   user who is not present (§8).
+   (`platform/check.py`) for the publish rules. §0 walks four use cases
+   end to end: a saved Java tool group with per-tool overrides, choosing
+   a run's ending from real tools (finishers), a Jira-triggered plan →
+   implement pipeline, and a chat-triggered data agent that hands over
+   to a stronger one. Answers three questions the earlier documents left
+   open: how a completion tool is defined (generated from a contract,
+   §5), what an output is (split by who decides, §7, with edges between
+   templates in pipelines, §7e), and how a run acts on behalf of a user
+   who is not present (§8).
 
 **Proposals from Claude Code v2.1.303:**
 [`proposals-claude-code-2.1.303.md`](./proposals-claude-code-2.1.303.md)

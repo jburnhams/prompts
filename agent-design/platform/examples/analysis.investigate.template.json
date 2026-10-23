@@ -2,68 +2,164 @@
   "name": "analysis.investigate",
   "version": 1,
   "title": "Investigate a data question",
-  "description": "The too_complex landing (models.md §4b): standard tier, every granted source and the full focused tool set from the start, a larger budget. Reached by HandOff or a harness trigger, never by the user directly.",
-  "owner": { "type": "team", "id": "data-platform" },
-  "extends": { "name": "analysis.quick", "version": 1 },
+  "description": "The too_complex landing (models.md \u00a74b): standard tier, every granted source and the full focused tool set from the start, a larger budget. Reached by HandOff or a harness trigger, never by the user directly.",
+  "owner": {
+    "type": "team",
+    "id": "data-platform"
+  },
+  "extends": {
+    "name": "analysis.quick",
+    "version": 1
+  },
   "params": {
-    "question": { "type": "string", "trust": "principal", "required": true, "max_length": 4000 }
+    "question": {
+      "type": "string",
+      "trust": "principal",
+      "required": true,
+      "max_length": 4000
+    }
   },
   "spec": {
-    "model": { "tier": "standard", "effort": "high", "max_tier": "strong" },
+    "model": {
+      "tier": "standard",
+      "effort": "high",
+      "max_tier": "strong"
+    },
     "system_prompt": {
-      "base": { "ref": { "name": "analysis.investigate", "version": 1 } },
-      "generated": ["env", "capabilities", "data_overview"]
+      "base": {
+        "ref": {
+          "name": "analysis.investigate",
+          "version": 1
+        }
+      },
+      "generated": [
+        "env",
+        "capabilities",
+        "data_overview"
+      ]
     },
     "inputs": [
-      { "name": "question", "kind": "instruction", "source": { "param": "question" }, "trust": "principal" },
-      { "name": "prior_attempt", "kind": "prior_attempt", "source": { "carry": "prior_attempt" }, "trust": "harness", "required": false }
+      {
+        "name": "question",
+        "kind": "instruction",
+        "source": {
+          "param": "question"
+        },
+        "trust": "principal"
+      },
+      {
+        "name": "prior_attempt",
+        "kind": "prior_attempt",
+        "source": {
+          "carry": "prior_attempt"
+        },
+        "trust": "harness",
+        "required": false
+      }
     ],
-    "context": { "data_overview": { "sources_from": "mcp:warehouse/list_sources", "max_listed": 200, "announce_hidden": false } },
+    "context": {
+      "data_overview": {
+        "sources_from": "mcp:warehouse/list_sources",
+        "max_listed": 200,
+        "announce_hidden": false
+      }
+    },
     "tools": {
       "groups": [
         {
           "id": "sql.core",
           "visibility": "loaded",
           "tools": [
-            { "tool": "mcp:warehouse/describe_source", "alias": "DescribeSource", "annotations": { "read_only": true, "idempotent": true, "retry": "on_transport_error" } },
-            { "tool": "mcp:warehouse/run_sql", "alias": "RunSQL", "annotations": { "read_only": true, "idempotent": true }, "limits": { "timeout_s": 300, "context_chars": 20000 } }
+            {
+              "tool": "mcp:warehouse/describe_source",
+              "alias": "DescribeSource",
+              "annotations": {
+                "read_only": true,
+                "idempotent": true,
+                "retry": "on_transport_error"
+              }
+            },
+            {
+              "tool": "mcp:warehouse/run_sql",
+              "alias": "RunSQL",
+              "annotations": {
+                "read_only": true,
+                "idempotent": true
+              },
+              "limits": {
+                "timeout_s": 300,
+                "context_chars": 20000
+              }
+            }
           ]
         },
         {
           "id": "sql.extended",
           "visibility": "loaded",
           "tools": [
-            { "tool": "mcp:warehouse/profile_table", "alias": "ProfileTable", "annotations": { "read_only": true, "idempotent": true } },
-            { "tool": "mcp:warehouse/fetch_table", "alias": "FetchTable", "annotations": { "read_only": true, "idempotent": true } }
+            {
+              "tool": "mcp:warehouse/profile_table",
+              "alias": "ProfileTable",
+              "annotations": {
+                "read_only": true,
+                "idempotent": true
+              }
+            },
+            {
+              "tool": "mcp:warehouse/fetch_table",
+              "alias": "FetchTable",
+              "annotations": {
+                "read_only": true,
+                "idempotent": true
+              }
+            }
           ]
         }
       ]
     },
     "completion": {
       "form": "tool",
-      "statuses": ["done", "failed", "budget_exhausted"],
-      "report_schema": { "ref": { "name": "analysis.report.answer", "version": 1 } },
-      "gates": [{ "id": "provenance_closure" }]
+      "statuses": [
+        "done",
+        "failed",
+        "budget_exhausted"
+      ],
+      "report_schema": {
+        "ref": {
+          "name": "analysis.report.answer",
+          "version": 1
+        }
+      },
+      "gates": [
+        {
+          "id": "provenance_closure"
+        }
+      ]
     },
     "hatches": {
       "expand": null,
       "handoff": {
-        "reasons": [{ "id": "report_requested", "situation": "The user asked for a report, a write-up or a deck rather than an answer." }]
+        "reasons": [
+          {
+            "id": "report_requested",
+            "situation": "The user asked for a report, a write-up or a deck rather than an answer."
+          }
+        ]
       }
     },
     "harness_triggers": [],
-    "budgets": { "turns": 60, "context_high_water_tokens": 150000, "wall_seconds": 1800, "tokens_by_tier": { "economy": 0, "standard": 3000000, "strong": 300000 } },
+    "budgets": {
+      "turns": 60,
+      "context_high_water_tokens": 150000,
+      "wall_seconds": 1800,
+      "tokens_by_tier": {
+        "economy": 0,
+        "standard": 3000000,
+        "strong": 300000
+      }
+    },
     "outputs": {
-      "continuations": [
-        {
-          "id": "report_requested",
-          "on": { "terminal": "handoff", "handoff_reason": "report_requested" },
-          "target": { "template": "analysis.report", "version": "pinned" },
-          "params": { "question": { "cel": "params.question" } },
-          "carry": ["prior_attempt", "artifacts"],
-          "gate": { "kind": "auto" }
-        }
-      ]
+      "sinks": []
     }
   }
 }

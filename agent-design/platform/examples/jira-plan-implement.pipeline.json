@@ -1,0 +1,161 @@
+{
+  "name": "jira.plan-implement",
+  "version": 1,
+  "title": "Plan, then implement, a Jira ticket",
+  "description": "Use case 2. A plan stage, a principal-approved handover of the plan to an implement stage, and a Jira update when the pipeline ends, whichever stage it ends in.",
+  "owner": {
+    "type": "team",
+    "id": "platform-agents"
+  },
+  "params": {
+    "issue_key": {
+      "type": "string",
+      "trust": "config",
+      "required": true,
+      "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+    },
+    "repository": {
+      "type": "string",
+      "trust": "config",
+      "required": true,
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    },
+    "target_branch": {
+      "type": "string",
+      "trust": "config",
+      "required": true,
+      "pattern": "^[A-Za-z0-9_./-]{1,200}$"
+    }
+  },
+  "entry": "plan",
+  "stages": {
+    "plan": {
+      "template": {
+        "name": "forge.plan",
+        "version": "pinned"
+      },
+      "params": {
+        "issue_key": {
+          "cel": "pipeline.params.issue_key"
+        },
+        "repository": {
+          "cel": "pipeline.params.repository"
+        },
+        "target_branch": {
+          "cel": "pipeline.params.target_branch"
+        }
+      }
+    },
+    "implement": {
+      "template": {
+        "name": "forge.implement",
+        "version": "pinned"
+      },
+      "params": {
+        "issue_key": {
+          "cel": "pipeline.params.issue_key"
+        },
+        "repository": {
+          "cel": "pipeline.params.repository"
+        },
+        "target_branch": {
+          "cel": "pipeline.params.target_branch"
+        }
+      }
+    }
+  },
+  "edges": [
+    {
+      "id": "plan_approved",
+      "from": "plan",
+      "on": {
+        "terminal": "complete",
+        "status": [
+          "planned"
+        ]
+      },
+      "to": "implement",
+      "params": {
+        "write_scope": {
+          "cel": "result.report.write_scope"
+        }
+      },
+      "carry": [
+        "plan"
+      ],
+      "gate": {
+        "kind": "approval",
+        "principal_set": [
+          "issue_assignee",
+          "issue_reporter"
+        ],
+        "channel": {
+          "type": "jira_comment",
+          "target": {
+            "origin": true
+          }
+        },
+        "bind": "plan_hash",
+        "expires_after_s": 1209600
+      },
+      "via": "task"
+    }
+  ],
+  "sinks": [
+    {
+      "id": "jira_transition",
+      "kind": "tool",
+      "when": {
+        "terminal": [
+          "complete"
+        ],
+        "expr": {
+          "cel": "stage == 'implement' && result.status == 'done'"
+        }
+      },
+      "tool": "mcp:jira/update_issue",
+      "args": {
+        "key": {
+          "cel": "pipeline.params.issue_key"
+        },
+        "transition": "In Review"
+      }
+    },
+    {
+      "id": "jira_summary",
+      "kind": "comment",
+      "channel": {
+        "type": "jira_comment",
+        "target": {
+          "origin": true
+        }
+      },
+      "render": {
+        "template": "**Forge {{stage}}: {{result.status}}**\n\n{{result.summary}}"
+      }
+    }
+  ],
+  "max_hops": 1,
+  "max_tier": "strong",
+  "tools": {
+    "servers": [
+      {
+        "id": "jira"
+      }
+    ],
+    "groups": [
+      {
+        "id": "jira.transition",
+        "tools": [
+          {
+            "tool": "mcp:jira/update_issue",
+            "annotations": {
+              "idempotent": false,
+              "retry": "never"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

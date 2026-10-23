@@ -1,0 +1,67 @@
+{
+  "name": "java.coding",
+  "version": 3,
+  "owner": { "type": "team", "id": "java-platform" },
+  "description": "Tools for a Java coding agent: files and shell, Maven builds, language-server navigation, Sonar findings and Jira reads. Each tool is set up the way a Java agent should see it.",
+  "servers": [
+    { "id": "maven", "snapshot": "sha256:4a1f0c9e8d7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f" },
+    { "id": "jdtls", "snapshot": "sha256:5b2a1d0f9e8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a" },
+    { "id": "sonar", "snapshot": "sha256:6c3b2e1a0f9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b" },
+    { "id": "jira", "snapshot": "sha256:1f3c0b8e9d2a4c6e8f0a1b3c5d7e9f1a2b4c6d8e0f1a3b5c7d9e1f2a4b6c8d0e" }
+  ],
+  "visibility": "loaded",
+  "tools": [
+    { "tool": "builtin/Read" },
+    { "tool": "builtin/Grep" },
+    { "tool": "builtin/List" },
+    { "tool": "builtin/Edit" },
+    { "tool": "builtin/Write" },
+    { "tool": "builtin/Bash", "limits": { "timeout_s": 900, "context_chars": 30000 } },
+    {
+      "tool": "mcp:maven/run_goal",
+      "alias": "Maven",
+      "description": "Runs a Maven goal in the working tree and returns the build summary, failed tests and the first error. Prefer this to running mvn through Bash: the output is already trimmed to what matters.",
+      "annotations": { "read_only": false, "destructive": false, "idempotent": true, "concurrency_safe": false },
+      "params": {
+        "goal": { "enum": ["compile", "test", "verify", "dependency:tree"], "description": "Which goal. Use test with tests to run a few classes." },
+        "tests": { "description": "Comma-separated test classes or Class#method for -Dtest." },
+        "offline": { "fixed": true, "hidden": true },
+        "settings_file": { "fixed": "/etc/maven/agent-settings.xml", "hidden": true },
+        "project_dir": { "fixed": { "cel": "run.workspace.path" }, "hidden": true }
+      }
+    },
+    {
+      "tool": "mcp:jdtls/find_references",
+      "alias": "FindReferences",
+      "visibility": "deferred",
+      "search_hint": "Java: every call site or usage of a class, method or field",
+      "annotations": { "read_only": true, "idempotent": true, "concurrency_safe": true },
+      "params": { "include_tests": { "default": true } }
+    },
+    {
+      "tool": "mcp:jdtls/type_hierarchy",
+      "alias": "TypeHierarchy",
+      "visibility": "deferred",
+      "search_hint": "Java: supertypes and subtypes of a class or interface",
+      "annotations": { "read_only": true, "idempotent": true, "concurrency_safe": true }
+    },
+    {
+      "tool": "mcp:sonar/search_issues",
+      "alias": "SonarIssues",
+      "visibility": "deferred",
+      "search_hint": "Static-analysis findings for files you changed",
+      "annotations": { "read_only": true, "idempotent": true },
+      "params": {
+        "project_key": { "fixed": { "$param": "repository" }, "hidden": true },
+        "severities": { "enum": ["BLOCKER", "CRITICAL", "MAJOR"], "default": ["BLOCKER", "CRITICAL"] },
+        "page_size": { "maximum": 50, "default": 20 }
+      }
+    },
+    {
+      "tool": "mcp:jira/get_issue",
+      "alias": "FetchJira",
+      "annotations": { "read_only": true, "idempotent": true, "concurrency_safe": true, "retry": "on_transport_error" },
+      "params": { "expand": { "fixed": ["renderedFields", "attachments"], "hidden": true } }
+    }
+  ]
+}
