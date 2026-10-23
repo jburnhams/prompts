@@ -2,11 +2,11 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://forge.example/schemas/run.schema.json",
   "title": "Runs",
-  "description": "A run is one template version executed with bound params under one principal. See ../../platform.md \u00a77 and \u00a710.",
+  "description": "A run is one template version executed with bound params under one principal. See ../../platform.md §7 and §10.",
   "$defs": {
     "RunRequest": {
       "type": "object",
-      "description": "Body of POST /v1/runs. Exactly one of template, pipeline, adhoc. Triggers, pipelines and the ledger build the same object internally.",
+      "description": "Body of POST /v1/runs. Exactly one of template, pipeline, adhoc. Every request creates a pipeline run; a template or adhoc request makes a one-stage one. Triggers and edges build the same object internally.",
       "properties": {
         "template": {
           "type": "object",
@@ -141,6 +141,16 @@
         "origin": {
           "$ref": "common.schema.json#/$defs/Origin",
           "description": "Set by triggers and chat adapters. An API caller may set only a channel it can post to."
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "normal",
+            "high",
+            "urgent"
+          ],
+          "default": "normal"
         }
       },
       "required": [
@@ -167,7 +177,7 @@
     },
     "ResolvedSpec": {
       "type": "object",
-      "description": "What a run actually executes: the template's flat spec with params bound, tools expanded per role, generated tools added, and provider strategy chosen. Immutable for the run.",
+      "description": "What a run actually executes: the template's flat spec with params bound, tools expanded per agent, generated tools added, and provider strategy chosen. Immutable for the run.",
       "properties": {
         "template": {
           "$ref": "common.schema.json#/$defs/VersionedRef"
@@ -179,9 +189,9 @@
           "$ref": "common.schema.json#/$defs/Digest"
         },
         "spec": {
-          "$ref": "agent-spec.schema.json"
+          "$ref": "run-spec.schema.json"
         },
-        "roles": {
+        "agents": {
           "type": "object",
           "additionalProperties": {
             "type": "object",
@@ -205,7 +215,7 @@
               },
               "registered": {
                 "type": "array",
-                "description": "The fixed tools array for this role, with each tool's visibility state at turn 0.",
+                "description": "The fixed tools array for this agent, with each tool's visibility state at turn 0.",
                 "items": {
                   "type": "object",
                   "properties": {
@@ -241,7 +251,7 @@
         "template",
         "digest",
         "spec",
-        "roles"
+        "agents"
       ],
       "additionalProperties": false
     },
@@ -253,10 +263,11 @@
           "enum": [
             "api",
             "trigger",
-            "continuation",
+            "edge",
             "resume",
-            "ledger",
-            "pipeline_edge"
+            "retry",
+            "approved_action",
+            "dependency_cleared"
           ]
         },
         "trigger_id": {
@@ -268,9 +279,6 @@
         "parent_run_id": {
           "$ref": "common.schema.json#/$defs/Id"
         },
-        "continuation_id": {
-          "$ref": "common.schema.json#/$defs/Name"
-        },
         "gate_id": {
           "$ref": "common.schema.json#/$defs/Id"
         },
@@ -280,6 +288,10 @@
         },
         "edge_id": {
           "$ref": "common.schema.json#/$defs/Name"
+        },
+        "continuation_id": {
+          "$ref": "common.schema.json#/$defs/Name",
+          "description": "approved_action: the template continuation that started it."
         }
       },
       "required": [
@@ -342,9 +354,6 @@
           ],
           "additionalProperties": false
         },
-        "task_id": {
-          "$ref": "common.schema.json#/$defs/Id"
-        },
         "state": {
           "type": "string",
           "enum": [
@@ -384,14 +393,15 @@
               "run_id": {
                 "$ref": "common.schema.json#/$defs/Id"
               },
-              "task_id": {
-                "$ref": "common.schema.json#/$defs/Id"
-              },
               "gate_id": {
                 "$ref": "common.schema.json#/$defs/Id"
               },
               "refused": {
                 "$ref": "common.schema.json#/$defs/RefusalCode"
+              },
+              "pipeline_run_id": {
+                "$ref": "common.schema.json#/$defs/Id",
+                "description": "A child pipeline run, for a spinoff."
               }
             },
             "required": [
@@ -422,10 +432,17 @@
           "$ref": "common.schema.json#/$defs/Origin"
         },
         "pipeline_run_id": {
-          "$ref": "common.schema.json#/$defs/Id"
+          "$ref": "common.schema.json#/$defs/Id",
+          "description": "Every run belongs to a pipeline run. A template run on its own is a one-stage pipeline run whose stage is named after the template."
         },
         "stage": {
-          "$ref": "common.schema.json#/$defs/Name"
+          "$ref": "common.schema.json#/$defs/Name",
+          "description": "The stage this run is an attempt at."
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Which attempt at the stage this is."
         }
       },
       "required": [
@@ -437,7 +454,10 @@
         "cause",
         "lineage",
         "state",
-        "created_at"
+        "created_at",
+        "pipeline_run_id",
+        "stage",
+        "attempt"
       ],
       "additionalProperties": false
     },
@@ -591,9 +611,6 @@
           "items": {
             "type": "object",
             "properties": {
-              "role": {
-                "type": "string"
-              },
               "tier": {
                 "$ref": "common.schema.json#/$defs/Tier"
               },
@@ -619,10 +636,13 @@
               "price_snapshot": {
                 "type": "string",
                 "description": "Price table id at the time, so cost stays reproducible."
+              },
+              "agent": {
+                "type": "string"
               }
             },
             "required": [
-              "role",
+              "agent",
               "tier",
               "model_id"
             ],
@@ -690,10 +710,6 @@
         "run_id": {
           "$ref": "common.schema.json#/$defs/Id"
         },
-        "role": {
-          "type": "string",
-          "description": "orchestrator, or role/child-index for a sub-agent."
-        },
         "type": {
           "type": "string",
           "enum": [
@@ -717,6 +733,10 @@
         "data": {
           "type": "object",
           "description": "Type-specific. tool_result carries size and status, never bodies; bodies are in the transcript, which needs a separate permission."
+        },
+        "agent": {
+          "type": "string",
+          "description": "orchestrator, or sub-agent name/child-index."
         }
       },
       "required": [

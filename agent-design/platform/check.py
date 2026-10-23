@@ -179,19 +179,19 @@ def check_constrained(where, path, pname, p):
 # --- template rules -----------------------------------------------------------
 
 def check_spec(where, params, spec):
-    roles = spec["roles"]
-    orch = roles["orchestrator"]
+    agents = spec["agents"]
+    orch = agents["orchestrator"]
     groups, tools_by_group = group_tools(spec)
     declared_servers = {s["id"] for s in spec.get("tools", {}).get("servers", [])}
     declared_tools = {t["tool"] for tools in tools_by_group.values() for t in tools}
 
     # R1 grants come only from the job's declaration
-    for role_name, role in roles.items():
-        grants = set(role.get("grant", []))
-        for extra in role.get("kind_grants", {}).values():
+    for agent_name, agent in agents.items():
+        grants = set(agent.get("grant", []))
+        for extra in agent.get("kind_grants", {}).values():
             grants |= set(extra)
         for gid in sorted(grants - set(groups)):
-            err(where, f"R1 role {role_name} grants undeclared group {gid}")
+            err(where, f"R1 agent {agent_name} grants undeclared group {gid}")
 
     # R2 every MCP tool names a declared server
     for gid, tools in tools_by_group.items():
@@ -201,14 +201,14 @@ def check_spec(where, params, spec):
                 err(where, f"R2 group {gid} uses {t['tool']} but tools.servers lacks {src[4:]}")
 
     # R3 spawn graph
-    for role_name, role in roles.items():
-        for child in role.get("spawns", []):
-            if child not in roles or child == "orchestrator":
-                err(where, f"R3 role {role_name} spawns unknown role {child}")
-        if role_name != "orchestrator":
-            for kind in role.get("kind_grants", {}):
-                if kind not in role.get("spawn_kinds", []):
-                    err(where, f"R3 role {role_name} kind_grants {kind} not in spawn_kinds")
+    for agent_name, agent in agents.items():
+        for child in agent.get("spawns", []):
+            if child not in agents or child == "orchestrator":
+                err(where, f"R3 agent {agent_name} spawns unknown agent {child}")
+        if agent_name != "orchestrator":
+            for kind in agent.get("kind_grants", {}):
+                if kind not in agent.get("spawn_kinds", []):
+                    err(where, f"R3 agent {agent_name} kind_grants {kind} not in spawn_kinds")
 
     # R4 params: declared, bound by trust, constrained when config-bound
     for path, pname in walk_params(spec):
@@ -216,7 +216,7 @@ def check_spec(where, params, spec):
             err(where, f"R4 {path} binds undeclared param {pname}")
             continue
         at_input = path.startswith("/inputs/") and path.endswith("/source/param")
-        grant_bearing = path.startswith(("/system_prompt", "/tools", "/roles", "/completion", "/hatches", "/authority", "/monitors")) or path == "/model/max_tier"
+        grant_bearing = path.startswith(("/system_prompt", "/tools", "/agents", "/completion", "/hatches", "/authority", "/monitors")) or path == "/model/max_tier"
         if grant_bearing and not FIXED_ARG.match(path):
             err(where, f"R4 {path} is not bindable")
         if not at_input:
@@ -253,8 +253,11 @@ def check_spec(where, params, spec):
         for pname in c.get("params", {}):
             if pname not in params:
                 err(where, f"R7 continuation {c['id']} binds undeclared param {pname}")
-        if c["on"].get("spinoff") and (not comp.get("spinoffs") or c.get("via") != "task" or not spec.get("ledger")):
-            err(where, f"R7 spinoff continuation {c['id']} needs completion.spinoffs, via task and ledger")
+        if c["on"].get("spinoff") and not comp.get("spinoffs"):
+            err(where, f"R7 spinoff continuation {c['id']} needs completion.spinoffs")
+    for sink in spec.get("outputs", {}).get("sinks", []):
+        if "at" in sink:
+            err(where, f"R7 sink {sink['id']} sets at, which only a pipeline sink may")
     ask = (spec.get("human") or {}).get("ask_user")
     if ask and "approve" in ask["kinds"]:
         if not any(c["on"]["terminal"] == "suspend" and c["on"].get("answer") == "approve" for c in conts):
@@ -271,7 +274,7 @@ def check_spec(where, params, spec):
             err(where, "R8 array_growth.bundle must be one of expand.reveals")
     revealable = set(expand.get("reveals", [])) if expand else set()
     revealable |= {ht["action"]["reveal"] for ht in spec.get("monitors", []) if "reveal" in ht["action"]}
-    granted_anywhere = {gid for r in roles.values() for gid in r.get("grant", [])}
+    granted_anywhere = {gid for r in agents.values() for gid in r.get("grant", [])}
     for gid, g in groups.items():
         if g.get("visibility") == "hidden" and gid in granted_anywhere and gid not in revealable:
             warn(where, f"R8 group {gid} is granted and hidden with no Expand or trigger to reveal it")
@@ -280,36 +283,36 @@ def check_spec(where, params, spec):
     ws = spec.get("workspace", {"kind": "none"})
     writable = ws["kind"] == "checkout" and ws.get("writable")
     if not writable:
-        for role_name, role in roles.items():
-            for gid in role.get("grant", []):
+        for agent_name, agent in agents.items():
+            for gid in agent.get("grant", []):
                 hits = {t["tool"] for t in tools_by_group.get(gid, [])} & WRITE_TOOLS
                 if hits:
-                    err(where, f"R9 role {role_name} is granted {sorted(hits)} on a read-only workspace")
+                    err(where, f"R9 agent {agent_name} is granted {sorted(hits)} on a read-only workspace")
 
     # R10 tiers
     max_tier = spec["model"]["max_tier"]
     top = spec["model"]["tier"]
     if isinstance(top, str) and TIER_ORDER[top] > TIER_ORDER[max_tier]:
         err(where, f"R10 model.tier {top} exceeds max_tier {max_tier}")
-    for role_name, role in roles.items():
-        t = (role.get("model") or {}).get("tier")
+    for agent_name, agent in agents.items():
+        t = (agent.get("model") or {}).get("tier")
         if not isinstance(t, str):
             continue
         if TIER_ORDER[t] > TIER_ORDER[max_tier]:
-            err(where, f"R10 role {role_name} tier {t} exceeds max_tier {max_tier}")
-        if role_name != "orchestrator" and role["model"].get("clamp_to_parent", True) and isinstance(top, str) and TIER_ORDER[t] > TIER_ORDER[top]:
-            warn(where, f"R10 role {role_name} asks for {t} but is clamped to its parent's {top}")
+            err(where, f"R10 agent {agent_name} tier {t} exceeds max_tier {max_tier}")
+        if agent_name != "orchestrator" and agent["model"].get("clamp_to_parent", True) and isinstance(top, str) and TIER_ORDER[t] > TIER_ORDER[top]:
+            warn(where, f"R10 agent {agent_name} asks for {t} but is clamped to its parent's {top}")
 
-    # R11 tool names unique per role, including generated ones
+    # R11 tool names unique per agent, including generated ones
     finishers = comp.get("finishers", [])
-    for role_name, role in roles.items():
+    for agent_name, agent in agents.items():
         names = {}
-        for gid in role.get("grant", []):
+        for gid in agent.get("grant", []):
             for t in tools_by_group.get(gid, []):
                 n = tool_name(t)
                 if names.setdefault(n, t["tool"]) != t["tool"]:
-                    err(where, f"R11 role {role_name} sees two tools named {n}")
-        if role_name == "orchestrator":
+                    err(where, f"R11 agent {agent_name} sees two tools named {n}")
+        if agent_name == "orchestrator":
             for f in finishers:
                 if f["name"] in names or f["name"] in HARNESS_NAMES:
                     err(where, f"R11 finisher name {f['name']} collides with another tool")
@@ -359,7 +362,7 @@ def r12(where, run_as, tool_addresses, servers):
 def check_server_auth(where, spec, servers):
     _, tools_by_group = group_tools(spec)
     by_address = {t["tool"]: t.get("annotations", {}) for tools in tools_by_group.values() for t in tools}
-    used = {gid for role in spec["roles"].values() for gid in role.get("grant", [])}
+    used = {gid for agent in spec["agents"].values() for gid in agent.get("grant", [])}
     addresses = [(t["tool"], t.get("annotations", {})) for gid in used for t in tools_by_group.get(gid, [])]
     addresses += [(f["action"]["tool"], by_address.get(f["action"]["tool"], {})) for f in spec["completion"].get("finishers", []) if "tool" in f["action"]]
     r12(where, spec.get("authority", {}).get("run_as", []), addresses, servers)
@@ -478,6 +481,10 @@ def check_pipeline(where, pipe, flat_specs, params_by_template, servers, base_te
             err(where, f"P8 {addr} names a server the pipeline does not declare")
     used = []
     for s in pipe.get("sinks", []):
+        if "at" in s and s["at"]["stage"] not in stages:
+            err(where, f"P8 sink {s['id']} fires at unknown stage {s['at']['stage']}")
+        if "at" in s and s["at"]["event"] == "settled" and "settle" not in stages.get(s["at"]["stage"], {}):
+            err(where, f"P8 sink {s['id']} fires when {s['at']['stage']} settles, but that stage has no settle")
         if s["kind"] == "tool":
             if s["tool"] not in declared:
                 err(where, f"P8 sink {s['id']} calls {s['tool']}, which the pipeline does not declare")
@@ -565,7 +572,7 @@ def main():
         except ValueError as e:
             err(where, str(e))
             continue
-        validate(where, "agent-spec.schema.json", spec)
+        validate(where, "run-spec.schema.json", spec)
         flat_specs[tname] = spec
         params_by_template[tname] = params
     for (tname, version), t in templates.items():

@@ -184,13 +184,6 @@
         }
       ]
     },
-    "roles": {
-      "orchestrator": {
-        "grant": [
-          "java"
-        ]
-      }
-    },
     "human": {
       "ask_user": {
         "kinds": [
@@ -322,6 +315,13 @@
     "concurrency": {
       "key": {
         "cel": "params.repository + '#' + params.target_branch"
+      }
+    },
+    "agents": {
+      "orchestrator": {
+        "grant": [
+          "java"
+        ]
       }
     }
   }

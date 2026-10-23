@@ -8,23 +8,29 @@ don't have to be rewritten, and a reader of either can find their way.
 
 Each entry gives the meaning, then *Not*: what it gets confused with,
 then *Where*: the schema field or document. Section 10 lists words we
-deliberately don't use as concepts. Section 11 lists collisions that are
-still open, each with a recommendation.
+deliberately don't use as concepts. Section 11 records the collisions
+and how each was settled.
 
 ---
 
 ## 1. Defining an agent
 
-**Agent.** Informal. Means a template, or a pipeline when someone says
-"agent pipeline". Never used as a field name.
-*Not:* a run (one execution), a role (one context inside a run).
+**Agent.** One model context inside a run, with its own prompt, tools
+and tier. Every run has an **orchestrator** agent, and may spawn
+**sub-agents**. Informally, "the data agent" or "the plan agent" means
+the template whose orchestrator does that job, which is consistent: a
+template is mostly a description of its orchestrator.
+*Not:* a run (one execution), a **role** (an RBAC concept, §6).
+*Where:* `agents` in a run spec.
 
-**Agent spec** (`AgentSpec`). Everything that defines one run, before
+**Run spec** (`RunSpec`). Everything that defines one run, before
 params are bound: the model, the prompt, the inputs, the tools, the
-roles, the ending contract, the outputs and the authority.
-*Where:* `platform/schemas/agent-spec.schema.json`.
+agents, the ending contract, the outputs and the authority.
+*Older word:* `AgentSpec`, renamed when "agent" came to mean one
+context inside a run.
+*Where:* `platform/schemas/run-spec.schema.json`.
 
-**Template.** An agent spec with a name, a version, and declared
+**Template.** A run spec with a name, a version, and declared
 **params**. It is the thing you save, review, publish and run.
 *Not:* a prompt template. Prompts take no params (see **Param**).
 *Where:* `template.schema.json`.
@@ -64,7 +70,7 @@ fields (repository, branch, tier, budgets, paths), and must declare a
 limit: an enum, a pattern, a subset or a maximum.
 
 **Bindable.** A field that accepts `{"$param": …}`. Fields that grant
-anything are never bindable: prompt, tools, roles, completion, hatches,
+anything are never bindable: prompt, tools, agents, completion, hatches,
 authority, monitors.
 
 **Ad-hoc run.** A run of an unsaved spec. The harness publishes it as
@@ -115,10 +121,11 @@ learned), resolved by the context service for a ref.
 
 **Kind.** One open vocabulary: `bugs`, `security`, `conventions`,
 `visual`, … A kind selects context sections, prompt scope and extra
-tool grants for a role. Kinds are declared by whoever spawns the role,
+tool grants for a sub-agent. Kinds are declared by whoever spawns the sub-agent,
 never by the agent about itself.
-*Older words:* **lens** (`review.md`), and `role` in Forge's `Task`
-tool (§11).
+*Older words:* **lens** (`review.md`), and the `role` argument of
+Forge's v1 `Task` tool. The platform's generated `Task` calls it
+`kind`.
 
 **Workspace.** What the run may touch on disk: `none`, or a
 harness-provisioned **checkout** with `writable`, a **write scope**
@@ -183,11 +190,11 @@ carrying its own pinned servers.
 can be granted, revealed, wrapped by a finisher, or called.
 *Older word:* "the job's declaration" (`tools.md`).
 
-**Grant.** The groups a role may call (`roles.<r>.grant`), each a
+**Grant.** The groups an agent may call (`agents.<a>.grant`), each a
 subset of the declaration. Checked by the executor on every call.
 
-**Registered.** In the fixed tools array sent to the provider for a
-role. Grant plus generated tools. It doesn't change during a run.
+**Registered.** In the fixed tools array sent to the provider for an
+agent. Grant plus generated tools. It doesn't change during a run.
 
 **Visibility.** Whether the model has a tool's schema in context right
 now:
@@ -202,7 +209,7 @@ Visibility never grants.
 `Complete`, each finisher, `AskUser`, `HandOff`, `Expand`, `Task`,
 `Narrate`.
 
-**Harness check.** Enforcement at the tool boundary for every role,
+**Harness check.** Enforcement at the tool boundary for every agent,
 which no grant can remove: sanitiser, git-write blocklist,
 read-before-edit, secret scan, egress allowlist and so on.
 *Where:* `tools.checks`.
@@ -210,23 +217,21 @@ read-before-edit, secret scan, egress allowlist and so on.
 
 ---
 
-## 4. Roles and models
+## 4. Agents and models
 
-**Role.** One context inside a run, with its own grant, model and
-prompt. Every run has an **orchestrator**, and may have **sub-agent**
-roles.
-*Not:* Forge's `Task.role` argument, which is a kind (§11).
+**Orchestrator.** The top-level agent of a run. The only one with
+generated ending tools and a human channel.
 
-**Orchestrator.** The top-level role. The only one with generated
-ending tools and a human channel.
-
-**Sub-agent.** A role the orchestrator (or another role) **spawns**
+**Sub-agent.** An agent the orchestrator (or another agent) **spawns**
 through `Task`. It returns a report to its spawner. It never ends the
 run and never talks to a human. Its grant comes from the declaration,
 not from its spawner's grant.
 
-**Kind grant.** Extra groups a sub-agent role gets when spawned with a
-given kind (`visual` → `vision`).
+**Task.** The generated tool an agent uses to spawn a sub-agent. "Task"
+is otherwise informal, for the work a run is given; it isn't a record.
+
+**Kind grant.** Extra groups a sub-agent gets when spawned with a given
+kind (`visual` → `vision`).
 
 **Tier.** `economy`, `standard` or `strong`. Templates name tiers, never
 models.
@@ -236,7 +241,7 @@ models.
 **Max tier.** The highest tier a run, its children and its pipeline may
 reach. Set by template, pipeline and deployment. The lowest wins.
 
-**Clamp.** A child role never runs above its parent's tier unless the
+**Clamp.** A sub-agent never runs above its parent's tier unless the
 template says `clamp_to_parent: false`.
 
 **Deployment.** Operator-owned facts no template overrides: the tier →
@@ -318,6 +323,21 @@ result, never mixed into the data.
 ---
 
 ## 6. People and authority
+
+**Role.** An RBAC role: a set of permission groups, assigned to a
+**team**. A user has what their teams' roles grant. Roles live in the
+RBAC system, outside this spec. This is the only meaning of "role".
+*Not:* an agent; a kind.
+
+**Team.** A group of users in the RBAC system. Roles are assigned to
+teams. A gate's principal set can name a team, which is read for
+membership only.
+
+**Permission.** A named action the platform checks with RBAC:
+`runs:create`, `runs:adhoc`, `runs:as-service`, `templates:publish`, …
+(`platform.md` §12a). A permission lets you start or change something.
+It never widens what a run may do: that is the template's grant and the
+principal's own access.
 
 **Principal.** On whose behalf a run acts. Downstream systems check
 this identity's permissions.
@@ -409,11 +429,40 @@ bound from the pipeline.
 params, a gate, and an optional **announce** (a line posted to the
 origin when the edge is taken).
 
-**Pipeline run.** One execution of a pipeline: the stage runs in order,
-any gate between them, and the final outcome.
+**Pipeline run.** The durable record of one piece of work: a stage
+record per stage entered, child runs, the subject, the final outcome.
+Every run belongs to one. A template run on its own is a one-stage
+pipeline run.
+
+**Stage record.** One stage within a pipeline run: its state, frozen
+params, **attempts**, what it is **waiting on**, its **links**, and the
+concurrency key it holds.
+
+**Attempt.** One run at a stage. A new attempt comes from entering the
+stage, a **retry**, a resume, an approved action, or a cleared
+dependency.
+
+**Retry.** A stage policy: which ending statuses start another attempt
+(by default `budget_exhausted`, infrastructure failure and a lost
+lease, but not `failed`), how many times, and with what raised budgets.
+
+**Waiting.** A stage not running because of a gate, a child pipeline
+run, a concurrency key held elsewhere, a timer, or its settle event.
+
+**Settle.** A stage whose run ended `done` but whose work isn't
+finished until something external happens, such as its PR merging.
+The stage is `settling` until then, and holds its concurrency key.
+*Older word:* the ledger state `handoff` (`orchestration.md`).
+
+**Link.** A fact written back to a stage once, by something
+downstream: the committer's PR, a commit.
+
+**Subject.** The issue or PR a pipeline run is about, with what the
+tracker last said about it.
 
 **Spinoff.** Out-of-scope work a run reports and doesn't do. A
-continuation turns it into a ledger task.
+continuation turns it into a **child pipeline run**. For `blocks_this`,
+the parent stage waits on it.
 
 **Lineage.** How runs relate: the root run, depth, the run a resume
 continues, the pipeline run and stage.
@@ -441,8 +490,8 @@ ran.
 nothing.
 
 **Concurrency key.** The value that decides whether two pieces of work
-contend, such as `repository#branch`. Set on triggers, templates and
-ledger tasks.
+contend, such as `repository#branch`. Set on triggers and templates,
+and held by a stage while it runs and settles.
 *Older word:* `owner` on a ledger task (`orchestration.md` §2).
 
 **Expression.** A CEL expression the harness evaluates. Never shown to
@@ -456,7 +505,7 @@ or written by the model.
 principal.
 
 **Resolved spec.** What a run actually executes: the flat spec with
-params bound, and per role the model id and the fixed tools array.
+params bound, and per agent the model id and the fixed tools array.
 Immutable for the run.
 
 **Run state.** `queued`, `provisioning`, `running`, `finalizing`,
@@ -468,7 +517,7 @@ resume.
 
 **Events stream.** Live progress of a run, without tool bodies.
 
-**Usage.** Turns, tokens per role and model, cost, with a price
+**Usage.** Turns, tokens per agent and model, cost, with a price
 snapshot.
 
 **Refusal code.** The closed vocabulary for every harness refusal or
@@ -477,16 +526,9 @@ degradation. The same codes appear in tool results and API errors.
 **Ref, artifact.** A handle to bytes kept out of context
 (`artifact://`, `table://`, `run://`).
 
-**Ledger.** The durable record of obligations that outlive one run.
-
-**Task.** One ledger entry: dependencies, attempts, lease, wake
-condition.
-*Not:* the `Task` tool (§11), nor "the task details" (the starting
-query).
-
-**Attempt.** One run against a task. **Lease** is the harness's claim
-on a task while a run works on it. **Wake** is what moves a parked
-task back to ready.
+**Lease.** The harness's claim on a stage while a run works on it,
+refreshed by the run's activity and reclaimable when it lapses. A run
+never sees it.
 
 ---
 
@@ -501,19 +543,22 @@ task back to ready.
 | **harness trigger** | collided with **trigger** | **monitor** |
 | **completion gate** | collided with **gate** | **completion check** |
 | **owner** (of a ledger task) | collided with the owner of a template or trigger | **concurrency key** |
+| **ledger**, **task** (ledger sense) | the pipeline run became the durable record; a second store with its own state machine had to agree with it | **pipeline run**, **stage record** |
+| **handoff** (ledger state) | collided with the `HandOff` tool | **settling** |
+| **role** (for an agent) | role is an RBAC concept | **agent**, **orchestrator**, **sub-agent** |
+| **AgentSpec** | "agent" now means one context inside a run | **run spec** |
 | **result** (as a field) | prose only | **outcome** |
 
-## 11. Collisions still to decide
+## 11. Collisions
 
-These words come from earlier Forge documents, which other documents
-cite. Renaming them is a decision for you, not a tidy-up. Each has a
-recommendation.
+Resolved on review: `handoff` (the ledger state is gone; it's
+**settling**), `Task` (no ledger, so `Task` is only the spawn tool, and
+"task" stays informal for the work a run is given), and `role` (RBAC
+only; the spawn argument is `kind`). The rest are left as they are,
+each with its reason:
 
-| Word | Meanings | Recommendation |
+| Word | Meanings | Decision |
 |---|---|---|
-| **handoff** | the `HandOff` tool (end and pass to a stronger stage) and the ledger state `handoff` (work given to the committer, waiting on the PR) | rename the ledger state to `with_committer`. The tool is the newer, more visible use |
-| **Task** | the `Task` tool (spawn a sub-agent) and a ledger task | rename the tool to `Spawn` in the platform's generated tools. Keep "task" for the ledger and, informally, for the work a run is given |
-| **role** | a run's orchestrator and sub-agent contexts, and `Task.role`, which carries a kind | spawn with `kind`, and keep **role** for contexts. Forge's schema keeps `role` until its next version |
-| **source** | a trigger source, an input source, a tool source, a ledger task's source | leave it: each is always qualified by what it is the source of, and none is a concept on its own |
+| **source** | a trigger source, an input source, a tool source | leave it: each is always qualified by what it is the source of, and none is a concept on its own |
 | **check** | a harness check (every call) and a completion check (on ending) | leave it, but always qualify. They are both deterministic tests, which is the point of the shared word |
 | **plan** | a stage, a template, a report, a carried input, `plan_hash` | leave it. They are all the same artefact at different points: the plan a plan run produced |

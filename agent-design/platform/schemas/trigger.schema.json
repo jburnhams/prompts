@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://forge.example/schemas/trigger.schema.json",
   "title": "Triggers",
-  "description": "A trigger turns an external occurrence into a RunRequest (or a ledger task). See ../../platform.md \u00a79.",
+  "description": "A trigger turns an external occurrence into a RunRequest (or a ledger task). See ../../platform.md §9.",
   "$defs": {
     "Trigger": {
       "type": "object",
@@ -202,15 +202,6 @@
           },
           "additionalProperties": false
         },
-        "creates": {
-          "type": "string",
-          "enum": [
-            "run",
-            "task"
-          ],
-          "default": "run",
-          "description": "task files a ledger task; the dispatcher starts runs for it."
-        },
         "labels": {
           "$ref": "common.schema.json#/$defs/Labels"
         },
@@ -261,6 +252,16 @@
             "ref"
           ],
           "additionalProperties": false
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "normal",
+            "high",
+            "urgent"
+          ],
+          "default": "normal"
         }
       },
       "required": [
@@ -472,13 +473,14 @@
           "$ref": "common.schema.json#/$defs/RefusalCode"
         },
         "run_id": {
-          "$ref": "common.schema.json#/$defs/Id"
-        },
-        "task_id": {
-          "$ref": "common.schema.json#/$defs/Id"
+          "$ref": "common.schema.json#/$defs/Id",
+          "description": "The first stage run."
         },
         "template": {
           "$ref": "common.schema.json#/$defs/VersionedRef"
+        },
+        "pipeline_run_id": {
+          "$ref": "common.schema.json#/$defs/Id"
         }
       },
       "required": [

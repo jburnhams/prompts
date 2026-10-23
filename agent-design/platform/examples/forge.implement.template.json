@@ -2,7 +2,7 @@
   "name": "forge.implement",
   "version": 1,
   "title": "Forge: implement a ticket",
-  "description": "The coding entrypoint that changes code (system-prompts.md \u00a71, implement). Edits a harness-provisioned checkout and leaves it for the committer. A sibling of forge.plan; a pipeline links them.",
+  "description": "The coding entrypoint that changes code (system-prompts.md §1, implement). Edits a harness-provisioned checkout and leaves it for the committer. A sibling of forge.plan; a pipeline links them.",
   "owner": {
     "type": "team",
     "id": "platform-agents"
@@ -139,29 +139,6 @@
       "writable": true,
       "write_scope": {
         "$param": "write_scope"
-      }
-    },
-    "roles": {
-      "orchestrator": {
-        "grant": [
-          "core.read",
-          "core.write",
-          "core.shell",
-          "vision",
-          "jira.read"
-        ],
-        "spawns": [
-          "general-purpose"
-        ],
-        "max_concurrent_children": 4
-      },
-      "general-purpose": {
-        "grant": [
-          "core.read",
-          "core.write",
-          "core.shell",
-          "vision"
-        ]
       }
     },
     "human": {
@@ -327,8 +304,7 @@
           ],
           "gate": {
             "kind": "auto"
-          },
-          "via": "task"
+          }
         },
         {
           "id": "spinoff_following",
@@ -372,8 +348,7 @@
               }
             },
             "bind": "report_hash"
-          },
-          "via": "task"
+          }
         }
       ],
       "max_chain_depth": 3
@@ -383,10 +358,30 @@
         "cel": "params.repository + '#' + params.target_branch"
       },
       "policy": "queue",
-      "handoff_occupies": true
+      "held_while_settling": true
     },
-    "ledger": {
-      "tasks_per_issue": 8
+    "agents": {
+      "orchestrator": {
+        "grant": [
+          "core.read",
+          "core.write",
+          "core.shell",
+          "vision",
+          "jira.read"
+        ],
+        "spawns": [
+          "general-purpose"
+        ],
+        "max_concurrent_children": 4
+      },
+      "general-purpose": {
+        "grant": [
+          "core.read",
+          "core.write",
+          "core.shell",
+          "vision"
+        ]
+      }
     }
   }
 }

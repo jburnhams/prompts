@@ -33,7 +33,7 @@
     "defaults": {
       "type": "object",
       "properties": {
-        "budgets": { "$ref": "agent-spec.schema.json#/$defs/Budgets" },
+        "budgets": { "$ref": "run-spec.schema.json#/$defs/Budgets" },
         "checks": { "type": "array", "items": { "$ref": "tools.schema.json#/$defs/HarnessCheck" }, "description": "Added to every template's checks; a template cannot remove them." }
       },
       "additionalProperties": false

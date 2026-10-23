@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://forge.example/schemas/agent-spec.schema.json",
-  "title": "AgentSpec",
-  "description": "Everything that defines one agent run, before parameters are bound. A template wraps one of these (template.schema.json); a run snapshots the bound, flattened result (run.schema.json ResolvedSpec). See ../../platform.md \u00a73.",
+  "$id": "https://forge.example/schemas/run-spec.schema.json",
+  "title": "RunSpec",
+  "description": "Everything that defines one run, before params are bound: model, prompt, inputs, tools, the agents inside the run, the ending contract, outputs and authority. A template wraps one of these (template.schema.json); a run snapshots the bound, flattened result (run.schema.json ResolvedSpec). See ../../platform.md §3.",
   "type": "object",
   "properties": {
     "description": {
@@ -31,24 +31,6 @@
     "tools": {
       "$ref": "#/$defs/ToolsSpec"
     },
-    "roles": {
-      "type": "object",
-      "properties": {
-        "orchestrator": {
-          "$ref": "#/$defs/RoleSpec"
-        }
-      },
-      "required": [
-        "orchestrator"
-      ],
-      "additionalProperties": {
-        "$ref": "#/$defs/SubagentRoleSpec"
-      },
-      "propertyNames": {
-        "$ref": "common.schema.json#/$defs/Name"
-      },
-      "description": "orchestrator is the top-level context. Every other key is a sub-agent role it (or another role) may spawn."
-    },
     "human": {
       "$ref": "#/$defs/HumanSpec"
     },
@@ -70,9 +52,6 @@
     "concurrency": {
       "$ref": "#/$defs/ConcurrencySpec"
     },
-    "ledger": {
-      "$ref": "#/$defs/LedgerSpec"
-    },
     "labels": {
       "$ref": "common.schema.json#/$defs/Labels"
     },
@@ -81,13 +60,31 @@
       "items": {
         "$ref": "#/$defs/Monitor"
       },
-      "description": "In-run monitors: signals the harness watches for during a run, and what it does (models.md \u00a75 'harness triggers'). Not to be confused with a Trigger, which starts work."
+      "description": "In-run monitors: signals the harness watches for during a run, and what it does (models.md §5 'harness triggers'). Not to be confused with a Trigger, which starts work."
+    },
+    "agents": {
+      "type": "object",
+      "properties": {
+        "orchestrator": {
+          "$ref": "#/$defs/OrchestratorDef"
+        }
+      },
+      "required": [
+        "orchestrator"
+      ],
+      "additionalProperties": {
+        "$ref": "#/$defs/SubAgentDef"
+      },
+      "propertyNames": {
+        "$ref": "common.schema.json#/$defs/Name"
+      },
+      "description": "The agents inside a run. orchestrator is the top-level agent and the only one that can end the run or reach a human. Every other key is a sub-agent it (or another agent) may spawn. ('Role' is reserved for RBAC; see taxonomy.md.)"
     }
   },
   "required": [
     "model",
     "system_prompt",
-    "roles",
+    "agents",
     "completion"
   ],
   "additionalProperties": false,
@@ -113,7 +110,7 @@
     },
     "PromptSpec": {
       "type": "object",
-      "description": "Fixed text plus generated blocks. Params never reach this text, so every run of a template version shares one cacheable prefix (platform.md \u00a76, invariant 3).",
+      "description": "Fixed text plus generated blocks. Params never reach this text, so every run of a template version shares one cacheable prefix (platform.md §6, invariant 3).",
       "properties": {
         "base": {
           "oneOf": [
@@ -287,7 +284,7 @@
             },
             {
               "type": "object",
-              "description": "Filled by a continuation or a resume (platform.md \u00a77). Absent on a fresh run.",
+              "description": "Filled by a continuation or a resume (platform.md §7). Absent on a fresh run.",
               "properties": {
                 "carry": {
                   "type": "string",
@@ -353,7 +350,7 @@
       "properties": {
         "conventions": {
           "type": "object",
-          "description": "Resolution against the context service (context-files.md \u00a71b). A failed resolution means the run does not start.",
+          "description": "Resolution against the context service (context-files.md §1b). A failed resolution means the run does not start.",
           "properties": {
             "tiers": {
               "type": "array",
@@ -398,7 +395,7 @@
         },
         "data_overview": {
           "type": "object",
-          "description": "The quick analysis run's source list (system-prompts.md \u00a78a).",
+          "description": "The quick analysis run's source list (system-prompts.md §8a).",
           "properties": {
             "sources_from": {
               "$ref": "common.schema.json#/$defs/ToolAddress"
@@ -466,7 +463,7 @@
             },
             "writable": {
               "type": "boolean",
-              "description": "false registers no write tools for any role, whatever their grant says."
+              "description": "false registers no write tools for any agent, whatever their grant says."
             },
             "write_scope": {
               "$ref": "common.schema.json#/$defs/BindableStringList",
@@ -498,7 +495,7 @@
     },
     "ToolsSpec": {
       "type": "object",
-      "description": "The job's declaration: the universe every role's grant is a subset of. Nothing outside it can be granted, revealed or called.",
+      "description": "The run's declaration: the universe every agent's grant is a subset of. Nothing outside it can be granted, revealed or called.",
       "properties": {
         "servers": {
           "type": "array",
@@ -556,147 +553,6 @@
       },
       "required": [
         "groups"
-      ],
-      "additionalProperties": false
-    },
-    "RoleSpec": {
-      "type": "object",
-      "properties": {
-        "model": {
-          "type": "object",
-          "properties": {
-            "tier": {
-              "$ref": "common.schema.json#/$defs/BindableTier"
-            },
-            "effort": {
-              "$ref": "common.schema.json#/$defs/Effort"
-            }
-          },
-          "additionalProperties": false
-        },
-        "grant": {
-          "type": "array",
-          "items": {
-            "$ref": "common.schema.json#/$defs/Name"
-          },
-          "description": "Group ids from tools.groups. Siblings, not a chain: a sub-agent's grant is a subset of the job's declaration, not of its spawner's."
-        },
-        "visibility": {
-          "type": "object",
-          "description": "Per-role override of a group's or a tool's default visibility. Keys are group ids or tool addresses.",
-          "additionalProperties": {
-            "$ref": "tools.schema.json#/$defs/Visibility"
-          }
-        },
-        "kinds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Kinds this role covers. Declared here or at spawn by the spawner, never by the agent."
-        },
-        "spawns": {
-          "type": "array",
-          "items": {
-            "$ref": "common.schema.json#/$defs/Name"
-          },
-          "description": "Sub-agent roles this role may launch. Non-empty generates the Task tool with subagent_type limited to these."
-        },
-        "max_concurrent_children": {
-          "type": "integer",
-          "minimum": 1,
-          "default": 8
-        }
-      },
-      "required": [
-        "grant"
-      ],
-      "additionalProperties": false
-    },
-    "SubagentRoleSpec": {
-      "type": "object",
-      "description": "A sub-agent role. Never has a human channel or a run-ending tool (tools.md 'No delegate has a human channel'); its report returns to its spawner.",
-      "properties": {
-        "description": {
-          "type": "string",
-          "maxLength": 500,
-          "description": "Rendered into the Task tool's subagent_type description."
-        },
-        "prompt": {
-          "$ref": "#/$defs/PromptSpec"
-        },
-        "model": {
-          "type": "object",
-          "properties": {
-            "tier": {
-              "$ref": "common.schema.json#/$defs/Tier"
-            },
-            "effort": {
-              "$ref": "common.schema.json#/$defs/Effort"
-            },
-            "clamp_to_parent": {
-              "type": "boolean",
-              "default": true,
-              "description": "When true a child never runs above its spawner's tier."
-            }
-          },
-          "additionalProperties": false
-        },
-        "grant": {
-          "type": "array",
-          "items": {
-            "$ref": "common.schema.json#/$defs/Name"
-          }
-        },
-        "visibility": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "tools.schema.json#/$defs/Visibility"
-          }
-        },
-        "spawn_kinds": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Kinds the spawner may pass at spawn (Task.role). Each may add grants from kind_grants."
-        },
-        "kind_grants": {
-          "type": "object",
-          "description": "Kind to extra group ids, the tool half of 'Kinds: one vocabulary, three resolutions'. Harness config only.",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "$ref": "common.schema.json#/$defs/Name"
-            }
-          }
-        },
-        "spawn_args": {
-          "type": "object",
-          "description": "Extra structured arguments the spawner must pass (the validator's finding), as JSON Schema properties added to Task.",
-          "additionalProperties": {
-            "type": "object"
-          }
-        },
-        "report_schema": {
-          "type": "object",
-          "description": "JSON Schema for the child's final report, validated by the harness."
-        },
-        "spawns": {
-          "type": "array",
-          "items": {
-            "$ref": "common.schema.json#/$defs/Name"
-          },
-          "maxItems": 0,
-          "description": "No recursive delegation in v1."
-        },
-        "budgets": {
-          "$ref": "#/$defs/Budgets"
-        }
-      },
-      "required": [
-        "grant",
-        "prompt"
       ],
       "additionalProperties": false
     },
@@ -766,7 +622,7 @@
         },
         "narrate": {
           "type": "object",
-          "description": "Generates harness/Narrate (medium.md \u00a72f).",
+          "description": "Generates harness/Narrate (medium.md §2f).",
           "properties": {
             "max_entries": {
               "type": "integer",
@@ -781,7 +637,7 @@
     },
     "CompletionSpec": {
       "type": "object",
-      "description": "The completion contract. The harness generates the run-ending tools from it: Complete, and one tool per finisher. Termination is never a property of a tool itself (platform.md \u00a75).",
+      "description": "The completion contract. The harness generates the run-ending tools from it: Complete, and one tool per finisher. Termination is never a property of a tool itself (platform.md §5).",
       "properties": {
         "form": {
           "type": "string",
@@ -841,7 +697,7 @@
         },
         "spinoffs": {
           "type": "object",
-          "description": "Enables report.spun_off (orchestration.md \u00a76).",
+          "description": "Enables report.spun_off. Each entry becomes a child pipeline run (platform.md §7f).",
           "properties": {
             "max_per_run": {
               "type": "integer",
@@ -851,7 +707,8 @@
             "max_depth": {
               "type": "integer",
               "minimum": 0,
-              "default": 0
+              "default": 0,
+              "description": "How deep a chain of spinoffs may go. 0: a spun-off run may not spin off."
             },
             "relations": {
               "type": "array",
@@ -876,7 +733,7 @@
           "items": {
             "$ref": "#/$defs/Finisher"
           },
-          "description": "Ending actions the model chooses between, each wrapping a declared tool or a harness action (platform.md \u00a75a)."
+          "description": "Ending actions the model chooses between, each wrapping a declared tool or a harness action (platform.md §5a)."
         },
         "checks": {
           "type": "array",
@@ -936,7 +793,7 @@
             },
             "array_growth": {
               "type": "object",
-              "description": "Providers with no deferred loading: the tools array may grow once, to this bundle, if the cached prefix is small (models.md \u00a74a).",
+              "description": "Providers with no deferred loading: the tools array may grow once, to this bundle, if the cached prefix is small (models.md §4a).",
               "properties": {
                 "bundle": {
                   "$ref": "common.schema.json#/$defs/Name"
@@ -978,7 +835,7 @@
                   "situation": {
                     "type": "string",
                     "maxLength": 300,
-                    "description": "What the model can observe, never a service level or a model name (models.md \u00a74c)."
+                    "description": "What the model can observe, never a service level or a model name (models.md §4c)."
                   }
                 },
                 "required": [
@@ -999,7 +856,7 @@
     },
     "Budgets": {
       "type": "object",
-      "description": "Crossing turns or context_high_water injects the final-turn nudge (formats.md \u00a77). The others stop the run harness-side.",
+      "description": "Crossing turns or context_high_water injects the final-turn nudge (formats.md §7). The others stop the run harness-side.",
       "properties": {
         "turns": {
           "$ref": "common.schema.json#/$defs/BindableInteger"
@@ -1012,7 +869,7 @@
         },
         "tokens_by_tier": {
           "type": "object",
-          "description": "Counted across the run and its children, so spend cannot hide in a cheap child (models.md \u00a710).",
+          "description": "Counted across the run and its children, so spend cannot hide in a cheap child (models.md §10).",
           "properties": {
             "economy": {
               "type": "integer",
@@ -1042,7 +899,7 @@
     },
     "OutputsSpec": {
       "type": "object",
-      "description": "What happens to a run's result when the template runs on its own or as a pipeline stage. Sinks deliver it; continuations are edges back into this template. Cross-template edges are a pipeline's.",
+      "description": "What happens to a run's result. Sinks deliver it; continuations are edges back into this template. Edges between templates belong to a pipeline.",
       "properties": {
         "sinks": {
           "type": "array",
@@ -1179,6 +1036,29 @@
               }
             ]
           }
+        },
+        "at": {
+          "type": "object",
+          "properties": {
+            "stage": {
+              "$ref": "common.schema.json#/$defs/Name"
+            },
+            "event": {
+              "type": "string",
+              "enum": [
+                "run_ended",
+                "settled",
+                "blocked",
+                "abandoned"
+              ]
+            }
+          },
+          "required": [
+            "stage",
+            "event"
+          ],
+          "additionalProperties": false,
+          "description": "Pipeline sinks only (P8). Without at, a pipeline sink is delivered once when the pipeline run ends; with at, when that stage's run ends, settles, blocks or is abandoned."
         }
       },
       "required": [
@@ -1189,7 +1069,7 @@
     },
     "Continuation": {
       "type": "object",
-      "description": "An edge from this run's outcome back into the same template: approve then execute, spinoffs. Edges to other templates belong to a pipeline (pipeline.schema.json), so a template stays reusable on its own.",
+      "description": "An edge from this run's outcome back into the same template. approve then execute runs again in the same pipeline stage, without the transcript. A spinoff starts a child pipeline run of this template; blocks_this makes the current stage wait for it (platform.md §7f).",
       "properties": {
         "id": {
           "$ref": "common.schema.json#/$defs/Name"
@@ -1321,7 +1201,7 @@
                     "none"
                   ],
                   "default": "report_hash",
-                  "description": "The approval covers this content; if it changes, the approval lapses (formats.md \u00a75a rule 4)."
+                  "description": "The approval covers this content; if it changes, the approval lapses (formats.md §5a rule 4)."
                 },
                 "expires_after_s": {
                   "type": "integer",
@@ -1336,15 +1216,6 @@
               "additionalProperties": false
             }
           ]
-        },
-        "via": {
-          "type": "string",
-          "enum": [
-            "run",
-            "task"
-          ],
-          "default": "run",
-          "description": "task files a ledger task that the dispatcher runs; run starts one directly."
         },
         "run_as": {
           "type": "string",
@@ -1366,7 +1237,7 @@
     },
     "AuthoritySpec": {
       "type": "object",
-      "description": "Whose authority a run uses (platform.md \u00a78).",
+      "description": "Whose authority a run uses (platform.md §8).",
       "properties": {
         "run_as": {
           "type": "array",
@@ -1415,7 +1286,7 @@
       "properties": {
         "key": {
           "$ref": "common.schema.json#/$defs/Expr",
-          "description": "e.g. repository + '#' + target_branch (orchestration.md \u00a74)."
+          "description": "e.g. repository + '#' + target_branch."
         },
         "policy": {
           "type": "string",
@@ -1425,31 +1296,15 @@
           ],
           "default": "queue"
         },
-        "handoff_occupies": {
+        "held_while_settling": {
           "type": "boolean",
-          "default": true
+          "default": true,
+          "description": "Keep the key while the stage waits for its settle event (the PR merging), so no other work starts on the same branch (orchestration.md §4's handoff rule)."
         }
       },
       "required": [
         "key"
       ],
-      "additionalProperties": false
-    },
-    "LedgerSpec": {
-      "type": "object",
-      "description": "Run inside a ledger task (orchestration.md). Required for spinoffs and via: task continuations.",
-      "properties": {
-        "max_attempts": {
-          "type": "integer",
-          "minimum": 1,
-          "default": 2
-        },
-        "tasks_per_issue": {
-          "type": "integer",
-          "minimum": 1,
-          "default": 8
-        }
-      },
       "additionalProperties": false
     },
     "Finisher": {
@@ -1502,7 +1357,7 @@
                 },
                 "config": {
                   "type": "object",
-                  "description": "open_pull_request: {base, draft, labels}. request_help: {channel} \u2014 posts and ends; nothing resumes."
+                  "description": "open_pull_request: {base, draft, labels}. request_help: {channel} — posts and ends; nothing resumes."
                 }
               },
               "required": [
@@ -1635,6 +1490,147 @@
         "id",
         "signal",
         "action"
+      ],
+      "additionalProperties": false
+    },
+    "OrchestratorDef": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "type": "object",
+          "properties": {
+            "tier": {
+              "$ref": "common.schema.json#/$defs/BindableTier"
+            },
+            "effort": {
+              "$ref": "common.schema.json#/$defs/Effort"
+            }
+          },
+          "additionalProperties": false
+        },
+        "grant": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Name"
+          },
+          "description": "Group ids from tools.groups. Siblings, not a chain: a sub-agent's grant is a subset of the run's declaration, not of its spawner's."
+        },
+        "visibility": {
+          "type": "object",
+          "description": "Per-agent override of a group's or a tool's default visibility. Keys are group ids or tool addresses.",
+          "additionalProperties": {
+            "$ref": "tools.schema.json#/$defs/Visibility"
+          }
+        },
+        "kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Kinds this agent covers. Declared here or at spawn by the spawner, never by the agent itself."
+        },
+        "spawns": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Name"
+          },
+          "description": "Sub-agents this agent may launch. Non-empty generates the Task tool with subagent_type limited to these."
+        },
+        "max_concurrent_children": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 8
+        }
+      },
+      "required": [
+        "grant"
+      ],
+      "additionalProperties": false
+    },
+    "SubAgentDef": {
+      "type": "object",
+      "description": "A sub-agent. Never has a human channel or a run-ending tool (tools.md 'No delegate has a human channel'); its report returns to its spawner.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Rendered into the Task tool's subagent_type description."
+        },
+        "prompt": {
+          "$ref": "#/$defs/PromptSpec"
+        },
+        "model": {
+          "type": "object",
+          "properties": {
+            "tier": {
+              "$ref": "common.schema.json#/$defs/Tier"
+            },
+            "effort": {
+              "$ref": "common.schema.json#/$defs/Effort"
+            },
+            "clamp_to_parent": {
+              "type": "boolean",
+              "default": true,
+              "description": "When true a child never runs above its spawner's tier."
+            }
+          },
+          "additionalProperties": false
+        },
+        "grant": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Name"
+          }
+        },
+        "visibility": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "tools.schema.json#/$defs/Visibility"
+          }
+        },
+        "spawn_kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Kinds the spawner may pass at spawn (Task.kind; Forge's v1 Task schema names this argument differently). Each may add grants from kind_grants."
+        },
+        "kind_grants": {
+          "type": "object",
+          "description": "Kind to extra group ids, the tool half of 'Kinds: one vocabulary, three resolutions'. Harness config only.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "common.schema.json#/$defs/Name"
+            }
+          }
+        },
+        "spawn_args": {
+          "type": "object",
+          "description": "Extra structured arguments the spawner must pass (the validator's finding), as JSON Schema properties added to Task.",
+          "additionalProperties": {
+            "type": "object"
+          }
+        },
+        "report_schema": {
+          "type": "object",
+          "description": "JSON Schema for the child's final report, validated by the harness."
+        },
+        "spawns": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Name"
+          },
+          "maxItems": 0,
+          "description": "No recursive delegation in v1."
+        },
+        "budgets": {
+          "$ref": "#/$defs/Budgets"
+        }
+      },
+      "required": [
+        "grant",
+        "prompt"
       ],
       "additionalProperties": false
     }

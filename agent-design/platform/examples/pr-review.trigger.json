@@ -49,7 +49,6 @@
     "max_running": 1,
     "policy": "supersede_queued"
   },
-  "creates": "run",
   "pipeline": {
     "name": "pr.review-fix",
     "version": 1

@@ -25,28 +25,6 @@
         }
       }
     },
-    "roles": {
-      "orchestrator": {
-        "grant": [
-          "core.read",
-          "core.shell",
-          "vision",
-          "jira.read",
-          "jira.comment"
-        ],
-        "spawns": [
-          "general-purpose"
-        ],
-        "max_concurrent_children": 4
-      },
-      "general-purpose": {
-        "grant": [
-          "core.read",
-          "core.shell",
-          "vision"
-        ]
-      }
-    },
     "completion": {
       "statuses": [
         "planned",
@@ -82,6 +60,28 @@
       "wall_seconds": 3600,
       "tokens_by_tier": {
         "strong": 2000000
+      }
+    },
+    "agents": {
+      "orchestrator": {
+        "grant": [
+          "core.read",
+          "core.shell",
+          "vision",
+          "jira.read",
+          "jira.comment"
+        ],
+        "spawns": [
+          "general-purpose"
+        ],
+        "max_concurrent_children": 4
+      },
+      "general-purpose": {
+        "grant": [
+          "core.read",
+          "core.shell",
+          "vision"
+        ]
       }
     }
   }

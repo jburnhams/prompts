@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://forge.example/schemas/template.schema.json",
   "title": "Template",
-  "description": "A versioned, publishable AgentSpec with declared parameters. Published versions are immutable. See ../../platform.md \u00a76.",
+  "description": "A versioned, publishable RunSpec with declared parameters. Published versions are immutable. See ../../platform.md §6.",
   "type": "object",
   "properties": {
     "name": {
@@ -46,7 +46,7 @@
       "description": "Merged with the parent's params when extends is set, the same way spec is."
     },
     "spec": {
-      "description": "The AgentSpec, possibly partial when extends is set. Validated as a full AgentSpec after the merge.",
+      "description": "The RunSpec, possibly partial when extends is set. Validated as a full RunSpec after the merge.",
       "type": "object"
     },
     "resolved": {
@@ -55,14 +55,14 @@
       "description": "Filled at publish.",
       "properties": {
         "spec": {
-          "$ref": "agent-spec.schema.json"
+          "$ref": "run-spec.schema.json"
         },
         "digest": {
           "$ref": "common.schema.json#/$defs/Digest"
         },
         "prompt_digest": {
           "$ref": "common.schema.json#/$defs/Digest",
-          "description": "Of the fixed system-prompt text per role. Equal across every run of this version."
+          "description": "Of the fixed system-prompt text per agent. Equal across every run of this version."
         },
         "tool_snapshots": {
           "type": "object",
@@ -80,7 +80,7 @@
         },
         "generated_tools": {
           "type": "object",
-          "description": "Role to the harness tools generated for it (Complete, AskUser, HandOff, Expand, Task, Narrate).",
+          "description": "Agent to the harness tools generated for it (Complete, finishers, AskUser, HandOff, Expand, Task, Narrate).",
           "additionalProperties": {
             "type": "array",
             "items": {
@@ -117,7 +117,7 @@
   "$defs": {
     "ParamSpec": {
       "type": "object",
-      "description": "A typed parameter. Its trust decides where it may bind: external and principal params bind to inputs only; config params may bind to config slots, constrained so they narrow and never widen (platform.md \u00a76).",
+      "description": "A typed parameter. Its trust decides where it may bind: external and principal params bind to inputs only; config params may bind to config slots, constrained so they narrow and never widen (platform.md §6).",
       "properties": {
         "type": {
           "type": "string",

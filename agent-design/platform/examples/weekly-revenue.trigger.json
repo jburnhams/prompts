@@ -1,7 +1,13 @@
 {
   "name": "weekly-revenue-digest",
-  "owner": { "type": "user", "id": "a.analyst" },
-  "template": { "name": "analysis.quick", "version": "latest" },
+  "owner": {
+    "type": "user",
+    "id": "a.analyst"
+  },
+  "template": {
+    "name": "analysis.quick",
+    "version": "latest"
+  },
   "source": {
     "kind": "schedule",
     "cron": "47 7 * * 1",
@@ -13,6 +19,8 @@
   "params": {
     "question": "What was net revenue last week by region, and how does it compare with the four weeks before?"
   },
-  "run_as": { "mode": "delegation", "delegation_id": "dlg_7Q2mX9kLp4Rt" },
-  "creates": "run"
+  "run_as": {
+    "mode": "delegation",
+    "delegation_id": "dlg_7Q2mX9kLp4Rt"
+  }
 }

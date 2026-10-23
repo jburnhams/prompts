@@ -2,39 +2,111 @@
   "name": "pr.review-fix",
   "version": 1,
   "title": "Review a PR, and fix what the author asks for",
-  "owner": { "type": "team", "id": "platform-agents" },
+  "owner": {
+    "type": "team",
+    "id": "platform-agents"
+  },
   "params": {
-    "pull_request": { "type": "string", "trust": "config", "required": true, "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+$" },
-    "repository": { "type": "string", "trust": "config", "required": true, "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
-    "base_sha": { "type": "string", "trust": "config", "required": true, "pattern": "^[0-9a-f]{40}$" },
-    "head_sha": { "type": "string", "trust": "config", "required": true, "pattern": "^[0-9a-f]{40}$" }
+    "pull_request": {
+      "type": "string",
+      "trust": "config",
+      "required": true,
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+$"
+    },
+    "repository": {
+      "type": "string",
+      "trust": "config",
+      "required": true,
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    },
+    "base_sha": {
+      "type": "string",
+      "trust": "config",
+      "required": true,
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "head_sha": {
+      "type": "string",
+      "trust": "config",
+      "required": true,
+      "pattern": "^[0-9a-f]{40}$"
+    }
   },
   "entry": "review",
   "stages": {
     "review": {
-      "template": { "name": "forge.review", "version": "pinned" },
+      "template": {
+        "name": "forge.review",
+        "version": "pinned"
+      },
       "params": {
-        "pull_request": { "cel": "pipeline.params.pull_request" },
-        "repository": { "cel": "pipeline.params.repository" },
-        "base_sha": { "cel": "pipeline.params.base_sha" },
-        "head_sha": { "cel": "pipeline.params.head_sha" }
+        "pull_request": {
+          "cel": "pipeline.params.pull_request"
+        },
+        "repository": {
+          "cel": "pipeline.params.repository"
+        },
+        "base_sha": {
+          "cel": "pipeline.params.base_sha"
+        },
+        "head_sha": {
+          "cel": "pipeline.params.head_sha"
+        }
       }
     },
     "fix": {
-      "template": { "name": "forge.implement", "version": "pinned" },
-      "params": { "repository": { "cel": "pipeline.params.repository" } }
+      "template": {
+        "name": "forge.implement",
+        "version": "pinned"
+      },
+      "params": {
+        "repository": {
+          "cel": "pipeline.params.repository"
+        }
+      },
+      "retry": {
+        "max_attempts": 2
+      }
     }
   },
   "edges": [
     {
       "id": "fix_findings",
       "from": "review",
-      "on": { "terminal": "complete", "status": ["done"], "expr": { "cel": "result.report.findings.exists(f, f.fix_requested)" } },
+      "on": {
+        "terminal": "complete",
+        "status": [
+          "done"
+        ],
+        "expr": {
+          "cel": "result.report.findings.exists(f, f.fix_requested)"
+        }
+      },
       "to": "fix",
-      "params": { "issue_key": { "cel": "result.report.issue_key" }, "target_branch": { "cel": "result.report.source_branch" } },
-      "carry": ["findings"],
-      "gate": { "kind": "approval", "principal_set": ["pr_author"], "channel": { "type": "bitbucket_pr", "target": { "origin": true } }, "bind": "report_hash" },
-      "via": "task"
+      "params": {
+        "issue_key": {
+          "cel": "result.report.issue_key"
+        },
+        "target_branch": {
+          "cel": "result.report.source_branch"
+        }
+      },
+      "carry": [
+        "findings"
+      ],
+      "gate": {
+        "kind": "approval",
+        "principal_set": [
+          "pr_author"
+        ],
+        "channel": {
+          "type": "bitbucket_pr",
+          "target": {
+            "origin": true
+          }
+        },
+        "bind": "report_hash"
+      }
     }
   ],
   "max_hops": 1

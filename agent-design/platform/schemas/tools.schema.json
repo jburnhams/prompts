@@ -291,7 +291,7 @@
     },
     "Annotations": {
       "type": "object",
-      "description": "Harness-relevant facts about a tool. A server's own annotations are hints; the job's are authoritative and may only make a tool look more dangerous. Unannotated MCP tools are treated as destructive, non-idempotent, not concurrency-safe and open-world.",
+      "description": "Harness-relevant facts about a tool. A server's own annotations are hints; the template's are authoritative and may only make a tool look more dangerous. Unannotated MCP tools are treated as destructive, non-idempotent, not concurrency-safe and open-world.",
       "properties": {
         "read_only": {
           "type": "boolean"
@@ -356,7 +356,7 @@
         "alias": {
           "type": "string",
           "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$",
-          "description": "Name the model sees. Must be unique within a role's registered set."
+          "description": "Name the model sees. Must be unique within an agent's registered set."
         },
         "description": {
           "type": "string",
@@ -447,7 +447,7 @@
     },
     "HarnessCheck": {
       "type": "object",
-      "description": "Enforcement at the tool boundary that applies to every role. Not part of any grant, so no role, param or prompt can remove it.",
+      "description": "Enforcement at the tool boundary that applies to every agent. Not part of any grant, so no agent, param or prompt can remove it.",
       "properties": {
         "id": {
           "type": "string",

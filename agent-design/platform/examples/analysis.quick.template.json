@@ -2,7 +2,7 @@
   "name": "analysis.quick",
   "version": 1,
   "title": "Quick data question",
-  "description": "models.md \u00a73: economy tier, four tools, a short data overview, two hatches. The question is the starting query, an input of kind instruction.",
+  "description": "models.md §3: economy tier, four tools, a short data overview, two hatches. The question is the starting query, an input of kind instruction.",
   "owner": {
     "type": "team",
     "id": "data-platform"
@@ -126,14 +126,6 @@
         }
       ]
     },
-    "roles": {
-      "orchestrator": {
-        "grant": [
-          "sql.core",
-          "sql.extended"
-        ]
-      }
-    },
     "completion": {
       "form": "text",
       "statuses": [
@@ -251,6 +243,14 @@
           "skip_to": "report_requested"
         }
       }
-    ]
+    ],
+    "agents": {
+      "orchestrator": {
+        "grant": [
+          "sql.core",
+          "sql.extended"
+        ]
+      }
+    }
   }
 }

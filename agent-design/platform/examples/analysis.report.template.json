@@ -2,7 +2,7 @@
   "name": "analysis.report",
   "version": 1,
   "title": "Data report",
-  "description": "The report_requested landing: collect on economy, write on strong (data.md \u00a72g's explore then answer). The writer is a sub-agent role so the two tiers live in one run with one result.",
+  "description": "The report_requested landing: collect on economy, write on strong (data.md §2g's explore then answer). The writer is a sub-agent role so the two tiers live in one run with one result.",
   "owner": {
     "type": "team",
     "id": "data-platform"
@@ -56,38 +56,6 @@
         "required": false
       }
     ],
-    "roles": {
-      "orchestrator": {
-        "grant": [
-          "sql.core",
-          "sql.extended"
-        ],
-        "spawns": [
-          "writer"
-        ],
-        "max_concurrent_children": 1
-      },
-      "writer": {
-        "description": "Writes the report from the refs you collected. Pass the refs and the question; it cannot query.",
-        "prompt": {
-          "base": {
-            "ref": {
-              "name": "analysis.report.write",
-              "version": 1
-            }
-          },
-          "generated": [
-            "env",
-            "capabilities"
-          ]
-        },
-        "model": {
-          "tier": "strong",
-          "clamp_to_parent": false
-        },
-        "grant": []
-      }
-    },
     "completion": {
       "form": "tool",
       "statuses": [
@@ -129,6 +97,38 @@
           }
         }
       ]
+    },
+    "agents": {
+      "orchestrator": {
+        "grant": [
+          "sql.core",
+          "sql.extended"
+        ],
+        "spawns": [
+          "writer"
+        ],
+        "max_concurrent_children": 1
+      },
+      "writer": {
+        "description": "Writes the report from the refs you collected. Pass the refs and the question; it cannot query.",
+        "prompt": {
+          "base": {
+            "ref": {
+              "name": "analysis.report.write",
+              "version": 1
+            }
+          },
+          "generated": [
+            "env",
+            "capabilities"
+          ]
+        },
+        "model": {
+          "tier": "strong",
+          "clamp_to_parent": false
+        },
+        "grant": []
+      }
     }
   }
 }

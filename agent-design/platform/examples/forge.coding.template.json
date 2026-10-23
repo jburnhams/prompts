@@ -249,36 +249,6 @@
         }
       ]
     },
-    "roles": {
-      "orchestrator": {
-        "grant": [
-          "core.read",
-          "jira.read"
-        ]
-      },
-      "general-purpose": {
-        "description": "Open-ended search or investigation you are not confident a direct Read/Grep/List will resolve quickly.",
-        "prompt": {
-          "base": {
-            "ref": {
-              "name": "forge.general-purpose",
-              "version": 5
-            }
-          },
-          "generated": [
-            "env",
-            "capabilities"
-          ]
-        },
-        "model": {
-          "tier": "standard",
-          "clamp_to_parent": true
-        },
-        "grant": [
-          "core.read"
-        ]
-      }
-    },
     "human": {
       "ask_user": {
         "kinds": [
@@ -327,8 +297,35 @@
         ]
       }
     },
-    "ledger": {
-      "max_attempts": 2
+    "agents": {
+      "orchestrator": {
+        "grant": [
+          "core.read",
+          "jira.read"
+        ]
+      },
+      "general-purpose": {
+        "description": "Open-ended search or investigation you are not confident a direct Read/Grep/List will resolve quickly.",
+        "prompt": {
+          "base": {
+            "ref": {
+              "name": "forge.general-purpose",
+              "version": 5
+            }
+          },
+          "generated": [
+            "env",
+            "capabilities"
+          ]
+        },
+        "model": {
+          "tier": "standard",
+          "clamp_to_parent": true
+        },
+        "grant": [
+          "core.read"
+        ]
+      }
     }
   }
 }

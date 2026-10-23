@@ -99,12 +99,14 @@ finishes it updates Jira."*
   `planned` status to implement. It carries the plan, and it is gated
   on the assignee or reporter approving that exact plan (`bind:
   plan_hash`).
-- **The end-of-pipeline Jira update** is a sink on the pipeline, not on
-  either template. It's a `tool` sink calling `mcp:jira/update_issue`
-  with transition `In Review` when implement ends `done`, plus a
-  summary comment whichever stage the pipeline ended in. Run on its
-  own, `forge.implement` doesn't touch Jira's status. That belongs to
-  this pipeline.
+- **The Jira updates** are sinks on the pipeline, not on either
+  template. Each is a `tool` sink calling `mcp:jira/update_issue`:
+  transition `In Review` when implement's run ends `done`, and `Done`
+  when its PR merges. The implement stage **settles** on the PR, which
+  the committer links back (§7f). There's also a summary comment
+  whichever stage the pipeline ended in. Run on its own,
+  `forge.implement` doesn't touch Jira's status. That belongs to this
+  pipeline.
 - **The trigger** is [`jira-assigned.trigger.json`](./platform/examples/jira-assigned.trigger.json):
   `issue.assigned` to `forge-bot`. It runs as the person who assigned
   it (`event_actor`), only if they hold a delegation for this pipeline,
@@ -145,13 +147,13 @@ spec just has to give it a field:
 |---|---|---|
 | MCP servers | `McpServer` registry resource; a spec lists the ones it uses, pinned to a tool snapshot | `adk.md`, `tools.md` |
 | Tools, tool groups | `ToolRef`, `ToolGroup` (the unit of grant), and `SavedToolGroup`: versioned, reusable across templates, with per-tool argument overrides | `tools.md` |
-| Visibility and deferral | `Visibility` per group, per tool, and overridable per role; the provider flag sits in deployment | `tools.md` "Granted, registered, visible" |
+| Visibility and deferral | `Visibility` per group, per tool, and overridable per agent; the provider flag sits in deployment | `tools.md` "Granted, registered, visible" |
 | Completion tools | `completion` (with `finishers`), `human.ask_user`, `hatches.handoff`. The harness **generates** these tools (§5) | `formats.md` §3, §5; `models.md` §4b |
 | **Pipelines** | `Pipeline`: template stages wired exit to entry, with their own sinks | new here, §7e |
 | System prompt | `PromptSpec`: versioned fixed text, subtraction by heading, generated blocks | `system-prompts.md` §6–§7 |
 | Starting query | an `inputs[]` entry of kind `instruction`, filled from a param | `formats.md` §1 |
 | Model | a **tier** plus a ceiling. The deployment maps tiers to model ids | `models.md` §2.5 |
-| Sub-agents | `roles`: one orchestrator plus named sub-agent roles, each with its own grant, tier and prompt | `tools.md`, `system-prompts.md` §3–§5 |
+| Sub-agents | `agents`: one orchestrator plus named sub-agents, each with its own grant, tier and prompt | `tools.md`, `system-prompts.md` §3–§5 |
 | User on-behalf-of | `authority`, server `auth.mode: obo`, `Delegation` | new here, §8 |
 | **Inputs other than the query** | `inputs[]`: ticket, diff, comments, plan, prior attempt, approved action. Each is typed and has a trust level | `formats.md` §1, `context-files.md` §4 |
 | **Standing context** | `context.conventions` (tiers, kinds, paths, at which SHA) | `context-files.md` §1b |
@@ -162,7 +164,7 @@ spec just has to give it a field:
 | **Hatches and monitors** | `hatches.expand`, `hatches.handoff`, `monitors[]` (what `models.md` §5 calls harness triggers) | `models.md` §4–§5 |
 | **Outputs** | `outputs.sinks[]` and `outputs.continuations[]` (§7) | new here; unifies several |
 | **Concurrency** | `concurrency.key` and a policy | `orchestration.md` §4 |
-| **Ledger participation** | `ledger` | `orchestration.md` |
+| **Durable work** | the pipeline run: per-stage attempts, retries, waits, settling, spinoffs | `orchestration.md`, which it replaces, §7f |
 | **Versioning and pinning** | template versions, tool snapshot digests, pinned continuation targets | new here, §6 |
 | **Deployment facts** | `Deployment`: tier→model map, provider capabilities, global ceiling, mandatory checks | `models.md` §10 open point, now closed |
 
@@ -197,7 +199,7 @@ word for "what a run ends up doing, given its configuration"
  Registry ───────────── McpServer (+ ToolSnapshot), SavedToolGroup, prompts, report schemas
      │  referenced, pinned by digest
      ▼
- Template@version ───── params + AgentSpec      (immutable once published)
+ Template@version ───── params + RunSpec        (immutable once published)
      │        │
      │        └──► Pipeline@version ── stages (templates) + edges + pipeline sinks
      │  bind params, resolve for this principal and deployment
@@ -210,12 +212,12 @@ word for "what a run ends up doing, given its configuration"
      │    run_outcome, manual)    ├──► Pipeline edges  (to the next stage)
      │                            └──► Gates           (a human decides first)
      ▼
- Task (ledger) ──────── an obligation across runs: attempts, deps, lease
+ PipelineRun ────────── the durable record of the work: stages, attempts, waits, children
  Delegation ─────────── a user's standing consent for a template to act for them
 ```
 
-This is a deliberately short chain. An **AgentSpec** is everything
-about a run. A **Template** is an AgentSpec with named holes and a
+This is a deliberately short chain. A **RunSpec** is everything about a
+run. A **Template** is a RunSpec with named holes and a
 version. A **Pipeline** wires templates together without changing them.
 A **Run** is one template version with the holes filled, under one
 principal. A **Trigger** decides when a run or pipeline starts.
@@ -237,9 +239,11 @@ when.**
 
 ---
 
-## 3. The AgentSpec
+## 3. The RunSpec
 
-Schema: [`agent-spec.schema.json`](./platform/schemas/agent-spec.schema.json).
+Schema: [`run-spec.schema.json`](./platform/schemas/run-spec.schema.json).
+It was called `AgentSpec` until "agent" came to mean one model context
+inside a run ([`taxonomy.md`](./taxonomy.md)).
 The fields, with the reason each is shaped the way it is:
 
 - **`model`**: `tier`, optional `effort`, and `max_tier`. The ceiling
@@ -269,10 +273,10 @@ The fields, with the reason each is shaped the way it is:
   data overview. A failed resolution means the run doesn't start, as
   `context-files.md` §1b already says.
 - **`workspace`**: `none`, or `checkout`. `writable: false` registers no
-  write tools for any role, whatever the grants say (rule R9 rejects
+  write tools for any agent, whatever the grants say (rule R9 rejects
   the contradiction at publish). `git_writes` has one value, `deny`.
 - **`tools`**: the job's declaration (§4).
-- **`roles`**: `orchestrator` plus named sub-agent roles (§4c).
+- **`agents`**: `orchestrator` plus named sub-agents (§4c).
 - **`human`**, **`completion`**, **`hatches`**: these generate tools (§5).
 - **`monitors[]`**: `models.md` §5's "harness triggers" table as data,
   renamed so that "trigger" only ever means what starts a run. Each is a
@@ -285,7 +289,8 @@ The fields, with the reason each is shaped the way it is:
   together, so spend can't hide in a cheap child (`models.md` §10).
 - **`outputs`**: sinks and continuations (§7).
 - **`authority`**: who the run may act for (§8).
-- **`concurrency`**, **`ledger`**: from `orchestration.md`.
+- **`concurrency`**: from `orchestration.md` §4; held through a stage's
+  settle wait (§7f).
 
 ### 3e. Deployment
 
@@ -387,9 +392,9 @@ finding that retries make non-idempotent tools dangerous, as a field.
 
 | Question | Field | Enforced |
 |---|---|---|
-| Granted | `roles.<r>.grant[]` (+ `kind_grants` for the kind given at spawn) ⊆ `tools.groups` | at the executor, every call |
-| Registered | derived at resolve: grant + generated tools, as one fixed array per role (`ResolvedSpec.roles.<r>.registered`) | provider validation |
-| Visible | `ToolGroup.visibility`, overridden by `roles.<r>.visibility` | nothing; it shapes what the model tries |
+| Granted | `agents.<a>.grant[]` (+ `kind_grants` for the kind given at spawn) ⊆ `tools.groups` | at the executor, every call |
+| Registered | derived at resolve: grant + generated tools, as one fixed array per agent (`ResolvedSpec.agents.<a>.registered`) | provider validation |
+| Visible | `ToolGroup.visibility`, overridden by `agents.<a>.visibility` | nothing; it shapes what the model tries |
 
 `hidden` groups need a way to become visible: `hatches.expand.reveals`
 or a monitor's `reveal`. R8 warns when a hidden group has
@@ -399,23 +404,33 @@ provider flag in deployment: `defer_loading` on Anthropic,
 either everything loads upfront or the once-only array growth that
 `hatches.expand.array_growth` permits (`models.md` §4a). The spec
 states intent. The resolver picks the mechanism and records it in
-`ResolvedSpec.roles.<r>.deferred_tools`.
+`ResolvedSpec.agents.<a>.deferred_tools`.
 
-### 4c. Roles
+### 4c. Agents
 
-Every role has a `grant`, optional `visibility` overrides, a `model`,
-and `spawns` (which roles it may launch). A non-empty `spawns` generates
-`Task`, with `subagent_type` limited to those roles and each role's
-`description` as the enum text. Sub-agent roles add a `prompt`,
-`spawn_kinds` (the kinds a spawner may pass, Forge's `Task.role`),
-`kind_grants` (the tool half of "kinds: one vocabulary, three
-resolutions"), `spawn_args` (extra required `Task` fields, such as the
-validator's `finding`) and a `report_schema` the harness validates.
+An **agent** is one model context inside a run. Every run has an
+`orchestrator`, and may have named sub-agents. ("Role" is not used for
+this: it means an RBAC role, §12a.)
+
+Every agent has a `grant`, optional `visibility` overrides, a `model`,
+and `spawns` (which sub-agents it may launch). A non-empty `spawns`
+generates `Task`, with `subagent_type` limited to those sub-agents and
+each one's `description` as the enum text. Sub-agents add:
+
+- a `prompt`;
+- `spawn_kinds`: the kinds a spawner may pass. Forge's v1 `Task` schema
+  carries the kind in a field it calls `role`; the platform's generated
+  `Task` calls it `kind`;
+- `kind_grants`: the tool half of "kinds: one vocabulary, three
+  resolutions";
+- `spawn_args`: extra required `Task` fields, such as the validator's
+  `finding`;
+- a `report_schema` the harness validates.
 
 The rules from `tools.md` §"One job declares the tools", and where each
 is enforced:
 
-- **Siblings, not a chain.** Every role's grant is checked against
+- **Siblings, not a chain.** Every agent's grant is checked against
   `tools.groups`, not against its spawner's grant (R1). A data
   sub-agent can hold a server the orchestrator never sees.
 - **Only the job grants.** Kind→tools lives in `kind_grants`, which is
@@ -438,8 +453,8 @@ is enforced:
 `git_write_blocklist`, `read_before_edit`, `read_name_blocklist`,
 `completion_checklist`, `post_run_crosscheck`, `conventions_write_flag`,
 `secret_scan`, `egress_allowlist`, `anchor_validation`. They aren't
-part of any grant, so no role, param or prompt can remove them, and
-they apply to every role. Goose's sub-agents running with no hooks
+part of any grant, so no agent, param or prompt can remove them, and
+they apply to every agent. Goose's sub-agents running with no hooks
 (`../agent-subagent-architectures.md` §7d) is the failure this is
 shaped against.
 
@@ -458,7 +473,7 @@ tool as run-ending.
 | `human.ask_user` | `harness/AskUser` | yes: `suspend` | opens a gate, posts to `channels`, records who may answer |
 | `hatches.handoff` | `harness/HandOff`, its `reason` enum = the declared reason ids | yes: `handoff` | starts the continuation wired to that reason |
 | `hatches.expand` | `harness/Expand` | no | reveals granted groups and sources |
-| `roles.*.spawns` | `harness/Task` | no | spawns a sub-agent under its role's grant |
+| `agents.*.spawns` | `harness/Task` | no | spawns a sub-agent under its own grant |
 | `human.narrate` | `harness/Narrate` | no | appends to the run narrative |
 
 Why not a `terminal: true` flag that authors could set on any tool:
@@ -564,9 +579,9 @@ does all of this:
 - expands tool wildcards against pinned snapshots;
 - resolves `version: "pinned"` continuation targets to concrete
   versions;
-- generates harness tools per role;
+- generates harness tools per agent;
 - runs the rules in §11;
-- computes three digests: the spec, the fixed prompt text per role,
+- computes three digests: the spec, the fixed prompt text per agent,
   and each server snapshot.
 
 After that the version never changes.
@@ -582,7 +597,7 @@ anywhere.
 | `principal` | the user's question, a manual instruction | an input only | — |
 | `config` | an issue key, a repo, a branch, a tier, a budget, a kinds list | config slots: workspace, context paths/kinds, model tier, budgets | constrained: `enum`, `pattern`, `subset_of`, `maximum` or `max_tier` |
 
-Not bindable at all: `system_prompt`, `tools`, `roles`, `completion`,
+Not bindable at all: `system_prompt`, `tools`, `agents`, `completion`,
 `hatches`, `authority`, `monitors`, `model.max_tier`. That is
 R4. It's the reason "params narrow, never widen" holds: every
 config-bound param has a declared ceiling, and the fields that grant
@@ -591,7 +606,7 @@ anything take no params.
 **Two consequences worth wanting:**
 
 - **One cacheable prefix per template version.** Params never reach
-  the system prompt, and the tools array per role is fixed at publish
+  the system prompt, and the tools array per agent is fixed at publish
   (up to the deployment's tier map). So every run of a version shares
   the same tools-plus-system prefix, and the cache is shared across
   runs, not just within one. `Template.resolved.prompt_digest` names it.
@@ -620,7 +635,7 @@ is who decides.**
 | **Effects** | the model | during the run | a granted **tool** | `AddComment` in plan and review runs; a warehouse write |
 | **Result** | the model, inside a contract | at the end | the terminal call → `Run.outcome` | `Complete.report`, `HandOff.reason`, artifacts in `evidence` |
 | **Sinks** | the template | after the run, fixed by outcome | harness **delivery** | posting `summary` to the ticket; the attention tier as a commit status; publishing a report |
-| **Continuations** | the template declares edges back into itself; the outcome (and sometimes a human) picks one | after the run | a new **run** or **task** of the same template | approve → execute; spinoffs |
+| **Continuations** | the template declares edges back into itself; the outcome (and sometimes a human) picks one | after the run | another run in the same stage, or a child pipeline run | approve → execute; spinoffs |
 | **Pipeline edges** | the pipeline declares them; the outcome picks one | after a stage | the next **stage** | plan → implement; HandOff landings; review → fix |
 
 The rule for effects versus sinks: **if the model decides whether,
@@ -672,12 +687,12 @@ their own, and wiring is a separate, versioned thing.
 | Edge | Lives in | `on` | to | `carry` | `gate` |
 |---|---|---|---|---|---|
 | approve → execute (`formats.md` §5) | template continuation | `suspend`, `answer: approve` | `self` | `approved_action`, `resumed_answer` | `auto` (the gate was the question) |
-| `blocks_this` spinoff (`orchestration.md` §6) | template continuation | `complete`, `blocked`, `spinoff: blocks_this` | `self`, `via: task` | `prior_attempt` | `auto` |
-| `follows_this` spinoff | template continuation | `complete`, `spinoff: follows_this` | `self`, `via: task` | `prior_attempt` | `approval` |
+| `blocks_this` spinoff (`orchestration.md` §6) | template continuation | `complete`, `blocked`, `spinoff: blocks_this` | a child pipeline run; this stage waits on it | `prior_attempt` | `auto` |
+| `follows_this` spinoff | template continuation | `complete`, `spinoff: follows_this` | a child pipeline run | `prior_attempt` | `approval` |
 | plan → implement (`formats.md` §6) | pipeline [`jira.plan-implement`](./platform/examples/jira-plan-implement.pipeline.json) | `complete`, `planned` | `implement` | `plan` | `approval`, `bind: plan_hash` (gated), or `auto` (auto-chained) |
 | HandOff `too_complex` (`models.md` §4b) | pipeline [`analysis`](./platform/examples/analysis.pipeline.json) | `handoff`, reason | `investigate` | `prior_attempt` | `auto` |
 | HandOff `report_requested` | pipeline `analysis` | `handoff`, reason | `report` | `prior_attempt`, `artifacts` | `auto` |
-| review → fix (`medium.md` §1b) | pipeline [`pr.review-fix`](./platform/examples/pr-review-fix.pipeline.json) | `complete`, `done`, an expression on findings | `fix`, `via: task` | `findings` | `approval` by the PR author |
+| review → fix (`medium.md` §1b) | pipeline [`pr.review-fix`](./platform/examples/pr-review-fix.pipeline.json) | `complete`, `done`, an expression on findings | `fix` | `findings` | `approval` by the PR author |
 
 The rules that keep this safe, for both kinds:
 
@@ -685,9 +700,9 @@ The rules that keep this safe, for both kinds:
   `HandOff.reason` is an enum of the template's declared reasons, and a
   pipeline must wire every one (P2). Run on its own, a template has no
   wired exits, so `HandOff` is not generated. `spun_off` is a proposal
-  the edge turns into a task. No result field can name a template
+  the edge turns into a child pipeline run. No result field can name a template
   (`continuation_undeclared`). This is `orchestration.md` §8's
-  invariant, "a role may file, propose or report; it may not act on
+  invariant, "a run may file, propose or report; it may not act on
   what it oversees", stated as a schema.
 - **Carry is what crosses, and never a transcript.** The target must
   declare a matching `carry` input (R7, P3), so context crosses only
@@ -717,7 +732,7 @@ then in a version that was reviewed.
 
 [`gate.schema.json`](./platform/schemas/gate.schema.json). One resource
 for everything waiting on a human: `clarify`, `approve_action`,
-`continuation_approval`. It holds the question (with `{id, label,
+`edge_approval` and `spinoff_approval`. It holds the question (with `{id, label,
 implication}` options and, for approvals, the named action), the
 `bound_digest`, the principal set, the channels with the external ref
 each reply is matched on, the replies (each with harness-asserted
@@ -752,11 +767,11 @@ stages, edges, sinks, tools, max_hops, max_tier}`.
 - **`announce`** posts a line to the origin channel when an edge is
   taken. This is `models.md` §4c's "what the user sees" row ("Taking a
   closer look"), now on the edge that causes it.
-- **A `PipelineRun`** groups the stage runs: the principal, the
-  delegation, the origin, the stages in order with the edge that started
-  each, any gate between stages, the final outcome, and the pipeline's
-  deliveries. Each stage run is an ordinary `Run` with `pipeline_run_id`
-  and `stage` set, and its own events stream.
+- **A `PipelineRun`** is the durable record of the work (§7f): the
+  principal, delegation, origin and subject, a record per stage entered,
+  child runs, the final outcome and the deliveries. Each attempt at a
+  stage is an ordinary `Run` with `pipeline_run_id`, `stage` and
+  `attempt` set, and its own events stream.
 
 **Not a workflow engine.** There are no loops, no parallel branches and
 no joins. Each stage ends in one exit, and at most one edge fires, so
@@ -764,6 +779,55 @@ the run is always a path through the graph. Fan-out lives inside a run,
 where Forge already has it (`Task`, the review team). Nothing in the
 use cases needs more, and a join would have to answer what "both stages
 done" means when one was gated and the other wasn't.
+
+### 7f. Pipeline runs are the durable record
+
+There is no ledger. Everything `orchestration.md` designed a ledger
+for is a property of a pipeline run. **Every run belongs to one**: a
+template run on its own is a one-stage pipeline run named after the
+template. The cost on the quick chat path is one row written before the
+first turn, and the dispatcher starts the stage at once rather than on a
+polling cycle.
+
+A pipeline run holds one **stage record** per stage it entered. Each
+record has:
+
+- `state`: `ready`, `running`, `waiting`, `settling`, `blocked`, `done`
+  or `abandoned`;
+- its frozen params;
+- its **attempts**, each one run, with its cause (`entered`, `retry`,
+  `resume`, `approved_action`, `dependency_cleared`), terminal, status
+  and summary;
+- `waiting_on`, when it's waiting;
+- `links` written back from downstream;
+- the last outcome, and the concurrency key it holds.
+
+Where each ledger job now lives:
+
+| `orchestration.md` (ledger) | Pipeline run |
+|---|---|
+| `attempts`, `max_attempts`, retry with a raised budget on `budget_exhausted` | the stage's `retry`: `max_attempts`, which ending statuses retry (by default `budget_exhausted`, `infra_failure` and a lost lease, but not `failed`), `raise_budgets` multipliers capped by the params' maxima. The previous attempt's report rides in as `prior_attempt`, so the persistence rule still spans attempts |
+| `handoff` until the PR merges or closes | the stage's `settle`. A `done` run moves the stage to `settling`. The committer links the PR (`POST …/stages/{stage}:link`); merged → `done`, closed unmerged → `abandoned`. The concurrency key is held throughout (`held_while_settling`). `link_within_s` flags the case where the committer never ran |
+| `parked` with a wake predicate | `waiting_on`: a gate, a child pipeline run, a settle event, a concurrency key held elsewhere, or a timer |
+| `depends_on` from a `blocks_this` spinoff | the spinoff is a **child pipeline run** of the same template. The parent stage waits on it, and when it's done the parent gets a new attempt with `spinoff_report` carried in. If the child is abandoned, the parent stage is blocked with `dependency_abandoned` |
+| `follows_this` spinoff, gated | a child pipeline run that starts only after a `spinoff_approval` gate. The parent doesn't wait |
+| caps: 2 per run, depth 0, 8 per ticket | `completion.spinoffs.max_per_run`, the pipeline's `limits.spinoff_depth` and `limits.runs_per_subject` |
+| one task per owner, `handoff` occupied | the template's concurrency key, taken per stage and held while settling. Read-only stages declare none, so they never queue behind implementation |
+| health as queries, not a supervisor | `GET /v1/pipeline-runs?health=`: `stranded`, `waiting_stale`, `unlinked`, `repeated_failure`, `orphan_dependency`. These are still stored-field checks: nothing reads task text and decides |
+| lease taken by the harness, never by the run | unchanged. The run never sees its pipeline run, its stage record or a lease |
+| tracker reconciliation (§10a: adopt, stop, say) | unchanged rules, applied to the pipeline run's `subject`. A ticket closed under a running stage lets the run finish, delivers its report, then abandons with `ticket_closed`. A reopened ticket starts a new pipeline run with `supersedes`, and the old one is never resurrected |
+| tracker updates on four transitions | stage-timed pipeline sinks: `at: {stage, event: run_ended \| settled \| blocked \| abandoned}` |
+
+Two things are **not** carried over. A pipeline run can't be filed by
+hand as an empty obligation: work starts by running something. And the
+"one task, many unrelated runs sharing a ticket key" picture is gone.
+Retries are attempts at a stage, follow-on work is a child run, and both
+are visible on one record.
+
+The invariant stays exactly as it was, under its new subject: **a run
+may file, propose or report; it may not act on what it oversees.** A
+run proposes spinoffs in its report, and the pipeline starts them. A
+run never sees, retries, settles or abandons its own pipeline run.
 
 ---
 
@@ -841,7 +905,7 @@ Triggers choose `run_as`:
 **Gates use the same identities.** Who may answer is a
 `PrincipalSetRule` list (`principal`, `requested_by`,
 `issue_assignee`, `issue_reporter`, `pr_author`, `trigger_owner`, a
-named principal, an IdP group). It's resolved when the reply arrives,
+named principal, an RBAC team). It's resolved when the reply arrives,
 not when the question was asked, exactly as `formats.md` §5a specifies.
 An empty resolved set is said in the posted question.
 
@@ -889,13 +953,14 @@ event would produce, without starting it.
 firings (one review per PR, with `supersede_queued` so a second push
 replaces a queued review rather than adding another). The template's
 key limits work on a resource: `(repository, branch)` for implement
-runs, with `handoff` counting as occupied (`orchestration.md` §4). A
+runs, held while the stage settles on its PR (`orchestration.md` §4's
+`handoff` rule, §7f). A
 running run is never cancelled by either.
 
-The parked-task wake predicates in `medium.md` §4c (`jira`, `build`,
-`pr`, `timer`) are `Task.wake`, evaluated by the dispatcher. They're
-not triggers, because they wake an existing obligation rather than
-create work.
+The wait conditions in `medium.md` §4c (`jira`, `build`, `pr`,
+`timer`) are a stage's `waiting_on` and `settle` (§7f), evaluated by the
+dispatcher. They're not triggers, because they resume existing work
+rather than create it.
 
 ---
 
@@ -925,11 +990,11 @@ queued → provisioning → running ⇄ finalizing → ended
   ends with `terminal: stopped`. The harness then posts the failure note
   itself, as `formats.md` §7 requires for infrastructure deaths.
 - **`ResolvedSpec`** is the immutable snapshot a run executes: the flat
-  spec with params bound, and per role the tier, model id, provider,
+  spec with params bound, and per agent the tier, model id, provider,
   deferral strategy and the fixed tools array with each tool's visibility
   at turn 0. "The tools array and the system prompt are fixed for a run"
   is this object not changing.
-- **`Usage`** is per role and per model id, with cache tokens and a
+- **`Usage`** is per agent and per model id, with cache tokens and a
   price snapshot id, so cost stays reproducible after a price change
   (`models.md` §8's "record tier, model ID and the price at the time").
 - **Events** (`GET /v1/runs/{id}/events`, SSE): state changes, turns,
@@ -957,17 +1022,17 @@ publish against the real snapshot.
 
 | Rule | Checks |
 |---|---|
-| R1 | every role's grant, including `kind_grants`, names a declared group |
+| R1 | every agent's grant, including `kind_grants`, names a declared group |
 | R2 | every `mcp:<server>` tool names a server in `tools.servers` |
-| R3 | the spawn graph names real roles; `kind_grants` keys are in `spawn_kinds` |
+| R3 | the spawn graph names real agents; `kind_grants` keys are in `spawn_kinds` |
 | R4 | params: declared; `external`/`principal` bind only to inputs; config-bound params are constrained; grant-bearing fields take no params |
 | R5 | `completion.form: text` has no report schema, completion checks, spinoffs or finishers, and status `done` only |
 | R6 | monitor handoffs name declared reasons; a template with HandOff reasons that no pipeline wires is a warning, since alone it has no HandOff |
-| R7 | continuations (to `self` only, by schema): required params bound, carry inputs accept what is carried, spinoff edges have spinoffs enabled and a ledger; `approve` questions have an execute edge |
+| R7 | continuations (to `self` only, by schema): required params bound, carry inputs accept what is carried, spinoff edges have spinoffs enabled; `at` appears only on pipeline sinks; `approve` questions have an execute edge |
 | R8 | `Expand` reveals only what the orchestrator is granted; `array_growth.bundle` is revealable; hidden groups have a reveal path (warning) |
 | R9 | a read-only or absent workspace grants no `Edit`/`Write` |
 | R10 | literal tiers are within `max_tier`; a clamped child above its parent is a warning |
-| R11 | tool names, after aliasing, are unique per role, including finisher names and generated tools |
+| R11 | tool names, after aliasing, are unique per agent, including finisher names and generated tools |
 | R12 | no write tool (granted, wrapped by a finisher, or called by a pipeline sink) on a service-credentialed server in anything users can run, unless the server has `entitlement_check: harness_policy` |
 | R13 | argument overrides only narrow: a hidden argument is fixed, an enum is a subset of the server's, a maximum only goes down; a fixed `$param` is a config param of the template; other overrides on a fixed argument are a warning |
 | R14 | finishers: `complete: false` needs at least one; each ends with a declared status; `report` needs a report schema; a wrapped tool is declared; `open_pull_request` needs a writable checkout with `git_writes: on_finish`, and `on_finish` needs an `open_pull_request` finisher |
@@ -1001,10 +1066,9 @@ pagination. `:verb` for actions.
 | Prompts, report schemas | versioned create, get |
 | Templates | list, versions, draft create/replace, `:validate`, `:publish`, `:deprecate`, `:render` |
 | Pipelines | list, versions, draft create, get, `:publish` (P1–P8) |
-| Pipeline runs | list, get (stage runs, gate, outcome), `:stop` |
-| Runs | create for a template, a pipeline or an `adhoc` body (or `dry_run`), get, list (by template, state, principal, root, task), `events` (SSE), `transcript`, `artifacts`, `:stop`, delivery `:retry` |
+| Pipeline runs | list (by state, subject, and `health=` for `orchestration.md` §7's queries), get, stage `:link` (the committer's PR), stage `:retry`, `:abandon`, `:stop` |
+| Runs | create for a template, a pipeline or an `adhoc` body (or `dry_run`), get, list (by template, state, principal, root, pipeline run), `events` (SSE), `transcript`, `artifacts`, `:stop`, delivery `:retry` |
 | Gates | list (`answerable_by=me`), get, `replies`, `:cancel` |
-| Tasks | list (with `health=` for `orchestration.md` §7's queries), file, get, `:retry`, `:abandon` |
 | Triggers | CRUD, `:fire` (test by default), `:pause`, `:resume`, `firings` |
 | Events | `POST /v1/events/{provider}`: signed inbound webhooks; gate replies arriving as comments go through here too |
 | Delegations | create (with a consent URL), list own, get, revoke |
@@ -1014,6 +1078,38 @@ Two deliberate absences. There's **no endpoint that edits a published
 template**, and **no endpoint that changes a running run's spec**. The
 only things that act on a running run are `:stop` (which goes through
 the nudge) and a delegation revoke (which fails its next OBO call).
+
+### 12a. Permissions and RBAC
+
+Authorisation is the RBAC system's, and it's outside this spec. There,
+a **role** is a set of permission groups, assigned to a **team**, and a
+user has what their teams' roles grant. That's the only meaning of
+"role" anywhere in this spec ([`taxonomy.md`](./taxonomy.md)). The
+platform names the permissions it checks, and RBAC decides who has them:
+
+| Permission | Lets the holder |
+|---|---|
+| `templates:write`, `templates:publish` | draft, and publish or deprecate, templates (likewise `pipelines:*`, `tool-groups:*`) |
+| `servers:write` | register MCP servers and run `:discover` |
+| `runs:create` (per template or pipeline) | start runs of it as themselves |
+| `runs:adhoc` | run an unsaved spec |
+| `runs:as-service` (per template) | start runs, or create triggers, with `run_as: service` |
+| `runs:read`, `runs:transcript` | see runs; read full transcripts, separately audited |
+| `triggers:write` | create triggers they own |
+| `pipeline-runs:operate` | stage `:retry`, `:abandon`, `:stop` on runs they didn't start |
+| `stages:link` | write a stage's links back (held by the committer's service identity) |
+| `deployment:write` | change the tier map and ceilings |
+
+Two things RBAC does **not** decide, deliberately:
+
+- **What a run may do.** That's the template's grant intersected with
+  the principal's own access downstream (OBO, §8). Holding
+  `runs:create` on `coding.java` lets you start it, and nothing more.
+- **Who may answer a gate.** That's the gate's principal set (assignee,
+  reporter, a named principal, or a `team`), resolved when the reply
+  arrives. A team in a principal set is an RBAC team, read for
+  membership only.
+
 
 ---
 
@@ -1029,10 +1125,10 @@ The examples are the mapping, and `check.py` passes on them:
 | review, multi-stage | [`forge.review`](./platform/examples/forge.review.template.json): `reviewer` with `spawn_kinds` and `kind_grants.visual = [vision]`, `validator` at `strong` with `clamp_to_parent: false`, attention tier as a `commit_status` sink |
 | review → fix | pipeline [`pr.review-fix`](./platform/examples/pr-review-fix.pipeline.json), approval by the PR author |
 | analysis quick run and landings | pipeline [`analysis`](./platform/examples/analysis.pipeline.json): [`analysis.quick`](./platform/examples/analysis.quick.template.json) → [`analysis.investigate`](./platform/examples/analysis.investigate.template.json) / [`analysis.report`](./platform/examples/analysis.report.template.json) |
-| "the job declares, roles get subsets" | `tools.groups` + `roles.*.grant`, R1 |
+| "the job declares the tools; each sub-agent gets a subset" | `tools.groups` + `agents.*.grant`, R1 |
 | `AddComment` absent in `implement` | declared in `tools.groups`, not granted to the orchestrator |
 | AskUser `approve` → fresh execute run | continuation `execute_approved`, `carry: [approved_action, resumed_answer]`, no transcript |
-| run ledger | `ledger`, `via: task`, [`task.schema.json`](./platform/schemas/task.schema.json) (`orchestration.md` §2 restated on templates) |
+| run ledger | the pipeline run (§7f): stage attempts and retry policy, `waiting_on`, `settle` for the PR, child runs for spinoffs |
 | tier map (`models.md` §10 open point) | [`deployment.json`](./platform/examples/deployment.json) |
 
 ---
@@ -1045,8 +1141,9 @@ Recorded in the README decision log (2026-10-23 rows). In short:
   shared base, differing by tools, prompt, model and contract, and
   linked by a pipeline (§1).
 - One word, one meaning (`taxonomy.md`): completion **checks** (not
-  gates), in-run **monitors** (not harness triggers), and a ledger
-  task's **concurrency key** (not owner).
+  gates), in-run **monitors** (not harness triggers), **agents** for
+  the contexts inside a run, and **role** only for RBAC.
+- No ledger. The pipeline run is the durable record of work (§7f).
 - Terminal tools are generated from contracts, never flagged (§5).
 - Outputs split into effects (tools), result, sinks, continuations and
   pipeline edges, by who decides (§7). Every inter-run edge is declared.

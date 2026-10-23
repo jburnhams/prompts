@@ -17,6 +17,10 @@ info:
     - The caller is the authenticated principal. Nothing in a body can name
       a different author or principal; acting for someone else goes through a
       delegation.
+    - Authorisation is the RBAC system's. This API names permissions
+      (platform.md §12a); a role there is a set of permission groups,
+      assigned to a team, and a user has what their teams' roles grant.
+      Nothing in this API, a template or a run defines or changes roles.
 servers:
   - url: https://agents.example.internal
 
@@ -25,12 +29,10 @@ tags:
     description: MCP servers, tool groups, prompts and report schemas.
   - name: Templates
   - name: Pipelines
-    description: Versioned graphs of template stages.
+    description: Versioned graphs of template stages, and pipeline runs, the durable record of work.
   - name: Runs
   - name: Gates
     description: Everything waiting on a human.
-  - name: Tasks
-    description: The ledger (orchestration.md). Read-mostly; humans act through gates.
   - name: Triggers
   - name: Delegations
   - name: Deployment
@@ -293,7 +295,7 @@ paths:
     post:
       tags: [Templates]
       operationId: deprecateTemplate
-      description: New runs refuse with template_deprecated; running runs, open gates and queued tasks finish on this version.
+      description: New runs refuse with template_deprecated; running runs, open gates and waiting pipeline runs finish on this version.
       responses:
         "200": { $ref: "#/components/responses/Template" }
   /v1/templates/{name}/versions/{version}:render:
@@ -378,6 +380,17 @@ paths:
         - { $ref: "#/components/parameters/cursor" }
         - { name: pipeline, in: query, schema: { type: string } }
         - { name: principal, in: query, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string, enum: [running, waiting, blocked, done, abandoned] } }
+        - { name: subject, in: query, schema: { type: string }, description: "An issue key or PR ref." }
+        - name: health
+          in: query
+          description: |
+            Stored-field checks, never a model reading the board (orchestration.md §7):
+            stranded (a ready stage not started for a threshold), waiting_stale,
+            unlinked (settling with no PR linked: the committer never ran),
+            repeated_failure (two failed attempts at one stage), orphan_dependency
+            (waiting on a child run that was abandoned).
+          schema: { type: string, enum: [stranded, waiting_stale, unlinked, repeated_failure, orphan_dependency] }
       responses:
         "200": { description: Pipeline runs, content: { application/json: { schema: { $ref: "#/components/schemas/PipelineRunList" } } } }
   /v1/pipeline-runs/{pipeline_run_id}:
@@ -385,9 +398,49 @@ paths:
     get:
       tags: [Pipelines]
       operationId: getPipelineRun
-      description: Stage runs, the gate between stages if any, and the final outcome. Each stage run has its own events stream.
+      description: Stage records (attempts, what each is waiting on, links), the outcome, and child pipeline runs. Each stage run has its own events stream.
       responses:
         "200": { description: Pipeline run, content: { application/json: { schema: { $ref: "schemas/pipeline.schema.json#/$defs/PipelineRun" } } } }
+  /v1/pipeline-runs/{pipeline_run_id}/stages/{stage}:link:
+    parameters:
+      - { name: pipeline_run_id, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Id" } }
+      - { name: stage, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Name" } }
+    post:
+      tags: [Pipelines]
+      operationId: linkStage
+      description: |
+        Written once, by whatever acts downstream of a stage. The committer
+        posts the PR it opened, and from then on the stage's settle event
+        watches it. A second link for the same field is refused with conflict.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "schemas/pipeline.schema.json#/$defs/StageRecord/properties/links" } } }
+      responses:
+        "200": { description: Linked, content: { application/json: { schema: { $ref: "schemas/pipeline.schema.json#/$defs/PipelineRun" } } } }
+        "409": { $ref: "#/components/responses/Problem" }
+  /v1/pipeline-runs/{pipeline_run_id}/stages/{stage}:retry:
+    parameters:
+      - { name: pipeline_run_id, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Id" } }
+      - { name: stage, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Name" } }
+    post:
+      tags: [Pipelines]
+      operationId: retryStage
+      description: A human sends a blocked stage back to ready, optionally with raised budgets within the template's param maxima. Counts as an attempt.
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { params: { type: object } } } } }
+      responses:
+        "200": { description: Ready, content: { application/json: { schema: { $ref: "schemas/pipeline.schema.json#/$defs/PipelineRun" } } } }
+  /v1/pipeline-runs/{pipeline_run_id}:abandon:
+    parameters: [{ name: pipeline_run_id, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Id" } }]
+    post:
+      tags: [Pipelines]
+      operationId: abandonPipelineRun
+      description: Gives up on the work. A running stage finishes first (it is never killed mid-flight) and its report is still delivered; child runs it was waiting on are left for a human.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { reason: { type: string } }, required: [reason] } } }
+      responses:
+        "202": { description: Abandoning, content: { application/json: { schema: { $ref: "schemas/pipeline.schema.json#/$defs/PipelineRun" } } } }
   /v1/pipeline-runs/{pipeline_run_id}:stop:
     parameters: [{ name: pipeline_run_id, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Id" } }]
     post:
@@ -408,7 +461,7 @@ paths:
         - { name: state, in: query, schema: { type: string } }
         - { name: principal, in: query, schema: { type: string }, description: "me for the caller's own runs." }
         - { name: root_run_id, in: query, schema: { type: string }, description: "Everything one request led to, across continuations." }
-        - { name: task_id, in: query, schema: { type: string } }
+        - { name: pipeline_run_id, in: query, schema: { type: string } }
       responses:
         "200": { description: Runs, content: { application/json: { schema: { $ref: "#/components/schemas/RunList" } } } }
     post:
@@ -542,64 +595,6 @@ paths:
       description: By a principal or an operator. The suspended run ends failed; a gated continuation is dropped.
       responses:
         "200": { description: Cancelled, content: { application/json: { schema: { $ref: "schemas/gate.schema.json" } } } }
-
-  /v1/tasks:
-    get:
-      tags: [Tasks]
-      operationId: listTasks
-      parameters:
-        - { name: state, in: query, schema: { type: string } }
-        - { name: issue_key, in: query, schema: { type: string } }
-        - { name: health, in: query, schema: { type: string, enum: [stranded, stranded_handoff, repeated_failure, blocked_stale, orphan_dependency] }, description: "orchestration.md §7 queries." }
-        - { $ref: "#/components/parameters/limit" }
-        - { $ref: "#/components/parameters/cursor" }
-      responses:
-        "200": { description: Tasks, content: { application/json: { schema: { $ref: "#/components/schemas/TaskList" } } } }
-    post:
-      tags: [Tasks]
-      operationId: fileTask
-      description: Manual filing. Same validation as a run request; the dispatcher starts it.
-      parameters: [{ $ref: "#/components/parameters/idempotencyKey" }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              allOf:
-                - { $ref: "schemas/run.schema.json#/$defs/RunRequest" }
-                - type: object
-                  properties:
-                    priority: { type: string, enum: [low, normal, high, urgent] }
-                    depends_on: { type: array, items: { type: string } }
-      responses:
-        "201": { description: Filed, content: { application/json: { schema: { $ref: "schemas/task.schema.json" } } } }
-  /v1/tasks/{task_id}:
-    parameters: [{ $ref: "#/components/parameters/taskId" }]
-    get:
-      tags: [Tasks]
-      operationId: getTask
-      responses:
-        "200": { description: Task, content: { application/json: { schema: { $ref: "schemas/task.schema.json" } } } }
-  /v1/tasks/{task_id}:retry:
-    parameters: [{ $ref: "#/components/parameters/taskId" }]
-    post:
-      tags: [Tasks]
-      operationId: retryTask
-      description: Returns a blocked task to ready, optionally with raised budgets within the template's param maxima. Costs an attempt.
-      requestBody:
-        content: { application/json: { schema: { type: object, properties: { params: { type: object } } } } }
-      responses:
-        "200": { description: Ready, content: { application/json: { schema: { $ref: "schemas/task.schema.json" } } } }
-  /v1/tasks/{task_id}:abandon:
-    parameters: [{ $ref: "#/components/parameters/taskId" }]
-    post:
-      tags: [Tasks]
-      operationId: abandonTask
-      requestBody:
-        required: true
-        content: { application/json: { schema: { type: object, properties: { reason: { type: string } }, required: [reason] } } }
-      responses:
-        "200": { description: Abandoned, content: { application/json: { schema: { $ref: "schemas/task.schema.json" } } } }
 
   /v1/triggers:
     get:
@@ -782,7 +777,6 @@ components:
     serverId: { name: server_id, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Name" } }
     runId: { name: run_id, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Id" } }
     gateId: { name: gate_id, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Id" } }
-    taskId: { name: task_id, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Id" } }
     triggerId: { name: trigger_id, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Id" } }
 
   schemas:
@@ -814,8 +808,6 @@ components:
       allOf: [{ $ref: "#/components/schemas/Page" }, { type: object, properties: { items: { type: array, items: { $ref: "schemas/run.schema.json#/$defs/Run" } } } }]
     GateList:
       allOf: [{ $ref: "#/components/schemas/Page" }, { type: object, properties: { items: { type: array, items: { $ref: "schemas/gate.schema.json" } } } }]
-    TaskList:
-      allOf: [{ $ref: "#/components/schemas/Page" }, { type: object, properties: { items: { type: array, items: { $ref: "schemas/task.schema.json" } } } }]
     TriggerList:
       allOf: [{ $ref: "#/components/schemas/Page" }, { type: object, properties: { items: { type: array, items: { $ref: "schemas/trigger.schema.json#/$defs/Trigger" } } } }]
     FiringList:

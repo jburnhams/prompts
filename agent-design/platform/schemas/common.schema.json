@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://forge.example/schemas/common.schema.json",
   "title": "Shared definitions",
-  "description": "Types used by more than one resource. See ../../platform.md \u00a73.",
+  "description": "Types used by more than one resource. See ../../platform.md §3.",
   "$defs": {
     "Name": {
       "type": "string",
@@ -12,7 +12,7 @@
     "Id": {
       "type": "string",
       "pattern": "^[a-z]{2,8}_[0-9A-Za-z]{10,40}$",
-      "description": "Server-assigned id with a type prefix: run_, tpl_, trg_, gate_, task_, dlg_, fir_, dlv_, art_."
+      "description": "Server-assigned id with a type prefix: run_, prn_ (pipeline run), tpl_, trg_, gate_, dlg_, fir_, dlv_, art_."
     },
     "Version": {
       "type": "integer",
@@ -82,7 +82,7 @@
         "cel"
       ],
       "additionalProperties": false,
-      "description": "A CEL expression. Evaluated by the harness over a documented context (platform.md \u00a79). Never evaluated by or shown to the model."
+      "description": "A CEL expression. Evaluated by the harness over a documented context (platform.md §9). Never evaluated by or shown to the model."
     },
     "ParamRef": {
       "type": "object",
@@ -181,7 +181,7 @@
       "additionalProperties": false
     },
     "PrincipalSetRule": {
-      "description": "Who may answer a gate. Resolved when a reply arrives, not when the gate opens (formats.md \u00a75a).",
+      "description": "Who may answer a gate. Resolved when a reply arrives, not when the gate opens (formats.md §5a).",
       "oneOf": [
         {
           "type": "string",
@@ -209,13 +209,13 @@
         {
           "type": "object",
           "properties": {
-            "group": {
+            "team": {
               "type": "string",
-              "description": "An IdP group id."
+              "description": "A team in the RBAC system; anyone who is a member when the reply arrives."
             }
           },
           "required": [
-            "group"
+            "team"
           ],
           "additionalProperties": false
         }
@@ -339,7 +339,7 @@
     },
     "RefusalCode": {
       "type": "string",
-      "description": "Closed vocabulary for every harness-side refusal or degradation, in tool results and API errors alike (generative.md \u00a72b). Prose accompanies it; code is what telemetry counts.",
+      "description": "Closed vocabulary for every harness-side refusal or degradation, in tool results and API errors alike (generative.md §2b). Prose accompanies it; code is what telemetry counts.",
       "enum": [
         "grant_denied",
         "tool_not_registered",
@@ -374,7 +374,9 @@
         "not_found",
         "conflict",
         "finisher_failed",
-        "exit_unwired"
+        "exit_unwired",
+        "permission_denied",
+        "dependency_abandoned"
       ]
     },
     "Problem": {

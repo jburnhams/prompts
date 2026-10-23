@@ -1,5 +1,17 @@
 # Orchestration: the run ledger
 
+> **Superseded as a mechanism by [`platform.md`](./platform.md) §7f
+> (2026-10-23).** There is no ledger: the **pipeline run** is the durable
+> record of work, and every run belongs to one. The rules below still
+> stand, restated on pipeline runs: retries spanning attempts, the PR
+> settle wait (this document's `handoff`), spinoffs as child runs with
+> the same caps and the same asymmetric approval, concurrency on
+> `(repository, branch)` held while settling, health as stored-field
+> queries rather than a supervisor, the harness-held lease, tracker
+> reconciliation by adopt / stop / say, and "a run may file, propose or
+> report; it may not act on what it oversees". §7f has a table mapping
+> each section here to where it now lives. Terms: [`taxonomy.md`](./taxonomy.md).
+
 Every run in this design is one-shot. It is dispatched with an envelope,
 it works, it calls `Complete`, and it ends. Nothing in the design records
 that the *task* existed — only that a run happened. That is the gap this

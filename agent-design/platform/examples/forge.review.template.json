@@ -2,7 +2,7 @@
   "name": "forge.review",
   "version": 1,
   "title": "Forge: review a pull request",
-  "description": "Multi-stage review (review.md \u00a76): specialists by kind, then an independent validator per candidate. Runs as the service identity; posts through AddComment in-run and publishes the attention tier as a commit status.",
+  "description": "Multi-stage review (review.md §6): specialists by kind, then an independent validator per candidate. Runs as the service identity; posts through AddComment in-run and publishes the attention tier as a commit status.",
   "owner": {
     "type": "team",
     "id": "platform-agents"
@@ -220,7 +220,76 @@
         }
       ]
     },
-    "roles": {
+    "completion": {
+      "statuses": [
+        "done",
+        "skipped",
+        "failed",
+        "budget_exhausted"
+      ],
+      "report_schema": {
+        "ref": {
+          "name": "forge.report.review",
+          "version": 4
+        }
+      },
+      "checks": [
+        {
+          "id": "report_crosscheck"
+        }
+      ]
+    },
+    "budgets": {
+      "turns": 60,
+      "context_high_water_tokens": 150000,
+      "wall_seconds": 2400,
+      "subagents_total": 40
+    },
+    "outputs": {
+      "sinks": [
+        {
+          "id": "attention_status",
+          "kind": "commit_status",
+          "when": {
+            "terminal": [
+              "complete"
+            ],
+            "status": [
+              "done"
+            ]
+          },
+          "channel": {
+            "type": "bitbucket_pr",
+            "target": {
+              "$param": "pull_request"
+            }
+          },
+          "render": {
+            "template": "attention: {{report.attention.tier}}"
+          },
+          "idempotency_key": {
+            "cel": "params.head_sha + ':attention'"
+          }
+        }
+      ],
+      "continuations": []
+    },
+    "authority": {
+      "run_as": [
+        "service"
+      ],
+      "service_principal": {
+        "type": "service",
+        "id": "forge-bot"
+      }
+    },
+    "concurrency": {
+      "key": {
+        "cel": "params.pull_request"
+      },
+      "policy": "queue"
+    },
+    "agents": {
       "orchestrator": {
         "grant": [
           "core.read",
@@ -298,75 +367,6 @@
           }
         }
       }
-    },
-    "completion": {
-      "statuses": [
-        "done",
-        "skipped",
-        "failed",
-        "budget_exhausted"
-      ],
-      "report_schema": {
-        "ref": {
-          "name": "forge.report.review",
-          "version": 4
-        }
-      },
-      "checks": [
-        {
-          "id": "report_crosscheck"
-        }
-      ]
-    },
-    "budgets": {
-      "turns": 60,
-      "context_high_water_tokens": 150000,
-      "wall_seconds": 2400,
-      "subagents_total": 40
-    },
-    "outputs": {
-      "sinks": [
-        {
-          "id": "attention_status",
-          "kind": "commit_status",
-          "when": {
-            "terminal": [
-              "complete"
-            ],
-            "status": [
-              "done"
-            ]
-          },
-          "channel": {
-            "type": "bitbucket_pr",
-            "target": {
-              "$param": "pull_request"
-            }
-          },
-          "render": {
-            "template": "attention: {{report.attention.tier}}"
-          },
-          "idempotency_key": {
-            "cel": "params.head_sha + ':attention'"
-          }
-        }
-      ],
-      "continuations": []
-    },
-    "authority": {
-      "run_as": [
-        "service"
-      ],
-      "service_principal": {
-        "type": "service",
-        "id": "forge-bot"
-      }
-    },
-    "concurrency": {
-      "key": {
-        "cel": "params.pull_request"
-      },
-      "policy": "queue"
     }
   }
 }
