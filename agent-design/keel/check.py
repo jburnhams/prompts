@@ -225,6 +225,11 @@ def check_spec(where, params, spec):
             if child not in agents or child == "orchestrator":
                 err(where, f"R3 agent {agent_name} spawns unknown agent {child}")
 
+    # R17 a sub-agent's conventions block is resolved with the run's context.conventions
+    for agent_name, agent in agents.items():
+        if "conventions" in agent and "conventions" not in spec.get("context", {}):
+            err(where, f"R17 agent {agent_name} has conventions but the run has no context.conventions")
+
     # R4 params: declared, bound by trust, constrained when config-bound
     for path, pname in walk_params(spec):
         if pname not in params:

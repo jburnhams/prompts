@@ -31,8 +31,10 @@ The fields, with the reason each is shaped the way it is:
   harness note, a nudge) is appended as a message, never written into
   what was already sent. A prompt's text therefore has no placeholders.
   It refers to "the first message" for its task. For a sub-agent, the
-  opening message is its `<scope>` block (from the sub-agent's `scope`)
-  followed by the spawner's brief. This is what makes the
+  opening message is its `<scope>` block (from the sub-agent's `scope`),
+  then its own `<conventions>` block if it has `conventions` (resolved
+  with the run's tiers and `at`, narrowed by its tags), then the
+  spawner's brief. This is what makes the
   shared cache prefix in §6 true, and it is the shape Anthropic's API
   guidance gives for harnesses: freeze the rendered system prompt and
   announce per-session facts in the first user turn, then send deltas.
@@ -53,7 +55,7 @@ The fields, with the reason each is shaped the way it is:
   Anything not authored by `harness` or `config` is sanitised and
   nonce-wrapped.
 - **`context`**: the context-service resolution (`tiers`, `team`,
-  `paths`, `topics`, `at: base_sha` for review) and, for data
+  `paths`, `tags`, `at: base_sha` for review) and, for data
   analysis, the data overview. A failed resolution means the run doesn't start, as
   `../context-files.md` §1b already says.
 - **`workspace`**: `none`, or `checkout`. `writable: false` registers no

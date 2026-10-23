@@ -30,7 +30,10 @@ case shares. Each choice below is Forge's, made with what Keel provides.
 - **Review specialists** are four sub-agents (`bugs_reviewer`,
   `security_reviewer`, `conventions_reviewer`, `visual_reviewer`) that
   share the `forge.reviewer` prompt, each with its own `scope`.
-  `visual_reviewer` alone is granted `vision`.
+  `visual_reviewer` alone is granted `vision`. Each gets its own
+  conventions by tag (`security`, `ux`, or the whole corpus for
+  `conventions_reviewer`), so the orchestrator never copies them into a
+  brief.
 - **Plan approval** is gated and bound to the plan's hash, rather than
   auto-chained.
 - **Review runs as the service identity**; plan and implement run as the

@@ -132,7 +132,8 @@
               "type": "string"
             }
           },
-          "kinds": {
+          "tags": {
+            "description": "Conventions tags the follow-up work needs; they become the spun-off run's context.conventions.tags.",
             "type": "array",
             "items": {
               "type": "string"

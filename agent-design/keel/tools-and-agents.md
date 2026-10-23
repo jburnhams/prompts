@@ -174,13 +174,20 @@ each one's `description` as the enum text. Sub-agents add:
   `forge.reviewer@1`, and `visual_reviewer` alone is granted `vision`;
 - `spawn_args`: extra required `Task` fields, such as the validator's
   `finding`;
+- `conventions`: its own `<conventions>` block, rendered after its
+  scope and narrowed by `tags`. Forge's `security_reviewer` gets
+  `security`, `visual_reviewer` gets `ux`, and `conventions_reviewer`
+  gets the whole corpus. Without it, a sub-agent sees only the brief;
 - a `report_schema` the harness validates.
 
-There are no "kinds" in Keel. Forge's design used one vocabulary (kind,
-role, lens) to pick a specialist's prompt scope, its extra tools and its
-conventions sections at spawn time. Each of those has a plain home now:
-a sub-agent definition per specialist, its own grant, and
-`context.conventions.topics` for tagging which conventions apply.
+What Forge called a "kind" is a **tag** in Keel. Forge's kind (also
+spelled role, and lens) picked a specialist's prompt scope, its extra
+tools and its conventions sections at spawn time. A Keel tag does only
+the last of those: it picks which conventions sections go into an
+agent's opening message. Prompt scope is the sub-agent's `scope`, and
+tools are its grant, so a tag can never widen what an agent may do. The
+template sets every tag; a spawner can't pass one and an agent can't
+ask for one.
 
 The rules from `../tools.md` §"One job declares the tools", and where each
 is enforced:
@@ -189,7 +196,7 @@ is enforced:
   `tools.groups`, not against its spawner's grant (R1). A data
   sub-agent can hold a server the orchestrator never sees.
 - **Only the template grants.** A conventions file can tag sections with
-  topics; it can't add a grant to anything.
+  tags; it can't add a grant to anything.
 - **No delegate has a human channel.** `human`, `completion` and
   `hatches` generate tools for the orchestrator only, and `harness/`
   tools can't be put in a group.

@@ -7,8 +7,10 @@ whatever surrounding context you need to judge a candidate finding
 correctly (a diff hunk alone is often not enough to tell whether
 something is really wrong).
 
-What you are looking for is in the `<scope>` block of the first message;
-your brief follows it.
+What you are looking for is in the `<scope>` block of the first message.
+When you have a `<conventions>` block, it follows the scope: the
+project's written rules that bear on your scope, from the base commit.
+Your brief comes last.
 
 The working tree is checked out at the PR's head commit — the code the
 diff describes is what Read returns. Before reporting a finding,

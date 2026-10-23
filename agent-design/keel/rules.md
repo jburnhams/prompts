@@ -29,6 +29,7 @@ publish against the real snapshot.
 | R13 | argument overrides only narrow: a hidden argument is fixed, an enum is a subset of the server's, a maximum only goes down; a fixed `$param` is a config param of the template; other overrides on a fixed argument are a warning |
 | R14 | tool uses: a built-in is used only as its catalogue allows; only the orchestrator is granted ending tools; each ending gives a declared status, and takes a report only if there is a report schema; no ending tool has an argument named `summary` or `report`; `complete: false` needs at least one ending tool |
 | R16 | every prompt and report-schema ref resolves to a file in a configuration's registry; every report schema is a valid JSON Schema whose relative refs resolve |
+| R17 | a sub-agent with a `conventions` block belongs to a run that declares `context.conventions`, whose tiers and `at` it resolves with |
 | P1 | a pipeline's entry and edges name real stages; every `pipeline.params.x` it reads is declared |
 | P2 | every exit an edge waits on (status, ending tool, HandOff reason) exists in that stage's template; every HandOff reason of every stage is wired |
 | P3 | each edge's carry is accepted by the next stage's template |

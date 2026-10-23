@@ -33,7 +33,7 @@
       "required": true,
       "pattern": "^[A-Za-z0-9_./-]{1,200}$"
     },
-    "topics": {
+    "tags": {
       "type": "string_list",
       "trust": "config",
       "default": [],
@@ -45,7 +45,7 @@
         "performance",
         "conventions"
       ],
-      "description": "Conventions topics that apply to this task."
+      "description": "Conventions tags that apply to this task: they narrow which conventions sections the run gets."
     }
   },
   "spec": {
@@ -104,8 +104,8 @@
           "learned"
         ],
         "at": "working_tree",
-        "topics": {
-          "$param": "topics"
+        "tags": {
+          "$param": "tags"
         }
       }
     },

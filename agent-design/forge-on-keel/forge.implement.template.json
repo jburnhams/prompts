@@ -301,8 +301,8 @@
             "write_scope": {
               "cel": "spinoff.paths"
             },
-            "topics": {
-              "cel": "spinoff.kinds"
+            "tags": {
+              "cel": "spinoff.tags"
             }
           },
           "carry": [

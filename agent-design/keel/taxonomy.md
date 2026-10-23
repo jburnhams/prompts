@@ -148,9 +148,12 @@ higher-privilege one.
 learned), resolved by the context service for a ref.
 *Where:* `context.conventions`, `../context-files.md`.
 
-**Topic.** A tag on a context-service section (`security`, `testing`,
-`data`, …) that narrows which conventions apply to a run
-(`context.conventions.topics`). The context service owns the tags.
+**Tag.** A label on a context-service section (`security`, `testing`,
+`data`, `ux`, …). Tags narrow which conventions an agent's opening
+message carries: the run's (`context.conventions.tags`), or a sub-agent's
+own (`agents.<name>.conventions.tags`). The template sets them; they
+select context only, never a tool or a grant. The context service owns
+the vocabulary. What Forge called a **kind** was mostly this.
 
 **Scope** (of a sub-agent). What a sub-agent is for, rendered into its
 opening message as a `<scope>` block. Lets several sub-agents share one
@@ -584,7 +587,8 @@ never sees it.
 | **mode** | "Plan" and "implement" are two templates. What makes one investigate and the other write code is its tools, prompt, model and ending contract, and the pipeline runs them in order. No field, tag or prompt line says "you are in plan mode". | the template's name; "configured to plan" if you need a verb. The word survives only in two unrelated field names, `auth.mode` and `run_as.mode`, which mean "credential kind" and "whose authority" |
 | **job** | `../tools.md` says "the agent job declares the tools". That is the template's declaration | **template**, **declaration** |
 | **lens** (a review specialism) | it's now the name of the data-analysis use cases | **specialist**, a sub-agent with a `scope` |
-| **kind** | one word did three jobs at spawn time (prompt scope, extra tools, conventions sections), and nobody found it easy to explain | a sub-agent per specialist, with its own **scope** and grant; **topics** for conventions |
+| **kind** | it was mostly a tag, but at spawn time it also picked a specialist's prompt scope and extra tools, and a tag that can widen tools is an authority surface | **tags** for conventions; a sub-agent per specialist, with its own **scope** and grant |
+| **topic** | the first name for tags here, renamed so there is one word | **tag** |
 | **finisher** | a separate list beside the tools, when the tools themselves can say how they may be used | a tool marked **use: finish** (its **ending tool**) |
 | **harness action** | made Keel know about pull requests | an MCP tool, on a **workspace-bound** server where it needs the checkout; Keel **built-ins** for Keel's own concepts |
 | **landing** | a stage reached by a handoff | **stage** |

@@ -34,9 +34,9 @@ standing procedure:
 2. **Gather context.** The task envelope already carries the diff,
    PR title/description, and changed-file list (see `formats.md`) — you
    do not need to re-fetch these. If the repository has a
-   project-conventions file, read the ones scoped to the changed paths;
-   pass their contents (not just their paths) to any specialist that
-   depends on them.
+   project-conventions file, read the ones scoped to the changed paths.
+   You do not pass conventions on: each specialist that needs them is
+   given its own `<conventions>` block, chosen for its scope.
 3. **Launch specialists in parallel.** Dispatch one Task call per specialist
    below, all in the same turn:
    - `bugs_reviewer` — logic errors and defects introduced by
@@ -61,8 +61,8 @@ standing procedure:
    given for it: the envelope's PR block, description, diff, gates
    block, and existing-comments block (when the PR has any)
    transcluded **verbatim** — never paraphrased, summarized, or
-   trimmed — plus the relevant convention text for
-   `conventions_reviewer`, and at most a few sentences of your own `<focus>` direction.
+   trimmed — plus at most a few sentences of your own `<focus>`
+   direction.
    The description and existing-comments blocks are copied **whole,
    including their own opening and closing tags**: those tags carry a
    nonce, and you do not write them yourself. Never lift the contents

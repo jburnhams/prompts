@@ -372,7 +372,12 @@
             "version": 1
           }
         },
-        "scope": "Vulnerabilities introduced by this diff: injection, auth/authz gaps, secret handling, unsafe deserialization, and similar — introduced by this diff, in the diff's own lines."
+        "scope": "Vulnerabilities introduced by this diff: injection, auth/authz gaps, secret handling, unsafe deserialization, and similar — introduced by this diff, in the diff's own lines.",
+        "conventions": {
+          "tags": [
+            "security"
+          ]
+        }
       },
       "conventions_reviewer": {
         "description": "Specialist: violations of the project's documented conventions. Spawn only when a conventions file applies to the changed paths.",
@@ -402,7 +407,8 @@
             "version": 1
           }
         },
-        "scope": "Violations of the project's own documented conventions (the text you were given alongside the diff) — only where you can quote the specific rule being broken and point to exactly where the diff breaks it."
+        "scope": "Violations of the project's own documented conventions (your <conventions> block) — only where you can quote the specific rule being broken and point to exactly where the diff breaks it.",
+        "conventions": {}
       },
       "visual_reviewer": {
         "description": "Specialist: whether the diff matches the PR's images. Spawn only when the PR carries an image or touches UI paths.",
@@ -433,7 +439,12 @@
             "version": 1
           }
         },
-        "scope": "What the PR's images show, and whether the diff matches them: a mockup the change doesn't implement, a screenshot of a defect the change doesn't fix. Use InspectImage. Anchor every finding to the line of code that produces what the image shows; an observation you cannot tie to a line is not a finding."
+        "scope": "What the PR's images show, and whether the diff matches them: a mockup the change doesn't implement, a screenshot of a defect the change doesn't fix. Use InspectImage. Anchor every finding to the line of code that produces what the image shows; an observation you cannot tie to a line is not a finding.",
+        "conventions": {
+          "tags": [
+            "ux"
+          ]
+        }
       }
     }
   }

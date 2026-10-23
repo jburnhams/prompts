@@ -397,9 +397,9 @@
               "minimum": 0,
               "default": 32768
             },
-            "topics": {
+            "tags": {
               "$ref": "common.schema.json#/$defs/BindableStringList",
-              "description": "Tags on context-service sections (security, testing, data, …) that narrow which apply. The context service owns the tag vocabulary."
+              "description": "Narrows the conventions every agent of the run gets, for the orchestrator's opening message, to sections carrying one of these tags (security, testing, data, …). Absent or empty: the whole corpus. Policy and untagged sections come back regardless. The context service owns the tag vocabulary and rejects a tag it has never seen."
             }
           },
           "required": [
@@ -1532,6 +1532,20 @@
           "type": "string",
           "maxLength": 4000,
           "description": "What this sub-agent is for, rendered into its opening message as a <scope> block before the spawner's brief. Lets several sub-agents share one prompt version (four review specialists, one reviewer prompt) while each keeps one cached system prompt."
+        },
+        "conventions": {
+          "type": "object",
+          "description": "Gives this sub-agent its own <conventions> block, rendered after its <scope> block and before the spawner's brief, resolved with the run's context.conventions (tiers, at) and these tags in place of the run's. Absent: no block, and the sub-agent sees only what the spawner's brief carries. Set by the template, never by the spawner or the sub-agent, and selects context only: a tag never adds a tool or a grant.",
+          "properties": {
+            "tags": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Name"
+              },
+              "description": "Absent or empty: the whole corpus. Not bindable."
+            }
+          },
+          "additionalProperties": false
         }
       },
       "required": [
