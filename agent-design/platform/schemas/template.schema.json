@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.example/schemas/template.schema.json",
+  "title": "Template",
+  "description": "A versioned, publishable AgentSpec with declared parameters. Published versions are immutable. See ../../platform.md §6.",
+  "type": "object",
+  "properties": {
+    "name": { "$ref": "common.schema.json#/$defs/Name" },
+    "version": { "$ref": "common.schema.json#/$defs/Version" },
+    "state": { "type": "string", "enum": ["draft", "published", "deprecated"], "readOnly": true },
+    "title": { "type": "string", "maxLength": 120 },
+    "description": { "type": "string", "maxLength": 2000 },
+    "owner": { "$ref": "common.schema.json#/$defs/PrincipalRef" },
+    "extends": {
+      "$ref": "common.schema.json#/$defs/VersionedRef",
+      "description": "Single parent, published. Merged at publish: objects deep-merge, arrays replace, null deletes. The stored resolved spec is flat."
+    },
+    "params": {
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/Name" },
+      "additionalProperties": { "$ref": "#/$defs/ParamSpec" }
+    },
+    "spec": {
+      "description": "The AgentSpec, possibly partial when extends is set. Validated as a full AgentSpec after the merge.",
+      "type": "object"
+    },
+    "resolved": {
+      "readOnly": true,
+      "type": "object",
+      "description": "Filled at publish.",
+      "properties": {
+        "spec": { "$ref": "agent-spec.schema.json" },
+        "digest": { "$ref": "common.schema.json#/$defs/Digest" },
+        "prompt_digest": { "$ref": "common.schema.json#/$defs/Digest", "description": "Of the fixed system-prompt text per role. Equal across every run of this version." },
+        "tool_snapshots": {
+          "type": "object",
+          "description": "MCP server id to the snapshot digest pinned at publish.",
+          "additionalProperties": { "$ref": "common.schema.json#/$defs/Digest" }
+        },
+        "continuation_targets": {
+          "type": "object",
+          "description": "Continuation id to the concrete template version it resolved to.",
+          "additionalProperties": { "$ref": "common.schema.json#/$defs/VersionedRef" }
+        },
+        "generated_tools": {
+          "type": "object",
+          "description": "Role to the harness tools generated for it (Complete, AskUser, HandOff, Expand, Task, Narrate).",
+          "additionalProperties": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/ToolAddress" } }
+        }
+      },
+      "additionalProperties": false
+    },
+    "published_at": { "$ref": "common.schema.json#/$defs/Timestamp", "readOnly": true },
+    "published_by": { "$ref": "common.schema.json#/$defs/PrincipalRef", "readOnly": true },
+    "labels": { "$ref": "common.schema.json#/$defs/Labels" }
+  },
+  "required": ["name", "params", "spec"],
+  "additionalProperties": false,
+
+  "$defs": {
+    "ParamSpec": {
+      "type": "object",
+      "description": "A typed parameter. Its trust decides where it may bind: external and principal params bind to inputs only; config params may bind to config slots, constrained so they narrow and never widen (platform.md §6).",
+      "properties": {
+        "type": { "type": "string", "enum": ["string", "integer", "boolean", "string_list", "tier", "object"] },
+        "description": { "type": "string", "maxLength": 500 },
+        "required": { "type": "boolean", "default": false },
+        "default": {},
+        "trust": { "type": "string", "enum": ["config", "principal", "external"] },
+        "enum": { "type": "array", "minItems": 1 },
+        "pattern": { "type": "string" },
+        "max_length": { "type": "integer", "minimum": 1 },
+        "minimum": { "type": "integer" },
+        "maximum": { "type": "integer", "description": "For budgets and counts: the ceiling a caller may ask for." },
+        "subset_of": { "type": "array", "items": { "type": "string" }, "description": "string_list: every item must be in this list (kinds, paths roots, group ids)." },
+        "max_tier": { "$ref": "common.schema.json#/$defs/Tier", "description": "tier: the highest a caller may pick." },
+        "schema": { "type": "object", "description": "object: JSON Schema the value must satisfy." },
+        "sensitive": { "type": "boolean", "default": false, "description": "Redacted in run listings and event streams." }
+      },
+      "required": ["type", "trust"],
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "tier" } } }, "then": { "required": ["max_tier"] } },
+        { "if": { "properties": { "type": { "const": "object" } } }, "then": { "required": ["schema"] } }
+      ],
+      "additionalProperties": false
+    }
+  }
+}

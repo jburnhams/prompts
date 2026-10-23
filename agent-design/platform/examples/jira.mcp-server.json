@@ -1,0 +1,39 @@
+{
+  "id": "jira",
+  "display": "Jira",
+  "owner": { "type": "team", "id": "platform-agents" },
+  "transport": {
+    "kind": "stdio",
+    "command": "/opt/mcp/jira-mcp",
+    "args": ["--site", "example.atlassian.net"],
+    "env": { "JIRA_TOKEN": { "secret": "vault://agents/jira/forge-bot" } }
+  },
+  "lifecycle": "per_run",
+  "protocol_version": "2025-11-25",
+  "auth": {
+    "mode": "service",
+    "credential": { "secret": "vault://agents/jira/forge-bot" },
+    "principal": { "type": "service", "id": "forge-bot" },
+    "entitlement_check": "harness_policy"
+  },
+  "instructions": "ignore",
+  "egress": { "allow_hosts": ["example.atlassian.net"] },
+  "snapshot": {
+    "digest": "sha256:1f3c0b8e9d2a4c6e8f0a1b3c5d7e9f1a2b4c6d8e0f1a3b5c7d9e1f2a4b6c8d0e",
+    "discovered_at": "2026-10-20T09:00:00Z",
+    "tools": [
+      {
+        "name": "get_issue",
+        "description_digest": "sha256:aa11bb22cc33dd44ee55ff6600112233445566778899aabbccddeeff00112233",
+        "input_schema_digest": "sha256:0011223344556677889900aabbccddeeff00112233445566778899aabbccddee",
+        "annotations": { "read_only": true }
+      },
+      {
+        "name": "add_comment",
+        "description_digest": "sha256:bb22cc33dd44ee55ff660011223344556677889900aabbccddeeff0011223344",
+        "input_schema_digest": "sha256:1122334455667788990011aabbccddeeff00112233445566778899aabbccddee"
+      }
+    ]
+  },
+  "drift_policy": "allow_description_changes"
+}

@@ -1,0 +1,710 @@
+openapi: 3.1.0
+info:
+  title: Agent platform API
+  version: 0.1.0
+  description: |
+    Resources and operations for defining agents, running them, and wiring
+    them to triggers and outputs. Read ../platform.md first: this file is the
+    wire contract, that file is why it is shaped this way.
+
+    Conventions:
+    - Errors are application/problem+json with a closed `code`
+      (schemas/common.schema.json#/$defs/RefusalCode).
+    - Every create takes an `Idempotency-Key` header; a repeat with the same
+      key and body returns the original response.
+    - Lists are cursor-paginated: `?limit=&cursor=`, response `{items, next_cursor}`.
+    - Custom verbs use the `:verb` suffix (`POST /v1/runs/{id}:stop`).
+    - The caller is the authenticated principal. Nothing in a body can name
+      a different author or principal; acting for someone else goes through a
+      delegation.
+servers:
+  - url: https://agents.example.internal
+
+tags:
+  - name: Registry
+    description: MCP servers, tool groups, prompts and report schemas.
+  - name: Templates
+  - name: Runs
+  - name: Gates
+    description: Everything waiting on a human.
+  - name: Tasks
+    description: The ledger (orchestration.md). Read-mostly; humans act through gates.
+  - name: Triggers
+  - name: Delegations
+  - name: Deployment
+
+paths:
+  /v1/mcp-servers:
+    get:
+      tags: [Registry]
+      operationId: listMcpServers
+      parameters: [{ $ref: "#/components/parameters/limit" }, { $ref: "#/components/parameters/cursor" }]
+      responses:
+        "200": { $ref: "#/components/responses/McpServerList" }
+    post:
+      tags: [Registry]
+      operationId: createMcpServer
+      parameters: [{ $ref: "#/components/parameters/idempotencyKey" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "schemas/tools.schema.json#/$defs/McpServer" } } }
+      responses:
+        "201": { $ref: "#/components/responses/McpServer" }
+        "400": { $ref: "#/components/responses/Problem" }
+  /v1/mcp-servers/{server_id}:
+    parameters: [{ $ref: "#/components/parameters/serverId" }]
+    get:
+      tags: [Registry]
+      operationId: getMcpServer
+      responses:
+        "200": { $ref: "#/components/responses/McpServer" }
+        "404": { $ref: "#/components/responses/Problem" }
+    patch:
+      tags: [Registry]
+      operationId: updateMcpServer
+      description: Changes transport, auth or limits. Does not change a snapshot that a published template pinned.
+      requestBody:
+        required: true
+        content: { application/merge-patch+json: { schema: { type: object } } }
+      responses:
+        "200": { $ref: "#/components/responses/McpServer" }
+    delete:
+      tags: [Registry]
+      operationId: deleteMcpServer
+      description: Refused with conflict while any published, non-deprecated template version pins it.
+      responses:
+        "204": { description: Deleted }
+        "409": { $ref: "#/components/responses/Problem" }
+  /v1/mcp-servers/{server_id}:discover:
+    parameters: [{ $ref: "#/components/parameters/serverId" }]
+    post:
+      tags: [Registry]
+      operationId: discoverMcpServer
+      description: |
+        Connects, runs tools/list, and stores a new snapshot. Returns the
+        snapshot and its diff against the previous one. A template draft
+        picks up the new digest on its next publish; published versions keep
+        theirs.
+      responses:
+        "200":
+          description: New snapshot and diff.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  snapshot: { $ref: "schemas/tools.schema.json#/$defs/ToolSnapshot" }
+                  added: { type: array, items: { type: string } }
+                  removed: { type: array, items: { type: string } }
+                  changed:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { type: string }
+                        fields: { type: array, items: { type: string, enum: [description, input_schema, annotations] } }
+  /v1/mcp-servers/{server_id}/snapshots/{digest}:
+    parameters: [{ $ref: "#/components/parameters/serverId" }, { name: digest, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Digest" } }]
+    get:
+      tags: [Registry]
+      operationId: getToolSnapshot
+      responses:
+        "200": { description: Snapshot, content: { application/json: { schema: { $ref: "schemas/tools.schema.json#/$defs/ToolSnapshot" } } } }
+
+  /v1/tool-groups:
+    get:
+      tags: [Registry]
+      operationId: listToolGroups
+      responses:
+        "200": { description: Groups, content: { application/json: { schema: { $ref: "#/components/schemas/ToolGroupList" } } } }
+    post:
+      tags: [Registry]
+      operationId: createToolGroupVersion
+      description: Shared groups are versioned like templates and referenced as {ref:{name,version}}. Inline groups in a spec need no registry entry.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "schemas/tools.schema.json#/$defs/ToolGroup" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "schemas/tools.schema.json#/$defs/ToolGroup" } } } }
+
+  /v1/prompts/{name}/versions:
+    parameters: [{ $ref: "#/components/parameters/name" }]
+    post:
+      tags: [Registry]
+      operationId: createPromptVersion
+      description: Prompt text and report schemas are versioned blobs, immutable once created, referenced from specs by {name, version}.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kind: { type: string, enum: [system_prompt, report_schema] }
+                body: { description: "Prompt text, or a JSON Schema object." }
+              required: [kind, body]
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "schemas/common.schema.json#/$defs/VersionedRef" } } } }
+
+  /v1/templates:
+    get:
+      tags: [Templates]
+      operationId: listTemplates
+      parameters: [{ $ref: "#/components/parameters/limit" }, { $ref: "#/components/parameters/cursor" }]
+      responses:
+        "200": { description: Latest version of each template, content: { application/json: { schema: { $ref: "#/components/schemas/TemplateList" } } } }
+  /v1/templates:validate:
+    post:
+      tags: [Templates]
+      operationId: validateTemplate
+      description: Runs every publish rule (platform.md §11) on a body without storing it.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "schemas/template.schema.json" } } }
+      responses:
+        "200": { $ref: "#/components/responses/Diagnostics" }
+  /v1/templates/{name}/versions:
+    parameters: [{ $ref: "#/components/parameters/name" }]
+    get:
+      tags: [Templates]
+      operationId: listTemplateVersions
+      responses:
+        "200": { description: Versions, content: { application/json: { schema: { $ref: "#/components/schemas/TemplateList" } } } }
+    post:
+      tags: [Templates]
+      operationId: createTemplateDraft
+      description: Creates the next version number as a draft. Drafts are mutable and cannot run except with dry_run.
+      parameters: [{ $ref: "#/components/parameters/idempotencyKey" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "schemas/template.schema.json" } } }
+      responses:
+        "201": { $ref: "#/components/responses/Template" }
+        "400": { $ref: "#/components/responses/Problem" }
+  /v1/templates/{name}/versions/{version}:
+    parameters: [{ $ref: "#/components/parameters/name" }, { $ref: "#/components/parameters/version" }]
+    get:
+      tags: [Templates]
+      operationId: getTemplateVersion
+      responses:
+        "200": { $ref: "#/components/responses/Template" }
+    put:
+      tags: [Templates]
+      operationId: replaceTemplateDraft
+      description: Drafts only; a published version returns conflict.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "schemas/template.schema.json" } } }
+      responses:
+        "200": { $ref: "#/components/responses/Template" }
+        "409": { $ref: "#/components/responses/Problem" }
+  /v1/templates/{name}/versions/{version}:publish:
+    parameters: [{ $ref: "#/components/parameters/name" }, { $ref: "#/components/parameters/version" }]
+    post:
+      tags: [Templates]
+      operationId: publishTemplate
+      description: |
+        Flattens extends, expands tool wildcards against pinned snapshots,
+        resolves continuation targets, generates harness tools per role,
+        runs every publish rule, computes digests, and freezes the version.
+        Existing delegations whose consented digest no longer matches are
+        listed in the response so their owners can be asked to re-consent.
+      responses:
+        "200":
+          description: Published.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  template: { $ref: "schemas/template.schema.json" }
+                  delegations_needing_consent: { type: array, items: { $ref: "schemas/common.schema.json#/$defs/Id" } }
+        "422": { $ref: "#/components/responses/Diagnostics" }
+  /v1/templates/{name}/versions/{version}:deprecate:
+    parameters: [{ $ref: "#/components/parameters/name" }, { $ref: "#/components/parameters/version" }]
+    post:
+      tags: [Templates]
+      operationId: deprecateTemplate
+      description: New runs refuse with template_deprecated; running runs, open gates and queued tasks finish on this version.
+      responses:
+        "200": { $ref: "#/components/responses/Template" }
+  /v1/templates/{name}/versions/{version}:render:
+    parameters: [{ $ref: "#/components/parameters/name" }, { $ref: "#/components/parameters/version" }]
+    post:
+      tags: [Templates]
+      operationId: renderTemplate
+      description: |
+        Binds params and resolves everything a run would, without running:
+        the ResolvedSpec per role (tools array, visibility, model id), the
+        rendered system prompt and envelope with placeholder nonces, and the
+        prompt digest. The way to see exactly what a model would be given.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                params: { type: object }
+                run_as: { $ref: "schemas/run.schema.json#/$defs/RunRequest/properties/run_as" }
+              required: [params]
+      responses:
+        "200":
+          description: Resolved, not run.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resolved: { $ref: "schemas/run.schema.json#/$defs/ResolvedSpec" }
+                  rendered:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        system_prompt: { type: string }
+                        envelope: { type: string }
+                        tools: { type: array, items: { type: object } }
+                  diagnostics: { $ref: "#/components/schemas/DiagnosticList" }
+        "422": { $ref: "#/components/responses/Diagnostics" }
+
+  /v1/runs:
+    get:
+      tags: [Runs]
+      operationId: listRuns
+      parameters:
+        - { $ref: "#/components/parameters/limit" }
+        - { $ref: "#/components/parameters/cursor" }
+        - { name: template, in: query, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string } }
+        - { name: principal, in: query, schema: { type: string }, description: "me for the caller's own runs." }
+        - { name: root_run_id, in: query, schema: { type: string }, description: "Everything one request led to, across continuations." }
+        - { name: task_id, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Runs, content: { application/json: { schema: { $ref: "#/components/schemas/RunList" } } } }
+    post:
+      tags: [Runs]
+      operationId: createRun
+      parameters: [{ $ref: "#/components/parameters/idempotencyKey" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "schemas/run.schema.json#/$defs/RunRequest" } } }
+      responses:
+        "202": { description: Accepted and queued, content: { application/json: { schema: { $ref: "schemas/run.schema.json#/$defs/Run" } } } }
+        "200": { description: dry_run result, content: { application/json: { schema: { $ref: "schemas/run.schema.json#/$defs/ResolvedSpec" } } } }
+        "403": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /v1/runs/{run_id}:
+    parameters: [{ $ref: "#/components/parameters/runId" }]
+    get:
+      tags: [Runs]
+      operationId: getRun
+      responses:
+        "200": { description: Run, content: { application/json: { schema: { $ref: "schemas/run.schema.json#/$defs/Run" } } } }
+  /v1/runs/{run_id}/events:
+    parameters: [{ $ref: "#/components/parameters/runId" }]
+    get:
+      tags: [Runs]
+      operationId: streamRunEvents
+      description: Server-sent events, one RunEvent per message, `id` = seq. Reconnect with Last-Event-ID. Tool bodies are not in the stream.
+      parameters:
+        - { name: Last-Event-ID, in: header, schema: { type: integer } }
+        - { name: include_children, in: query, schema: { type: boolean, default: true } }
+      responses:
+        "200":
+          description: Event stream.
+          content:
+            text/event-stream: { schema: { $ref: "schemas/run.schema.json#/$defs/RunEvent" } }
+  /v1/runs/{run_id}/transcript:
+    parameters: [{ $ref: "#/components/parameters/runId" }]
+    get:
+      tags: [Runs]
+      operationId: getRunTranscript
+      description: Full transcript, including tool bodies. Separate permission from reading the run; access is audited.
+      responses:
+        "200": { description: Transcript, content: { application/x-ndjson: { schema: { type: object } } } }
+  /v1/runs/{run_id}/artifacts:
+    parameters: [{ $ref: "#/components/parameters/runId" }]
+    get:
+      tags: [Runs]
+      operationId: listRunArtifacts
+      responses:
+        "200":
+          description: Artifacts minted by the run.
+          content:
+            application/json:
+              schema: { type: object, properties: { items: { type: array, items: { $ref: "schemas/common.schema.json#/$defs/ArtifactStub" } } } }
+  /v1/runs/{run_id}:stop:
+    parameters: [{ $ref: "#/components/parameters/runId" }]
+    post:
+      tags: [Runs]
+      operationId: stopRun
+      description: |
+        graceful (default) injects the final-turn nudge at the next turn
+        boundary, so the run still ends through Complete with an honest
+        report. abort kills it; the outcome is terminal stopped and the
+        harness posts the failure note itself (formats.md §7).
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode: { type: string, enum: [graceful, abort], default: graceful }
+                reason: { type: string, maxLength: 500 }
+      responses:
+        "202": { description: Stop requested, content: { application/json: { schema: { $ref: "schemas/run.schema.json#/$defs/Run" } } } }
+  /v1/runs/{run_id}/deliveries/{delivery_id}:retry:
+    parameters: [{ $ref: "#/components/parameters/runId" }, { name: delivery_id, in: path, required: true, schema: { type: string } }]
+    post:
+      tags: [Runs]
+      operationId: retryDelivery
+      description: Re-attempts a failed sink delivery with the same idempotency key.
+      responses:
+        "202": { description: Retrying, content: { application/json: { schema: { $ref: "schemas/run.schema.json#/$defs/Delivery" } } } }
+
+  /v1/gates:
+    get:
+      tags: [Gates]
+      operationId: listGates
+      parameters:
+        - { name: state, in: query, schema: { type: string, enum: [open, resolved, expired, superseded, cancelled] } }
+        - { name: answerable_by, in: query, schema: { type: string }, description: "me: gates whose principal set includes the caller right now." }
+        - { $ref: "#/components/parameters/limit" }
+        - { $ref: "#/components/parameters/cursor" }
+      responses:
+        "200": { description: Gates, content: { application/json: { schema: { $ref: "#/components/schemas/GateList" } } } }
+  /v1/gates/{gate_id}:
+    parameters: [{ $ref: "#/components/parameters/gateId" }]
+    get:
+      tags: [Gates]
+      operationId: getGate
+      responses:
+        "200": { description: Gate, content: { application/json: { schema: { $ref: "schemas/gate.schema.json" } } } }
+  /v1/gates/{gate_id}/replies:
+    parameters: [{ $ref: "#/components/parameters/gateId" }]
+    post:
+      tags: [Gates]
+      operationId: replyToGate
+      description: |
+        The UI calls this as the user; channel adapters (Jira, Bitbucket,
+        chat, email) call it with their own credential and an attested
+        author. The harness classifies the author (principal, participant,
+        automation), matches the option, records the reply, and resolves the
+        gate only on a principal reply. Returns the gate after the reply.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "schemas/gate.schema.json#/$defs/ReplyRequest" } } }
+      responses:
+        "200": { description: Recorded, content: { application/json: { schema: { $ref: "schemas/gate.schema.json" } } } }
+        "409": { $ref: "#/components/responses/Problem" }
+  /v1/gates/{gate_id}:cancel:
+    parameters: [{ $ref: "#/components/parameters/gateId" }]
+    post:
+      tags: [Gates]
+      operationId: cancelGate
+      description: By a principal or an operator. The suspended run ends failed; a gated continuation is dropped.
+      responses:
+        "200": { description: Cancelled, content: { application/json: { schema: { $ref: "schemas/gate.schema.json" } } } }
+
+  /v1/tasks:
+    get:
+      tags: [Tasks]
+      operationId: listTasks
+      parameters:
+        - { name: state, in: query, schema: { type: string } }
+        - { name: issue_key, in: query, schema: { type: string } }
+        - { name: health, in: query, schema: { type: string, enum: [stranded, stranded_handoff, repeated_failure, blocked_stale, orphan_dependency] }, description: "orchestration.md §7 queries." }
+        - { $ref: "#/components/parameters/limit" }
+        - { $ref: "#/components/parameters/cursor" }
+      responses:
+        "200": { description: Tasks, content: { application/json: { schema: { $ref: "#/components/schemas/TaskList" } } } }
+    post:
+      tags: [Tasks]
+      operationId: fileTask
+      description: Manual filing. Same validation as a run request; the dispatcher starts it.
+      parameters: [{ $ref: "#/components/parameters/idempotencyKey" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - { $ref: "schemas/run.schema.json#/$defs/RunRequest" }
+                - type: object
+                  properties:
+                    priority: { type: string, enum: [low, normal, high, urgent] }
+                    depends_on: { type: array, items: { type: string } }
+      responses:
+        "201": { description: Filed, content: { application/json: { schema: { $ref: "schemas/task.schema.json" } } } }
+  /v1/tasks/{task_id}:
+    parameters: [{ $ref: "#/components/parameters/taskId" }]
+    get:
+      tags: [Tasks]
+      operationId: getTask
+      responses:
+        "200": { description: Task, content: { application/json: { schema: { $ref: "schemas/task.schema.json" } } } }
+  /v1/tasks/{task_id}:retry:
+    parameters: [{ $ref: "#/components/parameters/taskId" }]
+    post:
+      tags: [Tasks]
+      operationId: retryTask
+      description: Returns a blocked task to ready, optionally with raised budgets within the template's param maxima. Costs an attempt.
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { params: { type: object } } } } }
+      responses:
+        "200": { description: Ready, content: { application/json: { schema: { $ref: "schemas/task.schema.json" } } } }
+  /v1/tasks/{task_id}:abandon:
+    parameters: [{ $ref: "#/components/parameters/taskId" }]
+    post:
+      tags: [Tasks]
+      operationId: abandonTask
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { reason: { type: string } }, required: [reason] } } }
+      responses:
+        "200": { description: Abandoned, content: { application/json: { schema: { $ref: "schemas/task.schema.json" } } } }
+
+  /v1/triggers:
+    get:
+      tags: [Triggers]
+      operationId: listTriggers
+      responses:
+        "200": { description: Triggers, content: { application/json: { schema: { $ref: "#/components/schemas/TriggerList" } } } }
+    post:
+      tags: [Triggers]
+      operationId: createTrigger
+      description: |
+        The caller becomes the owner. run_as delegation must name a
+        delegation the caller granted; run_as service needs the
+        run-as-service permission on the template.
+      parameters: [{ $ref: "#/components/parameters/idempotencyKey" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "schemas/trigger.schema.json#/$defs/Trigger" } } }
+      responses:
+        "201": { $ref: "#/components/responses/Trigger" }
+        "422": { $ref: "#/components/responses/Problem" }
+  /v1/triggers/{trigger_id}:
+    parameters: [{ $ref: "#/components/parameters/triggerId" }]
+    get:
+      tags: [Triggers]
+      operationId: getTrigger
+      responses:
+        "200": { $ref: "#/components/responses/Trigger" }
+    put:
+      tags: [Triggers]
+      operationId: replaceTrigger
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "schemas/trigger.schema.json#/$defs/Trigger" } } }
+      responses:
+        "200": { $ref: "#/components/responses/Trigger" }
+    delete:
+      tags: [Triggers]
+      operationId: deleteTrigger
+      description: Stops future firings. Runs it started are unaffected.
+      responses:
+        "204": { description: Deleted }
+  /v1/triggers/{trigger_id}:fire:
+    parameters: [{ $ref: "#/components/parameters/triggerId" }]
+    post:
+      tags: [Triggers]
+      operationId: fireTrigger
+      description: |
+        Evaluate now with a supplied (or the next scheduled) event. test
+        mode evaluates filter, params, dedupe and run_as and returns the
+        RunRequest it would make, without starting it.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event: { $ref: "schemas/trigger.schema.json#/$defs/Event" }
+                test: { type: boolean, default: true }
+      responses:
+        "200":
+          description: Firing.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  firing: { $ref: "schemas/trigger.schema.json#/$defs/Firing" }
+                  run_request: { $ref: "schemas/run.schema.json#/$defs/RunRequest" }
+  /v1/triggers/{trigger_id}:pause:
+    parameters: [{ $ref: "#/components/parameters/triggerId" }]
+    post:
+      tags: [Triggers]
+      operationId: pauseTrigger
+      responses:
+        "200": { $ref: "#/components/responses/Trigger" }
+  /v1/triggers/{trigger_id}:resume:
+    parameters: [{ $ref: "#/components/parameters/triggerId" }]
+    post:
+      tags: [Triggers]
+      operationId: resumeTrigger
+      responses:
+        "200": { $ref: "#/components/responses/Trigger" }
+  /v1/triggers/{trigger_id}/firings:
+    parameters: [{ $ref: "#/components/parameters/triggerId" }]
+    get:
+      tags: [Triggers]
+      operationId: listFirings
+      parameters: [{ $ref: "#/components/parameters/limit" }, { $ref: "#/components/parameters/cursor" }]
+      responses:
+        "200": { description: "Firings, including ones that started nothing.", content: { application/json: { schema: { $ref: "#/components/schemas/FiringList" } } } }
+
+  /v1/events/{provider}:
+    parameters: [{ name: provider, in: path, required: true, schema: { type: string, enum: [jira, bitbucket, github, ci, artifact, webhook] } }]
+    post:
+      tags: [Triggers]
+      operationId: ingestEvent
+      description: |
+        Inbound webhooks. Signature checked per provider (or per registered
+        webhook id), body sanitised, normalised to an Event, then matched
+        against every enabled trigger. Also the path for gate replies that
+        arrive as provider comments: the adapter matches the comment to a
+        gate's external_ref and calls replyToGate itself.
+      parameters:
+        - { name: webhook_id, in: query, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "202":
+          description: Accepted. Firings are created asynchronously.
+          content: { application/json: { schema: { type: object, properties: { event_id: { type: string } } } } }
+        "401": { $ref: "#/components/responses/Problem" }
+
+  /v1/delegations:
+    get:
+      tags: [Delegations]
+      operationId: listDelegations
+      description: The caller's own delegations.
+      responses:
+        "200": { description: Delegations, content: { application/json: { schema: { $ref: "#/components/schemas/DelegationList" } } } }
+    post:
+      tags: [Delegations]
+      operationId: createDelegation
+      description: |
+        Consent, by the caller, for a template to act for them while they are
+        absent. Must be created in an interactive session: the response
+        carries a consent URL when the IdP needs the user to approve the OBO
+        scopes, and the delegation stays pending until they do.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "schemas/principal.schema.json#/$defs/Delegation" } } }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  delegation: { $ref: "schemas/principal.schema.json#/$defs/Delegation" }
+                  consent_url: { type: string, format: uri }
+  /v1/delegations/{delegation_id}:
+    parameters: [{ name: delegation_id, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [Delegations]
+      operationId: getDelegation
+      responses:
+        "200": { description: Delegation, content: { application/json: { schema: { $ref: "schemas/principal.schema.json#/$defs/Delegation" } } } }
+    delete:
+      tags: [Delegations]
+      operationId: revokeDelegation
+      description: Immediate. Triggers using it refuse with delegation_revoked; running runs get delegation_revoked on their next OBO call and are nudged to finish.
+      responses:
+        "204": { description: Revoked }
+
+  /v1/deployment:
+    get:
+      tags: [Deployment]
+      operationId: getDeployment
+      responses:
+        "200": { description: Deployment config, content: { application/json: { schema: { $ref: "schemas/deployment.schema.json" } } } }
+    put:
+      tags: [Deployment]
+      operationId: putDeployment
+      description: Operators only. A tier remap applies to runs started after it; the run record keeps the model id it ran on.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "schemas/deployment.schema.json" } } }
+      responses:
+        "200": { description: Saved, content: { application/json: { schema: { $ref: "schemas/deployment.schema.json" } } } }
+
+components:
+  parameters:
+    limit: { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+    cursor: { name: cursor, in: query, schema: { type: string } }
+    idempotencyKey: { name: Idempotency-Key, in: header, required: false, schema: { type: string, maxLength: 128 } }
+    name: { name: name, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Name" } }
+    version: { name: version, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Version" } }
+    serverId: { name: server_id, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Name" } }
+    runId: { name: run_id, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Id" } }
+    gateId: { name: gate_id, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Id" } }
+    taskId: { name: task_id, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Id" } }
+    triggerId: { name: trigger_id, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Id" } }
+
+  schemas:
+    Diagnostic:
+      type: object
+      properties:
+        severity: { type: string, enum: [error, warning] }
+        rule: { type: string, description: "R1..R12 from platform.md §11, or schema." }
+        path: { type: string }
+        code: { $ref: "schemas/common.schema.json#/$defs/RefusalCode" }
+        message: { type: string }
+      required: [severity, path, message]
+    DiagnosticList: { type: array, items: { $ref: "#/components/schemas/Diagnostic" } }
+    Page:
+      type: object
+      properties:
+        next_cursor: { type: [string, "null"] }
+    McpServerList:
+      allOf: [{ $ref: "#/components/schemas/Page" }, { type: object, properties: { items: { type: array, items: { $ref: "schemas/tools.schema.json#/$defs/McpServer" } } } }]
+    ToolGroupList:
+      allOf: [{ $ref: "#/components/schemas/Page" }, { type: object, properties: { items: { type: array, items: { $ref: "schemas/tools.schema.json#/$defs/ToolGroup" } } } }]
+    TemplateList:
+      allOf: [{ $ref: "#/components/schemas/Page" }, { type: object, properties: { items: { type: array, items: { $ref: "schemas/template.schema.json" } } } }]
+    RunList:
+      allOf: [{ $ref: "#/components/schemas/Page" }, { type: object, properties: { items: { type: array, items: { $ref: "schemas/run.schema.json#/$defs/Run" } } } }]
+    GateList:
+      allOf: [{ $ref: "#/components/schemas/Page" }, { type: object, properties: { items: { type: array, items: { $ref: "schemas/gate.schema.json" } } } }]
+    TaskList:
+      allOf: [{ $ref: "#/components/schemas/Page" }, { type: object, properties: { items: { type: array, items: { $ref: "schemas/task.schema.json" } } } }]
+    TriggerList:
+      allOf: [{ $ref: "#/components/schemas/Page" }, { type: object, properties: { items: { type: array, items: { $ref: "schemas/trigger.schema.json#/$defs/Trigger" } } } }]
+    FiringList:
+      allOf: [{ $ref: "#/components/schemas/Page" }, { type: object, properties: { items: { type: array, items: { $ref: "schemas/trigger.schema.json#/$defs/Firing" } } } }]
+    DelegationList:
+      allOf: [{ $ref: "#/components/schemas/Page" }, { type: object, properties: { items: { type: array, items: { $ref: "schemas/principal.schema.json#/$defs/Delegation" } } } }]
+
+  responses:
+    Problem:
+      description: Error.
+      content: { application/problem+json: { schema: { $ref: "schemas/common.schema.json#/$defs/Problem" } } }
+    Diagnostics:
+      description: Validation result.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              ok: { type: boolean }
+              diagnostics: { $ref: "#/components/schemas/DiagnosticList" }
+    McpServer:
+      description: MCP server.
+      content: { application/json: { schema: { $ref: "schemas/tools.schema.json#/$defs/McpServer" } } }
+    McpServerList:
+      description: MCP servers.
+      content: { application/json: { schema: { $ref: "#/components/schemas/McpServerList" } } }
+    Template:
+      description: Template version.
+      content: { application/json: { schema: { $ref: "schemas/template.schema.json" } } }
+    Trigger:
+      description: Trigger.
+      content: { application/json: { schema: { $ref: "schemas/trigger.schema.json#/$defs/Trigger" } } }

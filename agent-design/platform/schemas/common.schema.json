@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.example/schemas/common.schema.json",
+  "title": "Shared definitions",
+  "description": "Types used by more than one resource. See ../../platform.md §3.",
+  "$defs": {
+    "Name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]{0,62}$",
+      "description": "Lower-case identifier. Dots namespace (forge.implement, jira.read)."
+    },
+    "Id": {
+      "type": "string",
+      "pattern": "^[a-z]{2,8}_[0-9A-Za-z]{10,40}$",
+      "description": "Server-assigned id with a type prefix: run_, tpl_, trg_, gate_, task_, dlg_, fir_, dlv_, art_."
+    },
+    "Version": { "type": "integer", "minimum": 1 },
+    "VersionedRef": {
+      "type": "object",
+      "properties": {
+        "name": { "$ref": "#/$defs/Name" },
+        "version": { "$ref": "#/$defs/Version" }
+      },
+      "required": ["name", "version"],
+      "additionalProperties": false
+    },
+    "Digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "Timestamp": { "type": "string", "format": "date-time" },
+    "Labels": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_.-]{0,62}$" },
+      "additionalProperties": { "type": "string", "maxLength": 256 }
+    },
+
+    "Tier": {
+      "type": "string",
+      "enum": ["economy", "standard", "strong"],
+      "description": "A cost/capability tier. The deployment maps tiers to model ids (deployment.schema.json); no spec names a model."
+    },
+    "Effort": { "type": "string", "enum": ["low", "medium", "high"] },
+
+    "Expr": {
+      "type": "object",
+      "properties": { "cel": { "type": "string", "minLength": 1, "maxLength": 4000 } },
+      "required": ["cel"],
+      "additionalProperties": false,
+      "description": "A CEL expression. Evaluated by the harness over a documented context (platform.md §9). Never evaluated by or shown to the model."
+    },
+    "ParamRef": {
+      "type": "object",
+      "properties": { "$param": { "$ref": "#/$defs/Name" } },
+      "required": ["$param"],
+      "additionalProperties": false,
+      "description": "Structural placeholder for a template parameter. Allowed only where a schema says the field is bindable. There is no string interpolation."
+    },
+    "BindableString": { "anyOf": [{ "type": "string" }, { "$ref": "#/$defs/ParamRef" }] },
+    "BindableInteger": { "anyOf": [{ "type": "integer", "minimum": 0 }, { "$ref": "#/$defs/ParamRef" }] },
+    "BindableStringList": {
+      "anyOf": [
+        { "type": "array", "items": { "type": "string" } },
+        { "$ref": "#/$defs/ParamRef" }
+      ]
+    },
+    "BindableTier": { "anyOf": [{ "$ref": "#/$defs/Tier" }, { "$ref": "#/$defs/ParamRef" }] },
+
+    "Trust": {
+      "type": "string",
+      "enum": ["harness", "config", "principal", "participant", "external"],
+      "description": "Who authored a piece of content. harness and config are instructions; everything else reaches the model as nonce-wrapped data."
+    },
+
+    "PrincipalRef": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["user", "service", "team"] },
+        "id": { "type": "string", "minLength": 1, "maxLength": 256, "description": "IdP subject for users; registry id for services and teams." },
+        "display": { "type": "string", "maxLength": 256 }
+      },
+      "required": ["type", "id"],
+      "additionalProperties": false
+    },
+
+    "PrincipalSetRule": {
+      "description": "Who may answer a gate. Resolved when a reply arrives, not when the gate opens (formats.md §5a).",
+      "oneOf": [
+        { "type": "string", "enum": ["principal", "requested_by", "issue_assignee", "issue_reporter", "pr_author", "trigger_owner"] },
+        {
+          "type": "object",
+          "properties": { "named": { "$ref": "#/$defs/PrincipalRef" } },
+          "required": ["named"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": { "group": { "type": "string", "description": "An IdP group id." } },
+          "required": ["group"],
+          "additionalProperties": false
+        }
+      ]
+    },
+
+    "Terminal": {
+      "type": "string",
+      "enum": ["complete", "suspend", "handoff", "infra_failure", "stopped"],
+      "description": "How a run ended. The first three are model-chosen through harness-generated tools; the last two are harness-side."
+    },
+    "CompleteStatus": {
+      "type": "string",
+      "enum": ["done", "planned", "skipped", "failed", "blocked", "budget_exhausted"]
+    },
+
+    "ToolAddress": {
+      "type": "string",
+      "pattern": "^(builtin|harness|mcp:[a-z][a-z0-9_.-]{0,62})/[A-Za-z][A-Za-z0-9_.-]{0,127}$",
+      "description": "source/name. builtin/Read, harness/Complete, mcp:jira/get_issue."
+    },
+
+    "ChannelRef": {
+      "type": "object",
+      "description": "Where a gate's question or a sink's payload is delivered. The model never sees addresses.",
+      "properties": {
+        "type": { "type": "string", "enum": ["jira_comment", "bitbucket_pr", "github_pr", "chat", "email", "ui_inbox"] },
+        "target": {
+          "anyOf": [
+            { "type": "string" },
+            { "$ref": "#/$defs/ParamRef" },
+            { "$ref": "#/$defs/Expr" }
+          ],
+          "description": "Issue key, PR ref, chat thread, address. An Expr is evaluated over the run context."
+        }
+      },
+      "required": ["type", "target"],
+      "additionalProperties": false
+    },
+
+    "ArtifactStub": {
+      "type": "object",
+      "description": "Reference to bytes held outside context (artifacts.md).",
+      "properties": {
+        "ref": { "type": "string", "pattern": "^(artifact|table|run)://" },
+        "kind": { "type": "string" },
+        "mime": { "type": "string" },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "name": { "type": "string" },
+        "trust": { "$ref": "#/$defs/Trust" },
+        "expires": { "anyOf": [{ "$ref": "#/$defs/Timestamp" }, { "const": "persist" }] }
+      },
+      "required": ["ref", "kind"],
+      "additionalProperties": false
+    },
+
+    "RefusalCode": {
+      "type": "string",
+      "description": "Closed vocabulary for every harness-side refusal or degradation, in tool results and API errors alike (generative.md §2b). Prose accompanies it; code is what telemetry counts.",
+      "enum": [
+        "grant_denied",
+        "tool_not_registered",
+        "tools_drift",
+        "param_invalid",
+        "param_widens_authority",
+        "template_not_published",
+        "template_deprecated",
+        "spec_invalid",
+        "principal_required",
+        "principal_entitlement",
+        "delegation_missing",
+        "delegation_revoked",
+        "delegation_scope",
+        "tier_ceiling",
+        "hop_limit",
+        "budget_exceeded",
+        "concurrency_skipped",
+        "dedupe_suppressed",
+        "rate_limited",
+        "context_resolution_failed",
+        "workspace_provision_failed",
+        "report_invalid",
+        "terminal_not_exclusive",
+        "gate_principal_required",
+        "gate_superseded",
+        "gate_hash_mismatch",
+        "gate_expired",
+        "sink_failed",
+        "continuation_undeclared",
+        "spinoff_cap",
+        "not_found",
+        "conflict"
+      ]
+    },
+
+    "Problem": {
+      "type": "object",
+      "description": "API error body (RFC 9457 problem+json) with a closed code.",
+      "properties": {
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "integer" },
+        "code": { "$ref": "#/$defs/RefusalCode" },
+        "detail": { "type": "string" },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string", "description": "JSON Pointer into the request or spec." },
+              "code": { "$ref": "#/$defs/RefusalCode" },
+              "message": { "type": "string" }
+            },
+            "required": ["path", "message"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["title", "status", "code"],
+      "additionalProperties": false
+    }
+  }
+}

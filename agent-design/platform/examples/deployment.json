@@ -1,0 +1,16 @@
+{
+  "tiers": {
+    "economy": { "provider": "bedrock", "model_id": "claude-haiku-5-5", "vision": true },
+    "standard": { "provider": "bedrock", "model_id": "claude-sonnet-5-5", "effort": "medium", "vision": true },
+    "strong": { "provider": "anthropic", "model_id": "claude-opus-5-5", "effort": "high", "vision": true }
+  },
+  "providers": {
+    "bedrock": { "api": "bedrock_converse", "deferred_tools": "none", "cache_min_tokens": 1024 },
+    "anthropic": { "api": "anthropic_messages", "deferred_tools": "native", "cache_min_tokens": 512, "advisor": true }
+  },
+  "max_tier": "strong",
+  "defaults": {
+    "budgets": { "wall_seconds": 7200 },
+    "checks": [{ "id": "input_sanitizer" }, { "id": "egress_allowlist" }]
+  }
+}

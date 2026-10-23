@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.example/schemas/gate.schema.json",
+  "title": "Gate",
+  "description": "Anything waiting on a human: an AskUser suspension, an approve-action question, a plan approval, a gated continuation. One resource so 'what is waiting on me' is one query. See ../../platform.md §7c.",
+  "type": "object",
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/Id" },
+    "kind": { "type": "string", "enum": ["clarify", "approve_action", "continuation_approval"] },
+    "run_id": { "$ref": "common.schema.json#/$defs/Id", "description": "The run that opened it." },
+    "task_id": { "$ref": "common.schema.json#/$defs/Id" },
+    "continuation_id": { "$ref": "common.schema.json#/$defs/Name", "description": "continuation_approval: the edge waiting on this gate." },
+    "state": { "type": "string", "enum": ["open", "resolved", "expired", "superseded", "cancelled"] },
+    "question": {
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "context": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "label": { "type": "string" },
+              "implication": { "type": "string" }
+            },
+            "required": ["id", "label"],
+            "additionalProperties": false
+          }
+        },
+        "action": {
+          "type": "object",
+          "description": "approve_action only.",
+          "properties": {
+            "operation": { "type": "string" },
+            "target": { "type": "string", "minLength": 1 },
+            "steps": { "type": "string" },
+            "staged_paths": { "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["operation", "target", "steps"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["text"],
+      "additionalProperties": false
+    },
+    "bound_digest": { "$ref": "common.schema.json#/$defs/Digest", "description": "The content the approval covers (action, plan or report). A reply approves this digest; if the content changes the gate is superseded." },
+    "principal_set": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/PrincipalSetRule" } },
+    "answerable_by_note": { "type": "string", "description": "Rendered into the posted question: who may answer, or that nobody can and why (formats.md §5a rule 1)." },
+    "channels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "channel": { "$ref": "common.schema.json#/$defs/ChannelRef" },
+          "external_ref": { "type": "string", "description": "The posted comment or message id replies are matched on." },
+          "role": { "type": "string", "enum": ["conversation", "mirror"] }
+        },
+        "required": ["channel", "role"],
+        "additionalProperties": false
+      }
+    },
+    "replies": { "type": "array", "items": { "$ref": "#/$defs/Reply" } },
+    "resolution": {
+      "type": "object",
+      "properties": {
+        "reply_id": { "type": "string" },
+        "outcome": { "type": "string", "enum": ["resume", "execute", "continue", "amend", "decline"] },
+        "run_id": { "$ref": "common.schema.json#/$defs/Id", "description": "The run the resolution started." }
+      },
+      "required": ["reply_id", "outcome"],
+      "additionalProperties": false
+    },
+    "expires_at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+    "created_at": { "$ref": "common.schema.json#/$defs/Timestamp" }
+  },
+  "required": ["id", "kind", "run_id", "state", "question", "principal_set", "channels", "created_at"],
+  "additionalProperties": false,
+
+  "$defs": {
+    "Reply": {
+      "type": "object",
+      "description": "from, author, option_id and match are harness assertions; text is untrusted.",
+      "properties": {
+        "id": { "type": "string" },
+        "at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "channel": { "type": "string" },
+        "author": { "$ref": "common.schema.json#/$defs/PrincipalRef" },
+        "from": { "type": "string", "enum": ["principal", "participant", "automation"] },
+        "text": { "type": "string" },
+        "option_id": { "type": "string" },
+        "match": { "type": "string", "enum": ["exact", "inferred", "none"] },
+        "acted_on": { "type": "boolean" }
+      },
+      "required": ["id", "at", "author", "from", "match"],
+      "additionalProperties": false
+    },
+    "ReplyRequest": {
+      "type": "object",
+      "description": "Body of POST /v1/gates/{id}/replies, used by the UI and by channel adapters. The author is the authenticated caller, or for an adapter the identity it attests with its own credential; never a body field.",
+      "properties": {
+        "text": { "type": "string", "maxLength": 20000 },
+        "option_id": { "type": "string" },
+        "channel_message_ref": { "type": "string" }
+      },
+      "anyOf": [{ "required": ["text"] }, { "required": ["option_id"] }],
+      "additionalProperties": false
+    }
+  }
+}

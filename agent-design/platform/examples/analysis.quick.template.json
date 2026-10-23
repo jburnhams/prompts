@@ -1,0 +1,99 @@
+{
+  "name": "analysis.quick",
+  "version": 1,
+  "title": "Quick data question",
+  "description": "models.md §3: economy tier, four tools, a short data overview, two hatches. The question is the starting query, an input of kind instruction.",
+  "owner": { "type": "team", "id": "data-platform" },
+  "params": {
+    "question": { "type": "string", "trust": "principal", "required": true, "max_length": 4000, "description": "The user's question, verbatim." },
+    "tier": { "type": "tier", "trust": "config", "default": "economy", "max_tier": "standard" }
+  },
+  "spec": {
+    "model": { "tier": { "$param": "tier" }, "max_tier": "strong" },
+    "system_prompt": {
+      "base": { "ref": { "name": "analysis.quick", "version": 3 } },
+      "generated": ["env", "capabilities", "data_overview"]
+    },
+    "inputs": [
+      { "name": "question", "kind": "instruction", "source": { "param": "question" }, "trust": "principal" }
+    ],
+    "context": {
+      "data_overview": { "sources_from": "mcp:warehouse/list_sources", "max_listed": 12, "announce_hidden": true }
+    },
+    "workspace": { "kind": "none" },
+    "tools": {
+      "servers": [{ "id": "warehouse" }],
+      "groups": [
+        {
+          "id": "sql.core",
+          "visibility": "loaded",
+          "tools": [
+            { "tool": "mcp:warehouse/describe_source", "alias": "DescribeSource", "annotations": { "read_only": true, "idempotent": true, "retry": "on_transport_error" } },
+            { "tool": "mcp:warehouse/run_sql", "alias": "RunSQL", "annotations": { "read_only": true, "idempotent": true }, "limits": { "timeout_s": 60, "context_chars": 20000 } }
+          ]
+        },
+        {
+          "id": "sql.extended",
+          "visibility": "hidden",
+          "description": "The Expand bundle: profiling and table operations.",
+          "tools": [
+            { "tool": "mcp:warehouse/profile_table", "alias": "ProfileTable", "annotations": { "read_only": true, "idempotent": true } },
+            { "tool": "mcp:warehouse/fetch_table", "alias": "FetchTable", "annotations": { "read_only": true, "idempotent": true } }
+          ]
+        }
+      ],
+      "checks": [{ "id": "input_sanitizer" }]
+    },
+    "roles": {
+      "orchestrator": { "grant": ["sql.core", "sql.extended"] }
+    },
+    "completion": { "form": "text", "statuses": ["done"] },
+    "hatches": {
+      "expand": {
+        "reveals": ["sql.extended"],
+        "max_results": 8,
+        "array_growth": { "bundle": "sql.extended", "max_prefix_tokens": 4000, "tiers": ["economy"] }
+      },
+      "handoff": {
+        "reasons": [
+          { "id": "too_complex", "situation": "The question needs several steps, sources you cannot see, or you could not get a query to work." },
+          { "id": "report_requested", "situation": "The user asked for a report, a write-up or a deck rather than an answer." }
+        ]
+      }
+    },
+    "harness_triggers": [
+      { "id": "two_sql_errors", "signal": { "kind": "consecutive_tool_errors", "tool": "RunSQL", "threshold": 2 }, "action": { "handoff": "too_complex" } },
+      { "id": "zero_rows", "signal": { "kind": "zero_rows_unexplained", "tool": "RunSQL" }, "action": { "note": "No rows. If the schema does not explain why, call HandOff(too_complex)." } },
+      { "id": "long_quick_run", "signal": { "kind": "turns_without_answer", "threshold": 8 }, "action": { "handoff": "too_complex" } },
+      { "id": "unlisted_source", "signal": { "kind": "unlisted_source_named" }, "action": { "reveal": "sql.extended" } },
+      { "id": "report_keywords", "signal": { "kind": "request_matches", "match": ["report", "write-up", "deck", "slides"] }, "action": { "skip_to": "report_requested" } }
+    ],
+    "budgets": { "turns": 10, "context_high_water_tokens": 60000, "wall_seconds": 120, "tokens_by_tier": { "economy": 200000, "standard": 0, "strong": 0 } },
+    "outputs": {
+      "continuations": [
+        {
+          "id": "too_complex",
+          "on": { "terminal": "handoff", "handoff_reason": "too_complex" },
+          "target": { "template": "analysis.investigate", "version": "pinned" },
+          "params": { "question": { "cel": "params.question" } },
+          "carry": ["prior_attempt"],
+          "gate": { "kind": "auto" }
+        },
+        {
+          "id": "report_requested",
+          "on": { "terminal": "handoff", "handoff_reason": "report_requested" },
+          "target": { "template": "analysis.report", "version": "pinned" },
+          "params": { "question": { "cel": "params.question" } },
+          "carry": ["prior_attempt", "artifacts"],
+          "gate": { "kind": "auto" }
+        }
+      ],
+      "max_chain_depth": 2
+    },
+    "authority": {
+      "run_as": ["user"],
+      "service_principal": { "type": "service", "id": "analyst-bot" },
+      "delegation": { "max_ttl_days": 30, "scopes": ["warehouse:read"] }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "jira.ready-for-forge",
+  "owner": { "type": "team", "id": "platform-agents" },
+  "enabled": true,
+  "template": { "name": "forge.plan", "version": "latest" },
+  "source": { "kind": "event", "provider": "jira", "types": ["issue.transitioned"], "scope": ["PROJ", "PAY"] },
+  "filter": { "cel": "event.payload.to_status == 'Ready for Forge' && has(event.payload.fields.repository)" },
+  "params": {
+    "issue_key": { "cel": "event.subject" },
+    "repository": { "cel": "event.payload.fields.repository" },
+    "target_branch": { "cel": "lowerAscii(event.subject) + '-' + event.payload.slug" }
+  },
+  "run_as": { "mode": "event_actor", "actor": { "cel": "event.actor" }, "fallback": "refuse" },
+  "dedupe": { "key": { "cel": "event.subject + ':' + event.payload.to_status" }, "window_s": 3600 },
+  "concurrency": { "key": { "cel": "event.subject" }, "max_running": 1, "policy": "queue" },
+  "rate_limit": { "per_hour": 30 },
+  "creates": "task"
+}

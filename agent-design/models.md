@@ -381,7 +381,9 @@ Record tier, model ID and the price at the time on every result.
 
 - The tier→model mapping, the report keyword rule and the hop limit need a
   home in job config (`tools.md` "One job declares the tools" is the nearest
-  precedent).
+  precedent). *Placed by [`platform.md`](./platform.md) (2026-10-23): the
+  tier map in `Deployment`, the keyword rule as a `request_matches` harness
+  trigger, the hop limit as `outputs.max_chain_depth`.*
 - A run's budget should count tokens by tier, so spend cannot hide in a cheap
   child.
 - Thinking and effort are separate from model choice. A tier may need an

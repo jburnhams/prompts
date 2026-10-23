@@ -1,0 +1,92 @@
+{
+  "name": "forge.plan",
+  "version": 1,
+  "title": "Forge: plan a ticket",
+  "description": "Read-only investigation ending in a posted plan, a no-action finding, or a question. Shows extends: only what differs from forge.implement is written.",
+  "owner": { "type": "team", "id": "platform-agents" },
+  "extends": { "name": "forge.implement", "version": 1 },
+  "params": {
+    "issue_key": { "type": "string", "trust": "config", "required": true, "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$" },
+    "repository": { "type": "string", "trust": "config", "required": true, "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+    "base_branch": { "type": "string", "trust": "config", "default": "main", "pattern": "^[A-Za-z0-9_./-]{1,200}$" },
+    "target_branch": { "type": "string", "trust": "config", "required": true, "pattern": "^[A-Za-z0-9_./-]{1,200}$" },
+    "kinds": { "type": "string_list", "trust": "config", "default": [], "subset_of": ["bugs", "security", "conventions", "visual", "ux", "performance", "testing", "data"] }
+  },
+  "spec": {
+    "model": { "tier": "strong", "effort": "high", "max_tier": "strong" },
+    "inputs": [
+      { "name": "task", "kind": "task_header", "source": { "builder": "task_header" }, "trust": "harness" },
+      { "name": "ticket", "kind": "issue", "source": { "fetch": "mcp:jira/get_issue", "args": { "key": { "$param": "issue_key" } } }, "trust": "external", "max_bytes": 65536 },
+      { "name": "resumed_answer", "kind": "resumed_answer", "source": { "carry": "resumed_answer" }, "trust": "principal", "required": false }
+    ],
+    "context": {
+      "conventions": { "tiers": ["org", "team", "repo", "learned"], "paths": null, "kinds": { "$param": "kinds" }, "at": "working_tree" }
+    },
+    "workspace": {
+      "kind": "checkout",
+      "repository": { "$param": "repository" },
+      "base_ref": { "$param": "base_branch" },
+      "target_branch": { "$param": "target_branch" },
+      "provision": "worktree",
+      "writable": false,
+      "write_scope": null,
+      "scratch": true,
+      "git_writes": "deny"
+    },
+    "roles": {
+      "orchestrator": {
+        "grant": ["core.read", "core.shell", "vision", "jira.read", "jira.comment"],
+        "spawns": ["general-purpose"],
+        "max_concurrent_children": 4
+      },
+      "general-purpose": {
+        "grant": ["core.read", "core.shell", "vision"]
+      }
+    },
+    "human": {
+      "ask_user": {
+        "kinds": ["clarify"],
+        "principal_set": ["issue_assignee", "issue_reporter", "requested_by"],
+        "channels": [{ "type": "jira_comment", "target": { "$param": "issue_key" } }]
+      }
+    },
+    "completion": {
+      "statuses": ["planned", "done", "failed", "budget_exhausted"],
+      "report_schema": { "ref": { "name": "forge.report.plan", "version": 2 } },
+      "gates": [
+        { "id": "require_tool_called", "on_status": ["planned", "done"], "config": { "tool": "AddComment" } },
+        { "id": "report_crosscheck" }
+      ],
+      "spinoffs": null
+    },
+    "budgets": { "turns": 80, "context_high_water_tokens": 160000, "wall_seconds": 3600, "tokens_by_tier": { "strong": 2000000 } },
+    "outputs": {
+      "sinks": [],
+      "continuations": [
+        {
+          "id": "implement_plan",
+          "on": { "terminal": "complete", "status": ["planned"] },
+          "target": { "template": "forge.implement", "version": "pinned" },
+          "params": {
+            "issue_key": { "cel": "params.issue_key" },
+            "repository": { "cel": "params.repository" },
+            "base_branch": { "cel": "params.base_branch" },
+            "target_branch": { "cel": "params.target_branch" },
+            "write_scope": { "cel": "result.report.write_scope" }
+          },
+          "carry": ["plan"],
+          "gate": {
+            "kind": "approval",
+            "principal_set": ["issue_assignee", "issue_reporter"],
+            "channel": { "type": "jira_comment", "target": { "$param": "issue_key" } },
+            "bind": "plan_hash",
+            "expires_after_s": 1209600
+          },
+          "via": "task"
+        }
+      ]
+    },
+    "concurrency": null,
+    "ledger": { "max_attempts": 2 }
+  }
+}
