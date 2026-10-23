@@ -12,6 +12,7 @@ change it, and when.
 | [`platform/schemas/`](./platform/schemas) | JSON Schema (2020-12) for every resource |
 | [`platform/openapi.yaml`](./platform/openapi.yaml) | the API, OpenAPI 3.1, referencing those schemas |
 | [`platform/examples/`](./platform/examples) | Forge's three entrypoints and the quick-analysis path written as templates, plus triggers, servers, a delegation and a deployment |
+| [`taxonomy.md`](./taxonomy.md) | the agreed meaning of every term used here, and which words to avoid |
 | [`platform/check.py`](./platform/check.py) | validates every example against the schemas, then runs the publish rules in §11. `python3 -I agent-design/platform/check.py` |
 
 ---
@@ -76,7 +77,7 @@ ask for help. Ask-for-help could also be used during the run."*
 - `RequestHelp`: a harness action. It posts to the team channel and ends
   the run with status `blocked`.
 
-The model sees each one as a tool. Calling it runs the completion gates
+The model sees each one as a tool. Calling it runs the completion checks
 first, then the action. If the action fails, the error comes back to
 the model and the run continues.
 
@@ -158,20 +159,33 @@ spec just has to give it a field:
 | **Budgets** | `budgets`: turns, context high-water mark, wall time, tokens by tier, sub-agent count | `formats.md` §7, `models.md` §10 |
 | **Harness checks** | `tools.checks`: enforcement that no grant can remove | `tools.md` "Harness-side checks are not part of the subset" |
 | **Human channel** | `human.ask_user` (who may answer, where it goes) and `human.narrate` | `formats.md` §5a, `medium.md` §2f, §5c |
-| **Hatches and harness triggers** | `hatches.expand`, `hatches.handoff`, `harness_triggers[]` | `models.md` §4–§5 |
+| **Hatches and monitors** | `hatches.expand`, `hatches.handoff`, `monitors[]` (what `models.md` §5 calls harness triggers) | `models.md` §4–§5 |
 | **Outputs** | `outputs.sinks[]` and `outputs.continuations[]` (§7) | new here; unifies several |
 | **Concurrency** | `concurrency.key` and a policy | `orchestration.md` §4 |
 | **Ledger participation** | `ledger` | `orchestration.md` |
 | **Versioning and pinning** | template versions, tool snapshot digests, pinned continuation targets | new here, §6 |
 | **Deployment facts** | `Deployment`: tier→model map, provider capabilities, global ceiling, mandatory checks | `models.md` §10 open point, now closed |
 
-**One thing on the list is not a concept: `mode`.** Forge's `plan` and
-`implement` differ in tools, statuses, report schema and gates, and
-those all have their own fields now. So a mode is a separate template,
-and `forge.plan` `extends` `forge.implement`
-([example](./platform/examples/forge.plan.template.json)). The envelope's
-`<mode>` tag is still rendered, from the template. It's no longer a
-switch inside one spec.
+**One thing on the list is not a concept: `mode`.** "Plan" and
+"implement" are two different agent runs, from two templates,
+`forge.plan` and `forge.implement`. They behave differently because they
+are given different things:
+
+- **tools**: plan's grant has no `Edit`/`Write` and does have
+  `AddComment`, and its workspace is read-only;
+- **prompt**: `forge.plan@1` versus `forge.implement@1`;
+- **model**: strong versus standard;
+- **completion contract**: plan can end `planned`; implement has the
+  first-`done` checklist and spinoffs;
+- **wiring**: the pipeline that runs one after the other.
+
+Nothing in the spec says "you are in plan mode". The two are siblings:
+both extend `forge.coding`, a base template marked `runnable: false`
+that holds what they share (the ticket input, the checkout, the tool
+declaration and checks, authority). Neither is a variant of the other,
+and the base can't run on its own. "Mode" survives only as an informal
+word for "what a run ends up doing, given its configuration"
+([`taxonomy.md`](./taxonomy.md)).
 
 ---
 
@@ -260,7 +274,8 @@ The fields, with the reason each is shaped the way it is:
 - **`tools`**: the job's declaration (§4).
 - **`roles`**: `orchestrator` plus named sub-agent roles (§4c).
 - **`human`**, **`completion`**, **`hatches`**: these generate tools (§5).
-- **`harness_triggers[]`**: `models.md` §5's table as data. Each is a
+- **`monitors[]`**: `models.md` §5's "harness triggers" table as data,
+  renamed so that "trigger" only ever means what starts a run. Each is a
   signal (consecutive errors on a tool, zero rows, turns without an
   answer, an unlisted source named, a request matching keywords) and an
   action (hand off, reveal a group, add a harness note, skip to a
@@ -377,7 +392,7 @@ finding that retries make non-idempotent tools dangerous, as a field.
 | Visible | `ToolGroup.visibility`, overridden by `roles.<r>.visibility` | nothing; it shapes what the model tries |
 
 `hidden` groups need a way to become visible: `hatches.expand.reveals`
-or a harness trigger's `reveal`. R8 warns when a hidden group has
+or a monitor's `reveal`. R8 warns when a hidden group has
 neither. How "deferred" and "hidden" are realised depends on the
 provider flag in deployment: `defer_loading` on Anthropic,
 `tool_search`/`additional_tools` on OpenAI, and on Bedrock `Converse`
@@ -438,8 +453,8 @@ tool as run-ending.
 
 | Contract in the spec | Generated tool | Ends the run? | What the harness does on the call |
 |---|---|---|---|
-| `completion` | `harness/Complete` (or `tool_name`), unless `complete: false` | yes: `complete` | validates `report` against `report_schema`, runs `gates`, files spinoffs, evaluates sinks and continuations |
-| `completion.finishers[]` | one tool per finisher, under its `name` | yes: `complete`, with `outcome.finisher` set | gates, then the wrapped tool or harness action; on failure, back to the model (§5a) |
+| `completion` | `harness/Complete` (or `tool_name`), unless `complete: false` | yes: `complete` | validates `report` against `report_schema`, runs the completion `checks`, files spinoffs, evaluates sinks and continuations |
+| `completion.finishers[]` | one tool per finisher, under its `name` | yes: `complete`, with `outcome.finisher` set | completion checks, then the wrapped tool or harness action; on failure, back to the model (§5a) |
 | `human.ask_user` | `harness/AskUser` | yes: `suspend` | opens a gate, posts to `channels`, records who may answer |
 | `hatches.handoff` | `harness/HandOff`, its `reason` enum = the declared reason ids | yes: `handoff` | starts the continuation wired to that reason |
 | `hatches.expand` | `harness/Expand` | no | reveals granted groups and sources |
@@ -467,14 +482,14 @@ Why not a `terminal: true` flag that authors could set on any tool:
 
 Authors do control everything that differs between agents: the tool
 name, the allowed `statuses`, the `report_schema`, the `summary` cap,
-which `gates` run, whether spinoffs are allowed, and which handoff
+which completion `checks` run, whether spinoffs are allowed, and which handoff
 reasons exist and what situation each describes. That is the whole of
 what Forge's three entrypoints vary.
 
 **`form: "text"`** covers the quick analysis run (`models.md` §3): the
 run ends on an assistant message with no tool calls, with status
 `done`, and that message becomes `outcome.summary`. R5 limits it to
-specs with no report schema, gates, spinoffs or finishers, because
+specs with no report schema, completion checks, spinoffs or finishers, because
 there's nothing to validate.
 
 ### 5a. Finishers: choosing the ending from a set of tools
@@ -499,8 +514,9 @@ contract, which is the right place for it.
   `agent-tool-implementations.md` §3g measures as slightly less reliable
   to emit, and it's the price of not reserving names in every server's
   schema.
-- **Gates run before the action, not after.** The first-`done`
-  checklist, `report_crosscheck` and the rest fire on the finisher call.
+- **Completion checks run before the action, not after.** The
+  first-`done` checklist, `report_crosscheck` and the rest fire on the
+  finisher call.
   A PR is opened, or Jira is moved, only after they pass. For an
   irreversible action that order is the whole point.
 - **A failed action doesn't end the run.** The error goes back to the
@@ -516,7 +532,7 @@ contract, which is the right place for it.
     harness's git identity, signing and templates. It needs
     `workspace.git_writes: on_finish` (R14). This is the platform form
     of Forge's "the committer downstream does it": the model never runs
-    a git write itself, and the push happens only after the gates, from
+    a git write itself, and the push happens only after the checks, from
     the harness. Forge's own templates keep `deny` and the external
     committer.
   - `request_help` posts the report to a channel and ends with status
@@ -567,7 +583,7 @@ anywhere.
 | `config` | an issue key, a repo, a branch, a tier, a budget, a kinds list | config slots: workspace, context paths/kinds, model tier, budgets | constrained: `enum`, `pattern`, `subset_of`, `maximum` or `max_tier` |
 
 Not bindable at all: `system_prompt`, `tools`, `roles`, `completion`,
-`hatches`, `authority`, `harness_triggers`, `model.max_tier`. That is
+`hatches`, `authority`, `monitors`, `model.max_tier`. That is
 R4. It's the reason "params narrow, never widen" holds: every
 config-bound param has a declared ceiling, and the fields that grant
 anything take no params.
@@ -614,7 +630,7 @@ of how the run ended, it's a sink.** Forge already draws this line. Its
 and how it reaches a PR, a Jira comment … is the invoking harness's
 call" (`tools.md`). That is a sink. Plan mode's step-5 posting *is* the
 model's choice of content, so it's an effect, and
-`completion.gates: require_tool_called` checks it happened.
+the completion check `require_tool_called` confirms it happened.
 
 ### 7a. Result
 
@@ -898,7 +914,7 @@ queued → provisioning → running ⇄ finalizing → ended
   provisions the checkout, resolves context, and pre-fetches inputs. A
   failure here ends the run with a refusal code, before any model call.
 - **`finalizing`** is between the model's terminal call and the end:
-  report validation, completion gates (the first-`done` checklist sends
+  report validation, completion checks (the first-`done` checklist sends
   the run back to `running`), integrity cross-checks, sinks and
   continuations.
 - **`suspended`** holds a gate. The run itself has ended. The suspended
@@ -945,8 +961,8 @@ publish against the real snapshot.
 | R2 | every `mcp:<server>` tool names a server in `tools.servers` |
 | R3 | the spawn graph names real roles; `kind_grants` keys are in `spawn_kinds` |
 | R4 | params: declared; `external`/`principal` bind only to inputs; config-bound params are constrained; grant-bearing fields take no params |
-| R5 | `completion.form: text` has no report schema, gates or spinoffs, and status `done` only |
-| R6 | harness-trigger handoffs name declared reasons; a template with HandOff reasons that no pipeline wires is a warning, since alone it has no HandOff |
+| R5 | `completion.form: text` has no report schema, completion checks, spinoffs or finishers, and status `done` only |
+| R6 | monitor handoffs name declared reasons; a template with HandOff reasons that no pipeline wires is a warning, since alone it has no HandOff |
 | R7 | continuations (to `self` only, by schema): required params bound, carry inputs accept what is carried, spinoff edges have spinoffs enabled and a ledger; `approve` questions have an execute edge |
 | R8 | `Expand` reveals only what the orchestrator is granted; `array_growth.bundle` is revealable; hidden groups have a reveal path (warning) |
 | R9 | a read-only or absent workspace grants no `Edit`/`Write` |
@@ -1008,7 +1024,7 @@ The examples are the mapping, and `check.py` passes on them:
 | Forge | Platform |
 |---|---|
 | coding `implement` | [`forge.implement`](./platform/examples/forge.implement.template.json) |
-| coding `plan` | [`forge.plan`](./platform/examples/forge.plan.template.json), `extends` implement, read-only workspace, `jira.comment` granted, `require_tool_called: AddComment` |
+| what Forge calls the coding modes | three templates: the base [`forge.coding`](./platform/examples/forge.coding.template.json) (`runnable: false`) and its siblings [`forge.plan`](./platform/examples/forge.plan.template.json) (read-only, `jira.comment` granted, `require_tool_called: AddComment`, strong tier) and `forge.implement` |
 | plan → implement handoff | pipeline [`jira.plan-implement`](./platform/examples/jira-plan-implement.pipeline.json), edge gated on `plan_hash` |
 | review, multi-stage | [`forge.review`](./platform/examples/forge.review.template.json): `reviewer` with `spawn_kinds` and `kind_grants.visual = [vision]`, `validator` at `strong` with `clamp_to_parent: false`, attention tier as a `commit_status` sink |
 | review → fix | pipeline [`pr.review-fix`](./platform/examples/pr-review-fix.pipeline.json), approval by the PR author |
@@ -1025,8 +1041,12 @@ The examples are the mapping, and `check.py` passes on them:
 
 Recorded in the README decision log (2026-10-23 rows). In short:
 
-- Mode is a template, not a field: `extends` plus narrowing replaces
-  `mode`.
+- Mode is not a concept. Plan and implement are sibling templates on a
+  shared base, differing by tools, prompt, model and contract, and
+  linked by a pipeline (§1).
+- One word, one meaning (`taxonomy.md`): completion **checks** (not
+  gates), in-run **monitors** (not harness triggers), and a ledger
+  task's **concurrency key** (not owner).
 - Terminal tools are generated from contracts, never flagged (§5).
 - Outputs split into effects (tools), result, sinks, continuations and
   pipeline edges, by who decides (§7). Every inter-run edge is declared.

@@ -130,7 +130,7 @@
           "version": 1
         }
       },
-      "gates": [
+      "checks": [
         {
           "id": "provenance_closure"
         }
@@ -147,7 +147,6 @@
         ]
       }
     },
-    "harness_triggers": [],
     "budgets": {
       "turns": 60,
       "context_high_water_tokens": 150000,
@@ -160,6 +159,7 @@
     },
     "outputs": {
       "sinks": []
-    }
+    },
+    "monitors": []
   }
 }

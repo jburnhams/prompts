@@ -58,13 +58,6 @@
     "hatches": {
       "$ref": "#/$defs/HatchesSpec"
     },
-    "harness_triggers": {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/HarnessTrigger"
-      },
-      "description": "Signals the harness acts on without the model calling anything (models.md \u00a75)."
-    },
     "budgets": {
       "$ref": "#/$defs/Budgets"
     },
@@ -82,6 +75,13 @@
     },
     "labels": {
       "$ref": "common.schema.json#/$defs/Labels"
+    },
+    "monitors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Monitor"
+      },
+      "description": "In-run monitors: signals the harness watches for during a run, and what it does (models.md \u00a75 'harness triggers'). Not to be confused with a Trigger, which starts work."
     }
   },
   "required": [
@@ -790,7 +790,7 @@
             "text"
           ],
           "default": "tool",
-          "description": "text: the run ends on an assistant message with no tool calls and status done. Allowed only with no report_schema, no gates and no spinoffs (the quick analysis run)."
+          "description": "text: the run ends on an assistant message with no tool calls and status done. Allowed only with no report_schema, no checks and no spinoffs (the quick analysis run)."
         },
         "tool_name": {
           "type": "string",
@@ -839,37 +839,6 @@
           "minimum": 1,
           "default": 2000
         },
-        "gates": {
-          "type": "array",
-          "description": "Deterministic checks between the model's terminal call and the run actually ending.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "enum": [
-                  "first_done_checklist",
-                  "require_tool_called",
-                  "report_crosscheck",
-                  "provenance_closure"
-                ]
-              },
-              "on_status": {
-                "type": "array",
-                "items": {
-                  "$ref": "common.schema.json#/$defs/CompleteStatus"
-                }
-              },
-              "config": {
-                "type": "object"
-              }
-            },
-            "required": [
-              "id"
-            ],
-            "additionalProperties": false
-          }
-        },
         "spinoffs": {
           "type": "object",
           "description": "Enables report.spun_off (orchestration.md \u00a76).",
@@ -908,6 +877,37 @@
             "$ref": "#/$defs/Finisher"
           },
           "description": "Ending actions the model chooses between, each wrapping a declared tool or a harness action (platform.md \u00a75a)."
+        },
+        "checks": {
+          "type": "array",
+          "description": "Completion checks: deterministic tests between the model's ending call and the run actually ending. Not to be confused with a Gate, which waits on a human.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "enum": [
+                  "first_done_checklist",
+                  "require_tool_called",
+                  "report_crosscheck",
+                  "provenance_closure"
+                ]
+              },
+              "on_status": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/CompleteStatus"
+                }
+              },
+              "config": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          }
         }
       },
       "required": [
@@ -995,108 +995,6 @@
           "additionalProperties": false
         }
       },
-      "additionalProperties": false
-    },
-    "HarnessTrigger": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "$ref": "common.schema.json#/$defs/Name"
-        },
-        "signal": {
-          "type": "object",
-          "properties": {
-            "kind": {
-              "type": "string",
-              "enum": [
-                "consecutive_tool_errors",
-                "zero_rows_unexplained",
-                "turns_without_answer",
-                "unlisted_source_named",
-                "result_oversize",
-                "request_matches"
-              ]
-            },
-            "tool": {
-              "type": "string"
-            },
-            "threshold": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "match": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "request_matches: configured keywords, checked on the instruction input before turn 0."
-            }
-          },
-          "required": [
-            "kind"
-          ],
-          "additionalProperties": false
-        },
-        "action": {
-          "oneOf": [
-            {
-              "type": "object",
-              "properties": {
-                "handoff": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "handoff"
-              ],
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "properties": {
-                "reveal": {
-                  "$ref": "common.schema.json#/$defs/Name"
-                }
-              },
-              "required": [
-                "reveal"
-              ],
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "properties": {
-                "note": {
-                  "type": "string",
-                  "maxLength": 300
-                }
-              },
-              "required": [
-                "note"
-              ],
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "properties": {
-                "skip_to": {
-                  "type": "string",
-                  "description": "A handoff reason taken before turn 0."
-                }
-              },
-              "required": [
-                "skip_to"
-              ],
-              "additionalProperties": false
-            }
-          ]
-        }
-      },
-      "required": [
-        "id",
-        "signal",
-        "action"
-      ],
       "additionalProperties": false
     },
     "Budgets": {
@@ -1556,7 +1454,7 @@
     },
     "Finisher": {
       "type": "object",
-      "description": "A tool the model may call to end the run by doing something. The harness generates a separate tool for it: the wrapped tool's (overridden) arguments under args, plus summary and optionally report. On a call the harness runs the completion gates first, then performs the action; if the action fails the error returns to the model and the run continues.",
+      "description": "A tool the model may call to end the run by doing something. The harness generates a separate tool for it: the wrapped tool's (overridden) arguments under args, plus summary and optionally report. On a call the harness runs the completion checks first, then performs the action; if the action fails the error returns to the model and the run continues.",
       "properties": {
         "id": {
           "$ref": "common.schema.json#/$defs/Name"
@@ -1622,12 +1520,12 @@
           "default": false,
           "description": "Add a report argument validated against completion.report_schema."
         },
-        "gates": {
+        "checks": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Gate ids from completion.gates to run before the action. Default: all gates whose on_status includes status."
+          "description": "Completion check ids to run before the action. Default: all whose on_status includes status."
         }
       },
       "required": [
@@ -1635,6 +1533,108 @@
         "name",
         "action",
         "status"
+      ],
+      "additionalProperties": false
+    },
+    "Monitor": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/Name"
+        },
+        "signal": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "consecutive_tool_errors",
+                "zero_rows_unexplained",
+                "turns_without_answer",
+                "unlisted_source_named",
+                "result_oversize",
+                "request_matches"
+              ]
+            },
+            "tool": {
+              "type": "string"
+            },
+            "threshold": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "match": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "request_matches: configured keywords, checked on the instruction input before turn 0."
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        "action": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "handoff": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "handoff"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "reveal": {
+                  "$ref": "common.schema.json#/$defs/Name"
+                }
+              },
+              "required": [
+                "reveal"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "note": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "required": [
+                "note"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "skip_to": {
+                  "type": "string",
+                  "description": "A handoff reason taken before turn 0."
+                }
+              },
+              "required": [
+                "skip_to"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "signal",
+        "action"
       ],
       "additionalProperties": false
     }

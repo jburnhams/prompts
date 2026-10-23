@@ -2,126 +2,28 @@
   "name": "forge.plan",
   "version": 1,
   "title": "Forge: plan a ticket",
-  "description": "Read-only investigation ending in a posted plan, a no-action finding, or a question. Shows extends: only what differs from forge.implement is written.",
+  "description": "Read-only investigation ending in a posted plan, a no-action finding, or a question. A sibling of forge.implement, not a mode of it: it differs by grant (no write tools; AddComment), prompt, model and completion contract.",
   "owner": {
     "type": "team",
     "id": "platform-agents"
   },
   "extends": {
-    "name": "forge.implement",
+    "name": "forge.coding",
     "version": 1
   },
-  "params": {
-    "issue_key": {
-      "type": "string",
-      "trust": "config",
-      "required": true,
-      "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
-    },
-    "repository": {
-      "type": "string",
-      "trust": "config",
-      "required": true,
-      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
-    },
-    "base_branch": {
-      "type": "string",
-      "trust": "config",
-      "default": "main",
-      "pattern": "^[A-Za-z0-9_./-]{1,200}$"
-    },
-    "target_branch": {
-      "type": "string",
-      "trust": "config",
-      "required": true,
-      "pattern": "^[A-Za-z0-9_./-]{1,200}$"
-    },
-    "kinds": {
-      "type": "string_list",
-      "trust": "config",
-      "default": [],
-      "subset_of": [
-        "bugs",
-        "security",
-        "conventions",
-        "visual",
-        "ux",
-        "performance",
-        "testing",
-        "data"
-      ]
-    }
-  },
+  "params": {},
   "spec": {
     "model": {
       "tier": "strong",
-      "effort": "high",
-      "max_tier": "strong"
+      "effort": "high"
     },
-    "inputs": [
-      {
-        "name": "task",
-        "kind": "task_header",
-        "source": {
-          "builder": "task_header"
-        },
-        "trust": "harness"
-      },
-      {
-        "name": "ticket",
-        "kind": "issue",
-        "source": {
-          "fetch": "mcp:jira/get_issue",
-          "args": {
-            "key": {
-              "$param": "issue_key"
-            }
-          }
-        },
-        "trust": "external",
-        "max_bytes": 65536
-      },
-      {
-        "name": "resumed_answer",
-        "kind": "resumed_answer",
-        "source": {
-          "carry": "resumed_answer"
-        },
-        "trust": "principal",
-        "required": false
+    "system_prompt": {
+      "base": {
+        "ref": {
+          "name": "forge.plan",
+          "version": 1
+        }
       }
-    ],
-    "context": {
-      "conventions": {
-        "tiers": [
-          "org",
-          "team",
-          "repo",
-          "learned"
-        ],
-        "paths": null,
-        "kinds": {
-          "$param": "kinds"
-        },
-        "at": "working_tree"
-      }
-    },
-    "workspace": {
-      "kind": "checkout",
-      "repository": {
-        "$param": "repository"
-      },
-      "base_ref": {
-        "$param": "base_branch"
-      },
-      "target_branch": {
-        "$param": "target_branch"
-      },
-      "provision": "worktree",
-      "writable": false,
-      "write_scope": null,
-      "scratch": true,
-      "git_writes": "deny"
     },
     "roles": {
       "orchestrator": {
@@ -145,26 +47,6 @@
         ]
       }
     },
-    "human": {
-      "ask_user": {
-        "kinds": [
-          "clarify"
-        ],
-        "principal_set": [
-          "issue_assignee",
-          "issue_reporter",
-          "requested_by"
-        ],
-        "channels": [
-          {
-            "type": "jira_comment",
-            "target": {
-              "$param": "issue_key"
-            }
-          }
-        ]
-      }
-    },
     "completion": {
       "statuses": [
         "planned",
@@ -178,7 +60,7 @@
           "version": 2
         }
       },
-      "gates": [
+      "checks": [
         {
           "id": "require_tool_called",
           "on_status": [
@@ -192,8 +74,7 @@
         {
           "id": "report_crosscheck"
         }
-      ],
-      "spinoffs": null
+      ]
     },
     "budgets": {
       "turns": 80,
@@ -202,14 +83,6 @@
       "tokens_by_tier": {
         "strong": 2000000
       }
-    },
-    "outputs": {
-      "sinks": [],
-      "continuations": []
-    },
-    "concurrency": null,
-    "ledger": {
-      "max_attempts": 2
     }
   }
 }

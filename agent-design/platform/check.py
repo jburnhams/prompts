@@ -78,16 +78,18 @@ def merge(parent, child):
 
 
 def flatten(template, templates, seen=()):
+    """Return (params, spec) with every ancestor merged in."""
     parent_ref = template.get("extends")
     if not parent_ref:
-        return template["spec"]
+        return template.get("params", {}), template["spec"]
     key = (parent_ref["name"], parent_ref["version"])
     if key in seen:
         raise ValueError(f"extends cycle through {key}")
     parent = templates.get(key)
     if parent is None:
         raise ValueError(f"extends unknown template {key}")
-    return merge(flatten(parent, templates, seen + (key,)), template["spec"])
+    params, spec = flatten(parent, templates, seen + (key,))
+    return merge(params, template.get("params", {})), merge(spec, template["spec"])
 
 
 def saved_tools(ref, saved, stack=()):
@@ -176,8 +178,7 @@ def check_constrained(where, path, pname, p):
 
 # --- template rules -----------------------------------------------------------
 
-def check_spec(where, template, spec, flat_specs, params_by_template):
-    params = template.get("params", {})
+def check_spec(where, params, spec):
     roles = spec["roles"]
     orch = roles["orchestrator"]
     groups, tools_by_group = group_tools(spec)
@@ -215,7 +216,7 @@ def check_spec(where, template, spec, flat_specs, params_by_template):
             err(where, f"R4 {path} binds undeclared param {pname}")
             continue
         at_input = path.startswith("/inputs/") and path.endswith("/source/param")
-        grant_bearing = path.startswith(("/system_prompt", "/tools", "/roles", "/completion", "/hatches", "/authority", "/harness_triggers")) or path == "/model/max_tier"
+        grant_bearing = path.startswith(("/system_prompt", "/tools", "/roles", "/completion", "/hatches", "/authority", "/monitors")) or path == "/model/max_tier"
         if grant_bearing and not FIXED_ARG.match(path):
             err(where, f"R4 {path} is not bindable")
         if not at_input:
@@ -227,7 +228,7 @@ def check_spec(where, template, spec, flat_specs, params_by_template):
     # R5 completion form text is the bare form
     comp = spec["completion"]
     if comp.get("form") == "text":
-        for k in ("report_schema", "gates", "spinoffs", "finishers"):
+        for k in ("report_schema", "checks", "spinoffs", "finishers"):
             if comp.get(k):
                 err(where, f"R5 completion.form text forbids {k}")
         if comp["statuses"] != ["done"]:
@@ -235,10 +236,10 @@ def check_spec(where, template, spec, flat_specs, params_by_template):
 
     # R6 HandOff reasons are exits; harness triggers name real ones
     reasons = handoff_reasons(spec)
-    for ht in spec.get("harness_triggers", []):
+    for ht in spec.get("monitors", []):
         target = ht["action"].get("handoff") or ht["action"].get("skip_to")
         if target and target not in reasons:
-            err(where, f"R6 harness trigger {ht['id']} names unknown handoff reason {target}")
+            err(where, f"R6 monitor {ht['id']} names unknown handoff reason {target}")
 
     # R7 continuations (self only): required params bound, carries accepted
     conts = spec.get("outputs", {}).get("continuations", [])
@@ -269,7 +270,7 @@ def check_spec(where, template, spec, flat_specs, params_by_template):
         if growth and growth["bundle"] not in expand.get("reveals", []):
             err(where, "R8 array_growth.bundle must be one of expand.reveals")
     revealable = set(expand.get("reveals", [])) if expand else set()
-    revealable |= {ht["action"]["reveal"] for ht in spec.get("harness_triggers", []) if "reveal" in ht["action"]}
+    revealable |= {ht["action"]["reveal"] for ht in spec.get("monitors", []) if "reveal" in ht["action"]}
     granted_anywhere = {gid for r in roles.values() for gid in r.get("grant", [])}
     for gid, g in groups.items():
         if g.get("visibility") == "hidden" and gid in granted_anywhere and gid not in revealable:
@@ -366,7 +367,7 @@ def check_server_auth(where, spec, servers):
 
 # --- pipeline rules -----------------------------------------------------------
 
-def check_pipeline(where, pipe, flat_specs, params_by_template, servers):
+def check_pipeline(where, pipe, flat_specs, params_by_template, servers, base_templates):
     stages = pipe["stages"]
     pparams = pipe.get("params", {})
     if pipe["entry"] not in stages:
@@ -383,7 +384,9 @@ def check_pipeline(where, pipe, flat_specs, params_by_template, servers):
     specs = {}
     for sid, st in stages.items():
         tname = st["template"]["name"]
-        if tname not in flat_specs:
+        if tname in base_templates:
+            err(where, f"P1 stage {sid} uses base template {tname}, which cannot run")
+        elif tname not in flat_specs:
             warn(where, f"P1 stage {sid} uses {tname}, not among the examples")
         else:
             specs[sid] = (tname, flat_specs[tname])
@@ -551,25 +554,29 @@ def main():
             servers[doc["id"]] = doc
 
     flat_specs, params_by_template = {}, {}
+    base_templates = {name for (name, _), t in templates.items() if t.get("runnable") is False}
     for (tname, version), t in templates.items():
         where = f"{tname}@{version}"
+        if tname in base_templates:
+            continue  # a base template is checked only through the templates that extend it
         try:
-            spec = resolve_groups(flatten(t, templates), saved)
+            params, spec = flatten(t, templates)
+            spec = resolve_groups(spec, saved)
         except ValueError as e:
             err(where, str(e))
             continue
         validate(where, "agent-spec.schema.json", spec)
         flat_specs[tname] = spec
-        params_by_template[tname] = t["params"]
+        params_by_template[tname] = params
     for (tname, version), t in templates.items():
         if tname in flat_specs:
             where = f"{tname}@{version}"
-            check_spec(where, t, flat_specs[tname], flat_specs, params_by_template)
+            check_spec(where, params_by_template[tname], flat_specs[tname])
             check_server_auth(where, flat_specs[tname], servers)
             if handoff_reasons(flat_specs[tname]) and not any(st["template"]["name"] == tname for p in pipelines.values() for st in p["stages"].values()):
                 warn(where, "R6 declares HandOff reasons but no pipeline wires them; run alone it has no HandOff")
     for name, p in pipelines.items():
-        check_pipeline(f"{name}@{p['version']}", p, flat_specs, params_by_template, servers)
+        check_pipeline(f"{name}@{p['version']}", p, flat_specs, params_by_template, servers, base_templates)
 
     targets = {**{t: params_by_template[t] for t in params_by_template}, **{f"pipeline:{n}": p["params"] for n, p in pipelines.items()}}
     for fname, doc in docs.items():
@@ -577,6 +584,9 @@ def main():
             continue
         key = f"pipeline:{doc['pipeline']['name']}" if "pipeline" in doc else doc["template"]["name"]
         tparams = targets.get(key)
+        if key in base_templates:
+            err(fname, f"targets base template {key}, which cannot run")
+            continue
         if tparams is None:
             warn(fname, f"targets {key}, not among the examples")
             continue
@@ -593,7 +603,7 @@ def main():
         print("warn ", w)
     for e in errors:
         print("error", e)
-    print(f"{len(templates)} templates, {len(pipelines)} pipelines, {len(saved)} saved tool groups, {len(docs)} examples, {len(errors)} errors, {len(warnings)} warnings")
+    print(f"{len(templates)} templates ({len(base_templates)} base), {len(pipelines)} pipelines, {len(saved)} saved tool groups, {len(docs)} examples, {len(errors)} errors, {len(warnings)} warnings")
     return 1 if errors else 0
 
 

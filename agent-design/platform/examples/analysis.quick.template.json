@@ -167,7 +167,35 @@
         ]
       }
     },
-    "harness_triggers": [
+    "budgets": {
+      "turns": 10,
+      "context_high_water_tokens": 60000,
+      "wall_seconds": 120,
+      "tokens_by_tier": {
+        "economy": 200000,
+        "standard": 0,
+        "strong": 0
+      }
+    },
+    "outputs": {
+      "sinks": []
+    },
+    "authority": {
+      "run_as": [
+        "user"
+      ],
+      "service_principal": {
+        "type": "service",
+        "id": "analyst-bot"
+      },
+      "delegation": {
+        "max_ttl_days": 30,
+        "scopes": [
+          "warehouse:read"
+        ]
+      }
+    },
+    "monitors": [
       {
         "id": "two_sql_errors",
         "signal": {
@@ -223,34 +251,6 @@
           "skip_to": "report_requested"
         }
       }
-    ],
-    "budgets": {
-      "turns": 10,
-      "context_high_water_tokens": 60000,
-      "wall_seconds": 120,
-      "tokens_by_tier": {
-        "economy": 200000,
-        "standard": 0,
-        "strong": 0
-      }
-    },
-    "outputs": {
-      "sinks": []
-    },
-    "authority": {
-      "run_as": [
-        "user"
-      ],
-      "service_principal": {
-        "type": "service",
-        "id": "analyst-bot"
-      },
-      "delegation": {
-        "max_ttl_days": 30,
-        "scopes": [
-          "warehouse:read"
-        ]
-      }
-    }
+    ]
   }
 }

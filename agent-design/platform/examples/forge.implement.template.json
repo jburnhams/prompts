@@ -2,36 +2,16 @@
   "name": "forge.implement",
   "version": 1,
   "title": "Forge: implement a ticket",
-  "description": "The coding entrypoint in implement mode (system-prompts.md \u00a71). Edits a harness-provisioned checkout and leaves it for the committer.",
+  "description": "The coding entrypoint that changes code (system-prompts.md \u00a71, implement). Edits a harness-provisioned checkout and leaves it for the committer. A sibling of forge.plan; a pipeline links them.",
   "owner": {
     "type": "team",
     "id": "platform-agents"
   },
+  "extends": {
+    "name": "forge.coding",
+    "version": 1
+  },
   "params": {
-    "issue_key": {
-      "type": "string",
-      "trust": "config",
-      "required": true,
-      "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
-    },
-    "repository": {
-      "type": "string",
-      "trust": "config",
-      "required": true,
-      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
-    },
-    "base_branch": {
-      "type": "string",
-      "trust": "config",
-      "default": "main",
-      "pattern": "^[A-Za-z0-9_./-]{1,200}$"
-    },
-    "target_branch": {
-      "type": "string",
-      "trust": "config",
-      "required": true,
-      "pattern": "^[A-Za-z0-9_./-]{1,200}$"
-    },
     "write_scope": {
       "type": "string_list",
       "trust": "config",
@@ -40,21 +20,6 @@
       ],
       "pattern": "^(?!.*\\.\\.)(?!/)[A-Za-z0-9_./*{},-]{1,200}$",
       "description": "Path globs this task may write, relative to the checkout. Narrower for spun-off tasks."
-    },
-    "kinds": {
-      "type": "string_list",
-      "trust": "config",
-      "default": [],
-      "subset_of": [
-        "bugs",
-        "security",
-        "conventions",
-        "visual",
-        "ux",
-        "performance",
-        "testing",
-        "data"
-      ]
     },
     "turns": {
       "type": "integer",
@@ -67,14 +32,13 @@
   "spec": {
     "model": {
       "tier": "standard",
-      "effort": "high",
-      "max_tier": "strong"
+      "effort": "high"
     },
     "system_prompt": {
       "base": {
         "ref": {
-          "name": "forge.coding",
-          "version": 14
+          "name": "forge.implement",
+          "version": 1
         }
       },
       "omit_sections": [
@@ -84,12 +48,6 @@
             "tool_absent": "Task"
           }
         }
-      ],
-      "generated": [
-        "env",
-        "capabilities",
-        "git_status",
-        "repo_context"
       ]
     },
     "inputs": [
@@ -172,148 +130,16 @@
     ],
     "context": {
       "conventions": {
-        "tiers": [
-          "org",
-          "team",
-          "repo",
-          "learned"
-        ],
         "paths": {
           "$param": "write_scope"
-        },
-        "kinds": {
-          "$param": "kinds"
-        },
-        "at": "working_tree"
+        }
       }
     },
     "workspace": {
-      "kind": "checkout",
-      "repository": {
-        "$param": "repository"
-      },
-      "base_ref": {
-        "$param": "base_branch"
-      },
-      "target_branch": {
-        "$param": "target_branch"
-      },
-      "provision": "worktree",
       "writable": true,
       "write_scope": {
         "$param": "write_scope"
-      },
-      "scratch": true,
-      "git_writes": "deny"
-    },
-    "tools": {
-      "servers": [
-        {
-          "id": "jira"
-        }
-      ],
-      "groups": [
-        {
-          "id": "core.read",
-          "visibility": "loaded",
-          "tools": [
-            {
-              "tool": "builtin/Read"
-            },
-            {
-              "tool": "builtin/Grep"
-            },
-            {
-              "tool": "builtin/List"
-            }
-          ]
-        },
-        {
-          "id": "core.write",
-          "visibility": "loaded",
-          "tools": [
-            {
-              "tool": "builtin/Edit"
-            },
-            {
-              "tool": "builtin/Write"
-            }
-          ]
-        },
-        {
-          "id": "core.shell",
-          "visibility": "loaded",
-          "tools": [
-            {
-              "tool": "builtin/Bash",
-              "limits": {
-                "timeout_s": 600,
-                "context_chars": 30000
-              }
-            }
-          ]
-        },
-        {
-          "id": "vision",
-          "visibility": "loaded",
-          "tools": [
-            {
-              "tool": "builtin/InspectImage"
-            }
-          ]
-        },
-        {
-          "id": "jira.read",
-          "visibility": "loaded",
-          "tools": [
-            {
-              "tool": "mcp:jira/get_issue",
-              "alias": "FetchJira",
-              "annotations": {
-                "read_only": true,
-                "idempotent": true,
-                "concurrency_safe": true,
-                "retry": "on_transport_error"
-              }
-            }
-          ]
-        },
-        {
-          "id": "jira.comment",
-          "visibility": "loaded",
-          "tools": [
-            {
-              "tool": "mcp:jira/add_comment",
-              "alias": "AddComment",
-              "annotations": {
-                "destructive": false,
-                "idempotent": false,
-                "retry": "never"
-              }
-            }
-          ]
-        }
-      ],
-      "checks": [
-        {
-          "id": "input_sanitizer"
-        },
-        {
-          "id": "git_write_blocklist"
-        },
-        {
-          "id": "read_before_edit"
-        },
-        {
-          "id": "completion_checklist"
-        },
-        {
-          "id": "post_run_crosscheck"
-        },
-        {
-          "id": "conventions_write_flag"
-        }
-      ]
+      }
     },
     "roles": {
       "orchestrator": {
@@ -330,23 +156,6 @@
         "max_concurrent_children": 4
       },
       "general-purpose": {
-        "description": "Open-ended search or investigation you are not confident a direct Read/Grep/List will resolve quickly.",
-        "prompt": {
-          "base": {
-            "ref": {
-              "name": "forge.general-purpose",
-              "version": 5
-            }
-          },
-          "generated": [
-            "env",
-            "capabilities"
-          ]
-        },
-        "model": {
-          "tier": "standard",
-          "clamp_to_parent": true
-        },
         "grant": [
           "core.read",
           "core.write",
@@ -361,25 +170,8 @@
           "clarify",
           "approve"
         ],
-        "principal_set": [
-          "issue_assignee",
-          "issue_reporter",
-          "requested_by"
-        ],
-        "channels": [
-          {
-            "type": "jira_comment",
-            "target": {
-              "$param": "issue_key"
-            }
-          }
-        ],
-        "max_suspensions": 3,
         "expires_after_s": 1209600,
         "on_expiry": "abandon_task"
-      },
-      "narrate": {
-        "max_entries": 8
       }
     },
     "completion": {
@@ -396,7 +188,15 @@
           "version": 3
         }
       },
-      "gates": [
+      "spinoffs": {
+        "max_per_run": 2,
+        "max_depth": 0,
+        "relations": [
+          "blocks_this",
+          "follows_this"
+        ]
+      },
+      "checks": [
         {
           "id": "first_done_checklist",
           "on_status": [
@@ -413,15 +213,7 @@
         {
           "id": "report_crosscheck"
         }
-      ],
-      "spinoffs": {
-        "max_per_run": 2,
-        "max_depth": 0,
-        "relations": [
-          "blocks_this",
-          "follows_this"
-        ]
-      }
+      ]
     },
     "budgets": {
       "turns": {
@@ -586,23 +378,6 @@
       ],
       "max_chain_depth": 3
     },
-    "authority": {
-      "run_as": [
-        "user",
-        "service"
-      ],
-      "service_principal": {
-        "type": "service",
-        "id": "forge-bot"
-      },
-      "delegation": {
-        "max_ttl_days": 90,
-        "scopes": [
-          "jira:read",
-          "jira:comment"
-        ]
-      }
-    },
     "concurrency": {
       "key": {
         "cel": "params.repository + '#' + params.target_branch"
@@ -611,7 +386,6 @@
       "handoff_occupies": true
     },
     "ledger": {
-      "max_attempts": 2,
       "tasks_per_issue": 8
     }
   }
