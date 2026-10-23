@@ -2,6 +2,32 @@
 
 All notable changes to this repository, grouped by day, newest first. Generated from git history.
 
+## 2026-10-23
+
+**Keel, the agent platform, specced; Forge and Lens as use cases on it.** Asked to turn the agent concepts discussed so far (MCP servers, tools, tool groups, visibility and deferral, completion tools, system prompts, starting query, model, sub-agents, OBO) into data models and APIs, then templates, params, triggers and outputs. Design docs and spec only, nothing implemented. Shaped over the day by use cases from the owner and two interviews. On branch `claude/agent-platform-spec` (PR #37).
+
+- `agent-design/keel/` — new. The generic platform, named Keel so it can be discussed apart from Forge:
+  - **Docs:** run specs and templates (versioned, `extends`, typed params with trust, `runnable: false` bases, `stage_defaults`); tools and agents (inline and saved tool groups, the built-in catalogue, MCP servers with tool snapshots, `workspace: bind`, OBO or service auth); endings; outputs and sinks; pipelines; authority (RBAC permissions, stored and session delegations, OBO, the confused-deputy rule); triggers, runs and sandbox deployments.
+  - **Spec:** JSON Schemas for every resource, `openapi.yaml` (deployments, dependents and republish, pipelines and pipeline runs, stage links and retry), CEL for expressions, and problem+json with closed refusal codes.
+  - **Checks:** publish rules R1–R17 and P1–P9 in `rules.md`; `check.py` validates every example against the schemas and the rules; `registry.json` per configuration folder maps each prompt and report-schema ref to a file.
+  - **Words:** `taxonomy.md` is the one shared vocabulary, with a table of retired words; `decisions.md` is the decision log, with one open item left (measuring reveal behaviour).
+- **Decisions from the owner and the interviews** (each a row in `keel/decisions.md`):
+  - **No mode:** plan and implement are sibling templates linked by a pipeline.
+  - **No ledger:** a pipeline run is the durable record, holding stage attempts, retry, gates, settle, waits, links and child runs.
+  - **Role means only an RBAC role.**
+  - **One vocabulary, owned by Keel:** there are no Forge-specific events or catalogues, and Forge is a set of use cases with their configurations.
+  - **Pipeline policy:** late approvals are refused without stored consent; `failed` is not retried; pipelines are paths; gates expire after 7 days; session delegations are capped at 24 hours; runs are `stranded` after 1h and `waiting_stale` after 3 days.
+  - **Tool use marking:** each tool says how it may be used (`call`, `finish` or both). An ending tool takes flat args, with `summary` and `report` reserved. `RequestHelp` is finish-only, and only the orchestrator gets ending tools (R14).
+  - **No pull requests in Keel:** a PR is opened with an MCP tool (`mcp:scm/open_pull_request`), during a run, as an ending, or as a pipeline sink. A sink on a workspace-bound server names its stage and needs a retained checkout (P9).
+  - **Kinds become tags:** `context.conventions.tags` narrows a run's conventions, and a sub-agent's `conventions: {tags}` gives it its own `<conventions>` block. Tags select context only, never a tool or a grant (R17). Prompt scope is the sub-agent's `scope`.
+  - **Registry is files only** (R16).
+  - **Sandboxes:** a sandbox records sinks instead of delivering them, denies MCP writes by default, and is the only place drafts run.
+  - **Rendering:** the system prompt holds only per-version text; everything per-run goes in the opening user message.
+- `agent-design/forge-on-keel/` — new. Forge's use cases as Keel configuration: the base `forge.coding`, `forge.plan`, `forge.implement` and `forge.review` (four specialist sub-agents sharing one reviewer prompt, each with its own scope and conventions tags, plus a validator); the `jira.plan-implement` pipeline (gated on the plan's hash; the PR opened by a sink) and `pr.review-fix`; triggers, prompts, report schemas and a registry.
+- `agent-design/lens-on-keel/` — new. **Lens**, the data-analysis use cases, as a separate set rather than part of Forge: `lens.quick`, `lens.investigate` and `lens.report`, a pipeline, chat and scheduled triggers, prompts, answer and document report schemas, and a registry.
+- **"Lens" tidied:** Forge's word for a review specialism now reads "specialist" across `review.md`, `medium.md`, `system-prompts.md`, `context-files.md`, `tools.md`, `risk.md`, `vision.md`, the proposals, memory, eval, orchestration, formats and examples. Quoted history is kept as written.
+- `agent-design/README.md` — reading-order entries for the three new folders, and a note that the `analyse` entrypoint is now Lens. `system-prompts.md`, `formats.md`, `tools.md` and `models.md` point to their Keel counterparts.
+
 ## 2026-10-22
 
 **Multi-model research.** Asked how a data-analysis task would use a cheap model for tool calling and a strong one for the report, whether that is sub-agents or two stages, and whether harnesses route models automatically.
