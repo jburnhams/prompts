@@ -20,6 +20,25 @@ The fields, with the reason each is shaped the way it is:
   README's per-model-prompt decision allows. `generated` lists the
   harness blocks (`env`, `capabilities`, `git_status`, `repo_context`,
   `data_overview`), in order. No field accepts a param (§6).
+
+  **Where each part is rendered.** The system prompt holds only what is
+  the same for every run of the template version: the base text and the
+  `capabilities` block, which is computed from the tools array and so is
+  fixed per version too. Everything that varies per run goes into the
+  **opening user message**, in this order: the other generated blocks
+  (`env`, `git_status`, `repo_context`, `data_overview`), then the
+  inputs. Anything that changes during the run (a revealed tool, a
+  harness note, a nudge) is appended as a message, never written into
+  what was already sent. A prompt's text therefore has no placeholders.
+  It refers to "the first message" for its task. For a sub-agent, the
+  opening message is its `<lens>` block (from `kind_scope`, when spawned
+  with a kind) followed by the spawner's brief. This is what makes the
+  shared cache prefix in §6 true, and it is the shape Anthropic's API
+  guidance gives for harnesses: freeze the rendered system prompt and
+  announce per-session facts in the first user turn, then send deltas.
+  Forge's original prompts (`../system-prompts.md`) put `{{ENV_BLOCK}}`
+  and `{{TASK_ENVELOPE}}` inside the system prompt. Its Keel prompts
+  (`../forge-on-keel/prompts/`) don't.
 - **`inputs[]`**: the task envelope as an ordered list of tagged blocks.
   Each one has a `kind`, a `source` and a `trust`. There are four kinds
   of source:
@@ -116,10 +135,21 @@ anything take no params.
 **Two consequences worth wanting:**
 
 - **One cacheable prefix per template version.** Params never reach
-  the system prompt, and the tools array per agent is fixed at publish
-  (up to the deployment's tier map). So every run of a version shares
-  the same tools-plus-system prefix, and the cache is shared across
-  runs, not just within one. `Template.resolved.prompt_digest` names it.
+  the system prompt, per-run blocks go into the opening message (§3),
+  and the tools array per agent is fixed at publish (up to the
+  deployment's tier map). So every run of a version shares the same
+  tools-plus-system prefix, and the cache is shared across runs, not
+  just within one. `Template.resolved.prompt_digest` names it.
+
+**Prompts and report schemas are registry entries.** Both are referenced
+as `{name, version}` and are immutable once created
+(`POST /v1/prompts/{name}/versions`). A configuration kept in a folder
+lists the entries it uses in a `registry.json`
+([`schemas/registry.schema.json`](./schemas/registry.schema.json)):
+each ref maps to a file in the folder, or, while the text is still being
+designed in a document, to that document's section. Rule R16 checks
+every ref in every template resolves, and that every report schema is a
+valid JSON Schema.
 - **`:render`** shows exactly what a model would be given for a set of
   params (tools array, visibility, rendered prompt, envelope with
   placeholder nonces) without running anything. It's what you diff when

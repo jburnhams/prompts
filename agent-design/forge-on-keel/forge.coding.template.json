@@ -54,20 +54,6 @@
       "tier": "standard",
       "max_tier": "strong"
     },
-    "system_prompt": {
-      "base": {
-        "ref": {
-          "name": "forge.coding.shared",
-          "version": 1
-        }
-      },
-      "generated": [
-        "env",
-        "capabilities",
-        "git_status",
-        "repo_context"
-      ]
-    },
     "inputs": [
       {
         "name": "task",
@@ -310,7 +296,7 @@
           "base": {
             "ref": {
               "name": "forge.general-purpose",
-              "version": 5
+              "version": 1
             }
           },
           "generated": [

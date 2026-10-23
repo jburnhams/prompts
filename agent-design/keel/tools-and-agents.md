@@ -99,12 +99,33 @@ finding that retries make non-idempotent tools dangerous, as a field.
 `hidden` groups need a way to become visible: `hatches.expand.reveals`
 or a monitor's `reveal`. R8 warns when a hidden group has
 neither. How "deferred" and "hidden" are realised depends on the
-provider flag in deployment: `defer_loading` on Anthropic,
-`tool_search`/`additional_tools` on OpenAI, and on Bedrock `Converse`
-either everything loads upfront or the once-only array growth that
-`hatches.expand.array_growth` permits (`../models.md` §4a). The spec
-states intent. The resolver picks the mechanism and records it in
-`ResolvedSpec.agents.<a>.deferred_tools`.
+deployment's provider flags (`deferred_tools`, `reveal`) and on whether
+the agent's model supports them (`supports_reveal` on the tier). The
+spec states intent; the resolver picks the mechanism and records it in
+`ResolvedSpec.agents.<a>.deferred_tools` and `.reveal`.
+
+- **Anthropic (Claude API, Claude Platform on AWS, Bedrock InvokeModel,
+  Vertex):** a hidden or deferred tool is declared in `tools` with
+  `defer_loading: true`. The harness reveals it with **mid-conversation
+  tool changes** (beta `mid-conversation-tool-changes-2026-07-01`): a
+  `role: "system"` message appended after a user turn, carrying a
+  `tool_addition` block that references the tool by name. A
+  `tool_removal` block withdraws one the same way. Neither changes the
+  cached prefix, so "the tools array and system prompt are fixed for a
+  run" still holds. Supported on Opus 5, Opus 5.5, Opus 4.8, Fable 5 and
+  5.1 and Sonnet 5.5, not on Sonnet 5, and not on Foundry. A tier whose
+  model isn't covered sets `supports_reveal: false`. One caution, if a
+  deployment ever adds Anthropic's own tool-search tool: search can find
+  a deferred tool by itself, so a tool that must stay hidden would have
+  to stay out of `tools` until it's revealed. Keel's own `Expand` isn't
+  that tool, so this doesn't arise today.
+- **OpenAI Responses:** client-executed `tool_search` and
+  `additional_tools`.
+- **Bedrock `Converse`, or a model without reveal:** `hidden` resolves to
+  `deferred` where deferral exists, otherwise to `loaded`, or to the
+  once-only array growth that `hatches.expand.array_growth` permits
+  (`../models.md` §4a). Authority is unaffected in every case: the
+  executor checks the grant on every call.
 
 ### 4c. Agents
 
@@ -123,6 +144,10 @@ each one's `description` as the enum text. Sub-agents add:
   `Task` calls it `kind`;
 - `kind_grants`: the tool half of "kinds: one vocabulary, three
   resolutions";
+- `kind_scope`: the prompt half. Each kind's scope text is rendered into
+  the sub-agent's opening message as a `<lens>` block, before the
+  spawner's brief. The system prompt stays one per sub-agent, so it
+  caches across every lens;
 - `spawn_args`: extra required `Task` fields, such as the validator's
   `finding`;
 - a `report_schema` the harness validates.

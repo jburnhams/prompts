@@ -123,7 +123,7 @@
     },
     "PromptSpec": {
       "type": "object",
-      "description": "Fixed text plus generated blocks. Params never reach this text, so every run of a template version shares one cacheable prefix (../run-spec.md §6, invariant 3).",
+      "description": "Fixed text plus generated blocks. The system prompt holds the base text and the capabilities block only; every other generated block, then the inputs, go into the opening user message, so every run of a template version shares one cacheable prefix (run-spec.md §3, §6). Prompt text has no placeholders.",
       "properties": {
         "base": {
           "oneOf": [
@@ -201,7 +201,7 @@
         },
         "generated": {
           "type": "array",
-          "description": "Harness-generated blocks appended in this order.",
+          "description": "Harness-generated blocks, in order. capabilities is rendered into the system prompt; the rest into the opening user message, before the inputs.",
           "items": {
             "type": "string",
             "enum": [
@@ -1614,8 +1614,8 @@
           }
         },
         "report_schema": {
-          "type": "object",
-          "description": "JSON Schema for the child's final report, validated by the harness."
+          "description": "The sub-agent's final report, validated by the harness. A registry ref or an inline JSON Schema, as completion.report_schema.",
+          "$ref": "#/$defs/CompletionSpec/properties/report_schema"
         },
         "spawns": {
           "type": "array",
@@ -1627,6 +1627,14 @@
         },
         "budgets": {
           "$ref": "#/$defs/Budgets"
+        },
+        "kind_scope": {
+          "type": "object",
+          "description": "Kind to the scope text a sub-agent spawned with that kind is given: the prompt half of 'kinds: one vocabulary, three resolutions'. Rendered into the sub-agent's opening message as a <lens> block before the spawner's brief, so the system prompt stays one per sub-agent. Template text, so trusted.",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 4000
+          }
         }
       },
       "required": [

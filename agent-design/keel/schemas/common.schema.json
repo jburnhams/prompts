@@ -376,7 +376,9 @@
         "finisher_failed",
         "exit_unwired",
         "permission_denied",
-        "dependency_abandoned"
+        "dependency_abandoned",
+        "draft_requires_sandbox",
+        "sandbox_write_blocked"
       ]
     },
     "Problem": {

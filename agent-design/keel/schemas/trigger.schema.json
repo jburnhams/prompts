@@ -36,7 +36,7 @@
                   "const": "latest"
                 }
               ],
-              "description": "latest follows publishes; the firing records the version it used. A delegation may pin a version range, which wins."
+              "description": "A published version or latest. Triggers never start drafts and always run on the production deployment; a delegation may pin a version range, which wins."
             }
           },
           "required": [

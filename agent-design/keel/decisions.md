@@ -67,6 +67,12 @@ when each was decided.
 | Retrying `failed` (2026-10-23, interview) | **Not retried by default**; retries cover running out of budget, infrastructure failure and a lost lease, and a genuine failure blocks the stage for a human. Templates and stages may opt in | Retrying a failure once by default | The ledger's original reasoning holds: more of the same rarely fixes a real failure, and an attempt spent on it is lost to a budget retry |
 | Scope limits (2026-10-23, interview) | **Pipelines are paths (no loops, parallel branches or joins) and harness expressions are CEL**, confirmed | Branching pipelines; a different expression language | Fan-out already lives inside a run; CEL is typed, bounded in cost, and can't loop |
 | Policy defaults (2026-10-23, interview) | **Gate expiry 7 days, then block the stage; session delegation cap 24 hours; `stranded` after 1 hour, `waiting_stale` after 3 days**, as deployment `defaults.policy`, overridable where a template or pipeline has a field | Gate expiry of 14 days or none; abandoning on expiry; a session cap of 1 or 8 hours (8 was recommended); stale thresholds of 15 min / 1 day or 4 h / 7 days | A week covers an absence without letting stale questions pile up; blocking keeps work someone forgot to answer. 24 hours lets a long report or an overnight stage finish under the user's authority |
+| Rendering (2026-10-23) | **The system prompt holds only what is fixed per template version (base text and the capabilities block); per-run generated blocks and the inputs go into the opening user message; mid-run changes are appended as messages. Prompt text has no placeholders** (`run-spec.md` §3) | Forge's original layout, with `{{ENV_BLOCK}}` and `{{TASK_ENVELOPE}}` inside the system prompt | §6's claim that every run of a version shares one cached prefix was false with per-run blocks in the system prompt. Anthropic's harness guidance gives the same shape: freeze the rendered prompt, announce per-session facts in the first user turn, send deltas |
+| Registry manifests and report schemas (2026-10-23) | **A configuration folder lists its prompt and report-schema refs in `registry.json`; each resolves to a file, or to a design document's section while the text is still being designed there (R16).** Forge's report shapes are extracted to `../forge-on-keel/reports/`; the plan report gains `write_scope`; the analysis answer and document schemas are new, with every figure a claim carrying refs | Leaving refs unresolved names; duplicating every prompt into a file at once | Refs that resolve to nothing can't be published or checked. Pointing at a document section keeps one copy of text that is still changing |
+| Bulk re-publish (2026-10-23) | **`GET /v1/dependents` and `POST /v1/dependents:republish`**: draft each dependent with only the one reference moved, run every rule, optionally publish, optionally cascade through extends and pipelines; each dependent succeeds or fails alone | Templates following a group's latest version automatically | Automatic following would change published, reviewed templates without anyone publishing them, the same reason tool snapshots are pinned |
+| Draft runs (2026-10-23) | **Drafts run only on a sandbox deployment, as the caller, with sinks and actions recorded rather than delivered and MCP writes denied unless the sandbox allows them; deployments become a list** (`triggers-and-runs.md` §10a) | Drafts limited to `dry_run`; a "test mode" flag on production | Eval needs real runs of unpublished changes; a separate deployment keeps tier maps and servers apart, and a flag on production would put test effects one setting away from real ones |
+| Hidden-tool reveal on Anthropic (2026-10-23) | **Verified as supported: mid-conversation tool changes reveal a `defer_loading` tool through an appended system message without breaking the cache.** Recorded per provider (`reveal`) and per tier (`supports_reveal`); unsupported cases resolve `hidden` to `deferred` or `loaded` | Treating `hidden` as `deferred` on Anthropic (the previous assumption) | The beta covers the current Opus, Fable and Sonnet 5.5 models on the Claude API, AWS, Bedrock and Vertex. Sonnet 5 and Foundry are the gaps |
+| Kind scope (2026-10-23) | **`kind_scope` on a sub-agent: per-kind scope text rendered into its opening message as a `<lens>` block** | A prompt version per lens; prompt slots filled per spawn | Keel's kinds were declared to have three payloads (context sections, prompt scope, tool grants), and only the tool grant had a field. Putting the scope in the opening message keeps one cached system prompt per sub-agent, consistent with the rendering rule |
 
 ---
 
@@ -79,28 +85,15 @@ rows in §14a).
 
 ### Work items
 
-- **Where report schemas live.** They're registry refs here. Forge's
-  report shapes are in `../formats.md` §3 as prose plus JSON. They need
-  extracting into versioned schemas before `:publish` can validate
-  against them.
-- **Delegation for continuations.** Mostly settled by `invoker`'s
-  session delegation (§8), which covers a pipeline started from chat or
-  the UI. Still open: a template run directly from the API by a user,
-  whose `follows_this` spinoff is approved days later. Today that edge
-  refuses with `delegation_missing` unless the user holds a stored
-  delegation.
 - **More harness actions.** `open_pull_request` and `request_help` are
   what the use cases need. Candidates are updating an existing PR,
   publishing an artifact, and merging. Merging is deliberately not on
   the list: it's an approval, and an agent can't approve its own work.
-- **Draft runs.** Drafts run only with `dry_run`. A "run a draft
-  against a sandbox deployment" mode is probably needed for eval
-  (`../eval.md`), and isn't specified.
-- **A saved group's new version** doesn't reach templates until they
-  are re-published against it. That's the right default for review, and
-  it makes "roll a fix to the Java group out to fifty templates" a
-  bulk re-publish. A `:republish-dependents` operation is probably
-  wanted and isn't specified.
-- **Hidden-tool reveal on Anthropic** is still unverified
-  (`../tools.md` rule 3), so `visibility: hidden` may resolve to `deferred`
-  on that provider. The resolver records what it chose.
+- **Reveal behaviour to measure.** Mid-conversation tool changes are a
+  beta. Whether a revealed tool is used as reliably as one loaded from
+  the start is worth an `../eval.md` case before relying on it for the
+  quick analysis path.
+
+Done on 2026-10-23, recorded in §14a: report schemas, the coding prompt
+split (and every other Forge and analysis prompt extracted to files),
+bulk re-publish, draft runs on a sandbox, and the reveal question.

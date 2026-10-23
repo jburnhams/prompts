@@ -309,6 +309,9 @@ SQL-and-row-count answer form, the `input_rows` fan-out stub from `data.md`
 
 - **Anthropic API, Claude Platform on AWS:** `defer_loading` makes `Expand`'s
   tool reveal free of cache loss. Optional; the paths in §4a work everywhere.
+  A harness-triggered reveal (a monitor's `reveal`) uses mid-conversation
+  tool changes, a beta on current Opus, Fable and Sonnet 5.5 models
+  (2026-10-23; [`keel/tools-and-agents.md`](./keel/tools-and-agents.md) §4b).
 - **Bedrock `Converse`:** no deferral, no advisor tool. Sources are revealed as
   text; tools by the once-only array growth in a small economy run, or by
   `HandOff`. *Not verified:* how Bedrock orders and invalidates cache

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.example/registry/report_schema/forge.report.plan/1",
+  "title": "Forge plan report",
+  "description": "Complete.report for forge.plan. From ../../formats.md §3c, plus write_scope. An empty steps list is a finding that no change is needed.",
+  "type": "object",
+  "properties": {
+    "ticket": {
+      "type": "string"
+    },
+    "approach": {
+      "type": "string",
+      "description": "What will change and why, or what was investigated and why no change is needed."
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "order": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "order",
+          "description",
+          "files"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "write_scope": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Path globs the implement run may write. Defaults to the union of steps[].files when omitted. Read by jira.plan-implement's edge to set the implement stage's write_scope param."
+    },
+    "context_gathered": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "note"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "risks_and_assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "out_of_scope": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "acceptance_criteria": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ticket",
+    "approach",
+    "steps",
+    "context_gathered",
+    "risks_and_assumptions",
+    "out_of_scope",
+    "acceptance_criteria"
+  ],
+  "additionalProperties": false
+}

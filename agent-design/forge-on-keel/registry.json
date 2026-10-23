@@ -1,0 +1,48 @@
+{
+  "prompts": {
+    "forge.plan@1": {
+      "file": "prompts/forge.plan.v1.md",
+      "derived_from": "../system-prompts.md §1 (Plan mode, with the mode switch removed)"
+    },
+    "forge.implement@1": {
+      "file": "prompts/forge.implement.v1.md",
+      "derived_from": "../system-prompts.md §1 (Workflow and the implement-only sections, with the mode switch removed)"
+    },
+    "forge.general-purpose@1": {
+      "file": "prompts/forge.general-purpose.v1.md",
+      "derived_from": "../system-prompts.md §3"
+    },
+    "forge.review.multi-stage@1": {
+      "file": "prompts/forge.review.multi-stage.v1.md",
+      "derived_from": "../system-prompts.md §2a, per-run placeholders removed, Task's role argument called kind"
+    },
+    "forge.reviewer@1": {
+      "file": "prompts/forge.reviewer.v1.md",
+      "derived_from": "../system-prompts.md §4: the specialist wrapper with the reviewer core folded in; the lens comes from kind_scope"
+    },
+    "forge.validator@1": {
+      "file": "prompts/forge.validator.v1.md",
+      "derived_from": "../system-prompts.md §5"
+    }
+  },
+  "report_schemas": {
+    "forge.report.implement@1": {
+      "file": "reports/implement.v1.schema.json"
+    },
+    "forge.report.plan@1": {
+      "file": "reports/plan.v1.schema.json"
+    },
+    "forge.report.review@1": {
+      "file": "reports/review.v1.schema.json"
+    },
+    "forge.finding@1": {
+      "file": "reports/finding.v1.schema.json"
+    },
+    "forge.finding-list@1": {
+      "file": "reports/finding-list.v1.schema.json"
+    },
+    "forge.attention@1": {
+      "file": "reports/attention.v1.schema.json"
+    }
+  }
+}

@@ -33,7 +33,7 @@
       "base": {
         "ref": {
           "name": "analysis.quick",
-          "version": 3
+          "version": 1
         }
       },
       "generated": [

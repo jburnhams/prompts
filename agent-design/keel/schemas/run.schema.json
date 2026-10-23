@@ -23,7 +23,8 @@
                   "const": "latest"
                 }
               ],
-              "default": "latest"
+              "default": "latest",
+              "description": "A published version, latest, or on a sandbox deployment a draft version."
             }
           },
           "required": [
@@ -151,6 +152,10 @@
             "urgent"
           ],
           "default": "normal"
+        },
+        "deployment": {
+          "type": "string",
+          "description": "Deployment id. Default: the production deployment. A draft template, pipeline or saved group version may run only on a sandbox, as the caller (draft_requires_sandbox)."
         }
       },
       "required": [
@@ -236,6 +241,15 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "reveal": {
+                "type": "string",
+                "enum": [
+                  "tool_changes",
+                  "additional_tools",
+                  "none"
+                ],
+                "description": "The reveal mechanism chosen for this agent. With none, any group declared hidden is resolved to deferred or loaded, recorded per tool in registered[].visibility."
               }
             },
             "required": [
@@ -443,6 +457,9 @@
           "type": "integer",
           "minimum": 1,
           "description": "Which attempt at the stage this is."
+        },
+        "deployment": {
+          "type": "string"
         }
       },
       "required": [
@@ -671,7 +688,8 @@
             "pending",
             "delivered",
             "failed",
-            "skipped"
+            "skipped",
+            "recorded"
           ]
         },
         "attempts": {
@@ -687,6 +705,10 @@
         },
         "last_error": {
           "type": "string"
+        },
+        "recorded_payload": {
+          "type": "object",
+          "description": "Sandbox only: what would have been sent."
         }
       },
       "required": [

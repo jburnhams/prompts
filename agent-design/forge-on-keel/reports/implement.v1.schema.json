@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.example/registry/report_schema/forge.report.implement/1",
+  "title": "Forge implement report",
+  "description": "Complete.report for forge.implement. From ../../formats.md §3a.",
+  "type": "object",
+  "properties": {
+    "ticket": {
+      "type": "string"
+    },
+    "target_branch": {
+      "type": "string",
+      "description": "The branch the working tree was left on."
+    },
+    "files_changed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "change_type": {
+            "enum": [
+              "added",
+              "modified",
+              "deleted",
+              "renamed"
+            ]
+          },
+          "additions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "deletions": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "path",
+          "change_type"
+        ],
+        "additionalProperties": false
+      },
+      "description": "The model's self-report. The harness compares it with git status after the run."
+    },
+    "verification": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "check": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "result": {
+            "enum": [
+              "pass",
+              "fail",
+              "not_run"
+            ]
+          },
+          "detail": {
+            "type": "string",
+            "description": "Only when result is not pass."
+          }
+        },
+        "required": [
+          "check",
+          "command",
+          "result"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "regression_evidence": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "How a test this run added was shown to fail on the unfixed code. null when no regression test was added."
+    },
+    "suggested_commit_message": {
+      "type": "string",
+      "description": "Summary line and body for whatever commits this branch."
+    },
+    "judgment_calls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Ambiguities resolved without asking, and why."
+    },
+    "open_questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Must be empty when status is done."
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Refs to artifacts that should outlive the run."
+    },
+    "spun_off": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "properties": {
+          "relation": {
+            "enum": [
+              "blocks_this",
+              "follows_this"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "relation",
+          "title",
+          "rationale",
+          "paths"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "ticket",
+    "target_branch",
+    "files_changed",
+    "verification",
+    "regression_evidence",
+    "suggested_commit_message",
+    "judgment_calls",
+    "open_questions",
+    "evidence",
+    "spun_off"
+  ],
+  "additionalProperties": false
+}

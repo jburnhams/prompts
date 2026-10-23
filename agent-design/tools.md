@@ -204,8 +204,12 @@ Rules:
    "Hidden" is "deferred and unannounced". Both are registered with the
    provider and flagged deferred, so the array does not change. Whether a
    harness may reveal a tool the model did not ask for is documented for
-   OpenAI (client-executed search, `additional_tools`) and not for
-   Anthropic's; treat it as unverified there.
+   OpenAI (client-executed search, `additional_tools`), and, as of
+   2026-10-23, for Anthropic's as a beta: mid-conversation tool changes
+   (`mid-conversation-tool-changes-2026-07-01`) reveal a `defer_loading`
+   tool through an appended system message, without breaking the cache.
+   See [`keel/tools-and-agents.md`](./keel/tools-and-agents.md) §4b for
+   the models and platforms it covers.
 4. **Default: everything stays loaded.** Forge's built-in set is eleven
    tools. Deferring them would add a round trip and gain little, and a
    cheap model under-calls optional tools (`../agent-multi-model.md` §4).

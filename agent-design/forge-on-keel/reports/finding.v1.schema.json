@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.example/registry/report_schema/forge.finding/1",
+  "title": "Review finding",
+  "description": "From ../../formats.md §4. Raised by a reviewer with verdict null, then judged by the validator.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "role": {
+      "enum": [
+        "bugs",
+        "security",
+        "conventions",
+        "visual"
+      ],
+      "description": "The kind it was raised under (the field keeps Forge's name)."
+    },
+    "file": {
+      "type": "string"
+    },
+    "line": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "line_end": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "severity": {
+      "enum": [
+        "blocking",
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "class": {
+      "enum": [
+        "defect",
+        "suggestion"
+      ]
+    },
+    "summary": {
+      "type": "string"
+    },
+    "rationale": {
+      "type": "string"
+    },
+    "suggested_fix": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "provenance": {
+      "enum": [
+        "introduced",
+        "made_visible",
+        "pre_existing"
+      ],
+      "description": "README decision 'Provenance claims in review findings'."
+    },
+    "verdict": {
+      "enum": [
+        "confirmed",
+        "plausible",
+        "refuted",
+        null
+      ]
+    },
+    "validator_note": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "filtered_reason": {
+      "type": "string",
+      "description": "Only on entries in a review report's filtered list: why it was not posted."
+    }
+  },
+  "required": [
+    "role",
+    "file",
+    "line",
+    "severity",
+    "class",
+    "summary",
+    "rationale",
+    "verdict"
+  ],
+  "additionalProperties": false
+}

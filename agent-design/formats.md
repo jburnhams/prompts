@@ -406,6 +406,15 @@ review-comment attachments.
 
 ## 3. `Complete` report schema
 
+**As JSON Schema** (2026-10-23): §3a–§3c and §4, with `risk.md` §2's
+attention block, are in
+[`forge-on-keel/reports/`](./forge-on-keel/reports), registered as
+`forge.report.implement@1`, `forge.report.plan@1`,
+`forge.report.review@1`, `forge.finding@1` and `forge.attention@1`. The
+plan report gains one field there, `write_scope` (the path globs the
+implement run may write; defaults to the union of `steps[].files`), which
+the plan → implement pipeline reads.
+
 `status` and `summary` are common to both modes (see `tools.md`); the
 `report` object's shape depends on which orchestrator is calling.
 

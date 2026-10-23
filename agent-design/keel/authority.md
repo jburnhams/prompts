@@ -112,7 +112,9 @@ Keel names the permissions it checks, and RBAC decides who has them:
 | `triggers:write` | create triggers they own |
 | `pipeline-runs:operate` | stage `:retry`, `:abandon`, `:stop` on runs they didn't start |
 | `stages:link` | write a stage's links back (held by the committer's service identity) |
-| `deployment:write` | change the tier map and ceilings |
+| `deployment:write` | change a deployment's tier map, ceilings and sandbox settings |
+| `runs:draft` (per template or pipeline) | run drafts on a sandbox deployment |
+| `registry:republish` | move dependents onto a new version with `:republish` (publishing each still needs that resource's publish permission) |
 
 Two things RBAC does **not** decide, deliberately:
 

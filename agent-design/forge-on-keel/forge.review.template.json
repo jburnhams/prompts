@@ -57,7 +57,7 @@
       "base": {
         "ref": {
           "name": "forge.review.multi-stage",
-          "version": 9
+          "version": 1
         }
       },
       "generated": [
@@ -230,7 +230,7 @@
       "report_schema": {
         "ref": {
           "name": "forge.report.review",
-          "version": 4
+          "version": 1
         }
       },
       "checks": [
@@ -307,8 +307,8 @@
         "prompt": {
           "base": {
             "ref": {
-              "name": "forge.reviewer-core",
-              "version": 7
+              "name": "forge.reviewer",
+              "version": 1
             }
           },
           "generated": [
@@ -336,7 +336,16 @@
           ]
         },
         "report_schema": {
-          "$ref": "https://forge.example/schemas/reports/finding-list.json"
+          "ref": {
+            "name": "forge.finding-list",
+            "version": 1
+          }
+        },
+        "kind_scope": {
+          "bugs": "Logic errors, incorrect conditionals, off-by-one mistakes, and defects that make the changed code behave incorrectly — introduced by this diff, in the diff's own lines. Two checks to run every time: for each line the diff deletes or replaces, name what it guaranteed (a guard, an error path, a validation, a test case) and find where the new code guarantees it again — if nowhere, that is a candidate; and where the diff adds or changes a wrapper (a cache, proxy, decorator or adapter), check that every method calls the wrapped object rather than going back through a registry, session or global, which re-enters the wrapper or recurses, and that it forwards every method its callers use.",
+          "security": "Vulnerabilities introduced by this diff: injection, auth/authz gaps, secret handling, unsafe deserialization, and similar — introduced by this diff, in the diff's own lines.",
+          "conventions": "Violations of the project's own documented conventions (the text you were given alongside the diff) — only where you can quote the specific rule being broken and point to exactly where the diff breaks it.",
+          "visual": "What the PR's images show, and whether the diff matches them: a mockup the change doesn't implement, a screenshot of a defect the change doesn't fix. Use InspectImage. Anchor every finding to the line of code that produces what the image shows; an observation you cannot tie to a line is not a finding."
         }
       },
       "validator": {
@@ -345,7 +354,7 @@
           "base": {
             "ref": {
               "name": "forge.validator",
-              "version": 6
+              "version": 1
             }
           },
           "generated": [

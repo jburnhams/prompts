@@ -23,7 +23,13 @@
           "name": "forge.plan",
           "version": 1
         }
-      }
+      },
+      "generated": [
+        "env",
+        "capabilities",
+        "git_status",
+        "repo_context"
+      ]
     },
     "completion": {
       "statuses": [
@@ -35,7 +41,7 @@
       "report_schema": {
         "ref": {
           "name": "forge.report.plan",
-          "version": 2
+          "version": 1
         }
       },
       "checks": [

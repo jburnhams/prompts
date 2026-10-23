@@ -101,6 +101,13 @@ authority, monitors.
 is the same for every run of a template version.
 *Where:* `PromptSpec`; prompts are versioned in the registry.
 
+**Registry manifest.** A configuration folder's `registry.json`: which
+file (or document section) each prompt and report-schema ref resolves to.
+
+**Opening message.** The first user message of a run, where Keel renders
+every per-run block and the inputs. The system prompt holds only what is
+fixed per template version.
+
 **Generated block.** Text the harness writes per run from facts:
 `env`, `capabilities`, `git_status`, `repo_context`, `data_overview`.
 
@@ -251,6 +258,9 @@ not from its spawner's grant.
 **Task.** The generated tool an agent uses to spawn a sub-agent. "Task"
 is otherwise informal, for the work a run is given; it isn't a record.
 
+**Kind scope.** The text a sub-agent spawned with a kind is given about
+that lens, in a `<lens>` block of its opening message.
+
 **Kind grant.** Extra groups a sub-agent gets when spawned with a given
 kind (`visual` → `vision`).
 
@@ -268,6 +278,13 @@ template says `clamp_to_parent: false`.
 **Deployment.** Operator-owned facts no template overrides: the tier →
 model map, provider capabilities, the global max tier, mandatory
 checks.
+
+**Sandbox.** A deployment with `kind: sandbox`, where drafts can run as
+their caller with sinks and actions recorded rather than delivered.
+
+**Reveal.** Making a hidden or deferred tool visible mid-run without
+changing the cached prefix. How it is done depends on the provider
+(`reveal`) and the model (`supports_reveal`).
 
 **Provider.** The model API (Anthropic, Bedrock `Converse`, …).
 Recorded with its capabilities, such as whether it supports deferred

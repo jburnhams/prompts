@@ -206,9 +206,10 @@ def check_spec(where, params, spec):
             if child not in agents or child == "orchestrator":
                 err(where, f"R3 agent {agent_name} spawns unknown agent {child}")
         if agent_name != "orchestrator":
-            for kind in agent.get("kind_grants", {}):
-                if kind not in agent.get("spawn_kinds", []):
-                    err(where, f"R3 agent {agent_name} kind_grants {kind} not in spawn_kinds")
+            for field in ("kind_grants", "kind_scope"):
+                for kind in agent.get(field, {}):
+                    if kind not in agent.get("spawn_kinds", []):
+                        err(where, f"R3 agent {agent_name} {field} {kind} not in spawn_kinds")
 
     # R4 params: declared, bound by trust, constrained when config-bound
     for path, pname in walk_params(spec):
@@ -537,12 +538,72 @@ def check_openapi():
             err("openapi.yaml", f"dangling {ref}")
 
 
+def load_registries():
+    """Merge each configuration folder's registry.json; entries resolve relative to that folder."""
+    entries = {"prompts": {}, "report_schemas": {}}
+    for d in EXAMPLES:
+        p = d / "registry.json"
+        if not p.exists():
+            continue
+        reg = json.loads(p.read_text())
+        validate(str(p.relative_to(HERE.parent)), "registry.schema.json", reg)
+        for kind in entries:
+            for ref, entry in reg.get(kind, {}).items():
+                if ref in entries[kind]:
+                    err(p.name, f"R16 {ref} is registered twice")
+                entries[kind][ref] = (d, entry)
+    for ref, (d, entry) in entries["prompts"].items():
+        if "file" in entry:
+            if not (d / entry["file"]).exists():
+                err(ref, f"R16 prompt file {entry['file']} is missing")
+        else:
+            doc = (d / entry["doc"]).resolve()
+            num = entry["section"].lstrip("§")
+            if not doc.exists() or not re.search(rf"^#+ {re.escape(num)}\. ", doc.read_text(), re.M):
+                err(ref, f"R16 prompt source {entry['doc']} {entry['section']} not found")
+    for ref, (d, entry) in entries["report_schemas"].items():
+        f = d / entry["file"]
+        if not f.exists():
+            err(ref, f"R16 report schema file {entry['file']} is missing")
+            continue
+        schema = json.loads(f.read_text())
+        Draft202012Validator.check_schema(schema)
+        for m in re.finditer(r'"\$ref": "([^"#]+)', f.read_text()):
+            if not (f.parent / m.group(1)).exists():
+                err(ref, f"R16 {entry['file']} refers to missing {m.group(1)}")
+    return entries
+
+
+def check_refs(where, spec, registry):
+    """R16 every prompt and report-schema ref resolves in a configuration registry."""
+    def need(kind, ref, path):
+        key = f"{ref['name']}@{ref['version']}"
+        if key not in registry[kind]:
+            err(where, f"R16 {path} refers to {key}, which no registry.json lists")
+        elif kind == "prompts" and registry[kind][key][1].get("status") == "draft_fragment":
+            warn(where, f"R16 {path} uses {key}, still a draft fragment in {registry[kind][key][1]['doc']}")
+    base = (spec.get("system_prompt") or {}).get("base", {})
+    if "ref" in base:
+        need("prompts", base["ref"], "/system_prompt")
+    for name, agent in spec["agents"].items():
+        pb = (agent.get("prompt") or {}).get("base", {})
+        if "ref" in pb:
+            need("prompts", pb["ref"], f"/agents/{name}/prompt")
+        rs = agent.get("report_schema") or {}
+        if "ref" in rs:
+            need("report_schemas", rs["ref"], f"/agents/{name}/report_schema")
+    rs = spec["completion"].get("report_schema") or {}
+    if "ref" in rs:
+        need("report_schemas", rs["ref"], "/completion/report_schema")
+
+
 def main():
     for path in sorted(SCHEMAS.glob("*.schema.json")):
         Draft202012Validator.check_schema(json.loads(path.read_text()))
     check_openapi()
 
-    docs = {p.name: json.loads(p.read_text()) for d in EXAMPLES for p in sorted(d.glob("*.json"))}
+    docs = {p.name: json.loads(p.read_text()) for d in EXAMPLES for p in sorted(d.glob("*.json")) if p.name != "registry.json"}
+    registry = load_registries()
     templates, servers, saved, pipelines = {}, {}, {}, {}
     kinds = [
         (".template.json", "template.schema.json"),
@@ -591,6 +652,7 @@ def main():
             where = f"{tname}@{version}"
             check_spec(where, params_by_template[tname], flat_specs[tname])
             check_server_auth(where, flat_specs[tname], servers)
+            check_refs(where, flat_specs[tname], registry)
             if handoff_reasons(flat_specs[tname]) and not any(st["template"]["name"] == tname for p in pipelines.values() for st in p["stages"].values()):
                 warn(where, "R6 declares HandOff reasons but no pipeline wires them; run alone it has no HandOff")
     for name, p in pipelines.items():

@@ -1,0 +1,296 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.example/registry/report_schema/forge.attention/1",
+  "title": "Attention block",
+  "description": "How much human attention a PR needs. From ../../risk.md §2; tier >= floor is checked by the harness.",
+  "type": "object",
+  "properties": {
+    "tier": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "floor": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "bound_to": {
+      "type": "object",
+      "properties": {
+        "head_sha": {
+          "type": "string"
+        },
+        "base_sha": {
+          "type": "string"
+        },
+        "policy_rev": {
+          "type": "string"
+        },
+        "conventions_rev": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "prompt_rev": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "head_sha",
+        "base_sha"
+      ],
+      "additionalProperties": false
+    },
+    "drivers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "enum": [
+              "path_rule",
+              "triage",
+              "finding",
+              "unverified",
+              "convergence",
+              "author_declared"
+            ]
+          },
+          "dimension": {
+            "enum": [
+              "blast_radius",
+              "reversibility",
+              "authority",
+              "product_worth",
+              "proof",
+              "provenance",
+              "trajectory",
+              "evidence"
+            ]
+          },
+          "domain": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rule": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "raises_to": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          }
+        },
+        "required": [
+          "source",
+          "dimension",
+          "reason",
+          "raises_to"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required_decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "product_direction",
+              "security_boundary",
+              "proof_sufficiency",
+              "release_inclusion",
+              "merge_risk"
+            ]
+          },
+          "question": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "category": {
+                  "enum": [
+                    "fix_before_merge",
+                    "accept_risk",
+                    "pause_or_close"
+                  ]
+                },
+                "action": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "category",
+                "action"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "question"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "effort_minutes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "proof": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "shown",
+            "tests_only",
+            "none",
+            "not_applicable"
+          ]
+        },
+        "path": {
+          "enum": [
+            "shipped_entry_point",
+            "in_process_harness",
+            "unit_only",
+            "none"
+          ]
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "reversibility": {
+      "enum": [
+        "flagged",
+        "fix_forward_safe",
+        "hard_to_reverse"
+      ]
+    },
+    "look_here": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer"
+          },
+          "line_end": {
+            "type": "integer"
+          },
+          "why": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "line",
+          "why"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "mechanical": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "unverified": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string"
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "what"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "failure_modes": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string"
+          },
+          "where": {
+            "type": "string"
+          },
+          "trigger": {
+            "type": "string"
+          },
+          "detected_by": {
+            "type": "string"
+          },
+          "covered_in_this_pr": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "what",
+          "where",
+          "detected_by"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "round": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "required": [
+    "tier",
+    "floor",
+    "bound_to",
+    "drivers",
+    "reversibility",
+    "look_here",
+    "mechanical",
+    "unverified"
+  ],
+  "additionalProperties": false
+}

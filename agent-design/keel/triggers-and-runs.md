@@ -102,3 +102,40 @@ queued → provisioning → running ⇄ finalizing → ended
 - **Finishers** set `outcome.finisher` (`{id, external_ref}`, e.g. the
   PR it opened), so a pipeline edge or sink can tell which ending was
   chosen.
+
+---
+
+## 10a. Draft runs on a sandbox
+
+A draft can't run on production; that's what publishing is for. It can
+run on a **sandbox deployment**, which is how a configuration is tried
+out and how `../eval.md`'s suites run against a change before it ships.
+
+A sandbox is a deployment with `kind: sandbox`
+([`examples/sandbox.deployment.json`](./examples/sandbox.deployment.json)).
+It has its own tier map and providers. Its `sandbox` block says what
+effects do there:
+
+| Effect | Default | Meaning |
+|---|---|---|
+| sinks | `record` | every delivery is stored with its rendered payload and state `recorded`; nothing is sent |
+| harness actions | `record` | `open_pull_request` and `request_help` are recorded with what they would have done, and the run continues as if they succeeded |
+| MCP writes | `deny` | a call to a tool not annotated `read_only` is refused with `sandbox_write_blocked`, unless set to `allow` |
+| servers | — | substitutes, e.g. `jira` → `jira-sandbox`, so a sandbox that allows writes writes to test data |
+
+Rules:
+
+- **Who and how.** A sandbox run is started by `POST /v1/runs` with
+  `deployment` set to the sandbox, by someone holding `runs:draft` on
+  the template. It runs as the caller only: no delegation, no service
+  identity, no trigger. Triggers always start published versions on
+  production.
+- **Everything else is the same.** The same resolution, the same rules,
+  the same events and outcome, so a sandbox run is a faithful rehearsal.
+  The run record names its deployment and resolved digest, so eval
+  results compare like with like.
+- **Drafts of anything.** A draft template, pipeline or saved tool group
+  can run there, and a draft template can use draft groups and prompts.
+  On production every reference must be published
+  (`draft_requires_sandbox`).
+

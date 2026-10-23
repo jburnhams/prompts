@@ -48,6 +48,12 @@
             "tool_absent": "Task"
           }
         }
+      ],
+      "generated": [
+        "env",
+        "capabilities",
+        "git_status",
+        "repo_context"
       ]
     },
     "inputs": [
@@ -162,7 +168,7 @@
       "report_schema": {
         "ref": {
           "name": "forge.report.implement",
-          "version": 3
+          "version": 1
         }
       },
       "spinoffs": {

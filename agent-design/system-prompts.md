@@ -25,6 +25,15 @@ placeholder identity name (see the folder README).
 
 ---
 
+**On Keel** (2026-10-23): these prompts are registered from files in
+[`forge-on-keel/prompts/`](./forge-on-keel/prompts), and the analysis
+ones from [`keel/examples/prompts/`](./keel/examples/prompts). Keel renders
+per-run blocks into the opening message rather than the system prompt
+([`keel/run-spec.md`](./keel/run-spec.md) §3), so those files drop the
+`{{ENV_BLOCK}}` and `{{TASK_ENVELOPE}}` slots. §1 is split into
+`forge.plan` and `forge.implement`, with the mode switch removed. This
+file stays the design source; the registered files are derived from it.
+
 ## 1. Coding-mode system prompt
 
 ```

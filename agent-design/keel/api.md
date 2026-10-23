@@ -24,7 +24,8 @@ pagination. `:verb` for actions.
 | Triggers | CRUD, `:fire` (test by default), `:pause`, `:resume`, `firings` |
 | Events | `POST /v1/events/{provider}`: signed inbound webhooks; gate replies arriving as comments go through here too |
 | Delegations | create (with a consent URL), list own, get, revoke |
-| Deployment | get, put (operators) |
+| Deployments | list, get, put: the production deployment and sandboxes |
+| Dependents | list what uses a tool group, prompt, report schema, template or server snapshot; `:republish` moves dependents to a new version, drafting (and optionally publishing) each, with `cascade` through extends and pipelines |
 
 Two deliberate absences. There's **no endpoint that edits a published
 template**, and **no endpoint that changes a running run's spec**. The

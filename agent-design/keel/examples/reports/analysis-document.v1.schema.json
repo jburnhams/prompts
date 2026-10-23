@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keel.example/registry/report_schema/analysis.report.document/1",
+  "title": "Analysis report document",
+  "description": "Complete.report for analysis.report: a written report whose every figure is a claim with refs.",
+  "type": "object",
+  "properties": {
+    "question": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "document_markdown": {
+      "type": "string",
+      "description": "The report as published by the publish sink."
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "statement": {
+            "type": "string",
+            "description": "One claim, with its figure, as the user will read it."
+          },
+          "refs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^(table|artifact|run)://"
+            },
+            "description": "Where the figure came from. Every one must resolve with a produced_by (the provenance check)."
+          },
+          "sql": {
+            "type": "string"
+          },
+          "row_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "input_rows": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "statement",
+          "refs"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "caveats": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Including the explore run's NOT CHECKED items the writer did not check itself."
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "question",
+    "title",
+    "document_markdown",
+    "claims",
+    "caveats",
+    "evidence"
+  ],
+  "additionalProperties": false
+}

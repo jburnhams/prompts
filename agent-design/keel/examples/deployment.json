@@ -1,4 +1,6 @@
 {
+  "id": "prod",
+  "kind": "production",
   "tiers": {
     "economy": {
       "provider": "bedrock",
@@ -22,13 +24,20 @@
     "bedrock": {
       "api": "bedrock_converse",
       "deferred_tools": "none",
-      "cache_min_tokens": 1024
+      "cache_min_tokens": 1024,
+      "reveal": {
+        "mechanism": "none"
+      }
     },
     "anthropic": {
       "api": "anthropic_messages",
       "deferred_tools": "native",
       "cache_min_tokens": 512,
-      "advisor": true
+      "advisor": true,
+      "reveal": {
+        "mechanism": "tool_changes",
+        "beta": "mid-conversation-tool-changes-2026-07-01"
+      }
     }
   },
   "max_tier": "strong",

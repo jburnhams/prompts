@@ -15,6 +15,9 @@ case shares. Each choice below is Forge's, made with what Keel provides.
 | [`forge.review.template.json`](./forge.review.template.json) | multi-stage review |
 | [`jira-plan-implement.pipeline.json`](./jira-plan-implement.pipeline.json), [`jira-assigned.trigger.json`](./jira-assigned.trigger.json) | plan → approved → implement, started by a Jira assignment |
 | [`pr-review-fix.pipeline.json`](./pr-review-fix.pipeline.json), [`pr-review.trigger.json`](./pr-review.trigger.json) | review a PR, then fix what its author approves |
+| [`prompts/`](./prompts) | Forge's prompts as registered text, derived from `../system-prompts.md`: plan, implement, the delegate, the review orchestrator, the reviewer (core and wrapper together), the validator |
+| [`reports/`](./reports) | Forge's report schemas, from `../formats.md` §3–§4 and `../risk.md` §2 |
+| [`registry.json`](./registry.json) | which file each prompt and report-schema ref resolves to |
 
 **Forge's choices, which Keel leaves open:**
 

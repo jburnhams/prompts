@@ -16,7 +16,7 @@ publish against the real snapshot.
 |---|---|
 | R1 | every agent's grant, including `kind_grants`, names a declared group |
 | R2 | every `mcp:<server>` tool names a server in `tools.servers` |
-| R3 | the spawn graph names real agents; `kind_grants` keys are in `spawn_kinds` |
+| R3 | the spawn graph names real agents; `kind_grants` and `kind_scope` keys are in `spawn_kinds` |
 | R4 | params: declared; `external`/`principal` bind only to inputs; config-bound params are constrained; grant-bearing fields take no params |
 | R5 | `completion.form: text` has no report schema, completion checks, spinoffs or finishers, and status `done` only |
 | R6 | monitor handoffs name declared reasons; a template with HandOff reasons that no pipeline wires is a warning, since alone it has no HandOff |
@@ -29,6 +29,7 @@ publish against the real snapshot.
 | R13 | argument overrides only narrow: a hidden argument is fixed, an enum is a subset of the server's, a maximum only goes down; a fixed `$param` is a config param of the template; other overrides on a fixed argument are a warning |
 | R14 | finishers: `complete: false` needs at least one; each ends with a declared status; `report` needs a report schema; the wrapped tool is declared |
 | R15 | if any agent can reach `action/open_pull_request` (granted or through a finisher), the checkout is writable with `git_writes: via_action`; `via_action` with no agent able to reach it is an error |
+| R16 | every prompt and report-schema ref resolves in a configuration's registry; every report schema is a valid JSON Schema whose relative refs resolve; a prompt still marked a draft fragment is a warning |
 | P1 | a pipeline's entry and edges name real stages; every `pipeline.params.x` it reads is declared |
 | P2 | every exit an edge waits on (status, finisher, HandOff reason) exists in that stage's template; every HandOff reason of every stage is wired |
 | P3 | each edge's carry is accepted by the next stage's template |

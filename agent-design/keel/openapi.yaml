@@ -36,6 +36,7 @@ tags:
   - name: Triggers
   - name: Delegations
   - name: Deployment
+    description: The production deployment and sandboxes.
 
 paths:
   /v1/mcp-servers:
@@ -473,7 +474,12 @@ paths:
         content: { application/json: { schema: { $ref: "schemas/run.schema.json#/$defs/RunRequest" } } }
       responses:
         "202":
-          description: Accepted and queued. A pipeline request returns the PipelineRun; its first stage run is in stages[0].
+          description: |
+            Accepted and queued. A pipeline request returns the PipelineRun;
+            its first stage run is in stages[0]. A request naming a draft
+            version, or with deployment set to a sandbox, runs on that
+            sandbox as the caller; drafts on production are refused with
+            draft_requires_sandbox.
           content:
             application/json:
               schema:
@@ -751,7 +757,17 @@ paths:
       responses:
         "204": { description: Revoked }
 
-  /v1/deployment:
+  /v1/deployments:
+    get:
+      tags: [Deployment]
+      operationId: listDeployments
+      description: The production deployment and any sandboxes.
+      responses:
+        "200":
+          description: Deployments.
+          content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: "schemas/deployment.schema.json" } } } } } }
+  /v1/deployments/{deployment_id}:
+    parameters: [{ name: deployment_id, in: path, required: true, schema: { type: string } }]
     get:
       tags: [Deployment]
       operationId: getDeployment
@@ -760,12 +776,91 @@ paths:
     put:
       tags: [Deployment]
       operationId: putDeployment
-      description: Operators only. A tier remap applies to runs started after it; the run record keeps the model id it ran on.
+      description: Requires deployment:write. A tier remap applies to runs started after it; the run record keeps the model id it ran on. A deployment's kind can't change.
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: "schemas/deployment.schema.json" } } }
       responses:
         "200": { description: Saved, content: { application/json: { schema: { $ref: "schemas/deployment.schema.json" } } } }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /v1/dependents:
+    get:
+      tags: [Registry]
+      operationId: listDependents
+      description: |
+        Every published, non-deprecated template and pipeline whose latest
+        version uses the given resource, and which version of it each
+        uses. Templates count through extends; pipelines through their
+        pinned stage templates.
+      parameters:
+        - { name: kind, in: query, required: true, schema: { type: string, enum: [tool_group, prompt, report_schema, template, mcp_server] } }
+        - { name: name, in: query, required: true, schema: { type: string } }
+        - { name: version, in: query, schema: { type: string }, description: "A version, or an MCP snapshot digest. Omitted: any version." }
+      responses:
+        "200":
+          description: Dependents.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Dependent" }
+  /v1/dependents:republish:
+    post:
+      tags: [Registry]
+      operationId: republishDependents
+      description: |
+        Moves dependents onto a new version of something they use: a saved
+        tool group, a prompt, a report schema, a base template, or an MCP
+        server's new snapshot. For each dependent it drafts the next
+        version with only that reference changed, runs every publish rule,
+        and, if `publish` is true and the draft passes, publishes it. With
+        `cascade`, a republished template's own dependents (templates that
+        extend it, pipelines that pin it) are handled next, in dependency
+        order. Each dependent succeeds or fails on its own; nothing is
+        rolled back. Runs in flight keep the versions they started on.
+      parameters: [{ $ref: "#/components/parameters/idempotencyKey" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                source:
+                  type: object
+                  properties:
+                    kind: { type: string, enum: [tool_group, prompt, report_schema, template, mcp_server] }
+                    name: { type: string }
+                    from_version: { type: string, description: "Only move dependents on this version. Omitted: any older version." }
+                    to_version: { type: string, description: "A published version, or a snapshot digest." }
+                  required: [kind, name, to_version]
+                only: { type: array, items: { type: string }, description: "Limit to these template or pipeline names." }
+                publish: { type: boolean, default: false, description: "false leaves passing drafts for review." }
+                cascade: { type: boolean, default: false }
+                dry_run: { type: boolean, default: false }
+              required: [source]
+      responses:
+        "200":
+          description: One result per dependent.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        dependent: { $ref: "#/components/schemas/Dependent" }
+                        new_version: { type: integer }
+                        state: { type: string, enum: [drafted, published, failed, skipped_up_to_date] }
+                        diagnostics: { $ref: "#/components/schemas/DiagnosticList" }
+                        delegations_needing_consent: { type: array, items: { type: string } }
 
 components:
   parameters:
@@ -780,6 +875,15 @@ components:
     triggerId: { name: trigger_id, in: path, required: true, schema: { $ref: "schemas/common.schema.json#/$defs/Id" } }
 
   schemas:
+    Dependent:
+      type: object
+      properties:
+        kind: { type: string, enum: [template, pipeline] }
+        name: { type: string }
+        version: { type: integer, description: "The dependent's latest published version." }
+        uses: { type: string, description: "The version of the source it uses." }
+        via: { type: string, description: "How: tools.groups, system_prompt, agents.<a>.prompt, completion.report_schema, extends, stages.<s>, tools.servers." }
+      required: [kind, name, version, uses, via]
     Diagnostic:
       type: object
       properties:
