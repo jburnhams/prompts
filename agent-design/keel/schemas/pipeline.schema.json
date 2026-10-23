@@ -174,7 +174,7 @@
         },
         "retry": {
           "type": "object",
-          "description": "When a stage's run ends in a retryable way, start another attempt instead of ending the stage.",
+          "description": "When a stage's run ends in a retryable way, start another attempt instead of ending the stage. Replaces the template's stage_defaults.retry. By default failed is not retried: a genuine failure blocks the stage for a human.",
           "properties": {
             "max_attempts": {
               "type": "integer",
@@ -219,7 +219,7 @@
         },
         "settle": {
           "type": "object",
-          "description": "A stage whose run ended done is not finished until an external event: the PR it led to merges. The stage waits in settling, holding its concurrency key if the template says so. orchestration.md's handoff state.",
+          "description": "A stage whose run ended done is not finished until an external event: the PR it led to merges. The stage waits in settling, holding its concurrency key if the template says so. orchestration.md's handoff state. Replaces the template's stage_defaults.settle.",
           "properties": {
             "event": {
               "type": "string",

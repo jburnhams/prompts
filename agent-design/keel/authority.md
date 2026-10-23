@@ -71,9 +71,18 @@ Triggers choose `run_as`:
   may outlive the chat request, so the harness mints a **session
   delegation**: scoped to this one pipeline run, the user's current
   session scopes, the template's or pipeline's declared scopes, and
-  expiring when the pipeline run ends or at a cap. It's created from the
+  expiring when the pipeline run ends or after 24 hours, whichever is
+  first (the deployment's `session_delegation_max_s`). It's created from the
   live session, so there is nothing for the user to approve, and it
   can't be reused by any other request.
+
+  **A gate answered after the session has ended doesn't revive it.** If
+  the follow-up needs to act for the user, it needs a stored delegation
+  from them; otherwise the edge refuses with `delegation_missing` and
+  the stage is blocked. The approver's own session is never used to act
+  for someone else. That keeps one rule: a run acts with the authority
+  of the person it's for, or with the service identity, and never with
+  the authority of whoever happened to click.
 
 **Gates use the same identities.** Who may answer is a
 `PrincipalSetRule` list (`principal`, `requested_by`,

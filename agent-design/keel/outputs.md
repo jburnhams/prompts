@@ -95,7 +95,8 @@ The rules that keep this safe, for both kinds:
   acyclic (P6). Every stage lands at or below the pipeline's `max_tier`
   (P5), and below the deployment ceiling at run time (`tier_ceiling`).
   `../models.md`'s "at most two hand-offs" is `max_hops: 2` on `analysis`.
-- **Gated edges open a `Gate`.** Approval gates bind to `report_hash`
+- **Gated edges open a `Gate`**, which expires after 7 days by default
+  and then blocks the waiting stage. Approval gates bind to `report_hash`
   or `plan_hash`, and the approval lapses if the content changes
   (`../formats.md` §5a rule 4).
 - **Never someone else's authority.** A continuation's `run_as` is

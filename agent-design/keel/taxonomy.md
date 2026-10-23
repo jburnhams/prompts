@@ -466,6 +466,9 @@ concurrency key it holds.
 stage, a **retry**, a resume, an approved action, or a cleared
 dependency.
 
+**Stage defaults.** A template's own `retry` and `settle`, used when it
+runs alone or when a pipeline stage leaves them unset.
+
 **Retry.** A stage policy: which ending statuses start another attempt
 (by default `budget_exhausted`, infrastructure failure and a lost
 lease, but not `failed`), how many times, and with what raised budgets.

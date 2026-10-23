@@ -53,6 +53,25 @@ template. The cost on the quick chat path is one row written before the
 first turn, and the dispatcher starts the stage at once rather than on a
 polling cycle.
 
+**A template can say how it behaves as a stage.** Its `stage_defaults`
+carry a `retry` policy and a `settle` wait, used when it runs alone and
+whenever a pipeline stage leaves them unset. A pipeline stage that sets
+its own `retry` or `settle` replaces that default as a whole. So
+`coding.java`, which opens a PR as its ending, waits for the merge even
+when nobody wrapped it in a pipeline.
+
+**Platform defaults** (the deployment's `defaults.policy`), which
+templates and pipelines override where they have a field:
+
+| Policy | Default |
+|---|---|
+| gate expiry | 7 days |
+| on expiry | the waiting stage is **blocked**, for a person to retry or abandon (`abandon` is the alternative a template may choose) |
+| session delegation cap | 24 hours |
+| `stranded` | a ready stage not started within 1 hour |
+| `waiting_stale` | a stage waiting more than 3 days |
+| retry on `failed` | off: a genuine failure blocks the stage for a human; a template or stage can opt in |
+
 A pipeline run holds one **stage record** per stage it entered. Each
 record has:
 

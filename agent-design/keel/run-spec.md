@@ -60,6 +60,9 @@ The fields, with the reason each is shaped the way it is:
 - **`authority`**: who the run may act for (§8).
 - **`concurrency`**: from `../orchestration.md` §4; held through a stage's
   settle wait (§7f).
+- **`stage_defaults`**: the template's default `retry` and `settle` when
+  it runs as a stage, alone or in a pipeline that leaves them unset
+  (§7f).
 
 ### 3e. Deployment
 

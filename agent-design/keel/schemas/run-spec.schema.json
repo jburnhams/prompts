@@ -79,6 +79,19 @@
         "$ref": "common.schema.json#/$defs/Name"
       },
       "description": "The agents inside a run. orchestrator is the top-level agent and the only one that can end the run or reach a human. Every other key is a sub-agent it (or another agent) may spawn. ('Role' is reserved for RBAC; see taxonomy.md.)"
+    },
+    "stage_defaults": {
+      "type": "object",
+      "description": "How this template behaves as a stage when nothing overrides it: alone (a one-stage pipeline run) or in a pipeline whose stage leaves these unset. A pipeline stage's own retry or settle replaces the default as a whole.",
+      "properties": {
+        "retry": {
+          "$ref": "pipeline.schema.json#/$defs/Stage/properties/retry"
+        },
+        "settle": {
+          "$ref": "pipeline.schema.json#/$defs/Stage/properties/settle"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "required": [
@@ -611,15 +624,16 @@
             },
             "expires_after_s": {
               "type": "integer",
-              "minimum": 60
+              "minimum": 60,
+              "description": "Default from the deployment (7 days)."
             },
             "on_expiry": {
               "type": "string",
               "enum": [
-                "fail",
-                "abandon_task"
+                "block_stage",
+                "abandon"
               ],
-              "default": "fail"
+              "description": "Default from the deployment (block_stage): the stage is blocked for a person to retry or abandon. abandon: the pipeline run is abandoned with gate_expired."
             }
           },
           "required": [
@@ -1214,7 +1228,8 @@
                 },
                 "expires_after_s": {
                   "type": "integer",
-                  "minimum": 60
+                  "minimum": 60,
+                  "description": "Default from the deployment (7 days). On expiry the waiting stage is blocked."
                 }
               },
               "required": [

@@ -491,7 +491,10 @@ def check_pipeline(where, pipe, flat_specs, params_by_template, servers, base_te
                 err(where, f"P9 sink {s['id']} opens a PR from {st}, whose checkout is not writable and retained for the stage")
         if "at" in s and s["at"]["stage"] not in stages:
             err(where, f"P8 sink {s['id']} fires at unknown stage {s['at']['stage']}")
-        if "at" in s and s["at"]["event"] == "settled" and "settle" not in stages.get(s["at"]["stage"], {}):
+        settles = "settle" in stages.get(s["at"]["stage"], {}) if "at" in s else False
+        if "at" in s and not settles and s["at"]["stage"] in specs:
+            settles = "settle" in (specs[s["at"]["stage"]][1].get("stage_defaults") or {})
+        if "at" in s and s["at"]["event"] == "settled" and not settles:
             err(where, f"P8 sink {s['id']} fires when {s['at']['stage']} settles, but that stage has no settle")
         if s["kind"] == "tool":
             if s["tool"] not in declared:

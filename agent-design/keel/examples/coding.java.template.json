@@ -356,6 +356,26 @@
           "java"
         ]
       }
+    },
+    "stage_defaults": {
+      "retry": {
+        "max_attempts": 2,
+        "raise_budgets": {
+          "turns": 1.5
+        }
+      },
+      "settle": {
+        "event": "pr",
+        "ref": {
+          "cel": "stage.links.pull_request"
+        },
+        "done_when": [
+          "merged"
+        ],
+        "abandon_when": [
+          "closed_unmerged"
+        ]
+      }
     }
   }
 }

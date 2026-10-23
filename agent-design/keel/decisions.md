@@ -62,6 +62,11 @@ when each was decided.
 | Role means RBAC (2026-10-23, on review) | **"Role" means only an RBAC role** (a set of permission groups, assigned to a team, held by its members), which lives outside this spec. The contexts inside a run are **agents** (orchestrator, sub-agents); the run-level spec is renamed `RunSpec`; the spawn argument is `kind`; the platform names the permissions it checks (`authority.md` §12a) | Keeping `roles` for the orchestrator and sub-agents | The deployment has an RBAC system where role already means something, and permissions sit right next to agents in every authority discussion, so the two senses would meet in the same sentences |
 | Name and layout (2026-10-23, on review) | **The platform is named Keel; its docs live in `agent-design/keel/`, split by area with section numbers shared across files, and Forge's configuration lives in `agent-design/forge-on-keel/`**. Keel's own decisions and taxonomy move with it | The names Anvil and Plinth; a top-level folder beside `agent-design/` | A name stops "the platform" and "Forge" blurring in every sentence. Anvil pairs with Forge but reads as coding-flavoured, which is the line the split exists to draw. Keeping the folder inside `agent-design/` was the owner's call, trading a cleaner separation for less movement |
 | One vocabulary (2026-10-23, on review) | **Keel owns one shared vocabulary of integrations and capabilities (events, channels, harness actions, input builders, checks, monitor signals); use cases never extend it.** A name says what it integrates, not which use case first needed it (the PR-diff builder was renamed from `review_diff` to `pr_diff`). Forge is a set of use cases and their configurations, not an extension of Keel | Per-deployment registered catalogues, with Forge's vocabulary as one pack among several (proposed in this session, not adopted) | The same tools, events and actions serve Forge and data-analysis use cases alike, and pipelines mix them. Per-use-case vocabularies would make that mixing a matter of reconciling packs, and would hide shared integrations behind use-case names |
+| Template stage defaults (2026-10-23, interview) | **A template may declare `stage_defaults` (`retry`, `settle`), used when it runs alone or when a pipeline stage leaves them unset; a stage's own value replaces the default as a whole** (`pipelines.md` §7f) | Retry and settle on pipeline stages only | A template that opens a PR should wait for the merge without being wrapped in a pipeline just for that |
+| Late approvals (2026-10-23, interview) | **A gate answered after the requester's session has ended does not revive it: acting for the user then needs their stored delegation, or the edge refuses with `delegation_missing` and the stage blocks** (`authority.md` §8) | Running the follow-up as the approver (the recommendation put to the owner); minting a stored delegation at the start of every user-started run | Authority stays with the person the work is for or with the service identity, never with whoever clicked approve; and no standing consent is created that the user never asked for |
+| Retrying `failed` (2026-10-23, interview) | **Not retried by default**; retries cover running out of budget, infrastructure failure and a lost lease, and a genuine failure blocks the stage for a human. Templates and stages may opt in | Retrying a failure once by default | The ledger's original reasoning holds: more of the same rarely fixes a real failure, and an attempt spent on it is lost to a budget retry |
+| Scope limits (2026-10-23, interview) | **Pipelines are paths (no loops, parallel branches or joins) and harness expressions are CEL**, confirmed | Branching pipelines; a different expression language | Fan-out already lives inside a run; CEL is typed, bounded in cost, and can't loop |
+| Policy defaults (2026-10-23, interview) | **Gate expiry 7 days, then block the stage; session delegation cap 24 hours; `stranded` after 1 hour, `waiting_stale` after 3 days**, as deployment `defaults.policy`, overridable where a template or pipeline has a field | Gate expiry of 14 days or none; abandoning on expiry; a session cap of 1 or 8 hours (8 was recommended); stale thresholds of 15 min / 1 day or 4 h / 7 days | A week covers an absence without letting stale questions pile up; blocking keeps work someone forgot to answer. 24 hours lets a long report or an overnight stage finish under the user's authority |
 
 ---
 
@@ -69,27 +74,8 @@ when each was decided.
 
 ### Platform decisions still to make
 
-1. **A template's own run defaults.** Run on its own, a template is a
-   one-stage pipeline run with one attempt and no settle wait. Should a
-   template be able to declare a default `retry` and `settle`, which a
-   pipeline stage overrides? Recommended: yes. Otherwise anything that
-   opens a PR must be wrapped in a pipeline just to wait for the merge.
-2. **Late approvals.** When a gate is answered after the person who
-   started the work has left, there is no live session to act with.
-   Recommended: the follow-up runs as the **approver**, who is present
-   when they approve. The alternatives are refusing unless a stored
-   delegation exists (today's rule), or minting a stored delegation for
-   every user-started run.
-3. **Policy defaults.** Gate expiry and what expiry does, the session
-   delegation's cap, and the thresholds for `stranded` and
-   `waiting_stale`. These need platform defaults that templates and
-   pipelines can override; the examples use placeholders.
-4. **Retrying `failed`.** The default retries running out of budget,
-   infrastructure failure and a lost lease, but not a genuine failure,
-   which blocks the stage for a human. Confirm.
-5. **Two scope limits.** Pipelines are paths (no loops, parallel
-   branches or joins), and harness expressions are CEL. Both are easy to
-   keep and hard to change once configurations depend on them. Confirm.
+None. The five that were open are decided (the 2026-10-23 interview
+rows in §14a).
 
 ### Work items
 

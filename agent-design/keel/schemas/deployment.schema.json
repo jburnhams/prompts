@@ -8,11 +8,21 @@
     "tiers": {
       "type": "object",
       "properties": {
-        "economy": { "$ref": "#/$defs/TierBinding" },
-        "standard": { "$ref": "#/$defs/TierBinding" },
-        "strong": { "$ref": "#/$defs/TierBinding" }
+        "economy": {
+          "$ref": "#/$defs/TierBinding"
+        },
+        "standard": {
+          "$ref": "#/$defs/TierBinding"
+        },
+        "strong": {
+          "$ref": "#/$defs/TierBinding"
+        }
       },
-      "required": ["economy", "standard", "strong"],
+      "required": [
+        "economy",
+        "standard",
+        "strong"
+      ],
       "additionalProperties": false
     },
     "providers": {
@@ -20,37 +30,125 @@
       "additionalProperties": {
         "type": "object",
         "properties": {
-          "api": { "type": "string", "enum": ["anthropic_messages", "bedrock_converse", "vertex", "openai_responses"] },
-          "deferred_tools": { "type": "string", "enum": ["native", "client", "none"] },
-          "cache_min_tokens": { "type": "integer", "minimum": 0 },
-          "advisor": { "type": "boolean", "default": false }
+          "api": {
+            "type": "string",
+            "enum": [
+              "anthropic_messages",
+              "bedrock_converse",
+              "vertex",
+              "openai_responses"
+            ]
+          },
+          "deferred_tools": {
+            "type": "string",
+            "enum": [
+              "native",
+              "client",
+              "none"
+            ]
+          },
+          "cache_min_tokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "advisor": {
+            "type": "boolean",
+            "default": false
+          }
         },
-        "required": ["api", "deferred_tools"],
+        "required": [
+          "api",
+          "deferred_tools"
+        ],
         "additionalProperties": false
       }
     },
-    "max_tier": { "$ref": "common.schema.json#/$defs/Tier" },
+    "max_tier": {
+      "$ref": "common.schema.json#/$defs/Tier"
+    },
     "defaults": {
       "type": "object",
       "properties": {
-        "budgets": { "$ref": "run-spec.schema.json#/$defs/Budgets" },
-        "checks": { "type": "array", "items": { "$ref": "tools.schema.json#/$defs/HarnessCheck" }, "description": "Added to every template's checks; a template cannot remove them." }
+        "budgets": {
+          "$ref": "run-spec.schema.json#/$defs/Budgets"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "tools.schema.json#/$defs/HarnessCheck"
+          },
+          "description": "Added to every template's checks; a template cannot remove them."
+        },
+        "policy": {
+          "type": "object",
+          "description": "Platform defaults that templates and pipelines may override where they have a field for it (keel/decisions.md, 'Policy defaults').",
+          "properties": {
+            "gate_expires_after_s": {
+              "type": "integer",
+              "minimum": 60,
+              "default": 604800,
+              "description": "7 days."
+            },
+            "on_gate_expiry": {
+              "type": "string",
+              "enum": [
+                "block_stage",
+                "abandon"
+              ],
+              "default": "block_stage"
+            },
+            "session_delegation_max_s": {
+              "type": "integer",
+              "minimum": 60,
+              "default": 86400,
+              "description": "24 hours. Not overridable upward by a template."
+            },
+            "stranded_after_s": {
+              "type": "integer",
+              "minimum": 60,
+              "default": 3600,
+              "description": "A ready stage not started within this is stranded."
+            },
+            "waiting_stale_after_s": {
+              "type": "integer",
+              "minimum": 60,
+              "default": 259200,
+              "description": "3 days. A stage waiting longer than this is waiting_stale."
+            }
+          },
+          "additionalProperties": false
+        }
       },
       "additionalProperties": false
     }
   },
-  "required": ["tiers", "providers", "max_tier"],
+  "required": [
+    "tiers",
+    "providers",
+    "max_tier"
+  ],
   "additionalProperties": false,
   "$defs": {
     "TierBinding": {
       "type": "object",
       "properties": {
-        "provider": { "type": "string" },
-        "model_id": { "type": "string" },
-        "effort": { "$ref": "common.schema.json#/$defs/Effort" },
-        "vision": { "type": "boolean" }
+        "provider": {
+          "type": "string"
+        },
+        "model_id": {
+          "type": "string"
+        },
+        "effort": {
+          "$ref": "common.schema.json#/$defs/Effort"
+        },
+        "vision": {
+          "type": "boolean"
+        }
       },
-      "required": ["provider", "model_id"],
+      "required": [
+        "provider",
+        "model_id"
+      ],
       "additionalProperties": false
     }
   }
