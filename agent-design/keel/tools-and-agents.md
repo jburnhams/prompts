@@ -39,6 +39,24 @@ ending, or both. Two generic mechanisms are what make that work:
   tools can commit, push and open a review from the working tree. For a
   pipeline sink it starts against the stage's retained checkout. The
   model still can't run git writes through `Bash`.
+  *(Added 2026-10-26.)* **The bound server does not trust the
+  checkout's git metadata.** Blocking git writes in `Bash` is not
+  enough: `Bash` can write `.git/config` or `.git/hooks/` with `echo`,
+  and git configuration is code (`core.hooksPath`, `core.fsmonitor`,
+  `core.sshCommand`, `include`, upload-pack overrides), so the server's
+  next `git push`, holding the deployment's credentials, would run the
+  agent's choice of program outside the sandbox. Two rules close it.
+  The agent's sandbox mounts the checkout's git directory (including
+  submodule and linked-worktree git folders) **read-only**, so `Bash`
+  can still read history and diffs but cannot change what git will
+  execute; the bound server owns the only writable copy. And the server
+  runs every git command with hooks and fsmonitor disabled, `include`
+  ignored, and a fixed allowlist of transport protocols, passing
+  credentials through a helper rather than the environment. Claude Code
+  reached the same conclusion from the other side, write-denying the
+  folders git reads and refusing to suggest a command in a submodule
+  whose git folder the sandbox could write
+  (`../../agent-git-vcs.md` §8).
 - **A tool's result can write stage links** (`ToolRef.links`, e.g.
   `pull_request: result.url`). A stage's settle wait then watches that
   link, whoever opened the PR.
@@ -207,6 +225,27 @@ is enforced:
   false on purpose: it runs `strong` under a `standard` orchestrator
   (`../models.md` §7). That is a template author's decision, visible in the
   file, never a runtime one.
+- **A sub-agent's report reaches its spawner as data** *(added
+  2026-10-26)*. The `Task` result is wrapped in a nonce-tagged
+  `<subagent_report>` block carrying the lowest trust of anything that
+  sub-agent read: `untrusted` if it read a ticket, a PR, a web page, a
+  tool result from an external server or a file outside the template's
+  config, which is nearly always. The spawner may use the facts it
+  reports; text in it that tells the spawner what to do, or claims
+  approval or scope, is a finding to report and never an instruction
+  (`../formats.md` §1b's consuming rule, now applied to delegates). A
+  `report_schema` makes this easier to keep, since a structured report
+  has fewer places for instructions to hide, but does not replace it.
+  **Supersedes** `../tools.md`'s usage note that "a sub-agent's report
+  should generally be trusted for `general-purpose` research tasks".
+  The reason: a delegate that read injected text relays it with the
+  orchestrator's own trust unless the boundary says otherwise, and the
+  auto-mode red-team found handoffs between contexts to be a working
+  channel (multi-agent attacks succeeded 18/18 against auto mode and
+  0/20 against the hardened Auto Mode ++; `../../agent-permissions-approval.md` §2d). Claude Code's
+  coordinator rule, that an approved action is run by a worker that
+  never read the untrusted input (`../../agent-subagent-architectures.md`
+  §7c), is the same boundary drawn from the other side.
 
 ### 4d. Harness checks
 

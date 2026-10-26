@@ -377,6 +377,8 @@
         "exit_unwired",
         "permission_denied",
         "dependency_abandoned",
+        "repeated_infra_failure",
+        "approval_inputs_changed",
         "draft_requires_sandbox",
         "sandbox_write_blocked"
       ]

@@ -1,0 +1,150 @@
+status	name	cc_version	file
+A	Agent Prompt: Artifact type creation slash command (first-party type)	2.1.304	agent-prompt-artifact-type-creation-slash-command-first-party-type.md
+A	Agent Prompt: Artifact type creation slash command (MCP connector tools, first-party type)	2.1.304	agent-prompt-artifact-type-creation-slash-command-mcp-connector-tools-first-party-type.md
+A	Agent Prompt: Artifact type creation slash command (MCP connector tools)	2.1.304	agent-prompt-artifact-type-creation-slash-command-mcp-connector-tools.md
+M	Agent Prompt: Claude Test author	2.1.310	agent-prompt-claude-test-author.md
+M	Agent Prompt: Claude Test explorer	2.1.310	agent-prompt-claude-test-explorer.md
+M	Agent Prompt: Pull request creation	2.1.309	agent-prompt-pull-request-creation.md
+M	Agent Prompt: Quick PR creation	2.1.309	agent-prompt-quick-pr-creation.md
+A	Agent Prompt: Security monitor email direct send example	2.1.305	agent-prompt-security-monitor-email-direct-send-example.md
+A	Agent Prompt: Security monitor email group reply example	2.1.305	agent-prompt-security-monitor-email-group-reply-example.md
+A	Agent Prompt: Security monitor email group reply exception	2.1.305	agent-prompt-security-monitor-email-group-reply-exception.md
+A	Agent Prompt: Security monitor email reply approval scope	2.1.305	agent-prompt-security-monitor-email-reply-approval-scope.md
+A	Agent Prompt: Security monitor email reply outbound content rule	2.1.305	agent-prompt-security-monitor-email-reply-outbound-content-rule.md
+A	Agent Prompt: Security monitor email reply outbound recipient rule	2.1.305	agent-prompt-security-monitor-email-reply-outbound-recipient-rule.md
+A	Agent Prompt: Security monitor email sender-only approval scope	2.1.305	agent-prompt-security-monitor-email-sender-only-approval-scope.md
+A	Agent Prompt: Security monitor email sender-only outbound clearance rule	2.1.305	agent-prompt-security-monitor-email-sender-only-outbound-clearance-rule.md
+A	Agent Prompt: Security monitor email sender turns	2.1.305	agent-prompt-security-monitor-email-sender-turns.md
+M	Agent Prompt: Web reading specialist	2.1.307	agent-prompt-web-reading-specialist.md
+M	Agent Prompt: Workflow subagent plain text output	2.1.301	agent-prompt-workflow-subagent-plain-text-output.md
+M	Data: allowedMcpServers setting	2.1.305	data-allowedmcpservers-setting.md
+M	Data: allowManagedPermissionRulesOnly allowed-tools frontmatter scope	2.1.305	data-allowmanagedpermissionrulesonly-allowed-tools-frontmatter-scope.md
+A	Data: Artifact ask-first intake form instructions	2.1.310	data-artifact-ask-first-intake-form-instructions.md
+M	Data: Artifact connector server naming guidance	2.1.310	data-artifact-connector-server-naming-guidance.md
+M	Data: Artifact host MCP server guidance	2.1.304	data-artifact-host-mcp-server-guidance.md
+A	Data: attributionProject setting	2.1.305	data-attributionproject-setting.md
+M	Data: Claude API reference — PHP	2.1.309	data-claude-api-reference-php.md
+M	Data: Claude API reference — Ruby	2.1.309	data-claude-api-reference-ruby.md
+M	Data: Claude Platform on AWS reference	2.1.309	data-claude-platform-on-aws-reference.md
+M	Data: Claude Test spec file format	2.1.310	data-claude-test-spec-file-format.md
+M	Data: Cloud session unverified remote branch push notice	2.1.304	data-cloud-session-unverified-remote-branch-push-notice.md
+A	Data: Code review startup token file descriptor error	2.1.309	data-code-review-startup-token-file-descriptor-error.md
+M	Data: Data visualization marks and anatomy	2.1.309	data-data-visualization-marks-and-anatomy.md
+A	Data: MCP status control request liveReply field	2.1.309	data-mcp-status-control-request-livereply-field.md
+M	Data: OpenTelemetry tracing reference — C#	2.1.309	data-opentelemetry-tracing-reference-c.md
+M	Data: OpenTelemetry tracing reference — Go	2.1.309	data-opentelemetry-tracing-reference-go.md
+M	Data: OpenTelemetry tracing reference — Java	2.1.309	data-opentelemetry-tracing-reference-java.md
+M	Data: OpenTelemetry tracing reference — PHP	2.1.309	data-opentelemetry-tracing-reference-php.md
+M	Data: OpenTelemetry tracing reference — Python	2.1.309	data-opentelemetry-tracing-reference-python.md
+M	Data: OpenTelemetry tracing reference — Ruby	2.1.309	data-opentelemetry-tracing-reference-ruby.md
+M	Data: OpenTelemetry tracing reference — TypeScript	2.1.309	data-opentelemetry-tracing-reference-typescript.md
+M	Data: Rate limit unified windows	2.1.310	data-rate-limit-unified-windows.md
+A	Data: Sandbox worktrees directory listing failure warning	2.1.310	data-sandbox-worktrees-directory-listing-failure-warning.md
+M	Data: SDK API error kind field	2.1.307	data-sdk-api-error-kind-field.md
+A	Data: SDK command_lifecycle scheduled_for field	2.1.307	data-sdk-command-lifecycle-scheduled-for-field.md
+A	Data: SDK read_file anchor as_written kind	2.1.307	data-sdk-read-file-anchor-as-written-kind.md
+M	Data: SDK read_file anchor field	2.1.307	data-sdk-read-file-anchor-field.md
+A	Data: SDK result model_usage_since_last_result field	2.1.309	data-sdk-result-model-usage-since-last-result-field.md
+D	Data: SDK safeguard_results field	2.1.299	data-sdk-safeguard-results-field.md
+D	Data: SDK safeguard_tool_use field	2.1.292	data-sdk-safeguard-tool-use-field.md
+M	Data: SDK set max thinking tokens request schema	2.1.310	data-sdk-set-max-thinking-tokens-request-schema.md
+A	Data: SDK set model error response model field	2.1.307	data-sdk-set-model-error-response-model-field.md
+A	Data: SDK set model success payload model field	2.1.307	data-sdk-set-model-success-payload-model-field.md
+A	Data: SDK user message requeue_if_interrupted_within_ms field	2.1.307	data-sdk-user-message-requeue-if-interrupted-within-ms-field.md
+A	Data: Self-hosted runner diff-finds-nested-repository exec path notice	2.1.307	data-self-hosted-runner-diff-finds-nested-repository-exec-path-notice.md
+M	Data: Self-hosted runner orchestrator command help	2.1.307	data-self-hosted-runner-orchestrator-command-help.md
+A	Data: sshHostCommands setting	2.1.307	data-sshhostcommands-setting.md
+M	Data: Submit feedback control request	2.1.309	data-submit-feedback-control-request.md
+M	Data: Tool use reference — C#	2.1.309	data-tool-use-reference-c.md
+M	Data: Tool use reference — Ruby	2.1.309	data-tool-use-reference-ruby.md
+A	Data: Worktree creation submodule on-demand fetch disabled error	2.1.309	data-worktree-creation-submodule-on-demand-fetch-disabled-error.md
+A	Data: Worktree creation unsafe promisor remote error	2.1.309	data-worktree-creation-unsafe-promisor-remote-error.md
+D	Skill: Artifact PR review description (composed publish flow)	2.1.242	skill-artifact-pr-review-description-composed-publish-flow.md
+D	Skill: Artifact whiteboard when-to-use guidance	2.1.242	skill-artifact-whiteboard-when-to-use-guidance.md
+A	Skill: Claude API deprecated or retired models notice	2.1.310	skill-claude-api-deprecated-or-retired-models-notice.md
+A	Skill: Claude API Managed Agents onboarding from URL unavailable	2.1.310	skill-claude-api-managed-agents-onboarding-from-url-unavailable.md
+M	Skill: Claude guide unavailable reference fallback	2.1.310	skill-claude-guide-unavailable-reference-fallback.md
+M	Skill: /doctor slash command	2.1.310	skill-doctor-slash-command.md
+A	Skill: /doctor /usage flagged check	2.1.305	skill-doctor-usage-flagged-check.md
+A	Skill: Mod plugin packaging (any plan)	2.1.305	skill-mod-plugin-packaging-any-plan.md
+A	Skill: Mod plugin packaging consent	2.1.305	skill-mod-plugin-packaging-consent.md
+A	Skill: Mod plugin packaging (organization plans)	2.1.305	skill-mod-plugin-packaging-organization-plans.md
+A	Skill: Mod plugin packaging (personal plans)	2.1.305	skill-mod-plugin-packaging-personal-plans.md
+D	Skill: Multiplayer whiteboard description	2.1.260	skill-multiplayer-whiteboard-description.md
+D	Skill: Whiteboard description	2.1.246	skill-whiteboard-description.md
+M	System Prompt: Chrome browser MCP tools	2.1.305	system-prompt-chrome-browser-mcp-tools.md
+M	System Prompt: Claude in Chrome browser automation (non-deferred tools)	2.1.305	system-prompt-claude-in-chrome-browser-automation-non-deferred-tools.md
+M	System Prompt: Claude in Chrome browser automation	2.1.305	system-prompt-claude-in-chrome-browser-automation.md
+M	System Prompt: Claude in Chrome deferred tool loading	2.1.305	system-prompt-claude-in-chrome-deferred-tool-loading.md
+A	System Prompt: Claude in Chrome task-specific tool loading	2.1.305	system-prompt-claude-in-chrome-task-specific-tool-loading.md
+M	System Prompt: Self-hosted runner doctor	2.1.309	system-prompt-self-hosted-runner-doctor.md
+D	System Prompt: Subagent delegation when-to-use guidance	2.1.296	system-prompt-subagent-delegation-when-to-use-guidance.md
+A	System Prompt: Windows sandbox git credentials unavailable	2.1.309	system-prompt-windows-sandbox-git-credentials-unavailable.md
+A	System Prompt: Windows sandbox git folder above working directory	2.1.309	system-prompt-windows-sandbox-git-folder-above-working-directory.md
+A	System Prompt: Windows sandbox localhost access (local binding off)	2.1.305	system-prompt-windows-sandbox-localhost-access-local-binding-off.md
+A	System Prompt: Windows sandbox localhost access (local binding on)	2.1.305	system-prompt-windows-sandbox-localhost-access-local-binding-on.md
+M	System Prompt: Windows sandbox localhost retry guidance	2.1.305	system-prompt-windows-sandbox-localhost-retry-guidance.md
+M	System Prompt: Windows sandbox localhost user alternatives	2.1.305	system-prompt-windows-sandbox-localhost-user-alternatives.md
+A	System Prompt: Windows sandbox localhost workarounds (local binding off)	2.1.305	system-prompt-windows-sandbox-localhost-workarounds-local-binding-off.md
+M	System Prompt: Windows sandbox package cache limits	2.1.307	system-prompt-windows-sandbox-package-cache-limits.md
+M	System Prompt: Windows sandbox profile tool retry guidance	2.1.305	system-prompt-windows-sandbox-profile-tool-retry-guidance.md
+M	System Prompt: Windows sandbox profile tool user guidance	2.1.305	system-prompt-windows-sandbox-profile-tool-user-guidance.md
+A	System Prompt: Windows sandbox pytest cache hang	2.1.307	system-prompt-windows-sandbox-pytest-cache-hang.md
+A	System Prompt: Windows sandbox repository creation prohibition	2.1.309	system-prompt-windows-sandbox-repository-creation-prohibition.md
+A	System Prompt: Windows sandbox Schannel TLS retry guidance	2.1.307	system-prompt-windows-sandbox-schannel-tls-retry-guidance.md
+A	System Prompt: Windows sandbox Schannel TLS user alternatives	2.1.307	system-prompt-windows-sandbox-schannel-tls-user-alternatives.md
+A	System Prompt: Windows sandbox server reachability (local binding on)	2.1.305	system-prompt-windows-sandbox-server-reachability-local-binding-on.md
+A	System Reminder: Artifact comment wakes stopped by user	2.1.310	system-reminder-artifact-comment-wakes-stopped-by-user.md
+A	System Reminder: Artifact file_path refusal for earlier wrong-path publication	2.1.309	system-reminder-artifact-file-path-refusal-for-earlier-wrong-path-publication.md
+A	System Reminder: Artifact file_path refusal for served path claimed by another file	2.1.309	system-reminder-artifact-file-path-refusal-for-served-path-claimed-by-another-file.md
+A	System Reminder: Artifact file_path refusal for unexpected new served path	2.1.309	system-reminder-artifact-file-path-refusal-for-unexpected-new-served-path.md
+A	System Reminder: Attached machine could not be reached (asleep)	2.1.304	system-reminder-attached-machine-could-not-be-reached-asleep.md
+A	System Reminder: Attached machine could not be reached (busy)	2.1.304	system-reminder-attached-machine-could-not-be-reached-busy.md
+A	System Reminder: Attached machine could not be reached (cause unknown)	2.1.304	system-reminder-attached-machine-could-not-be-reached-cause-unknown.md
+M	System Reminder: Attached machine could not be reached (oversized call)	2.1.304	system-reminder-attached-machine-could-not-be-reached-oversized-call.md
+D	System Reminder: Attached machine could not be reached (return not noted)	2.1.295	system-reminder-attached-machine-could-not-be-reached-return-not-noted.md
+D	System Reminder: Attached machine could not be reached (return noted)	2.1.295	system-reminder-attached-machine-could-not-be-reached-return-noted.md
+A	System Reminder: Attached machine could not be reached (signed off)	2.1.304	system-reminder-attached-machine-could-not-be-reached-signed-off.md
+A	System Reminder: Attached machine could not be reached (went silent)	2.1.304	system-reminder-attached-machine-could-not-be-reached-went-silent.md
+M	System Reminder: Attached machine could not be reached	2.1.304	system-reminder-attached-machine-could-not-be-reached.md
+M	System Reminder: Attached machine not answering (retry shortly)	2.1.304	system-reminder-attached-machine-not-answering-retry-shortly.md
+M	System Reminder: Attached machine not answering (stop calling)	2.1.304	system-reminder-attached-machine-not-answering-stop-calling.md
+A	System Reminder: Attached machine not answering	2.1.304	system-reminder-attached-machine-not-answering.md
+A	System Reminder: Attached machine signed-off likely causes	2.1.304	system-reminder-attached-machine-signed-off-likely-causes.md
+A	System Reminder: Attached machine signed-off notice	2.1.304	system-reminder-attached-machine-signed-off-notice.md
+A	System Reminder: Auto mode finish exposed work	2.1.307	system-reminder-auto-mode-finish-exposed-work.md
+A	System Reminder: Browser extension not connected (mobile app)	2.1.309	system-reminder-browser-extension-not-connected-mobile-app.md
+A	System Reminder: Cloud session device tools not yet available	2.1.307	system-reminder-cloud-session-device-tools-not-yet-available.md
+A	System Reminder: Hook blocking reason (Git Bash not found, exit code 127)	2.1.310	system-reminder-hook-blocking-reason-git-bash-not-found-exit-code-127.md
+A	System Reminder: Managed Agents ant command refused (altered --transform command)	2.1.305	system-reminder-managed-agents-ant-command-refused-altered-transform-command.md
+A	System Reminder: Managed Agents ant command refused (local ID form or placement)	2.1.307	system-reminder-managed-agents-ant-command-refused-local-id-form-or-placement.md
+A	System Reminder: Managed Agents ant command refused (local servers unsupported)	2.1.305	system-reminder-managed-agents-ant-command-refused-local-servers-unsupported.md
+A	System Reminder: Managed Agents ant command refused (staging, vrtx or bdrk ID)	2.1.305	system-reminder-managed-agents-ant-command-refused-staging-vrtx-or-bdrk-id.md
+A	System Reminder: Memory file contents (unverified managed folder)	2.1.304	system-reminder-memory-file-contents-unverified-managed-folder.md
+A	System Reminder: Message attachment files missing	2.1.307	system-reminder-message-attachment-files-missing.md
+M	System Reminder: Plan approved	2.1.304	system-reminder-plan-approved.md
+M	System Reminder: Proactivity level high	2.1.305	system-reminder-proactivity-level-high.md
+A	System Reminder: Project document rewrite without current text refusal	2.1.310	system-reminder-project-document-rewrite-without-current-text-refusal.md
+A	System Reminder: Project document too large to rewrite refusal	2.1.309	system-reminder-project-document-too-large-to-rewrite-refusal.md
+M	System Reminder: Reserved-address MCP server refusal	2.1.310	system-reminder-reserved-address-mcp-server-refusal.md
+A	System Reminder: Session moved to new runner resume prompt	2.1.309	system-reminder-session-moved-to-new-runner-resume-prompt.md
+A	System Reminder: Tool calls lost to session restart	2.1.309	system-reminder-tool-calls-lost-to-session-restart.md
+M	System Reminder: Unreachable attached machines	2.1.304	system-reminder-unreachable-attached-machines.md
+M	Tool Description: Artifact publishing and update guidance	2.1.304	tool-description-artifact-publishing-and-update-guidance.md
+M	Tool Description: Background monitor (streaming events)	2.1.304	tool-description-background-monitor-streaming-events.md
+M	Tool Description: Bash (PR creation instructions)	2.1.309	tool-description-bash-pr-creation-instructions.md
+M	Tool Description: Bash (sandbox — tmpdir)	2.1.307	tool-description-bash-sandbox-tmpdir.md
+M	Tool Description: Bash (sleep — no polling background tasks)	2.1.304	tool-description-bash-sleep-no-polling-background-tasks.md
+M	Tool Description: Computer use unlinked chat guidance	2.1.309	tool-description-computer-use-unlinked-chat-guidance.md
+D	Tool Description: CronCreate (durability note)	2.1.173	tool-description-croncreate-durability-note.md
+M	Tool Description: CronCreate	2.1.310	tool-description-croncreate.md
+A	Tool Description: ExitPlanMode (diskless session)	2.1.304	tool-description-exitplanmode-diskless-session.md
+M	Tool Description: ListConnectors	2.1.310	tool-description-listconnectors.md
+A	Tool Description: MCP connector sign-in recheck	2.1.309	tool-description-mcp-connector-sign-in-recheck.md
+M	Tool Description: New file-backed Artifact type content guidance	2.1.309	tool-description-new-file-backed-artifact-type-content-guidance.md
+M	Tool Description: Plugin organization submission and replacement	2.1.305	tool-description-plugin-organization-submission-and-replacement.md
+M	Tool Description: SearchMcpRegistry	2.1.310	tool-description-searchmcpregistry.md
+A	Tool Description: SubscribePR	2.1.304	tool-description-subscribepr.md
+M	Tool Description: SuggestConnectors	2.1.310	tool-description-suggestconnectors.md
+A	Tool Parameter: Artifact root directory	2.1.309	tool-parameter-artifact-root-directory.md
+M	Tool Parameter: Bash run_in_background guidance	2.1.304	tool-parameter-bash-run-in-background-guidance.md

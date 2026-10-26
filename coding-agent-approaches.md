@@ -259,6 +259,36 @@ Code-descended family, and the clearest outlier from Cursor.
 | Linter-error checking folded into the edit loop itself (see §5) rather than a separate final step | Cursor |
 | No explicit test/lint gate described in the base prompt | Bolt.new (no persistent test runner in a WebContainer sandbox), Codex CLI (delegates this to the "review mindset" section instead, when explicitly asked to review), SWE-agent (verification is inherent to its benchmark-style single-task loop, not a prompted rule) |
 
+### 12a. Finishing the job versus staying in scope (Claude Code 2.1.307)
+
+*Added 2026-10-26.* A feature-gated auto-mode reminder
+([`system-reminder-auto-mode-finish-exposed-work.md`](./leaked/claude-code/piebald-2.1.310/system-reminder-auto-mode-finish-exposed-work.md))
+moves Claude Code's default further than any source in the table above.
+Before ending the turn it runs "the project's checks (tests, lint, the CI
+script or `make` target it documents) and fix[es] what fails, **including
+failures that predate your change**", and fixes "the bugs the task
+exposed — a FIXME or TODO in code you touched, the same flaw in a
+sibling function, a security hole next to your change — when the correct
+behavior is clear from docstrings, tests, or docs." The guard rails are
+specific: the smallest fix that closes the flaw, everything legitimate
+callers can do today kept working, tests for both, "not license for
+refactors or unrelated cleanup", and anything beyond the request named
+in the summary. Only two things still go to the user: "a value only they
+can supply" and "a destructive or hard-to-reverse step", asked for once
+the rest is done. The turn must not end on an offer ("want me to…").
+
+This is the opposite of the minimal-diff rule most sources here state,
+and the reason is the reader. In an interactive session the user can
+reject the extra fix on sight; in a hands-off pipeline the extra fix
+lands in a PR a reviewer may not expect. Forge's coding prompt takes the
+other side on purpose ("Work outside your scope: file it, don't do it",
+`agent-design/system-prompts.md`), turning such work into a
+`follows_this` spinoff, and this pass proposes no change to that. The
+"same flaw in a sibling function" clause is the one part worth watching:
+it is the review side's bug-class rule (`code-review-approaches.md` §16)
+applied by the author before review, and an in-scope sibling fix may be
+cheaper than a spinoff plus a later review round.
+
 ## 13. Role/mode variants within one product
 
 | Product | Modes |

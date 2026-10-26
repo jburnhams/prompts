@@ -2,6 +2,26 @@
 
 All notable changes to this repository, grouped by day, newest first. Generated from git history.
 
+## 2026-10-26
+
+**Weekly research pass (scheduled), on branch `claude/project-thread-f4mhqu`.** Asked to check tracked sources for changes, look for new projects and approaches from the last week or two, and fold the most relevant into Forge's design. Tracked repos were scanned from 2026-10-19; three outside sources mattered most: Claude Code 2.1.304–2.1.310, an Anthropic red-team of blocking monitors, and two Anthropic posts on sub-agents and review.
+
+- **Claude Code 2.1.304–2.1.310** from Piebald (`7b78158`): `leaked/claude-code/piebald-2.1.310/` — new, with `delta.tsv` (75 added, 10 removed, 64 changed; 1,026 pieces) and ten pieces verbatim. Most of the delta is the Windows sandbox, Artifacts and attached-machine messages.
+- `agent-run-recovery.md` — new topic: what the next attempt is told when a runner dies mid-turn. Claude Code names the lost calls and says the call in flight "may have caused it … if it could, do the work another way"; Goose resumes failed delegates (#13015); OpenHands does not count an interrupted round (#5832); Keel's retry started blind.
+- `agent-git-vcs.md` §8 — new: a sandbox-writable `.git` is a channel out of the sandbox (Claude Code's submodule, worktree and promisor-remote messages), because git configuration names programs that later git commands run.
+- `agent-permissions-approval.md` §2d — new: *Red-Teaming Auto Mode* (arXiv 2609.19587): monitor-directed injection 79%, multi-agent 18/18 against auto mode and 0/20 against its hardened variant, malicious compaction, execute-then-write 43–72%; framed escaped records with a random frame id "almost fully" prevent the injection. §2e — new: Claude Code's email-turn rules, including that a bare "yes" approves only the one mail it answers and nothing if two were sent.
+- `agent-subagent-architectures.md` §7e — new: Anthropic's "when to fold subagents" (fewer sub-agents plus progressive disclosure; eval by per-task flips over repeated runs) against Microsoft's Agensh (no orchestrator, 1 → 128 agents raises ProgramBench pass rate 19.31% → 28.78%). Both put sub-agents where context is disposable; no change to Forge.
+- `code-review-approaches.md` §16 — new: figures from the Claude Code team's review post that §12 did not record (verification by vote; one-round pass rate 65% → 78%; 59% of later-round findings were on code present at the first pass; a clean-PR test counted by harmful changes). PR-Agent since `fbf7f6d3fc`: multiple CI artifacts and `/ask` over them, no reviewer prompt change.
+- `coding-agent-approaches.md` §12a — new: Claude Code's gated "finish exposed work" reminder (fix pre-existing check failures and sibling flaws), set against Forge's "file it, don't do it"; no change proposed.
+- **Design amendments** (each with a row in `agent-design/keel/decisions.md` §14a):
+  - `keel/pipelines.md` §7f "Interrupted attempts": a retry after `infra_failure` or a lost lease carries a harness-written `interrupted_attempt` block and a fixed paragraph; two consecutive deaths on the same tool and arguments digest block the stage with `repeated_infra_failure`. `run-spec.md`, `taxonomy.md` and the schemas gain the carry kind and the refusal code.
+  - `formats.md` §5 and `tools.md` `AskUser`: an `approve` question binds to a digest of the action and its staged files; a changed file ends the execute run with `approval_inputs_changed` and the question is asked again.
+  - `keel/tools-and-agents.md` §4c and `tools.md` `Task`: a sub-agent's report is nonce-wrapped data with the trust of the least-trusted thing it read. **Supersedes** "a sub-agent's report should generally be trusted".
+  - `keel/tools-and-agents.md` §4a: the sandbox mounts the git directory read-only, and the workspace-bound server runs git with hooks and fsmonitor off, `include` ignored, a protocol allowlist, and credentials through a helper.
+- `sources.md` — new "weekly pass (read 2026-10-26)" section with SHAs for Piebald, Goose, OpenHands, Codex and PR-Agent, the repos scanned with nothing used, Codex's experimental `codex/network-policy-meta` MCP key, and what was looked for and not used (no MCP revision after 2026-07-28; Anthropic's Scion post read and set aside). Two new candidates.
+- `README.md`, `leaked/claude-code/README.md` — pointers to the new folder and doc.
+- **Branch name.** The routine asks for `claude/weekly-research-2026-10-26`; this session was restricted to `claude/project-thread-f4mhqu`, so the work is there.
+
 ## 2026-10-23
 
 **Keel, the agent platform, specced; Forge and Lens as use cases on it.** Asked to turn the agent concepts discussed so far (MCP servers, tools, tool groups, visibility and deferral, completion tools, system prompts, starting query, model, sub-agents, OBO) into data models and APIs, then templates, params, triggers and outputs. Design docs and spec only, nothing implemented. Shaped over the day by use cases from the owner and two interviews. On branch `claude/agent-platform-spec` (PR #37).

@@ -663,6 +663,45 @@ findings, not just gaps in what was checked.
 
 ---
 
+## 8. A sandbox-writable `.git` is a channel out of the sandbox
+
+*Added 2026-10-26, from Claude Code 2.1.309 and 2.1.310
+([`leaked/claude-code/piebald-2.1.310/`](./leaked/claude-code/piebald-2.1.310)).*
+
+§4 treats worktrees as isolation for the *agent*. Two new Claude Code
+messages are about the reverse direction: what a sandboxed command can
+plant in git metadata that something *outside* the sandbox will later
+execute.
+
+- [`data-worktree-creation-submodule-on-demand-fetch-disabled-error.md`](./leaked/claude-code/piebald-2.1.310/data-worktree-creation-submodule-on-demand-fetch-disabled-error.md):
+  a submodule's git folder lives inside the superproject's `.git`, "where
+  commands running in the Bash sandbox can write". Because "any git
+  command run in the submodule follows what that folder holds", Claude
+  Code fetched nothing and "cannot safely suggest a command to run
+  there; while a sandboxed session that can write there is still
+  running, the folder cannot be trusted at all." The user is told what
+  to look for: a changed remote address, an `upload-pack` or `ssh`
+  command or an `include` line in `config` or `config.worktree`, a
+  `commondir` file, hooks they did not install.
+- [`data-sandbox-worktrees-directory-listing-failure-warning.md`](./leaked/claude-code/piebald-2.1.310/data-sandbox-worktrees-directory-listing-failure-warning.md):
+  the sandbox write-denies `.git/worktrees/`; when it cannot list that
+  folder, either the deny is applied anyway or "sandboxed commands can
+  change its linked worktrees' `commondir` and `config.worktree` files"
+  until the sandbox config is rebuilt.
+- A third 2.1.309 error refuses to fetch for a partial clone whose
+  promisor remote has "an option-like name or no URL", the classic
+  argument-injection shape.
+
+The general point, which no other source here states: **git
+configuration is code**. `core.hooksPath`, `core.fsmonitor`,
+`core.sshCommand`, `uploadpack`/`receivepack` overrides and `include`
+directives all make a later `git` invocation run a program the config
+names. A harness that runs git with its own credentials against a
+checkout the agent could write (to push, open a PR, or compute a diff)
+is running the agent's choice of program outside the sandbox. Claude
+Code's answer is to write-deny the folders git reads and to refuse when
+it cannot be sure the deny held.
+
 ## Design takeaways
 
 - **"Don't commit unless asked" is the closest thing to a universal

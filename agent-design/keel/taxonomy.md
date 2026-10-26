@@ -138,7 +138,9 @@ question or the task details. Filled from a `principal` param.
 
 **Carry.** An input filled only when this run was started from another
 run's outcome: a plan, a prior attempt, an approved action, a resumed
-answer, findings. A transcript is never carried.
+answer, findings, or (on a retry after `infra_failure` or a lost lease)
+an interrupted attempt, written by the harness from the dead attempt's
+events (`pipelines.md` §7f). A transcript is never carried.
 
 **Nonce.** A per-run random value on both tags of an untrusted block,
 so the content can't forge the end of its block or open a
