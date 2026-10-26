@@ -293,6 +293,73 @@ microVMs (2026-10-14, vendor post, not read); Harness's acquisition of
 Augment Code (2026-10-08; relevant to [`augment-swebench-agent/`](./augment-swebench-agent)
 only as provenance, not read).
 
+### The weekly pass (read 2026-10-26)
+
+Sources for [`agent-run-recovery.md`](./agent-run-recovery.md) (new),
+`agent-git-vcs.md` §8, `agent-permissions-approval.md` §2d–§2e,
+`agent-subagent-architectures.md` §7e, `code-review-approaches.md` §16,
+`coding-agent-approaches.md` §12a, and the amendments in
+`agent-design/keel/pipelines.md` §7f, `keel/tools-and-agents.md` §4a and
+§4c, `formats.md` §5 and `tools.md`. Repos were cloned with
+`--shallow-since=2026-10-15 --filter=blob:none --no-checkout` and their
+logs since 2026-10-19 scanned by subject; only the commits named were
+read as diffs.
+
+| Source | Repo | Paths / commits that matter | SHA read (HEAD) |
+|---|---|---|---|
+| **Claude Code prompt dumps** | `github.com/Piebald-AI/claude-code-system-prompts` (MIT) | `CHANGELOG.md` for 2.1.304–2.1.310; `git diff --name-status d895c8d 7b78158 -- system-prompts` (75 added, 10 removed, 64 changed), recorded as [`delta.tsv`](./leaked/claude-code/piebald-2.1.310/delta.tsv); ten pieces stored in [`leaked/claude-code/piebald-2.1.310/`](./leaked/claude-code/piebald-2.1.310) | `7b78158976` (v2.1.310, 2026-10-24; prev. `d895c8d`) |
+| **Goose** | `github.com/block/goose` | #13015 `e0cf7a4` — `crates/goose/src/agents/platform_extensions/summon.rs` (`resume`, `validate_resume_params`, `DEFAULT_RESUME_INSTRUCTIONS`) | `f9572251ae` (prev. `fb9e3c89b2`) |
+| **OpenHands SDK** | `github.com/OpenHands/software-agent-sdk` | #5832 `c5cbf66` — `openhands-sdk/openhands/sdk/conversation/goal/controller.py`, `agent_server/event_service.py` | `ce5716a3c0` (prev. `3f3294581e`) |
+| **Codex CLI** | `github.com/openai/codex` | `d124fe9` (#56278, `codex-mcp/src/connection_manager/network_policy.rs`), #56132 `2dbe6bf`, #56020 `6f34d3d`, #55581 `e8aa7c1`, #56154 `94350a9`; Guardian v3 scaffolding (#56459, #56460) listed, not read | `970111f6cb` (prev. `89461ea683`) |
+| **PR-Agent** | `github.com/qodo-ai/pr-agent` | `git diff fbf7f6d3fc HEAD -- pr_agent/settings/`; #4338 `d92a9b5`, #4176 `5fc4aed`, #4292 `1bcec3f` | `6b5db9627e` (prev. `fbf7f6d3fc`) |
+
+Scanned and nothing used (logs since 2026-10-19, no prompt-text or
+architecture change found relevant to Forge): Crush `9ab41e330e`
+(sub-agents get refreshed credentials, parallel-tool-call crash fix,
+parent dirs created only after write permission); Gemini CLI
+`cd1b45c2db` (IDE companion bridged into container sandboxes over exec
+stdio #29858; untrusted-flag checks scoped to external output #29833);
+OpenCode `ed74ec82ce` (724 commits; background compaction summaries
+#57444, compaction output limits, configurable prompt-cache TTL);
+Cline `a459f1d04d` (cloud sandbox provisioning UI, re-compaction
+estimates); `anthropics/claude-code-action` `925afb5377` (9 commits, none
+read). `SWE-agent/mini-swe-agent` again failed to shallow-clone ("error
+processing shallow info"); next pass should try `--depth 50`.
+
+**Codex sends the sandbox's network policy to MCP servers.** `d124fe9`
+(2026-10-22) adds an experimental capability `codex/network-policy-meta`:
+when both sides advertise it, each `tools/call` carries the call's
+effective network restrictions (`enabled`, `mode`, `allowedDomains`,
+`deniedDomains`, `hardDenyAllowlistMisses`) in `_meta`, derived from the
+call's captured permission profile, with any caller-supplied value of
+that key stripped first and one snapshot kept per call across
+reconnects. It is advertised only to trusted ChatGPT origins. Recorded
+here rather than in a topic doc because it is one vendor's experimental
+key; it bears on Keel's sandbox rule that MCP writes are denied by
+default (`agent-design/keel/triggers-and-runs.md` §10a), which today
+relies on the harness, not the server, to know the policy.
+
+Web references: Remedios et al., [Red-Teaming Auto Mode, arXiv
+2609.19587v2](https://arxiv.org/abs/2609.19587) (HTML read through a
+summarising fetch); Sarkis, [When to fold subagents into your main
+agent loop](https://claude.com/resources/articles/building-agents-when-to-fold-subagents-into-your-main-agent-loop)
+(2026-10-22); Osmani, Westlee Lunt and Wang, [How the Claude Code team
+does code review](https://claude.dev/blog/solving-code-review-at-anthropic/)
+(2026-10-15, re-read); Zhan et al., [Agensh, arXiv 2609.26781](https://arxiv.org/abs/2609.26781)
+(abstract page only; the MarkTechPost write-up returned 403).
+
+Looked for and **not used**: an MCP specification revision after
+2026-07-28 (the draft changelog is empty; Codex's `mcp_2026_*` tests
+target the July revision); Anthropic's [Redesigning source
+control](https://www.anthropic.com/research/redesigning-source-control)
+(2026-10-13, Scion: server-side commits, no refs except main and release
+branches, sparse virtual checkouts; read, but it is monorepo
+infrastructure at a scale Forge does not target, and agent sandboxes are
+mentioned only in passing); TechCrunch's 2026-10-09 report that
+Anthropic cut internal evals off from the live internet (secondary, the
+primary post was not found); `gitai`, OpenCode 2.0, Pi 1.3 and Grok
+Build (aggregator mentions only, not checked).
+
 ## OpenClaw 2.0 (read 2026-08-31)
 
 `github.com/openclaw/openclaw` at `5f714ef` (`main`, 2026-08-31). MIT.
@@ -402,6 +469,11 @@ passes named, and `skills/src/dynamic_skill_selector/` (covered by the
 2026-08-30 pass already recorded above).
 
 ## Claude Code prompts from the npm package (Piebald, read 2026-10-19)
+
+*Re-read 2026-10-26 at `7b78158` (v2.1.310); the delta is in
+[`leaked/claude-code/piebald-2.1.310/`](./leaked/claude-code/piebald-2.1.310)
+and the weekly-pass table above. The next pass should diff from
+`7b78158`.*
 
 | Source | Repo | Paths that matter | SHA read |
 |---|---|---|---|
@@ -638,6 +710,10 @@ captures only, already in `leaked/`); Continue.dev, Plandex, Aider's
 `coders/` (open, not yet needed); `github/github-mcp-server` (open — worth a
 pass for its toolset/consolidation history, which is currently sourced only
 from its in-band `instructions` block and tool list).
+Added 2026-10-26: `safety-research/red-teaming-auto-mode` (the attack
+and monitor-hardening code behind `agent-permissions-approval.md` §2d,
+worth reading for the transcript framing it found effective) and
+Agensh's repository, if the `microsoft/Agensh` URL in coverage is real.
 
 - Glukhov, Conti, Bogomolov & Golubev (JetBrains Research), *Diff-XYZ: A
   Benchmark for Evaluating Diff Understanding* —

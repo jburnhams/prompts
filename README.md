@@ -15,6 +15,12 @@ repo here has been restructured at least once), the commits read, and the
 sparse-clone recipe for re-fetching any of them in a couple of minutes.
 Start there before re-deriving where a harness keeps its tool definitions.
 
+**[→ `leaked/claude-code/piebald-2.1.310/`](./leaked/claude-code/piebald-2.1.310)** —
+the delta from v2.1.303 to v2.1.310 (2026-10-24): 75 pieces added, 10
+removed, 64 changed, listed in `delta.tsv`, with ten stored verbatim and
+folded into `agent-run-recovery.md`, `agent-git-vcs.md` §8,
+`agent-permissions-approval.md` §2e and `coding-agent-approaches.md` §12a.
+
 **[→ `leaked/claude-code/piebald-2.1.303/`](./leaked/claude-code/piebald-2.1.303)** —
 Claude Code's prompts as shipped in the v2.1.303 npm package (2026-10-18),
 from Piebald's MIT-licensed extraction: an inventory of all 961 pieces
@@ -829,6 +835,13 @@ ones are excluded from the cached prefix, and a `ToolSearch` meta tool
 returns `tool_reference` blocks that the API expands in the message history.
 Includes what still busts the cache and what it means for Forge's `HandOff`
 tool.
+
+**[→ `agent-run-recovery.md`](./agent-run-recovery.md)** — what an agent
+is told when its runner died mid-turn (2026-10-26): Claude Code's
+lost-call and new-runner reminders ("if it could have brought the runner
+down, do the work another way"), Goose resuming failed delegates,
+OpenHands not counting an interrupted round, and Keel's retry, which
+until this pass started blind.
 
 **[→ `agent-multi-model.md`](./agent-multi-model.md)** — using more than
 one model in a run (2026-10-22): sub-agents with a model pin, two stages

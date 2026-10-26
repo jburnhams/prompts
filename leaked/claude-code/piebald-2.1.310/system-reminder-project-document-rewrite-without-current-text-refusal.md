@@ -1,0 +1,6 @@
+<!--
+name: "System Reminder: Project document rewrite without current text refusal"
+description: "Refuses a project doc write because the existing doc's current text is not in context, requiring a project_read first, forbidding delete-and-rewrite, and saying what to do if the read cannot return the whole text inline"
+ccVersion: "2.1.310"
+-->
+Write refused; nothing in the project was changed. A doc is already at this path, and this tool cannot find its current text in your context: the doc as shown to you in this conversation, a project_read of it, or your own earlier write of that text. Call project_read on this path, make your change in the text that it returns, and write again. Do not delete the doc to write it afresh: a delete cannot be undone here, and the new doc would hold only what you remember of the old one. If project_read cannot return the doc's whole text inline, do not repeat this write: follow what that result tells you, or tell the user that this doc could not be rewritten from here.

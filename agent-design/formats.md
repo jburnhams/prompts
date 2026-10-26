@@ -739,6 +739,26 @@ answer changes what Forge does next and the run needs its context back.
 - **Headroom.** Because the execute run starts without the transcript,
   the late-run headroom problem described below does not apply to
   approvals.
+- **The approval binds to the action's inputs as they were**
+  *(added 2026-10-26)*. When the harness posts an `approve` question it
+  computes an `approval_digest` over the `action` object and the bytes
+  of every file in `staged_paths`, records it with the question, and
+  shows each staged file (or a link to it at the posted commit) beside
+  the target. The execute run re-hashes before its first step. Any
+  difference ends that run before it acts, with refusal
+  `approval_inputs_changed`, and the question is posted again with the
+  new content; the old yes approves nothing. This is the plan-hash rule
+  (§5a rule 4) applied to `approve`, and the same seam as Codex's
+  content-hash approval (#54619): an approval that does not bind to
+  what the action will read can be emptied afterwards. The auto-mode
+  red-team (`../agent-permissions-approval.md` §2d) measured that seam
+  directly, approving a benign command and then overwriting the script
+  it runs, at 43–72% success until edits were monitored. Forge's
+  suspended run cannot edit after it ends, but the checkout outlives it
+  and other writers (a resume, a person, a hook) can touch it. Files the
+  steps read that are *not* in `staged_paths` are not covered, which is
+  why the `staged_paths` description now asks for every file the steps
+  execute or read.
 
 **Batching.** Forge asks once per suspension. Its prompt tells it to
 finish everything that doesn't depend on the answer and to try any

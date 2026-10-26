@@ -240,6 +240,7 @@
             "comments",
             "plan",
             "prior_attempt",
+            "interrupted_attempt",
             "resumed_answer",
             "other_replies",
             "approved_action",
@@ -297,13 +298,14 @@
             },
             {
               "type": "object",
-              "description": "Filled by a continuation or a resume (../outputs.md §7). Absent on a fresh run.",
+              "description": "Filled by a continuation, a resume, or a retry after an interrupted attempt (../outputs.md §7, ../pipelines.md §7f). Absent on a fresh run.",
               "properties": {
                 "carry": {
                   "type": "string",
                   "enum": [
                     "plan",
                     "prior_attempt",
+                    "interrupted_attempt",
                     "resumed_answer",
                     "other_replies",
                     "approved_action",

@@ -9,6 +9,11 @@ behind) the real thing, so treat this as a data point, not a spec.
 
 ## Files
 
+**[`piebald-2.1.310/`](./piebald-2.1.310)** (added 2026-10-26) is the
+delta to v2.1.310: a `delta.tsv` of the 149 pieces added, removed or
+changed since 2.1.303, and ten of them stored verbatim (runner-loss
+recovery, sandbox-writable git folders, email-turn consent).
+
 **Read [`piebald-2.1.303/`](./piebald-2.1.303) first** (added 2026-10-19).
 It holds Claude Code v2.1.303's prompt strings as extracted from the npm
 package by Piebald: an inventory of all 961 pieces, the 63 that this

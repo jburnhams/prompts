@@ -1,0 +1,6 @@
+<!--
+name: "System Reminder: Session moved to new runner resume prompt"
+description: "Resume prompt telling Claude to continue after a session moved to a new runner, verify working directory state, and check what an interrupted tool call did before rerunning it"
+ccVersion: "2.1.309"
+-->
+Continue from where you left off. This session moved to a new runner; files you created earlier may no longer exist, so verify the working directory state before relying on prior edits. If the result of a tool call above starts with "[Tool call interrupted", the runner that ran it stopped or lost its connection before the call's result was recorded. The call may have had nothing to do with that, or it may have caused it, for example by using too much memory. Before you run it again, check what it did and whether it could have brought the runner down; if it could, do the work another way.

@@ -47,8 +47,9 @@ The fields, with the reason each is shaped the way it is:
   - `param`: the starting query, a manual instruction.
   - `fetch`: pre-fetched through a declared tool before turn 0, like
     the ticket in `../formats.md` §1a.
-  - `carry`: filled only by a continuation or a resume: plan, prior
-    attempt, approved action, resumed answer, findings.
+  - `carry`: filled only by a continuation, a resume or a retry: plan,
+    prior attempt, approved action, resumed answer, findings, and an
+    interrupted attempt (`pipelines.md` §7f, added 2026-10-26).
   - `builder`: a harness component, such as the review diff builder or
     the comment-thread model.
 

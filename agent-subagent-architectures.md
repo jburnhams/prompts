@@ -878,6 +878,59 @@ hold a server its orchestrator does not, while nothing a definition says
 can add to what the job declared. See `agent-design/tools.md`, "One job
 declares the tools; every role gets a subset".
 
+## 7e. October 2026: fewer sub-agents, or a thousand
+
+*Added 2026-10-26.* Two publications in the same fortnight pull in
+opposite directions, and are worth reading together because they agree
+on when each direction is right.
+
+**Anthropic, "Building agents: When to fold subagents into your main
+agent loop"** (Diane Sarkis, claude.com, 2026-10-22; read through a
+summarising fetch). The Applied AI team's observation across enterprise
+deployments is that a single agent with progressively disclosed context
+(skills, deferred tools, intent-grouped MCP tools, knowledge behind a
+lookup tool) often beats both one big prompt and a sub-agent design.
+Organisations drift into sub-agents because each team ships its own
+agent and an orchestrator goes on top: "the agent architecture becoming
+a copy of their org chart". Costs named: context lost at handoffs, a
+"Frankenprompt", narrow per-team evals, and latency (one customer's
+single loop ran about 2× faster). Sub-agents still earn their place when
+a single loop measurably degrades from context bloat, when work runs in
+parallel in fresh contexts that can be thrown away, or when one agent
+cannot choose among its tools. The method is the useful part: build a
+ten-example end-to-end eval first, call sub-agents as tools before any
+full handoff, fold one at a time, keep a sub-agent if the folded version
+scores worse, and **compare which tasks flipped, running each more than
+once**. Their worked example shows why: folding a shipping specialist
+cut latency and broke a shipping-date process, but only in one run of
+two. The article gives tool choice degrading "past roughly 30–50
+definitions" and Claude Code's prompt shrinking "by over 80%" for newer
+models; it reports no quality or cost percentages for the enterprise
+comparisons.
+
+**Microsoft Research, Agensh** ([arXiv 2609.26781](https://arxiv.org/abs/2609.26781),
+Zhan et al., v1 2026-09-22; news coverage 2026-10-24). A harness with
+no central orchestrator: workers gather context, self-assign subtasks,
+share findings, verify and merge asynchronously through a shared git
+workspace, a message bus and a typed shared context board. On the five
+hardest ProgramBench tasks (rebuild FFmpeg, gromacs, pandoc, PHP-src and
+ctags from scratch in six hours, offline) mean test-pass rate rose from
+19.31% with one agent to 28.78% with 128; pandoc went from 33.89% to
+55.06% at 1,024. Only the abstract page was read; the repository the
+coverage names (`github.com/microsoft/Agensh`) is not linked from the
+paper page and was not checked.
+
+**Where they meet.** Both put sub-agents where work is parallel and its
+context disposable, and neither puts them where one line of judgment has
+to run through the whole task. ProgramBench is the extreme of the first
+case (thousands of independent behaviours to reimplement); a support
+agent with one voice is the extreme of the second. Forge's shapes sit on
+the right sides of that line: review fans out specialists and validators
+whose contexts are thrown away, and coding keeps one orchestrator and
+delegates only research (`agent-design/orchestration.md`). The article's
+eval rule (per-task flips, repeated runs) is the one to apply before
+changing either.
+
 ## 8. Absences worth noting
 
 - **The layer above the call graph: nothing here except OpenClaw has

@@ -111,3 +111,52 @@ The invariant stays exactly as it was, under its new subject: **a run
 may file, propose or report; it may not act on what it oversees.** A
 run proposes spinoffs in its report, and the pipeline starts them. A
 run never sees, retries, settles or abandons its own pipeline run.
+
+### Interrupted attempts *(added 2026-10-26)*
+
+**Amendment.** An attempt that ended `infra_failure` or by a lost lease
+has no report, so until now its retry started blind: `prior_attempt`
+was empty and the new attempt repeated whatever killed the last one.
+The harness already records every tool call in the run's events
+(`triggers-and-runs.md` §10), so it now writes what it knows into the
+retry instead:
+
+- **An `interrupted_attempt` carry block** (`run-spec.md`'s `carry`
+  kind, authored by `harness`, so not sanitised), holding: the tool
+  calls in flight when the attempt died (tool, arguments digest and a
+  rendered summary, how long each had run); the last few completed
+  calls; the death signal if the platform reported one (`oom_killed`,
+  `timeout`, `node_lost`, `unknown`); and whether the workspace
+  survived (`retained` or `fresh`).
+- **One fixed paragraph in the opening message** when the block is
+  present, adapted from Claude Code 2.1.309: the calls in flight may not
+  have run, or not completely; check what each did before issuing it
+  again; if one could have brought the runner down, do the work another
+  way. When the workspace is `fresh`, it adds that earlier edits are
+  gone.
+- **A deterministic-crash stop.** If two consecutive attempts died with
+  the same tool and arguments digest in flight, the stage does not
+  retry a third time. It is blocked with `repeated_infra_failure`, and
+  `GET /v1/pipeline-runs?health=repeated_failure` already surfaces it.
+  A different death, or a death outside a tool call, retries as before.
+- **Budget accounting stays as it is.** A died attempt still counts
+  against `max_attempts`; `raise_budgets` does not apply, since running
+  out of budget is not what happened.
+
+**Why.** The common self-inflicted runner deaths (a test suite that
+exhausts memory, a build that fills the disk, a runaway process) all
+happen inside a tool call, so the call in flight is evidence, and a
+blind retry repeats it. Claude Code is the only source that tells the
+model this; Goose and OpenHands resume without it, and none of the
+sources counts consecutive deaths on the same call
+(`../../agent-run-recovery.md` §1–§2). The stop rule is a stored-field
+check like the other health queries; nothing reads the transcript and
+decides.
+
+**What it supersedes.** The retry row in the ledger table above, as far
+as `infra_failure` and a lost lease are concerned: those retries were
+"a new attempt with `prior_attempt`", which for these two causes was
+always empty. The default list of retried statuses is unchanged.
+External writes the dead attempt may have made are still protected only
+by idempotency keys (`../adk.md` §4); the paragraph asks the model to
+check, which does not replace them.
