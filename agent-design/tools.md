@@ -418,6 +418,21 @@ sharper reason — a protocol error is an exception, and an exception is
 what the client's retry policy keys off, so the design's most frequent
 errors would become its most retried ones (`adk.md` §4).
 
+**Repeated invalid calls are counted by what failed, not by what was
+sent.** *(Added 2026-11-02.)* A model that keeps sending a call the
+validator rejects gets the same error each time, and the errors-are-
+instructions rule above does not help if it is not reading them. The
+base template `forge.coding` (so every Forge template that extends it
+and does not replace `monitors`) therefore carries a
+`consecutive_tool_errors` monitor with no `tool`, so one streak per
+tool, threshold 3 and a `note` action, counted as
+`keel/run-spec.md` §3 now defines it: by response, and by the set of
+failing fields, so a call that fails on fewer fields each time is a
+repair and never trips it. The note names the fields still failing.
+There is no automatic stop at a fourth step: the turn budget and the
+persistence rule in the coding prompt already end a run that does not
+recover, and a hard stop would duplicate them with a different count.
+
 **Advertise strict, accept tolerant.** The schemas below are the advertised
 contract and stay strict (`additionalProperties: false`) — a strict schema
 is what makes provider-side strict tool-calling and the model's own
@@ -1057,6 +1072,14 @@ the flag, and the per-file-type split on the metric.
 >   stderr and exits 0 succeeded; check the exit code, not the presence
 >   of output. Redirect explicitly (`2>/dev/null`, `2>&1 | tee`) if you
 >   need the streams separated.
+> - If the sandbox stops your commands for exhausting CPU, memory, disk
+>   or process limits, the result says `stopped: resource_limit`, which
+>   limit, and which commands were stopped. Your files are kept, and the
+>   command did not fail on its merits. Do not run the same job in the
+>   same form again: it will be stopped again. Run a smaller form
+>   (fewer parallel workers, a narrower test selection, one package at
+>   a time). If the work cannot be done in a smaller form, end the task
+>   as blocked and name the limit.
 > - Before a command that creates a new directory or file, confirm the
 >   parent exists (List or a quick `ls`) rather than assuming.
 >
@@ -1084,6 +1107,28 @@ the flag, and the per-file-type split on the metric.
 > cross-check remain as the layers around it — but the common case
 > can't happen by accident or by prompt injection naming the command
 > directly.
+
+**Resource stops are a result, not a death.** *(Added 2026-11-02.)*
+The container's limits are enforced by the platform, and when one is
+hit the harness stops the session's shell processes and returns the
+usage note's `stopped: resource_limit` result with the limit
+(`cpu`, `memory`, `disk`, `pids`) as a named field, rather than a bare
+non-zero exit or a killed runner. The point is the model's next move:
+a killed test suite that looks like a failing test gets re-run, and a
+re-run of the same suite is stopped the same way, which is how a
+recoverable limit becomes the runner death that `keel/pipelines.md` §7f
+retries. Claude Code 2.1.314 says the same four things to its model
+(`../agent-run-recovery.md` §3); where it says "agree with the user on a
+form that uses less CPU", a hands-off run has nobody to agree with, so
+Forge allows **one** smaller form and otherwise `blocked`. The harness
+does not try to judge whether the second attempt is smaller. A second
+`resource_limit` on the same limit in one run returns the result with
+`repeat: true` and a note that the next stop ends the run; a third
+puts the run on the final-turn nudge (`formats.md` §7), with a harness
+note that the run should complete as `blocked` and name the limit. No
+new status or refusal code: the run still decides its own status, as
+every ending does. Runner deaths
+(`oom_killed` and the rest) stay where §7f puts them.
 
 ```json
 {

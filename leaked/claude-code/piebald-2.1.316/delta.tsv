@@ -1,0 +1,117 @@
+status	name	cc_version	file
+A	Agent Prompt: Background agent state classifier user merge handoff rule	2.1.314	agent-prompt-background-agent-state-classifier-user-merge-handoff-rule.md
+D	Agent Prompt: Session title and branch generation	2.1.234	agent-prompt-session-title-and-branch-generation.md
+M	Agent Prompt: Status line setup	2.1.312	agent-prompt-status-line-setup.md
+M	Agent Prompt: Workflow subagent plain text output	2.1.301	agent-prompt-workflow-subagent-plain-text-output.md
+D	Data: Artifact decision component HTML skeleton	2.1.232	data-artifact-decision-component-html-skeleton.md
+A	Data: blockWritesOutsideWorkingDirectories setting	2.1.315	data-blockwritesoutsideworkingdirectories-setting.md
+M	Data: Claude API reference — PHP	2.1.311	data-claude-api-reference-php.md
+M	Data: Claude Code gateway protocol	2.1.315	data-claude-code-gateway-protocol.md
+M	Data: Claude Platform on AWS reference	2.1.311	data-claude-platform-on-aws-reference.md
+M	Data: Data visualization anti-patterns	2.1.314	data-data-visualization-anti-patterns.md
+M	Data: Data visualization choosing a form	2.1.314	data-data-visualization-choosing-a-form.md
+M	Data: Data visualization components	2.1.314	data-data-visualization-components.md
+M	Data: Data visualization marks and anatomy	2.1.314	data-data-visualization-marks-and-anatomy.md
+M	Data: Files API reference — Java	2.1.311	data-files-api-reference-java.md
+M	Data: Interrupt send_now parameter	2.1.315	data-interrupt-send-now-parameter.md
+M	Data: MCP server status error_code field	2.1.314	data-mcp-server-status-error-code-field.md
+M	Data: OpenTelemetry tracing reference — Python	2.1.311	data-opentelemetry-tracing-reference-python.md
+A	Data: Pending elicitation requests in initialization response	2.1.315	data-pending-elicitation-requests-in-initialization-response.md
+A	Data: Sandbox excludedCommands setting	2.1.314	data-sandbox-excludedcommands-setting.md
+A	Data: Sandbox project settings ignored under higher-priority policy	2.1.314	data-sandbox-project-settings-ignored-under-higher-priority-policy.md
+M	Data: SDK API error kind field	2.1.315	data-sdk-api-error-kind-field.md
+M	Data: SDK api_error_params field	2.1.315	data-sdk-api-error-params-field.md
+M	Data: SDK message_stop abandoned_blocks field	2.1.311	data-sdk-message-stop-abandoned-blocks-field.md
+A	Data: SDK result main stream chunk count field	2.1.311	data-sdk-result-main-stream-chunk-count-field.md
+A	Data: SDK result process model-request turn count field	2.1.311	data-sdk-result-process-model-request-turn-count-field.md
+A	Data: SDK result process streaming CPU time field	2.1.311	data-sdk-result-process-streaming-cpu-time-field.md
+A	Data: SDK result runtime tuning environment bitmask field	2.1.311	data-sdk-result-runtime-tuning-environment-bitmask-field.md
+A	Data: SDK result startup garbage collection counts field	2.1.311	data-sdk-result-startup-garbage-collection-counts-field.md
+M	Data: SDK set model error response model field	2.1.314	data-sdk-set-model-error-response-model-field.md
+A	Data: SDK turn handoff required rewind request ID field	2.1.311	data-sdk-turn-handoff-required-rewind-request-id-field.md
+A	Data: SDK UI attach client request capabilities field	2.1.311	data-sdk-ui-attach-client-request-capabilities-field.md
+A	Data: SDK UI prompt paint request schema	2.1.311	data-sdk-ui-prompt-paint-request-schema.md
+A	Data: Self-hosted runner unreadable character validation guidance	2.1.315	data-self-hosted-runner-unreadable-character-validation-guidance.md
+A	Data: Server classifier beta rejection warning	2.1.314	data-server-classifier-beta-rejection-warning.md
+M	Data: Streaming reference — C#	2.1.311	data-streaming-reference-c.md
+M	Data: Streaming reference — PHP	2.1.311	data-streaming-reference-php.md
+M	Data: Tool use reference — C#	2.1.311	data-tool-use-reference-c.md
+M	Data: Turn handoff available event schema	2.1.311	data-turn-handoff-available-event-schema.md
+A	Data: Ultrathink availability in session initialization	2.1.315	data-ultrathink-availability-in-session-initialization.md
+A	Data: Untrusted folder environment variables ignored warning	2.1.314	data-untrusted-folder-environment-variables-ignored-warning.md
+A	Data: Windows protected path resolution denial	2.1.312	data-windows-protected-path-resolution-denial.md
+D	Skill: Artifact components	2.1.296	skill-artifact-components.md
+D	Skill: Artifact data table	2.1.246	skill-artifact-data-table.md
+D	Skill: Artifact document	2.1.275	skill-artifact-document.md
+D	Skill: Artifact explainer	2.1.246	skill-artifact-explainer.md
+D	Skill: Artifact report	2.1.251	skill-artifact-report.md
+M	Skill: Data Visualization	2.1.314	skill-data-visualization.md
+M	Skill: /doctor slash command	2.1.316	skill-doctor-slash-command.md
+M	Skill: /doctor /usage flagged check	2.1.311	skill-doctor-usage-flagged-check.md
+M	Skill: /explain-usage measured usage slash command	2.1.314	skill-explain-usage-measured-usage-slash-command.md
+D	Skill: Prototype description	2.1.242	skill-prototype-description.md
+D	Skill: Prototype runtime capabilities guidance	2.1.229	skill-prototype-runtime-capabilities-guidance.md
+A	Skill: /send-to-project brief drafting guidance	2.1.314	skill-send-to-project-brief-drafting-guidance.md
+A	Skill: /send-to-project message preload description	2.1.314	skill-send-to-project-message-preload-description.md
+A	Skill: /send-to-project message slash command	2.1.314	skill-send-to-project-message-slash-command.md
+A	Skill: /send-to-project work brief preload description	2.1.314	skill-send-to-project-work-brief-preload-description.md
+A	Skill: /send-to-project work brief slash command	2.1.314	skill-send-to-project-work-brief-slash-command.md
+M	Skill: Workflow authoring reference	2.1.315	skill-workflow-authoring-reference.md
+M	System Prompt: Avoiding Unnecessary Sleep Commands (part of PowerShell tool description)	2.1.314	system-prompt-avoiding-unnecessary-sleep-commands-part-of-powershell-tool-description.md
+A	System Prompt: Background agent session keepalive guidance	2.1.314	system-prompt-background-agent-session-keepalive-guidance.md
+M	System Prompt: Background session instructions	2.1.312	system-prompt-background-session-instructions.md
+A	System Prompt: Compaction omitted tool result handling	2.1.314	system-prompt-compaction-omitted-tool-result-handling.md
+M	System Prompt: Forked agent guidance	2.1.312	system-prompt-forked-agent-guidance.md
+M	System Prompt: Harness instructions	2.1.312	system-prompt-harness-instructions.md
+M	System Prompt: Interactive agent intro (output-style conditional)	2.1.312	system-prompt-interactive-agent-intro-output-style-conditional.md
+M	System Prompt: Outcome-first communication style	2.1.315	system-prompt-outcome-first-communication-style.md
+D	System Prompt: Plan mode interactive workshop offer	2.1.239	system-prompt-plan-mode-interactive-workshop-offer.md
+A	System Prompt: Send-to-project coordinator handoff	2.1.314	system-prompt-send-to-project-coordinator-handoff.md
+M	System Prompt: Windows sandbox localhost workarounds (local binding off)	2.1.311	system-prompt-windows-sandbox-localhost-workarounds-local-binding-off.md
+A	System Reminder: Attached machine idle disconnect notice	2.1.312	system-reminder-attached-machine-idle-disconnect-notice.md
+M	System Reminder: Attached machine signed-off notice	2.1.312	system-reminder-attached-machine-signed-off-notice.md
+A	System Reminder: Auto mode deny rules without safety result	2.1.314	system-reminder-auto-mode-deny-rules-without-safety-result.md
+A	System Reminder: Auto mode no verdict after another hook rewrite	2.1.312	system-reminder-auto-mode-no-verdict-after-another-hook-rewrite.md
+A	System Reminder: Background MCP call stopping session warning	2.1.314	system-reminder-background-mcp-call-stopping-session-warning.md
+A	System Reminder: Claude Doc comment wake guidance	2.1.315	system-reminder-claude-doc-comment-wake-guidance.md
+A	System Reminder: Cloud sandbox sustained CPU limit stop	2.1.314	system-reminder-cloud-sandbox-sustained-cpu-limit-stop.md
+D	System Reminder: Combined thinking and reply token budget	2.1.300	system-reminder-combined-thinking-and-reply-token-budget.md
+A	System Reminder: Conversation activity awareness and authority warning	2.1.311	system-reminder-conversation-activity-awareness-and-authority-warning.md
+A	System Reminder: MCP server connection retry guidance	2.1.311	system-reminder-mcp-server-connection-retry-guidance.md
+D	System Reminder: Message attachment files missing	2.1.307	system-reminder-message-attachment-files-missing.md
+M	System Reminder: Output token limit continuation	2.1.314	system-reminder-output-token-limit-continuation.md
+M	System Reminder: Plan mode approval tool enforcement	2.1.312	system-reminder-plan-mode-approval-tool-enforcement.md
+D	System Reminder: Plan mode prototype artifact option	2.1.239	system-reminder-plan-mode-prototype-artifact-option.md
+M	System Reminder: Reserved-address MCP server refusal	2.1.316	system-reminder-reserved-address-mcp-server-refusal.md
+A	System Reminder: Send-to-project gathered context trust boundary	2.1.314	system-reminder-send-to-project-gathered-context-trust-boundary.md
+A	System Reminder: Send-to-project interrupted result recovery	2.1.314	system-reminder-send-to-project-interrupted-result-recovery.md
+A	System Reminder: Send-to-project memory brief trust boundary	2.1.314	system-reminder-send-to-project-memory-brief-trust-boundary.md
+A	System Reminder: Staged file still copying	2.1.314	system-reminder-staged-file-still-copying.md
+M	System Reminder: Staged files failed to arrive	2.1.312	system-reminder-staged-files-failed-to-arrive.md
+A	System Reminder: Staged files still copying	2.1.314	system-reminder-staged-files-still-copying.md
+M	Tool Description: Agent (usage notes)	2.1.314	tool-description-agent-usage-notes.md
+M	Tool Description: Artifact design skill loading guidance (app wording)	2.1.312	tool-description-artifact-design-skill-loading-guidance-app-wording.md
+M	Tool Description: Artifact line diff reading legend	2.1.312	tool-description-artifact-line-diff-reading-legend.md
+M	Tool Description: Artifact page authoring and HTML skeleton (app wording)	2.1.312	tool-description-artifact-page-authoring-and-html-skeleton-app-wording.md
+M	Tool Description: Artifact publishing and update guidance	2.1.311	tool-description-artifact-publishing-and-update-guidance.md
+M	Tool Description: Artifact type discovery guidance	2.1.311	tool-description-artifact-type-discovery-guidance.md
+M	Tool Description: Background monitor (streaming events)	2.1.314	tool-description-background-monitor-streaming-events.md
+D	Tool Description: Bash (working directory)	2.1.53	tool-description-bash-working-directory.md
+M	Tool Description: Code review command	2.1.311	tool-description-code-review-command.md
+M	Tool Description: Computer use enable stub guidance	2.1.314	tool-description-computer-use-enable-stub-guidance.md
+M	Tool Description: DesignSync	2.1.314	tool-description-designsync.md
+A	Tool Description: GetTask default completion guidance	2.1.314	tool-description-gettask-default-completion-guidance.md
+A	Tool Description: GetTask stopping-session completion guidance	2.1.314	tool-description-gettask-stopping-session-completion-guidance.md
+M	Tool Description: GetTask	2.1.314	tool-description-gettask.md
+M	Tool Description: ListConnectors	2.1.312	tool-description-listconnectors.md
+M	Tool Description: Project local_file read-only workflow	2.1.311	tool-description-project-local-file-read-only-workflow.md
+M	Tool Description: Publish audience-facing deliverables (app wording)	2.1.311	tool-description-publish-audience-facing-deliverables-app-wording.md
+M	Tool Description: SearchMcpRegistry	2.1.312	tool-description-searchmcpregistry.md
+A	Tool Description: SendToProject message	2.1.314	tool-description-sendtoproject-message.md
+A	Tool Description: SendToProject work brief	2.1.314	tool-description-sendtoproject-work-brief.md
+A	Tool Description: SendToProjectContext	2.1.314	tool-description-sendtoprojectcontext.md
+M	Tool Description: Skill proposal rendering	2.1.311	tool-description-skill-proposal-rendering.md
+M	Tool Description: SuggestConnectors	2.1.312	tool-description-suggestconnectors.md
+M	Tool Parameter: Bash run_in_background guidance	2.1.314	tool-parameter-bash-run-in-background-guidance.md
+M	Tool Parameter: PowerShell run_in_background note	2.1.314	tool-parameter-powershell-run-in-background-note.md
+A	Tool Parameter: SendToProject proposal	2.1.314	tool-parameter-sendtoproject-proposal.md

@@ -15,6 +15,12 @@ repo here has been restructured at least once), the commits read, and the
 sparse-clone recipe for re-fetching any of them in a couple of minutes.
 Start there before re-deriving where a harness keeps its tool definitions.
 
+**[→ `leaked/claude-code/piebald-2.1.316/`](./leaked/claude-code/piebald-2.1.316)** —
+the delta from v2.1.310 to v2.1.316 (2026-10-31): 45 pieces added, 14
+removed, 57 changed, listed in `delta.tsv`, with nine stored verbatim and
+folded into `agent-run-recovery.md` §3, `agent-context-compaction.md` §2c
+and `agent-permissions-approval.md` §2f.
+
 **[→ `leaked/claude-code/piebald-2.1.310/`](./leaked/claude-code/piebald-2.1.310)** —
 the delta from v2.1.303 to v2.1.310 (2026-10-24): 75 pieces added, 10
 removed, 64 changed, listed in `delta.tsv`, with ten stored verbatim and
@@ -841,7 +847,9 @@ is told when its runner died mid-turn (2026-10-26): Claude Code's
 lost-call and new-runner reminders ("if it could have brought the runner
 down, do the work another way"), Goose resuming failed delegates,
 OpenHands not counting an interrupted round, and Keel's retry, which
-until this pass started blind.
+until this pass started blind. Extended 2026-11-02 with the cases short of a death: a
+sandbox resource stop inside a live run (§3), and how OpenHands decides
+two failing calls are the same retry (§4).
 
 **[→ `agent-multi-model.md`](./agent-multi-model.md)** — using more than
 one model in a run (2026-10-22): sub-agents with a model pin, two stages

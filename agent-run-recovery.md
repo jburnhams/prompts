@@ -1,7 +1,8 @@
 # Run recovery: what an agent is told when its runner died
 
-*Added 2026-10-26 in the weekly pass. Sources and SHAs are in
-[`sources.md`](./sources.md), "The weekly pass (read 2026-10-26)".*
+*Added 2026-10-26 in the weekly pass; §3–§4 added 2026-11-02. Sources
+and SHAs are in [`sources.md`](./sources.md), "The weekly pass (read
+2026-10-26)" and "(read 2026-11-02)".*
 
 A hosted agent runs in a container that can disappear mid-turn: the node
 is drained, the sandbox runs out of memory, a network partition drops the
@@ -104,3 +105,90 @@ panics when it fails before a checkpoint (#55581).
 Forge's amendment is in
 [`agent-design/keel/pipelines.md`](./agent-design/keel/pipelines.md) §7f,
 "Interrupted attempts".
+
+## 3. Stopped, not dead: a resource limit inside a live run
+
+*Added 2026-11-02 in the weekly pass, from
+[`leaked/claude-code/piebald-2.1.316/`](./leaked/claude-code/piebald-2.1.316).*
+
+§1 covers a runner that died. Claude Code 2.1.314 adds the case just
+short of that: the sandbox enforces a limit itself, kills the work, and
+the run carries on.
+[`system-reminder-cloud-sandbox-sustained-cpu-limit-stop.md`](./leaked/claude-code/piebald-2.1.316/system-reminder-cloud-sandbox-sustained-cpu-limit-stop.md)
+fires when a cloud sandbox has used 90% or more of all its CPUs for a
+sustained period. At the limit Claude Code stops every shell command of
+the session and the processes they started, "also those that used little
+CPU". The reminder then tells the model four things, each of which a
+generic "command killed" error would leave it to guess:
+
+- **What did not happen.** "The commands themselves did not fail. The
+  files are kept."
+- **What may restart.** Low-CPU commands such as a dev server can start
+  again.
+- **What may not.** "Work that fills the CPUs again will be stopped
+  again, so do not start it again in the same form."
+- **Who decides the new form.** "If the heavy work is still necessary,
+  first agree with the user on a form that uses less CPU, for example a
+  smaller job or fewer parallel workers."
+
+The limit is enforced, and the prompt's job is only to stop the model
+re-running the same job into it. It is the in-run version of §1's
+"do the work another way", with the same reasoning: the action is the
+evidence. No other source in this collection names a resource stop to
+the model; Crush 0.99 caps the output a shell command keeps in memory
+(`f88e147`, #4183, commit subject only) but says nothing to the model
+about it.
+
+A second 2.1.314 piece covers the other way work goes missing while the
+run is alive:
+[`system-reminder-background-mcp-call-stopping-session-warning.md`](./leaked/claude-code/piebald-2.1.316/system-reminder-background-mcp-call-stopping-session-warning.md).
+In a session that stops after it replies, a background MCP call still
+running is "likely cut off … and its result lost, though the server may
+still finish the work. So do not say you will report back." Running it
+again from a foreground agent "runs it twice; do that only if that is
+harmless". That is §2's last point (a re-run call with external effects
+is the dangerous case) stated to the model at the moment it matters.
+
+## 4. Loops inside a run: when is a retry "the same" retry?
+
+*Added 2026-11-02, from OpenHands SDK #6278 (`c3985a4`,
+`openhands-sdk/openhands/sdk/conversation/stuck_detector.py` and the PR's
+`.pr/validation-loops.md` evidence file).*
+
+Every harness here that detects in-run loops counts repeats of "the same
+call", and the definition of "same" decides what it catches. OpenHands'
+stuck detector compared invalid calls by their arguments, which missed a
+model that reworded its `thought` each time (it ran to the 12-iteration
+cap with no nudge) and stopped a model that was repairing a call field by
+field (six failing fields, then five, then four) after three attempts. The
+fix changes what is compared:
+
+- **A validation failure is identified by its failing fields**, the
+  Pydantic error type and location with list indices zeroed, not by the
+  argument values. Two invalid calls with the same set of failing fields
+  are the same attempt however the rest of the arguments changed; a call
+  that fails on fewer fields is progress and does not extend the streak.
+- **Generic validators fall back to argument comparison**, because a
+  custom `value_error` or `assertion_error` can report different problems
+  at one location. The comparison strips the SDK's own `summary` and
+  `security_risk` fields first, so rewording those does not count as a
+  different call.
+- **Parallel calls in one response are one attempt**: "the model sees
+  their errors together", so a nudge cannot fire before the model has seen
+  any of them.
+- **The nudge names the failing fields**: "Your calls to `X` have failed
+  validation N times without resolving the failing fields. Latest error:
+  … Correct the invalid or missing fields or try a different approach
+  before calling this tool again." The detector nudges after three
+  responses and stops the run after four, as before.
+
+The PR's own limits section is candid: the detector "remains a
+bounded-history heuristic, not a proof of progress", and the evidence is
+synthetic model responses against a local HTTP server, not a live-model
+evaluation. The counting rule is the transferable part.
+
+Forge's amendments from §3 and §4 are in
+[`agent-design/tools.md`](./agent-design/tools.md) (`Bash`, and
+"Repeated invalid calls" in the implementation contract) and
+[`agent-design/keel/run-spec.md`](./agent-design/keel/run-spec.md)
+(`monitors[]` counting).

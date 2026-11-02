@@ -310,6 +310,18 @@
           "core.read"
         ]
       }
-    }
+    },
+    "monitors": [
+      {
+        "id": "repeated_invalid_call",
+        "signal": {
+          "kind": "consecutive_tool_errors",
+          "threshold": 3
+        },
+        "action": {
+          "note": "Harness-written: names the fields still failing validation and the latest error (keel/run-spec.md §3, amended 2026-11-02)."
+        }
+      }
+    ]
   }
 }

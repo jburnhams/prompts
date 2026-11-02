@@ -2,6 +2,23 @@
 
 All notable changes to this repository, grouped by day, newest first. Generated from git history.
 
+## 2026-11-02
+
+**Weekly research pass (scheduled), on branch `claude/project-thread-7qr5lx`.** Asked to check tracked sources for changes, look for new projects and approaches from the last week or two, and fold the most relevant into Forge's design. A quiet week outside the tracked repos: no new first-party engineering posts, MCP revision or data-agent benchmark was found. The findings come from Claude Code 2.1.311–2.1.316, an OpenHands loop-detection fix, and a Codex approval rule.
+
+- **Claude Code 2.1.311–2.1.316** from Piebald (`f6aed7f`): `leaked/claude-code/piebald-2.1.316/` — new, with `delta.tsv` (45 added, 14 removed, 57 changed; 1,057 pieces) and nine pieces verbatim. Most of the delta is the Send-to-project feature, SDK telemetry fields and Artifact skills leaving the extraction.
+- `agent-run-recovery.md` §3 — new: a resource stop inside a live run. Claude Code's cloud sandbox stops shell work after sustained full CPU and tells the model the files are kept, the command did not fail, and not to rerun it "in the same form". Also its warning that a background MCP call is lost after the reply, and rerunning it "runs it twice".
+- `agent-run-recovery.md` §4 — new: OpenHands SDK #6278 changes its stuck detector to compare validation failures by failing fields rather than arguments, and to count parallel calls in one response as one attempt. The old comparison missed reworded loops and stopped field-by-field repairs.
+- `agent-context-compaction.md` §2c — new: what Claude Code's summariser may say about results it never saw ("the call was made, it may have had effects, its output is not available"), and that a task or approval in a tool result counts only as far as the user's own words call for it, while a limit there still applies.
+- `agent-permissions-approval.md` §2f — new: approvals that cannot stand in for each other (Codex's managed `prompt-user` rule overrides saved, hook and Guardian approvals and refuses when no capable client is connected; Claude Code's auto-mode deny rules allow no human fallback when the classifier gives no result); boundary settings that state what they do not cover; an edited message is never approval.
+- **Design amendments** (each with a row in `agent-design/keel/decisions.md` §14a):
+  - `keel/run-spec.md` §3 `monitors[]`: `consecutive_tool_errors` now counts model responses and continues a streak only on the same failure (the same `(error type, path)` set for validation errors); a smaller set is a repair and starts a new streak; a monitor with no `tool` keeps one streak per tool. `tools.md` "Repeated invalid calls" and `forge.coding.template.json` add the monitor (threshold 3, `note`) to Forge's base template.
+  - `tools.md` `Bash`: a sandbox resource stop returns `stopped: resource_limit` with the limit and the stopped commands, and the usage notes tell the model to run a smaller form once or end `blocked`. A third stop in a run puts it on the final-turn nudge. Runner deaths stay with `keel/pipelines.md` §7f.
+  - `future.md`: the compaction item records §2c's rule for if compaction is ever built, and a new item records Codex's human-only approval rule for if an automatic approver is ever added. No change to v1.
+- `sources.md` — new "weekly pass (read 2026-11-02)" section with SHAs for Piebald, OpenHands and Codex, the repos scanned with nothing used, and what was searched for and not found. `mini-swe-agent` cloned with `--depth 50`; its last commit is 2026-09-03.
+- `README.md`, `leaked/claude-code/README.md` — pointers to the new folder and sections.
+- **Branch name.** The routine asks for `claude/weekly-research-2026-11-02`; this session was restricted to `claude/project-thread-7qr5lx`, so the work is there.
+
 ## 2026-10-26
 
 **Weekly research pass (scheduled), on branch `claude/project-thread-f4mhqu`.** Asked to check tracked sources for changes, look for new projects and approaches from the last week or two, and fold the most relevant into Forge's design. Tracked repos were scanned from 2026-10-19; three outside sources mattered most: Claude Code 2.1.304–2.1.310, an Anthropic red-team of blocking monitors, and two Anthropic posts on sub-agents and review.
