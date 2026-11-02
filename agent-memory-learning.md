@@ -584,6 +584,11 @@ the model's point of view.
 
 ### Nobody is doing RAG over agent memory
 
+*Qualified 2026-11-02: true of the coding and review harnesses and of
+curated memory everywhere, but not of always-running and memory-first
+agents, which search a large episodic layer with hybrid or vector
+retrieval. See §15, "What changes".*
+
 The most counter-intuitive finding in this doc, given how much of the
 surrounding industry equates "agent memory" with "vector store": **not
 one first-party memory implementation examined here retrieves memory by
@@ -1966,6 +1971,232 @@ attachment, write access tied to input trust, versions with redaction,
 optimistic concurrency, and a list call that tells the model which
 stores it may write. Consolidation is still a product feature (Claude
 Code, Codex, OpenClaw, Letta), never a platform one.
+
+## 15. Always-running agents, and the memory-first systems (read 2026-11-02)
+
+*Added 2026-11-02 after Jonathan asked whether the survey covered
+always-running agents, where memory is central rather than a feature.
+It did not, and this section changes two conclusions above (see "What
+changes" at the end). Everything earlier in this doc was about coding
+and review harnesses, whose sessions are short and whose corpora stay
+small. A personal agent that runs for months on a chat channel, a
+heartbeat and a cron table is a different workload.*
+
+### OpenClaw's memory architecture (read from source)
+
+`openclaw/openclaw` `49f60db9` (2026-11-02), `docs/concepts/memory*.md`,
+`dreaming.md`, `active-memory/*.md`, `soul.md`. The earlier OpenClaw pass
+(2026-08-31) read its prompts and learning writers; this one read the
+memory architecture documents, which say why each piece exists.
+
+**Five tiers, with the boundary between the middle two doing the work.**
+
+| Tier | Surface | Written by | Injected |
+|---|---|---|---|
+| Instructions | `AGENTS.md`, `SOUL.md` and workspace instruction files | human only | always |
+| Curated core | `MEMORY.md`, `USER.md` | dreaming; a direct user request | at session start, budgeted, only when provenance is eligible |
+| Episodic | `memory/YYYY-MM-DD.md` daily notes, session transcripts | the agent while working; a pre-compaction flush; transcript capture | on recall only |
+| Prospective | standing intents (SQLite) and cron jobs | the `intent` tool; scheduled tasks | only when a trigger fires |
+| Review | `DREAMS.md`, dreaming reports | dreaming | never; for people |
+
+"Nothing crosses from episodic to curated without passing the promotion
+gates." The curated core is small and injected. The episodic tier is
+large and append-friendly, and it is never loaded at session start.
+
+**The episodic tier is searched with embeddings.** `memory_search` is
+hybrid by default: vector similarity and BM25 keyword search run in
+parallel, are merged with the keyword scores scaled so "the strongest
+keyword match earns at most the best semantic score", then ranked by
+"hybrid relevance × recency decay × importance multiplier" (daily notes
+decay with a 30-day half-life; `MEMORY.md` and `USER.md` are evergreen;
+importance is scored once at write time), then reordered by MMR for
+diversity. The ranking follows Generative Agents (arXiv:2304.03442)
+"without adding a query-time model call". OpenAI embeddings are the
+default, with a dozen providers including local GGUF models;
+`provider: "none"` is keyword-only, and an embedding failure falls back
+to keyword-only rather than failing the search. **Scope filters run
+before ranking**: "Source and selected-agent scope restrict candidates
+before the result limit." The Markdown files stay the source of truth;
+the index is derived, and `openclaw memory reset` rebuilds it from
+them.
+
+This is the first first-party memory system in this collection that
+retrieves by embedding similarity, and it contradicts §4's "nobody is
+doing RAG over agent memory" as a general statement. It does not
+contradict it for the curated core, which OpenClaw also keeps small and
+injects whole.
+
+**Provenance is the security boundary, not content scanning.** "Content-
+level scanning of memory cannot catch poisoned facts reliably, so
+OpenClaw enforces provenance at write time and gates promotion
+structurally instead of trying to detect bad memories later." Every
+indexed chunk carries SQLite columns "the model cannot write through
+prose":
+
+- an **origin class** from a closed set: `owner` (typed by the owner in a
+  trusted channel), `agent` (derived by the agent from owner content),
+  `untrusted` (web pages, tool output, non-owner participants in group
+  chats) and `system` (heartbeat prompts, cron preambles). Unknown origin
+  is never defaulted to `owner`;
+- a **session kind**: interactive, cron, heartbeat or sub-agent;
+- an observed timestamp and a supersession key.
+
+Four rules use them:
+
+- **Session-kind gating.** "Cron, heartbeat, and sub-agent sessions do not
+  produce durable memory candidates." The stated reason is an audit:
+  "the overwhelming majority of auto-captured memories [were]
+  restatements of runtime instructions, heartbeat noise, and recall
+  feedback loops."
+- **Recall-loop prevention.** Content injected from memory is marked and
+  "never re-extracted as a new memory. A fact recalled one hundred times
+  stays one fact."
+- **Taint propagates within a turn.** After a tool result that declares
+  network-sourced content, every later assistant message in that turn is
+  `untrusted`, even in an owner turn, until the next user message. A
+  memory flush records the least-trusted class for the whole file, so
+  "untrusted content cannot ride a trusted file hash". The documented gap
+  is declaration coverage: a tool that does not declare its results as
+  network-sourced does not taint.
+- **Quarantine by tier.** Untrusted content can be stored, indexed and
+  explicitly searched, but never enters the curated core or automatic
+  injection; the only ways it reaches a prompt are an explicit tool call
+  and the escalation lane, both wrapped as untrusted.
+
+**Dreaming, in three phases, with code around the model.** Light (stage
+and dedupe recent material, record reinforcement), REM (themes and
+reflections), Deep (promote). Deep's gates are fixed code:
+`minScore`, `minRecallCount` and `minUniqueQueries` must all pass, so a
+daily-note snippet is promoted because **it kept being recalled by
+different queries**, not because a model liked it. Candidates with
+`untrusted` or `system` provenance are removed "structurally, not [by] a
+score penalty". The model then returns "operation decisions, not
+replacement memory prose" (add, merge, supersede), and the writer
+applies them. An accepted rewrite must keep prior entries within a
+`maxPriorEntryLossFraction`, cite every promoted candidate's
+`Source: path#Lx-Ly`, and fit the bootstrap budget; the old `MEMORY.md`
+is kept as a preimage first. Transcript ingestion takes interactive
+sessions only. Dreaming cites sleep-time compute (arXiv:2504.13171).
+
+**Recall is laned by cost.** Lane one is rule-based: each inbound
+message is matched against short trigger phrases stored on curated
+entries, with no model call, injecting up to three entries. Lane two,
+**Active Memory**, is a blocking recall sub-agent that runs only "when
+the message asks about the past and the rule-based memory lane found no
+strong trusted trigger match", because flat retrieval "is weaker on
+temporal and multi-session questions" (LongMemEval, arXiv:2410.10813).
+It never runs for heartbeat, cron, one-shot or sub-agent runs.
+
+**Prospective memory is compiled out of the model.** "Storing intentions
+as prose in a memory file is the least reliable design available."
+Time-based intents become cron jobs when uttered. Event-based intents go
+into a table with machine-checkable trigger fields (keywords, an optional
+trigger embedding, channel and sender scope, expiry, fire budget,
+cooldown), matched by rules on every inbound message. Lifecycle is
+explicit state, with anti-nagging defaults: 24-hour cooldown, three
+fires, 90-day expiry, at most three injected per turn.
+
+**Project scope is a ranking boost, not a partition.** Memory written
+inside a git repository is annotated with the normalised `origin`
+remote. Search boosts entries from the session's (up to four) active
+repositories and mildly demotes others. Trigger injection is strict: a
+tagged entry fires only while every project key on it is active.
+`USER.md` and standing intents are never project-scoped.
+
+**Forgetting follows lineage.** Automatic ingestion records each entry's
+source sessions, consolidation carries origins forward to merged
+entries, and `openclaw memory forget --session` removes everything
+derived from a session and stops future ingestion of it. The docs are
+explicit about what it does not cover (handwritten notes, direct agent
+edits, copies outside the stores).
+
+### Hermes Agent's memory (read from source)
+
+`NousResearch/hermes-agent` `2b31d7b2` (2026-11-02),
+`website/docs/user-guide/features/{memory,memory-providers}.md`,
+`agent/{background_review,curator}.py`, `tools/memory_tool_store.py`.
+The earlier Hermes pass (2026-08-11) read its read-tool eval and
+`/learn`; this one read its memory.
+
+- **Two tiny files, hard caps, errors instead of truncation.**
+  `MEMORY.md` (agent's notes, 2,200 characters) and `USER.md` (user
+  profile, 1,375 characters), entries separated by `§`, injected with a
+  usage header (`[67% — 1,474/2,200 chars]`). A write that would overflow
+  returns an error with `current_entries` and the exact number of
+  characters to free, and the agent must retry as one batch that removes
+  or shortens entries and adds the new one. "Memory does **not**
+  auto-compact."
+- **A frozen snapshot per session**, to keep the provider's prefix cache:
+  writes go to disk immediately and are visible from the next session.
+  The docs teach users to run `/new` at natural boundaries because "the
+  whole memory system is built around the moment a session ends", and a
+  messaging chat is otherwise one session for weeks.
+- **Episodic recall is FTS5, not embeddings.** `session_search` over every
+  CLI and messaging session in SQLite returns "actual messages from the
+  DB — no LLM summarization, no truncation".
+- **Writers.** The live agent saves proactively, and a **background review**
+  forks the agent after every turn to ask "should any skill/memory be
+  saved or updated?", writing straight to the stores by default. A
+  `write_approval: true` gate stages every write outside the interactive
+  CLI, including the background review's, for `/memory pending`; a staged
+  patch or remove records the exact entry it targets and is refused if
+  that entry changed.
+- **Content is scanned**, unlike OpenClaw: entries are checked for
+  injection, exfiltration and backdoor patterns and invisible Unicode
+  before acceptance, and a stored entry that matches later is replaced
+  by a `[BLOCKED: …]` placeholder in the injected snapshot.
+- **Concurrency by rule**: "Don't point two agent processes at the same
+  Hermes home directory … two writers sharing one home will compound
+  each other's entries into state neither of them (nor you) authored."
+- **The skill curator** runs on inactivity (7-day interval, 2 idle
+  hours), moves skills to stale and archived by activity timestamps in
+  code, and "never delete[s], only archive[s]"; the model-driven
+  consolidation fork is opt-in.
+- **External providers are additive and plural**: Honcho, Mem0,
+  Hindsight, Supermemory, RetainDB, ByteRover and others, mostly
+  semantic. Everything sent to a provider passes the same secret scrub
+  as chat deliveries.
+
+### The memory-first systems (secondhand, not re-read this pass)
+
+These are memory products rather than agent harnesses. They are known
+from their papers and public docs; none was read from code for this
+document, and the claims below should be checked before being relied on.
+
+| System | Shape | What it adds to the comparison |
+|---|---|---|
+| **MemGPT / Letta** (arXiv:2310.08560) | Core memory blocks always in context and edited by the agent with tools; archival memory (vector-searched) and recall memory (conversation history) paged in by tool calls; sleep-time agents consolidate asynchronously (§14) | The origin of "the agent manages its own context window as memory". Archival retrieval is embedding-based |
+| **Generative Agents** (arXiv:2304.03442) | A memory stream of observations scored by recency × importance × relevance; periodic **reflection** writes higher-level memories back into the stream | The ranking formula OpenClaw adopts; reflection is the ancestor of every consolidation pass here |
+| **mem0** (arXiv:2504.19413) | Extract candidate facts per turn, retrieve similar existing memories by vector, and have a model choose ADD / UPDATE / DELETE / NOOP; an optional graph variant | The operation-decision shape that OpenClaw's deep phase also uses: the model chooses an operation against existing entries rather than writing free text |
+| **Zep / Graphiti** (arXiv:2501.13956) | A temporal knowledge graph: facts are edges with validity intervals, and a contradicting fact **invalidates** the old edge instead of deleting it | Bi-temporal supersession: "true from–to" rather than "current or deleted", the same distinction DeepSeek's Agent Notes make by hand (§9) |
+| **ChatGPT memory** | Saved memories the user can see and delete, plus reference to past chat history | The consumer baseline: user-visible, user-deletable, and on by default |
+| **Devin Knowledge, Cursor and Windsurf memories** | Covered in §1–§9 | Trigger descriptions (Devin); semantic retrieval claimed but not shown (Windsurf, Qoder) |
+
+### What changes
+
+1. **§4's "nobody is doing RAG over agent memory" holds only for the
+   curated layer.** The always-running agents and every memory-first
+   system keep **two layers**: a small curated core, injected whole and
+   kept as files, and a large episodic layer (daily notes, transcripts,
+   archival memory) that is searched. OpenClaw searches it with hybrid
+   vector + BM25; Hermes with FTS5 only; Letta, mem0 and Zep with
+   vectors or graphs. Grep-sized corpora are a property of short-session
+   coding agents, not of memory. The accurate statement is: **curated
+   memory is files and injection; episodic memory is searched, and
+   hybrid search is the norm once it spans months.**
+2. **Provenance beats content inspection as the write boundary.**
+   OpenClaw's position, with a production audit behind it, is that
+   scanning cannot catch poisoned facts, and its structure (closed origin
+   classes in columns the model cannot write, session-kind gating,
+   taint propagation, recall-loop marking, quarantine by tier) is the
+   most complete defence in this collection. Hermes scans content, and
+   so does Claude Code for secrets; scanning is still worth doing for
+   secrets and obvious injection, but as a second line.
+3. **Background-run noise is the dominant failure of always-on memory.**
+   Neither the coding-agent sources nor §9 named it, because coding
+   agents rarely run on heartbeats.
+4. **Prospective memory is not memory.** Intentions belong in a scheduler
+   or a rule table with expiry and fire budgets, not in prose.
 
 ## Design takeaways
 

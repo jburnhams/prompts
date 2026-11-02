@@ -11,7 +11,8 @@ why; §16h sketches the resources, fields, tools and rules it would add
 if accepted.
 
 Grounded in [`../../agent-memory-learning.md`](../../agent-memory-learning.md)
-(the field research; §14 was added for this proposal) and built on
+(the field research; §14 and §15 were added for this proposal, §15
+after the survey was widened to always-running agents) and built on
 Forge's [`../memory.md`](../memory.md), which it does not replace (§16a).
 
 ---
@@ -49,20 +50,26 @@ fills, as generic Keel resources that Forge and Lens configure.
 ### 16b. What the field does, in one table
 
 The detail is in [`../../agent-memory-learning.md`](../../agent-memory-learning.md)
-§1–§14. The decisions below rest on these rows.
+§1–§15. The decisions below rest on these rows. Rows marked *(rev.)*
+changed when the survey was widened to always-running agents
+(OpenClaw, Hermes) and memory-first systems (Letta, mem0, Zep,
+Generative Agents) on 2026-11-02.
 
 | Question | Field answer | Sources |
 |---|---|---|
 | Substrate | Markdown files with frontmatter, a small always-loaded **index** pointing at on-demand detail files | Claude Code, Codex, Gemini CLI, OpenHands SDK, Antigravity (§4) |
-| Retrieval | Index injection + the model reading files with grep and read. No first-party store retrieves by embedding | All of the above; Copilot CLI declined vectors on purpose (§4) |
+| Retrieval *(rev.)* | **Two layers.** A small curated core is injected and read with file tools and grep, everywhere. A large episodic layer (daily notes, transcripts, archival memory) is searched: hybrid vector + BM25 with recency and importance (OpenClaw), FTS5 only (Hermes), vectors or graphs (Letta, mem0, Zep). Coding harnesses have no episodic layer, which is why they never needed search | §4, §15 |
+| Recall cost lanes | Rule-matched trigger phrases with no model call; a recall sub-agent only for questions about the past | OpenClaw (§15) |
 | Selection when the index is too big | A cheap model picks ≤5 files from name + description, with restraint rules | Claude Code `findRelevantMemories` (§5, §13) |
 | Levels | Session, private project, shared project, user, org, per-sub-agent | Gemini CLI routing table, Claude Code types → scope (§1) |
 | Platform shape | Several stores per session, each attached `read_only` or `read_write`, mounted as directories, versioned | Managed Agents memory stores (§14) |
 | Who writes | The working model; a background consolidator; or a human | §2 |
 | Moderation | Human inbox (Gemini), visible after the fact (Claude Code), agent-owned (Codex). Secret scanning at the write tool only in Claude Code | §9 |
-| Injection | Every consolidator says "data, not instructions"; Managed Agents ties write access to input trust; OpenHands labels the index `UNTRUSTED_CONTENT` | §10, §14 |
-| Consolidation | A separate run over the store and recent sessions, triggered by a count of sessions or dirtiness, mostly a no-op | Claude Code dream, Codex Phase 2, OpenClaw dreaming, Letta sleep-time (§2b, §13, §14) |
-| Forgetting | Usage-ranked eviction (Codex citations), index budget pressure, delete-on-contradiction, a mass-deletion guard | §9, §13 |
+| Injection *(rev.)* | Every consolidator says "data, not instructions"; Managed Agents ties write access to input trust; OpenHands labels the index `UNTRUSTED_CONTENT`. OpenClaw makes **provenance** the boundary: closed origin classes in fields the model cannot write, taint that propagates, quarantine by tier, and no reliance on content scanning. Hermes scans content | §10, §14, §15 |
+| Noise *(rev.)* | In always-on agents, most auto-captured memories restate runtime instructions, heartbeat output or recalled memory. Fixed by gating on session kind and marking recalled content | OpenClaw (§15) |
+| Prospective memory | Intentions ("remind me", "when X comes up") compiled into cron jobs and rule tables with expiry and fire budgets, not prose | OpenClaw (§15) |
+| Consolidation *(rev.)* | A separate run over the store and recent sessions, triggered by a count of sessions or dirtiness, mostly a no-op. OpenClaw promotes by recall frequency across distinct queries, with fixed gates before the model and the model choosing operations rather than writing prose (as mem0 does) | Claude Code dream, Codex Phase 2, OpenClaw dreaming, Letta sleep-time, Generative Agents reflection (§2b, §13, §14, §15) |
+| Forgetting | Usage-ranked eviction (Codex citations), index budget pressure, delete-on-contradiction, a mass-deletion guard; supersession with validity intervals (Zep); forgetting by source session, following lineage (OpenClaw) | §9, §13, §15 |
 
 ### 16c. Notes, memory and consolidation are three things
 
@@ -74,8 +81,8 @@ want different machinery.
 | What | Working state the agent writes for itself | Durable knowledge for later runs | Tidying a store between runs |
 | Lifetime | The pipeline run | Until superseded, evicted or deleted | One run |
 | Written by | The working agent, directly | Proposals from working runs; direct only at low blast radius (§16f) | A consolidation run (§16g) |
-| Keel resource | A store at level `run` | A `MemoryStore` at level `user`, `team`, `tool_group` or `global` | A template extending `keel.consolidate` |
-| Precedent | OpenHands daily logs, Claude Code `sessions/`, Copilot CLI `context_board` | Every row of §16b | Claude Code dream, Codex Phase 2 |
+| Keel resource | A store at level `run` (episodic only) | A `MemoryStore` at level `user`, `team`, `tool_group` or `global`, each with a curated and an episodic layer (§16e) | A template extending `keel.consolidate` |
+| Precedent | OpenHands and OpenClaw daily logs, Claude Code `sessions/`, Copilot CLI `context_board` | Every row of §16b | Claude Code dream, Codex Phase 2, OpenClaw dreaming |
 
 **Notes are not a carry.** A carry (`run-spec.md` §3) is written by the
 harness from an outcome: a plan, findings, an interrupted attempt. Notes
@@ -144,77 +151,114 @@ Seven decisions behind the table.
    by `agents.<a>.memory.path`. It needs no new level and no new
    owner.
 
-### 16e. Substrate and retrieval: files and grep, not embeddings
+### 16e. Substrate and retrieval: files for curated memory, search for episodic
 
-**Decision: a store is a set of path-addressed Markdown documents. Runs
-retrieve by an injected index plus file reads and grep. Keel has no
-vector index for memory.**
+*Revised 2026-11-02 after widening the survey to always-running agents
+(`../../agent-memory-learning.md` §15). The first draft said "no
+embeddings" outright. That was right for curated memory and wrong for
+the episodic layer.*
 
-The argument, from the field (`../../agent-memory-learning.md` §4, §14):
+**Every durable store has two layers.** Every always-running and
+memory-first system in the survey separates them: OpenClaw (`MEMORY.md`
+and `USER.md` against daily notes and transcripts), Hermes (two capped
+files against `session_search`), Letta (core blocks against archival
+memory), OpenHands (`MEMORY.md` against daily logs).
 
-- **The corpora are small.** An index of a few hundred lines, a few
-  hundred files behind it. At that size grep is exact and instant, and
-  there is no index to rebuild when a person edits a file by hand.
-- **Scope wants an exact filter.** "Only Alice's", "only for tool group
-  `java.coding` ≥ 3", "only this team" are access checks. Similarity
-  search answers a different question, and running it before the access
-  check leaks; running it after is the exact filter anyway.
+| Layer | What | Size | Written by | Reaches a run by |
+|---|---|---|---|---|
+| **Curated** | the index and its documents: facts, preferences, definitions, workarounds | small and capped (§16f step 1) | proposals and consolidation; direct only where §16d allows | injection at turn 0, file reads, grep |
+| **Episodic** | dated, append-only notes (`episodes/YYYY-MM-DD.md`) and harness-written run summaries | grows without a cap until retention removes it | the working agent appends; the harness appends a run summary | search only, never injected |
+
+A `run` store is all episodic. `global` is all curated. `user`, `team`
+and `tool_group` have both. The episodic layer is what a long-lived
+Lens user or a persistent assistant accumulates over months. Curated
+memory is what survives consolidation out of it (§16g).
+
+**Decision: curated memory is path-addressed Markdown, retrieved by
+injection, file reads and grep, with no vector index.** The reasons stand
+from the coding-agent sources (`../../agent-memory-learning.md` §4), and
+the always-running agents agree for this layer:
+
+- **It is small by construction.** A capped index and a few hundred
+  documents. Grep is exact and instant, and there is no index to rebuild
+  when a person edits a file by hand.
+- **Scope wants an exact filter.** "Only Alice's" and "only for tool group
+  `java.coding` ≥ 3" are access checks, not similarity questions.
 - **People must be able to read and correct it.** Every moderation step
-  in §16f ends with a person reading a document. Text they can diff and
-  edit survives that; vectors do not.
-- **Nobody ships it.** Not Claude Code, Codex, Gemini CLI, OpenHands,
-  Copilot CLI (which had a database and declined), or the one platform
-  API, Managed Agents, which mounts stores as directories so that the
-  file tools are the retrieval.
+  in §16f ends with a person reading a document.
+- **It is injected anyway.** What is always in context needs no
+  retrieval.
 
-**Where embeddings may appear, and where they may not.** Two places,
-both inside consolidation, neither on the read path of a working run:
+**Decision: the episodic layer is searched through a derived index,
+keyword always and vector optional.** The files stay the source of
+truth; the index is built from them and can be rebuilt from them at any
+time (OpenClaw's `memory reset` / `memory index`). Concretely:
 
-- **Near-duplicate detection** when a consolidation run merges
-  proposals: "is this new entry a rewording of an existing one?" A
-  similarity score is a hint to the consolidation model, which still
-  reads both.
-- **Suppression**, the job Greptile uses embeddings for: deciding that a
-  proposal resembles ones a moderator has already rejected.
+- **Keyword search (BM25 or FTS5) is always on.** Hermes ships episodic
+  recall with keyword search alone, and IDs, error strings and config
+  keys need exact matches whatever else runs.
+- **Vector similarity is a deployment option**, merged with keyword
+  scores as OpenClaw does: keyword scores scaled so the best keyword
+  match earns at most the best semantic score, then **relevance × recency
+  decay × importance**, then MMR for diversity. Daily notes decay (a
+  30-day half-life is OpenClaw's default); curated documents do not.
+  If the embedding provider fails, search falls back to keyword-only and
+  says so; it never fails the call.
+- **Access filters run before ranking.** The candidate set is restricted
+  to the stores the run may read *before* the result limit applies
+  (OpenClaw: "scope restrict[s] candidates before the result limit").
+  Ranking first and filtering after would let one user's notes push
+  another's out of the window, or leak through scores.
+- **Untrusted-origin chunks are searchable but quarantined** (§16f):
+  results carry their origin, and the harness wraps untrusted ones in
+  the untrusted-data envelope.
 
-A large corpus that needs semantic search (a wiki, a runbook library,
-past incident reports) is not memory. It is a knowledge base, and it
-reaches a run as an MCP tool in a tool group, with its own owner and
-retrieval. Keel says so instead of growing memory into one.
+So the first draft's "no vector store" now reads **"no vector store for
+curated memory, and no embedding index as a source of truth anywhere"**.
+A wiki, a runbook library or an incident archive is still not memory. It
+is a knowledge base and reaches a run as an MCP tool in a tool group,
+with its own owner.
 
-**Revisit when**: a store's index no longer fits its budget even after
-consolidation, *and* an `../eval.md` case shows the selector below
-missing entries that a similarity search would have found. Until both,
-a vector index is cost with no measured benefit.
+**How a run reads memory.** Four ways, from cheapest to dearest.
 
-**How a run reads a store.** Three ways, all from the same documents:
-
-1. **The index is injected.** Each store has an index document
+1. **The curated index is injected.** Each store has an index document
    (`MEMORY.md`, one line per entry, ≤150 characters a line). The
    harness renders the indexes of a run's stores into one generated
    block in the opening message, **narrowest level last** (OpenHands:
    "the later position gets more model attention"), each under a header
-   naming its level and whether the run can write it. The block is
-   nonce-wrapped and labelled as unverified data, as every untrusted
-   input is (`run-spec.md` §3). Over budget, the harness drops whole
-   lines from the oldest end and says so; it never truncates silently.
-   An empty store injects nothing, not even a heading.
-2. **Documents are read with file tools.** With a workspace, stores are
-   mounted read-only or read-write at `/memory/<level>/` and the
-   ordinary `Read`, `Grep` and `List` reach them; a write tool against a
-   read-only mount is refused at the executor, not by the prompt. With
-   `workspace: none` (most Lens runs), the harness registers the built-in
-   memory tools instead (§16h). Either way the run record lists every
-   document read.
-3. **A selector, when the index is too big.** If the combined indexes
-   exceed the budget, a `selector: model` setting runs an economy-tier
-   side query before turn 0 that picks up to five documents from their
-   names and descriptions and injects them whole. It carries Claude
-   Code's restraint rules verbatim in substance: only documents it is
-   certain will help; match on what the task is about, not on keywords
-   shared with a user profile; skip reference for tools already in use,
-   but **keep warnings about them**. An outage selects nothing; it never
-   fails the run.
+   naming its level, its fill (`[67% — 134/200 lines]`, as Hermes shows)
+   and whether the run can write it. The block is nonce-wrapped and
+   labelled as unverified data. Over budget, the harness drops whole
+   lines from the oldest end and says so. An empty store injects
+   nothing. **The block is frozen for the run**: a write during the run
+   is visible to later runs, not re-injected into this one (Hermes's
+   frozen snapshot, which also keeps the provider's prompt cache).
+2. **Rule-matched entries are injected.** A curated entry may carry up to
+   three short trigger phrases. Before turn 0 the harness matches them
+   against the starting query with keyword and, if configured, vector
+   similarity, and injects up to three matching documents whole. No
+   model call. Only curated, non-untrusted entries qualify (OpenClaw's
+   lane one).
+3. **Documents are read and the episodic layer is searched by tool.**
+   With a workspace, curated documents are mounted read-only or
+   read-write at `/memory/<level>/` and the ordinary `Read`, `Grep` and
+   `List` reach them; a write tool against a read-only mount is refused
+   at the executor. `MemorySearch` (§16h) searches the episodic layer
+   and curated documents of every store the run can read. With
+   `workspace: none`, the built-in memory tools do both.
+4. **A selector, when the index is too big.** If the combined indexes
+   exceed the budget, `selector: model` runs an economy-tier side query
+   before turn 0 that picks up to five documents from their names and
+   descriptions, under Claude Code's restraint rules: only documents it
+   is certain will help; match on what the task is about, not on
+   keywords shared with a user profile; skip reference for tools already
+   in use, but **keep warnings about them**. An outage selects nothing
+   and never fails the run.
+
+OpenClaw's fifth lane, a blocking recall sub-agent for questions about
+the past, is a template choice in Keel: a sub-agent granted only
+`MemorySearch` and `MemoryRead`, which a conversational template can
+spawn. It needs no platform feature.
 
 **Staleness is computed, not declared.** Each injected entry carries its
 age in words ("written 47 days ago", nothing under two days), and a
@@ -241,48 +285,97 @@ generalise. The model makes the same call either way; the harness
 returns *"proposed; a reviewer will decide"* instead of *"written"*, so
 the model does not assume the fact is now in memory.
 
-**Validation runs on every write and every proposal, in this order.**
-Each step is a harness check (`tools-and-agents.md` §4d), so no grant
-can remove it. A refusal comes back as a tool error that states the
-rule, per the errors-are-prompts posture.
+**Provenance is the boundary; content checks are the second line.**
+*Revised 2026-11-02.* The first draft led with content checks and put
+lineage last. OpenClaw's architecture argues the other way, with a
+production audit behind it: "Content-level scanning of memory cannot
+catch poisoned facts reliably, so OpenClaw enforces provenance at write
+time and gates promotion structurally instead of trying to detect bad
+memories later." A poisoned fact ("the deploy key lives at …") looks
+like any other fact. What gives it away is where it came from.
+
+Every write and every proposal is stamped by the harness, in fields the
+model cannot set (OpenClaw: "Origin labels live in SQLite columns
+written by classification code, never parsed out of memory text"):
+
+| Field | Values | Set from |
+|---|---|---|
+| `origin` | `principal` (the principal's own words: the starting query from a live user, a chat message, an `AskUser` answer), `agent` (the agent's own conclusion with only `principal`, `config` and `harness` inputs in context), `untrusted` (anything after a ticket body, PR comment, fetched page, MCP result or other non-principal input entered the context), `system` (template text, trigger preambles, harness notes) | the trust of every input and tool result the writing agent had seen, at the moment of the write. Unknown is never `principal` |
+| `run_kind` | `interactive`, `event`, `schedule`, `continuation`, `consolidation`, `sub_agent` | the trigger and the agent |
+| `observed_at`, `supersedes` | a time; an entry id | the harness clock; the write |
+
+Taint clears the way OpenClaw's does: on the next `principal` message.
+In an interactive run that is the user's next chat message, so a Lens
+user who says "when I say *year* I mean the fiscal year" after a
+warehouse query has been answered still writes with `principal` origin.
+In a hands-off run there is no next user message, so taint lasts until
+the run ends: a Forge run that read a ticket stays `untrusted` for the
+rest of the run.
+
+Four structural rules use these fields. Each is enforced by the harness,
+not asked of the model:
+
+1. **Run-kind gating.** Runs started by a `schedule` trigger or a
+   monitor, and `system`-origin content anywhere, produce no curated
+   writes or proposals unless the template sets `memory.capture: true`.
+   They may write episodic notes. OpenClaw's audit found that "the
+   overwhelming majority of auto-captured memories [were] restatements of
+   runtime instructions, heartbeat noise, and recall feedback loops", and
+   a weekly Lens report on a schedule would produce exactly that.
+2. **Recall-loop prevention.** The harness knows what it injected and
+   what `MemoryRead` and `MemorySearch` returned. A proposal whose body
+   restates retrieved memory is dropped as a duplicate. "A fact recalled
+   one hundred times stays one fact."
+3. **Quarantine by origin.** `untrusted` content may go to the episodic
+   layer and is searchable there, but can never be written directly to a
+   curated layer at `team`, `tool_group` or `global`, and consolidation
+   never promotes it (§16g). At `user` level, an `untrusted`-origin
+   write to the curated layer becomes a proposal even on a `read_write`
+   attachment. Rule M2 catches the static case at publish; this catches
+   the tool result that arrives mid-run.
+4. **Least-trusted wins.** A document or proposal assembled from several
+   sources takes the lowest origin among them, so "untrusted content
+   cannot ride a trusted file hash".
+
+**Then validation runs on every write and every proposal, in this
+order.** Each step is a harness check (`tools-and-agents.md` §4d), so no
+grant can remove it. A refusal comes back as a tool error that states
+the rule, per the errors-are-prompts posture.
 
 1. **Shape.** Frontmatter with `name`, `description` (one line; it is
    what the selector reads), and a `kind` from the store's declared
    list. Paths are normalised and confined to the store root before any
-   I/O (`..`, absolute paths, reserved names rejected). One document is
-   at most 4 KB, and the index at most a declared number of lines. A
-   write that would push the index over its cap is refused with the
-   cap, the current size and "merge or shorten entries", as Claude
-   Code does.
+   I/O (`..`, absolute paths, reserved names rejected). One curated
+   document is at most 4 KB, and the index at most a declared number of
+   lines. A write that would push the index over its cap is refused with
+   the cap, the current size, the entries it holds and how much must be
+   freed. The agent then retries as one batch that frees space and adds
+   the entry (Claude Code and Hermes both do this; Hermes's message names
+   the exact number of characters to free).
 2. **Concurrency.** Every update names the version it read (`if_version`,
    or `new` for a document that must not yet exist). A conflict returns
    the current content so the model can merge and retry. Claude Code
-   and Managed Agents both landed here; without it two parallel runs on
-   one team store silently overwrite each other.
+   and Managed Agents both landed here, and Hermes, which has no such
+   check, has to tell its users never to run two agents on one store.
 3. **Secrets.** A scanner over distinctive-prefix credential patterns,
-   on every level, including `run`, since notes can be promoted. Claude
-   Code's team-memory guard, widened.
+   on every level and both layers. Claude Code's team-memory guard,
+   widened.
 4. **Personal data.** On `team`, `tool_group` and `global`, a classifier
    for personal data about anyone other than the principal. A team
    memory that says "Bob is slow to review" is refused. On `user` it is
    the principal's own data and allowed.
-5. **Instruction shape.** Memory is facts and preferences, not orders to
-   future agents. A write whose body addresses the agent ("ignore",
-   "always run", "you must"), contains tool-call or tag syntax, or links
-   to a host outside the deployment's allowlist is not refused at
-   `user` level (people do write "always show me the SQL"), but at
-   `team`, `tool_group` and `global` it is forced to `propose`, whatever
-   the attachment says, and flagged for the moderator.
-6. **Input lineage.** The harness stamps each write with the run, the
-   principal, the template version and **the lowest trust of any input
-   in the writing agent's context** (`principal`, `config`, `harness`,
-   or untrusted). This is the Managed Agents warning turned into data:
-   a write made by an agent that had read a fetched web page, a ticket
-   body or an MCP result is `lineage: untrusted`, and at `team` or
-   wider such a write is always a proposal (rule M2).
+5. **Instruction shape and invisible text.** A body that addresses the
+   agent ("ignore", "always run", "you must"), contains tool-call or tag
+   syntax, invisible Unicode, or a link to a host outside the
+   deployment's allowlist is forced to `propose` and flagged at `team`,
+   `tool_group` and `global`. At `user` level it is allowed, because
+   people do write "always show me the SQL". Hermes scans for these
+   patterns and refuses; Keel routes to a person instead, because
+   provenance has already done the structural work and a false positive
+   should cost a review, not a lost fact.
 
 **Moderation of proposals.** A proposal is a document diff with its
-lineage, the evidence the model gave, and the run it came from. Three
+origin and run kind, the evidence the model gave, and the run it came from. Three
 ways it can be decided, chosen per store:
 
 | Policy | Who decides | When to use it |
@@ -350,8 +443,11 @@ normal outcome, and the completion contract has it as a status.
 - the store's **diff since the last successful consolidation**, as Codex
   feeds its Phase 2 a git diff, so a person's hand edit shows up as an
   edit to respect, not as noise;
-- the pending proposals, each with lineage, evidence and source-run
-  outcome;
+- the pending proposals, each with origin, run kind, evidence and
+  source-run outcome;
+- **promotion candidates from the episodic layer**: passages that
+  `MemorySearch` returned to at least *N* runs for at least *M* distinct
+  queries since the last consolidation, with their origins (below);
 - per-document **usage**: how many runs had it injected or read it, and
   when last, from run records. Codex needs the model to emit citations
   to get this; Keel has it already because every read goes through the
@@ -384,14 +480,35 @@ the field learned the hard way:
    them rather than adding near-duplicates.
 2. **Gather.** In order: documents that the diff or usage data show have
    drifted; proposals; then, only if needed, a narrow transcript grep.
-3. **Consolidate.** Merge proposals into existing documents rather than
-   adding new ones. Convert relative dates to absolute. Delete a fact
-   only when it is contradicted by newer evidence or superseded by a
-   newer entry, and say which.
+3. **Consolidate.** Merge proposals and promotion candidates into
+   existing documents rather than adding new ones. Convert relative
+   dates to absolute. When a fact is contradicted by newer evidence,
+   **supersede** it: the old entry gets `valid_until` and a pointer to
+   the new one, and stays in the version history (Zep's validity
+   intervals, DeepSeek's "never edited into a different decision").
+   Delete only what is superseded and unused.
 4. **Prune and index.** Keep the index under its cap, one line per
    entry. Drop entries unused for longer than the store's
    `max_unused_days`; usage decides, not the model's sense of what looks
    old.
+
+**Promotion from the episodic layer is decided by code, then by the
+model.** *Added 2026-11-02, from OpenClaw's deep phase.* Fixed gates
+run first: a candidate passage must have been retrieved by at least *N*
+runs, for at least *M* distinct queries (`min_recall_runs`,
+`min_unique_queries`), and must not have `untrusted` or `system` origin.
+That removal is structural, not a score penalty, so no amount of recall
+promotes an untrusted passage. Only then does the model see it, and the
+model returns **operations, not prose**: add, merge into entry *x*,
+supersede entry *y*, or drop. The harness applies them using the
+candidate's own text and source reference, which is OpenClaw's design
+and mem0's ADD / UPDATE / DELETE / NOOP. Three checks gate the result
+before it is written: it loses no more than a set fraction of prior
+entries (`max_prior_entry_loss`), it cites every promoted candidate's
+source (`episodes/2026-10-30.md#L12-L18`), and it fits the index cap.
+The previous index is kept as a version, so every consolidation can be
+undone. This is the "writer that may place but may not author" of
+`../../agent-memory-learning.md` §6, made the default.
 
 And five rules that apply at shared levels:
 
@@ -410,7 +527,9 @@ And five rules that apply at shared levels:
   is newer.
 - **Treat the existing store as untrusted too.** OpenClaw's rule: prior
   memory is data, not instructions, because an injection that got in
-  once is read by every consolidation after.
+  once is read by every consolidation after. Promoted entries keep the
+  origins of everything they were built from, so forgetting a source
+  (§16f) can still find them.
 - **A team or tool-group consolidation's output is a proposal batch**
   under `consolidation_then_human`, gated like any other Keel gate
   (`outputs.md` §7d): one review of the whole diff, not one per entry.
@@ -438,9 +557,15 @@ Shapes only; field names are proposals. Nothing below is in
   "moderation": "consolidation_then_human",
   "consolidation": { "template": "lens.consolidate.team", "min_pending": 5, "min_runs": 20 },
   "retention": { "max_unused_days": 180, "versions_days": 90 },
-  "delete_rate": { "per_cycle": 10 }
+  "delete_rate": { "per_cycle": 10 },
+  "episodic": { "search": "hybrid", "recency_half_life_days": 30, "retention_days": 365 },
+  "promotion": { "min_recall_runs": 3, "min_unique_queries": 2, "max_prior_entry_loss": 0.1 }
 }
 ```
+
+`episodic.search` is `keyword` or `hybrid`; `hybrid` needs the
+deployment to name an embedding provider, and falls back to `keyword`
+when it is unavailable. `promotion` holds the fixed gates of §16g.
 
 `run` and `user` stores are not registered one by one: Keel creates a
 `run` store per pipeline run and a `user` store per principal on first
@@ -460,6 +585,8 @@ use, from a deployment-level default.
   ],
   "budget_bytes": 6000,
   "selector": "model",
+  "triggers": true,
+  "capture": false,
   "agents": { "validator": { "memory": "none" } }
 }
 ```
@@ -470,11 +597,15 @@ use, from a deployment-level default.
 - `access` is a ceiling for working runs. (A store's own consolidation
   template is the exception, §16g.) The effective mode is the narrowest of this
   field, the level's maximum (§16d), the principal's RBAC permission on
-  the store, the delegation's memory consent, and the lineage rule
-  (§16f step 6).
+  the store, the delegation's memory consent, and the quarantine rule
+  (§16f).
 - `instructions` (≤ 1,000 characters) is rendered beside that store's
   index, as Managed Agents does; it comes from the template, so it is
   `config` trust.
+- `triggers: true` turns on rule-matched injection (§16e, way 2).
+- `capture` defaults to `true` for `interactive` and `event` runs and
+  `false` for `schedule` runs and monitors (§16f, run-kind gating). A
+  template sets it explicitly to override.
 - An agent with `memory: none` gets no block and no tools. Forge keeps
   its validator independent this way (Forge `../memory.md` §5a).
 
@@ -488,6 +619,8 @@ express a proposal):
 | `MemoryRead` | one document's content and version | records the read for usage |
 | `MemoryWrite` | replace a whole document, with `if_version` | at `propose`, returns "proposed" and the proposal id |
 | `MemoryDelete` | delete one document, with `if_version` | counts against the delete rate |
+| `MemoryNote` | append a dated entry to a store's episodic layer | allowed at `propose` too: episodic notes are not curated memory, and they keep their origin |
+| `MemorySearch` | search the episodic layer and curated documents of every readable store; returns snippets with path, line range, store, age and origin | access filter before ranking; untrusted results wrapped; records the query for promotion counts |
 
 `Retrospect` stays Forge's, and becomes a thin wrapper: a `Retrospect`
 call is a `MemoryWrite` at `propose` to the store its `category` routes
@@ -505,9 +638,10 @@ alongside the rest of `api.md`.
 | Rule | Rejects |
 |---|---|
 | M1 | an `access` wider than the level's maximum in §16d: `read_write` on a `team`, `tool_group` or `global` store, or anything but `read_only` on `global`. **Exception:** a template extending `keel.consolidate` that the store names in `consolidation.template` gets consolidator access to that store only, which writes versions or a gated proposal batch per the store's `moderation` (§16g). A store with `moderation: human` may name no consolidation template |
-| M2 | a template with any non-`principal`, non-`config`, non-`harness` input and `access: read_write` on a `team`, `tool_group` or `global` store (Managed Agents' warning as a rule) |
+| M2 | `access: read_write` on a `user` store in a template with any input that is not `principal`, `config` or `harness` (Managed Agents' warning as a rule; at wider levels M1 already forbids `read_write`) |
 | M3 | a `tool_group` attachment naming a group the template does not grant |
 | M4 | a template a delegation may run that attaches the `user` store, unless the template declares memory in its consent digest (so re-consent is required when it changes) |
+| M5 | `capture: true` on a template started only by `schedule` triggers, unless every input is `principal`, `config` or `harness` |
 
 ### 16i. How Forge and Lens would use it
 
@@ -539,12 +673,34 @@ alongside the rest of `api.md`.
 - A team store moderated `consolidation_then_human` is where an
   analyst's confirmed metric definition becomes every analyst's.
 
+**A persistent assistant on Keel.** *Added 2026-11-02.* Keel has no
+always-running process, and it does not need one to host the
+OpenClaw and Hermes pattern. A persistent assistant is a chat trigger
+(`run_as: invoker`) plus a `user` store whose episodic layer collects
+`MemoryNote`s and harness-written run summaries, a heartbeat as a
+`schedule` trigger with `capture: false`, and a `keel.consolidate`
+template on that store. Hermes's lesson about session boundaries is
+built in: each Keel run is a session, so the frozen curated snapshot
+refreshes on every run rather than when a user remembers to type
+`/new`.
+
 ### 16j. What stays out
 
-- **No vector store** (§16e), with the revisit condition stated.
+- **No vector store for curated memory, and no embedding index as a
+  source of truth.** Embeddings are allowed only as a derived, rebuildable
+  index over the episodic layer, with keyword search always available
+  (§16e).
+- **No prospective memory.** "Remind me Friday" and "when the release
+  comes up, mention the changelog" are not facts to store. They are
+  triggers: a `schedule` trigger, or an event trigger with a condition,
+  an expiry and a fire budget, created on the user's behalf through the
+  trigger API with their delegation. OpenClaw's reason: "storing
+  intentions as prose in a memory file is the least reliable design
+  available".
 - **No memory in a carry.** Carries stay harness-written outcome records.
-- **No direct machine writes to shared levels from untrusted contexts.**
-  Rule M2.
+- **No direct machine writes to shared levels, and none from untrusted
+  contexts at any curated level.** Rules M1 and M2, and §16f's
+  quarantine rule.
 - **No memory as policy.** Memory is injected as data and can never
   outrank a conventions section or a harness check. Forge's
   "informs, never vetoes" holds at every level.
@@ -564,13 +720,20 @@ alongside the rest of `api.md`.
 3. **`user` stores**, `read_write` for interactive Lens runs only.
    Users can see and delete everything. Measures whether people value
    it before building anything shared.
-4. **Proposals, lineage and the human moderation queue**, then `team`
+4. **Provenance stamping, proposals and the human moderation queue**, then `team`
    and `tool_group` stores behind them.
-5. **`keel.consolidate`** and the `memory.store_changed` trigger, first
+5. **The episodic layer with keyword search** (`MemoryNote`,
+   `MemorySearch`, `episodic.search: keyword`), and run-kind gating.
+6. **`keel.consolidate`** and the `memory.store_changed` trigger, first
    for `user` stores (low risk), then `team` under
-   `consolidation_then_human`.
-6. **The selector**, only when some store's index stops fitting its
-   budget.
+   `consolidation_then_human`. Promotion from the episodic layer needs
+   step 5's recall counts.
+7. **Hybrid search**, when an `../eval.md` case on real episodic stores
+   shows keyword search missing what a user asked about (a different
+   wording, another language). Hermes ships without it; OpenClaw ships
+   with it on by default. Measure before choosing.
+8. **The selector** and **rule-matched triggers**, only when some
+   store's index stops fitting its budget.
 
 ### 16l. Open questions
 
@@ -585,6 +748,16 @@ alongside the rest of `api.md`.
 - **Team membership changes.** When a person leaves a team, their past
   writes stay (they were moderated), but should their open proposals be
   dropped? Probably yes; not yet argued.
+- **Keyword or hybrid by default (§16k step 7).** The two always-running
+  agents disagree, and neither publishes a comparison. LongMemEval
+  (arXiv:2410.10813) is the obvious public benchmark for the episodic
+  layer.
+- **Episodic retention and the right to be forgotten.** A year of a
+  user's notes is personal data. OpenClaw's `memory forget --session`
+  removes everything derived from a session by following lineage, and
+  says what it cannot reach. Keel would need the same, plus redaction of
+  the derived search index, before `retention_days` is longer than a
+  few months.
 - **Cross-deployment portability.** Claude Code ships agent-memory
   snapshots with sub-agent definitions. A published template could ship
   a seed `tool_group` store the same way. Useful for a shared Java tool

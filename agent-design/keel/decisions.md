@@ -105,9 +105,12 @@ rows in §14a).
 
 - **Memory, notes and consolidation** ([`memory.md`](./memory.md) §16,
   2026-11-02). Adds `MemoryStore` at levels `run`, `user`, `team`,
-  `tool_group` and `global`; write modes `read_write`, `propose` and
-  `read_only`; harness-side validation and input lineage; and
-  consolidation as a `keel.consolidate` template. No decision rows until
+  `tool_group` and `global`, each with a curated layer (files, grep,
+  injected) and an episodic layer (searched, keyword or hybrid); write
+  modes `read_write`, `propose` and `read_only`; provenance stamping
+  (origin, run kind) as the write boundary with content checks behind
+  it; and consolidation as a `keel.consolidate` template with
+  recall-count promotion gates. No decision rows until
   it is accepted.
 
 ### Work items
