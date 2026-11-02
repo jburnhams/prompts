@@ -326,16 +326,22 @@ triggers, grants, harness checks, run records and gates. A base template,
 `keel.consolidate` (`runnable: false`), fixes what is common, and each
 use case extends it per store level.
 
-**When it runs.** A `memory.store_changed` trigger event with a CEL
-condition, so the gate is a count, not a clock:
+**When it runs.** A trigger on `memory.store_changed` **or**
+`memory.proposal_created`, with a CEL condition, so the gate is a count,
+not a clock:
 
 - at least *N* pending proposals, or at least *N* runs that read or wrote
   the store since the last consolidation (Claude Code's "sessions since
   last consolidation"); and
-- the store has changed since the last successful consolidation (Codex's
-  dirtiness gate). An unchanged store never consolidates.
+- the store is **dirty**: its documents *or its proposal queue* have
+  changed since the last successful consolidation (Codex's dirtiness
+  gate, widened). On a store whose working runs only `propose`, new
+  proposals create no document versions, so a gate on documents alone
+  would never let the queue be processed. A store with no new versions
+  and no new proposals never consolidates.
 
-A schedule is allowed as a backstop, never as the main trigger. Most
+A schedule is allowed as a backstop, never as the main trigger, and it
+uses the same dirtiness test. Most
 consolidation runs should end `skipped`: "nothing changed" is the
 normal outcome, and the completion contract has it as a status.
 
@@ -358,7 +364,14 @@ normal outcome, and the completion contract has it as a status.
   to search for what it already suspects matters, never to read whole.
 
 **What it may do.** Its grant is the built-in memory tools on **this one
-store**, at `read_write`, plus the read-only transcript grep. No
+store**, plus the read-only transcript grep. Its access is not a working
+run's attachment and is not bounded by §16d's level maximum: it is the
+store's **consolidator** access, held only by the template the store
+names in `consolidation.template` (rule M1's one exception). What that
+access does depends on the store's `moderation`: under `consolidation`
+its writes are versions; under `consolidation_then_human` they are one
+gated proposal batch; under `human` the store has no consolidator, and
+proposals wait in the moderation queue. No
 workspace, no network, no `Task`, no other store. Its effective
 authority is the store owner's, through a service principal the owners
 control; it never runs as a user, so it can't reach anything a
@@ -454,7 +467,8 @@ use, from a deployment-level default.
 - `store` and `group` are **not bindable**: a store reference grants
   read access, and grant-bearing fields take no params (`run-spec.md`
   §6). The `user` store is always the principal's and is never named.
-- `access` is a ceiling. The effective mode is the narrowest of this
+- `access` is a ceiling for working runs. (A store's own consolidation
+  template is the exception, §16g.) The effective mode is the narrowest of this
   field, the level's maximum (§16d), the principal's RBAC permission on
   the store, the delegation's memory consent, and the lineage rule
   (§16f step 6).
@@ -490,7 +504,7 @@ alongside the rest of `api.md`.
 
 | Rule | Rejects |
 |---|---|
-| M1 | an `access` wider than the level's maximum in §16d: `read_write` on a `team`, `tool_group` or `global` store, or anything but `read_only` on `global` |
+| M1 | an `access` wider than the level's maximum in §16d: `read_write` on a `team`, `tool_group` or `global` store, or anything but `read_only` on `global`. **Exception:** a template extending `keel.consolidate` that the store names in `consolidation.template` gets consolidator access to that store only, which writes versions or a gated proposal batch per the store's `moderation` (§16g). A store with `moderation: human` may name no consolidation template |
 | M2 | a template with any non-`principal`, non-`config`, non-`harness` input and `access: read_write` on a `team`, `tool_group` or `global` store (Managed Agents' warning as a rule) |
 | M3 | a `tool_group` attachment naming a group the template does not grant |
 | M4 | a template a delegation may run that attaches the `user` store, unless the template declares memory in its consent digest (so re-consent is required when it changes) |
