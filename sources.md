@@ -360,6 +360,49 @@ Anthropic cut internal evals off from the live internet (secondary, the
 primary post was not found); `gitai`, OpenCode 2.0, Pi 1.3 and Grok
 Build (aggregator mentions only, not checked).
 
+### The weekly pass (read 2026-11-02)
+
+Sources for `agent-run-recovery.md` §3–§4, `agent-context-compaction.md`
+§2c, `agent-permissions-approval.md` §2f, and the amendments in
+`agent-design/tools.md` (`Bash`; "Repeated invalid calls"),
+`agent-design/keel/run-spec.md` §3 (`monitors[]`), `future.md` and
+`forge-on-keel/forge.coding.template.json`. Repos were cloned with
+`--shallow-since=2026-10-20 --filter=blob:none --no-checkout` and their
+logs since 2026-10-26 scanned by subject; only the commits named were
+read.
+
+| Source | Repo | Paths / commits that matter | SHA read (HEAD) |
+|---|---|---|---|
+| **Claude Code prompt dumps** | `github.com/Piebald-AI/claude-code-system-prompts` (MIT) | `CHANGELOG.md` for 2.1.311–2.1.316; `git diff --name-status 7b78158 f6aed7f -- system-prompts` (45 added, 14 removed, 57 changed), recorded as [`delta.tsv`](./leaked/claude-code/piebald-2.1.316/delta.tsv); nine pieces stored in [`leaked/claude-code/piebald-2.1.316/`](./leaked/claude-code/piebald-2.1.316) | `f6aed7fdc4` (v2.1.316, 2026-10-31; prev. `7b78158`) |
+| **OpenHands SDK** | `github.com/OpenHands/software-agent-sdk` | #6278 `c3985a4` — `openhands-sdk/openhands/sdk/conversation/stuck_detector.py`, `agent/agent.py`, `event/llm_convertible/observation.py`, `.pr/validation-loops.md` (read in full) | `9884945762` (prev. `ce5716a3c0`) |
+| **Codex CLI** | `github.com/openai/codex` | Commit messages for #58045 `9cc14e7` (managed `prompt-user` checkpoints), #58119 `6174d05`, #57834 `3da7de5`, #57667 `26ad281`; about 60 Guardian refactor commits (reviewer crate, elastic context budgets) listed by subject, not read | `3026a8e54e` (prev. `970111f6cb`) |
+
+Scanned and nothing used (logs since 2026-10-26): Goose `0909288ed4`
+(one `StateMachineServices` per process #12880, a context-window report
+#10462, ACP client-delegated developer tools removed #13144); Crush
+`d391cee20d` (0.99.0; shell output capped in memory #4183, subject
+only, cited in `agent-run-recovery.md` §3); Gemini CLI `6814e00d6b`
+(MCP server and tool metadata in ACP permission requests #29910, shadow
+repo honours `.git/info/exclude`); OpenCode `ff90ed9160` (519 commits;
+MCP connection refactors, a rejected conversation is not resent
+unchanged when compacting #61015, percentage `compaction.buffer`); Cline
+`a6507a62a1` (cloud tasks launched from captured git snapshots #15371,
+UX verification reports); PR-Agent `c6a076d6f9` (truncated review
+completions retried before publishing #4533; no `pr_agent/settings/`
+prompt change found by subject); `anthropics/claude-code-action`
+`d535f5172d` (version bumps to 2.1.316). OpenHands also added a
+per-conversation cost budget (#6257, #6279) and made `ThinkTool` opt-in
+(#6159); listed, not read. **`SWE-agent/mini-swe-agent` cloned with
+`--depth 50`** (`04d809ceab`); its last commit is 2026-09-03, so there
+is nothing to diff.
+
+Web: searched for new coding, review and data agents, MCP revisions and
+lab engineering posts from the last two weeks. Nothing first-party and
+new was found: Anthropic's engineering index has nothing after
+2026-10-13; its Alignment Science blog's October posts were already
+covered or are training research; no MCP revision after 2026-07-28 and
+no new data-agent benchmark. Aggregator results (Terminal-Bench claims,
+Copilot updates) were unverifiable and not used.
 ## OpenClaw 2.0 (read 2026-08-31)
 
 `github.com/openclaw/openclaw` at `5f714ef` (`main`, 2026-08-31). MIT.

@@ -73,6 +73,40 @@ The fields, with the reason each is shaped the way it is:
   answer, an unlisted source named, a request matching keywords) and an
   action (hand off, reveal a group, add a harness note, skip to a
   landing before turn 0).
+
+  *Amended 2026-11-02 (weekly pass): how `consecutive_tool_errors`
+  counts.* Until now the signal said "consecutive errors on a tool" and
+  nothing about what makes two errors the same, which decides whether
+  it catches a loop or stops a repair. It now counts **model
+  responses**, not calls, and continues a streak only on the **same
+  failure**:
+
+  1. All failing calls to the tool in one response are one step, since
+     the model sees their errors together.
+  2. A schema-validation failure is identified by the set of
+     `(error type, path)` pairs the validator reported, with array
+     indices replaced by `*`. Two failures with the same set continue the
+     streak whatever else in the arguments changed; a failure on a
+     different or smaller set starts a new streak, because a call that
+     fails on fewer fields is a repair in progress.
+  3. Any other tool error is identified by the tool's error `code` plus
+     a digest of the arguments, with the reserved fields that do not
+     change behaviour (`description` on `Bash`, `summary` on endings)
+     removed first.
+  4. A successful call to the tool, or a principal message, ends the
+     streak.
+  5. A monitor with no `tool` watches each tool separately, keeping
+     one streak per tool.
+
+  When a validation streak reaches the threshold, the harness note is
+  fixed text naming the paths still failing and the latest error, and
+  telling the model to correct those fields or take another approach
+  before calling the tool again. The authored action (`note`,
+  `handoff`, `reveal`) still applies; the note is in addition.
+  Adapted from OpenHands SDK #6278 (`../../agent-run-recovery.md` §4):
+  comparing arguments missed a model that reworded its free-text field
+  each time and stopped one repairing six fields one at a time. No
+  schema change: `threshold` keeps its meaning, counted in steps.
 - **`budgets`**: crossing `turns` or `context_high_water_tokens` triggers
   the final-turn nudge. `tokens_by_tier` counts the run and its children
   together, so spend can't hide in a cheap child (`../models.md` §10).

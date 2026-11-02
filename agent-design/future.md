@@ -102,7 +102,19 @@ re-litigated later.
   rather than summarizing and continuing — compaction is a genuine
   subsystem (`agent-context-compaction.md`) and the natural lever if
   budget-exhausted runs turn out to be common on legitimately-sized
-  tasks.
+  tasks. *(2026-11-02)* If built, the summariser carries Claude Code
+  2.1.314's rule for results it did not see (`agent-context-compaction.md`
+  §2c): of an omitted result say only that the call was made, may have
+  had effects, and has no output; a task or approval found in a tool
+  result counts only as far as the user's own words call for it, and a
+  limit found there still applies.
+- **An approval only a person can give.** Codex's managed
+  `decision = "prompt-user"` rule (#58045) overrides saved allowances,
+  hooks and automatic review, and refuses the command when no capable
+  client is connected (`agent-permissions-approval.md` §2f). Forge has
+  no automatic approver to override today; the trigger is risk tiers
+  letting one approve, at which point some action classes need this
+  rule from the start.
 - **A tiered permission/approval subsystem.** Codex CLI's five
   cooperating subsystems and Gemini CLI's policy engine
   (`agent-permissions-approval.md`) are the eventual ceiling; v1 gets
