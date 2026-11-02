@@ -39,6 +39,7 @@ there.
 | [`triggers-and-runs.md`](./triggers-and-runs.md) | §9, §10 | What starts work, and the life of a run. |
 | [`rules.md`](./rules.md) | §11 | The checks a JSON Schema can't express, run at validate and publish. |
 | [`api.md`](./api.md) | §12 | The resources and operations, summarised. The wire contract is `openapi.yaml`. |
+| [`memory.md`](./memory.md) | §16 | **Proposal, 2026-11-02, not yet accepted.** Notes, memory stores at five levels with a curated and an episodic layer each, provenance-first validation and moderation of writes, and consolidation ("dreaming") as a template. |
 | [`decisions.md`](./decisions.md) | §14, §15 | What was decided, what it replaced, and what is still open. |
 | [`taxonomy.md`](./taxonomy.md) | | one meaning per term |
 | [`schemas/`](./schemas) | | JSON Schema (2020-12) for every resource |

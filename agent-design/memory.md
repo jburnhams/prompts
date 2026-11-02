@@ -691,6 +691,10 @@ Each step is useful alone, and each is a prerequisite for the next.
   belongs to the service rather than to this document.
 - **Per-role learning scopes** (§5a) — worth doing when there is enough
   per-specialist signal to separate; the mechanism is already available.
+- *(2026-11-02: the Keel memory proposal, [`keel/memory.md`](./keel/memory.md)
+  §16d.4, answers the next item with a `tool_group` store that holds
+  owner-accepted workarounds until the report is closed as fixed. Not
+  yet accepted.)*
 - **Whether a promoted `ReportProblem` should be able to become a learned
   section** — i.e. whether a human triaging "the `edit` tool mangles CRLF"
   can publish a *workaround* as a `tool`-subject learning rather than
