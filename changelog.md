@@ -4,6 +4,13 @@ All notable changes to this repository, grouped by day, newest first. Generated 
 
 ## 2026-11-02
 
+**Memory, notes and dreaming proposal for Keel**, on branch `claude/project-thread-bsghql`. Asked to investigate how other harnesses handle memory, notes and background consolidation, and to propose an addition covering files and grep versus embeddings, storage levels (session, user, team, tool group, global), and validation and moderation of writes. The request said "Keel"; project memory said "Forge". Both are current: Keel is the platform and Forge is one set of use cases on it. A memory primitive belongs in Keel, so the proposal is there, and it leaves Forge's existing `agent-design/memory.md` in place.
+
+- `agent-design/keel/memory.md` — new, §16, **proposal only**: notes (`run` stores), memory stores at `user`, `team`, `tool_group` and `global` levels, write modes `read_write` / `propose` / `read_only`, six harness-side validation steps including input lineage, three moderation policies, consolidation as a `keel.consolidate` template triggered by a count of runs or proposals, the `RunSpec` `memory` block, four built-in tools, publish rules M1–M4, and a build order. No vector store, with the condition for revisiting stated.
+- `agent-memory-learning.md` §14 — new: memory as a platform resource. Claude Managed Agents memory stores (per-attachment access, injection warning tied to input trust, versions with redaction), Claude Code's store tools (`if_version`, writable/read-only listing) and dream rules for team memory and CLAUDE.md reconciliation, the OpenHands SDK's two-tier `MEMORY.md` plus daily logs, and Letta sleep-time agents (secondary sources).
+- `agent-design/keel/README.md`, `keel/decisions.md` §15 — pointers to the proposal, marked not yet accepted. `agent-design/memory.md` §9 — a note that the proposal answers its `ReportProblem`-workaround question.
+- `sources.md` — new "Memory platform sources" section with SHAs.
+
 **Weekly research pass (scheduled), on branch `claude/project-thread-7qr5lx`.** Asked to check tracked sources for changes, look for new projects and approaches from the last week or two, and fold the most relevant into Forge's design. A quiet week outside the tracked repos: no new first-party engineering posts, MCP revision or data-agent benchmark was found. The findings come from Claude Code 2.1.311–2.1.316, an OpenHands loop-detection fix, and a Codex approval rule.
 
 - **Claude Code 2.1.311–2.1.316** from Piebald (`f6aed7f`): `leaked/claude-code/piebald-2.1.316/` — new, with `delta.tsv` (45 added, 14 removed, 57 changed; 1,057 pieces) and nine pieces verbatim. Most of the delta is the Send-to-project feature, SDK telemetry fields and Artifact skills leaving the extraction.

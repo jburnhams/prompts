@@ -895,3 +895,15 @@ full rather than by abstract. All three carry the same caveat the audit
 establishes: they answer a narrower question than "which edit format
 should this harness ship," and none is a substitute for an internal eval
 on the languages and repositories a deployment actually touches.
+
+### Memory platform sources (read 2026-11-02)
+
+Sources for `agent-memory-learning.md` §14 and the Keel memory proposal
+(`agent-design/keel/memory.md` §16).
+
+| Source | Where | What was read | Version |
+|---|---|---|---|
+| **Claude Managed Agents memory stores** | `platform.claude.com/docs/en/managed-agents/memory` (vendor docs, beta `agent-memory-2026-07-22`) | the whole page: stores, attachments and `access`, `/mnt/memory/` mounts, versions and redaction, `content_sha256` preconditions, limits, the injection warning | fetched 2026-11-02 |
+| **Claude Code prompt dumps** | `github.com/Piebald-AI/claude-code-system-prompts` (MIT) | every `system-prompts/` piece whose name contains `memor`, `dream` or `thread-notes` (42 pieces, ccVersion 2.1.18–2.1.314); the store tools (`tool-description-memory-{list,write}-prompt.md`), dream team handling and CLAUDE.md reconciliation, consolidation tool constraints, project-memory disconnect | `f6aed7fdc4` (v2.1.316) |
+| **OpenHands SDK** | `github.com/OpenHands/software-agent-sdk` | `openhands-sdk/openhands/sdk/context/memory.py` (in full), `context/prompts/sections/{static,dynamic}.py` (memory sections), `context/agent_context.py` (`load_memory`), `examples/01_standalone_sdk/55_persistent_memory.py` | `7c65f48` (2026-11-02) |
+| **Letta sleep-time agents** | web search results only (Letta forum, Latent Space wiki); no Letta docs or code were opened | the existence and shape of sleep-time consolidation; flagged as secondary in §14 | — |

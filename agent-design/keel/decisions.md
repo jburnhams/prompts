@@ -101,6 +101,15 @@ when each was decided.
 None. The five that were open are decided (the 2026-10-23 interview
 rows in §14a).
 
+### Proposals awaiting review
+
+- **Memory, notes and consolidation** ([`memory.md`](./memory.md) §16,
+  2026-11-02). Adds `MemoryStore` at levels `run`, `user`, `team`,
+  `tool_group` and `global`; write modes `read_write`, `propose` and
+  `read_only`; harness-side validation and input lineage; and
+  consolidation as a `keel.consolidate` template. No decision rows until
+  it is accepted.
+
 ### Work items
 
 - **Reveal behaviour to measure.** Mid-conversation tool changes are a
