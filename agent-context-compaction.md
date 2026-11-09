@@ -267,6 +267,49 @@ been shown not to have happened.
 Forge has no compaction in v1 (`agent-design/formats.md` §7); the rule is
 recorded against the compaction item in `agent-design/future.md`.
 
+## 2d. A summariser prompt the model refused, and summaries on an append-only thread (read 2026-11-09)
+
+**Goose reworded its compaction prompt after Opus 5.5 refused it as
+distillation** (`block/goose` #13340, `2cde47f`, 2026-11-05). The commit
+title gives the reason; the refusal text is not in the repository, so
+what follows is the diff, not the model's stated reason. The removed
+wording asked the model to:
+
+- "Distill the conversation below into a structured summary";
+- "Include user requests, your responses, all technical content";
+- "spend your entire length budget on the JSON fields, and quote
+  liberally - full output blocks, complete code snippets, exact user
+  wording".
+
+The replacement asks for "structured working notes", "the work done so
+far" instead of "your responses", and "use as much length as the JSON
+fields need". The task, schema and verbatim-error rule are unchanged.
+The likely reading is that "distil" plus "your responses" plus "quote
+liberally … your entire length budget" looks like a request to extract
+the model's own outputs in bulk. That is an inference from the diff.
+**For any harness writing summariser or consolidation prompts**, the
+lesson is to describe what the summary is for (continuing the work), not
+to ask for the model's outputs as such. That covers Keel's proposed
+`keel.consolidate` template (`agent-design/keel/memory.md` §16) and its
+`interrupted_attempt` text.
+
+**Claude Code retired three summariser variants in 2.1.318** (capped,
+lean, short; the short one is quoted in §2b). The remaining prompt with
+additional instructions drops its optional 2,000-word cap and the
+earlier-request preservation flag, and always includes the analysis
+block. Read as the end of an experiment; no reason is stated.
+
+**Anthropic's message threads (beta, 2026-11-02) cannot be compacted in
+place.** "A thread is append-only, so you can't replace its earlier
+turns with a summary. To compact a conversation, start a new thread from
+the summary", and compaction on demand and context editing (other than
+keeping all thinking) are rejected on a threaded request
+(platform docs, `message-threads-2026-08-12`). Any harness that uses
+threads and compacts therefore keeps its own copy of the transcript as
+the record, and each compaction or edit starts a new thread. This is the
+same reason `agent-design/future.md`'s compaction item prefers
+summaries as read-time overlays over rewriting stored history.
+
 ## 3. One mechanism vs. a layered pipeline vs. a pluggable strategy
 
 The biggest architectural fork in this survey: does the scaffold have

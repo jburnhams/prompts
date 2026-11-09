@@ -403,6 +403,86 @@ new was found: Anthropic's engineering index has nothing after
 covered or are training research; no MCP revision after 2026-07-28 and
 no new data-agent benchmark. Aggregator results (Terminal-Bench claims,
 Copilot updates) were unverifiable and not used.
+### The weekly pass (read 2026-11-09)
+
+Sources for `code-mode/README.md` ("Claude Code's REPL and Pi's
+codemode"), `agent-permissions-approval.md` §2g, `agent-run-recovery.md`
+§5, `code-review-approaches.md` §17, `agent-context-compaction.md` §2d,
+and the amendments in `agent-design/keel/tools-and-agents.md` §4e,
+`keel/pipelines.md` §7f, `risk.md` §3a, `models.md` §6 and `future.md`.
+Repos were cloned with `--shallow-since=2026-10-27 --filter=blob:none
+--no-checkout` and their logs since 2026-11-02 scanned by subject; only
+the commits named were read.
+
+| Source | Repo | Paths / commits that matter | SHA read (HEAD) |
+|---|---|---|---|
+| **Claude Code prompt dumps** | `github.com/Piebald-AI/claude-code-system-prompts` (MIT) | `CHANGELOG.md` for 2.1.317–2.1.319; `git diff --name-status f6aed7f d2fd553 -- system-prompts` (87 added, 10 removed, 60 changed), recorded as [`delta.tsv`](./leaked/claude-code/piebald-2.1.319/delta.tsv); sixteen pieces stored in [`leaked/claude-code/piebald-2.1.319/`](./leaked/claude-code/piebald-2.1.319) | `d2fd553cdc` (v2.1.319, 2026-11-05; prev. `f6aed7f`) |
+| **PR-Agent** | `github.com/qodo-ai/pr-agent` | #4729 `4d21c1c` (`pr_agent/algo/findings.py`), #4702 `3763a89` (`algo/deterministic_risk.py`, `tools/pr_reviewer.py`, `docs/docs/tools/review.md`, `settings/configuration.toml`), #4395 `40ec4a2` (`settings/pr_reviewer_prompts.toml`), #4700 `995f774` (`git_providers/github_provider.py`), #4421 `7259b20` (stat and docs only); the rest by subject | `18da6dd31f` (prev. `c6a076d6f9`) |
+| **Goose** | `github.com/block/goose` | #13340 `2cde47f` — `crates/goose-context-management/src/prompts/compaction.md` (diff read in full) | `0edf2bdc81` (prev. `0909288ed4`) |
+| **Codex CLI** | `github.com/openai/codex` | Commit messages for Code Mode incremental tools #60157 `2bc8e7f`, #60163, #60188 `c3936b4`; Guardian V3 #59669 `5141f97`, #59670 `ac03f42`, #59994 `e4bd787`, #59995 `8d00989`, #59999 `af83299`, #60001 `ecef7e0`, #59659 `1e9e8bd`, #59735 `3934ae9` (messages only, no code read) | `8703d32bd0` (prev. `3026a8e54e`) |
+| **Pi** | `github.com/badlogic/pi-mono` | `packages/codemode/README.md` (read in full, sparse checkout); `git log` for codemode subjects (subagents can use code mode, terminal tool code-mode-only, 2026-11-04) | `ea1cfcc4c8` (2026-11-09; first read of this package) |
+| **Message threads** | `platform.claude.com/docs/en/build-with-claude/message-threads` (vendor docs, beta `message-threads-2026-08-12`); `claude.com/resources/articles/message-threads` (2026-11-02) | the whole docs page: create/continue/replay, field groups, caching, recovery, refusal and fallback rules, compaction, unsupported features, ZDR note; the article's ~35% TTFT figure | fetched 2026-11-09 |
+
+**Code Mode executors (read 2026-11-09, after Jonathan asked what runs
+the programs).** For the table in `code-mode/README.md` ("What runs the
+program"):
+
+| Source | Where | What was read |
+|---|---|---|
+| **Codex** | `openai/codex` `8703d32bd0`, sparse | `codex-rs/code-mode-runtime/Cargo.toml`, `src/v8_init.rs`, `src/runtime/{mod,globals,module_loader}.rs`; `codex-rs/Cargo.toml` (the `v8` pin and fork); the tree under `codex-rs/code-mode-host/` |
+| **Claude Code** | The shipped binary `/opt/claude-code/bin/claude` (2.1.319, Bun single-file executable), scanned as raw bytes with the recipe in "Reading the shipped Claude Code binary" below | The REPL's context setup (`codeGeneration: {strings: false, wasm: false}`, `importModuleDynamically` rejection, the engine-check probe), the step-counter source and its stop messages, the tool-call cap. Minified; identifiers are meaningless. The source rewrite that inserts step calls was not located |
+| **DeepSeek** | `deepseek-ai/deepseek-harness` `fcc0ad4` (2026-11-04; prev. `47f9438`) | `.agents/notes/implemented/architecture/2026-09-11-sandboxed-node-ptc-runtime.md` (read in full). Code Mode was renamed PTC (`run_code`) on 2026-08-25; the runtime package itself was not read |
+| **Pi** | as in the table above | `packages/codemode/package.json` (`quickjs-wasi` 3.6.2) |
+
+**Codex Guardian V3, listed and not used.** About forty commits (39 with "Guardian" in the subject) move
+Codex's approval reviewer from a fixed transcript to *evidence*: an
+immutable snapshot of original history (accepted user messages,
+assistant messages, tool activity, host-annotated approvals) with
+generated context and compaction output excluded, and forked, reverted or
+ambiguously attributed histories rejected (#59669); read-only retrieval
+and subscription tools so the reviewer chooses which channels of evidence
+to read, within a fixed cutoff (#59994, #59995, #59999); bounded delivery
+of whole originals in source order (#60001); one resample of a terminal
+denial with the identical request (#59659); and review of a recorded MCP
+call without executing it (#59735). Forge has no automatic approver
+(`agent-design/future.md`), so nothing changes. The exclusion of
+compaction output from approval evidence is the rule to read first if one
+is ever added, and `codex/guardian-mechanics.md` should be re-read
+against this code then.
+
+Scanned and nothing used (logs since 2026-11-02): OpenHands SDK
+`4db1ad742a` (about 190 commits, nearly all fixes: `apply_patch`
+all-or-nothing with CRLF preserved #6617, `str_replace` refuses
+overlapping matches #6429, a timed-out hook's whole process group killed
+#6614, `verify-sdk` feature map #5750); Crush `f5621d21a5` (0.100.0; a
+sub-agent rework: the parent ends its turn instead of polling, reports
+queue behind the user's own messages, the parent is told why a sub-agent
+stopped without a report, `agent_send` can move a sub-agent to another
+model; yolo mode now blocks dangerous commands without asking); Goose
+also resumes completed delegates with a follow-up (#13106), adds an
+opt-in context relevance operation (#12589) and stops telling the model
+a screenshot tool exists when it doesn't (#13279); Gemini CLI
+`62bab5b232` (bounded multi-part tool outputs and evicted older inline
+images #30180, multi-hour quota retries stopped #30187); Cline
+`5413dc180c` (UX verification delegated to sub-agents #15523,
+structured visual verification reports #15466, `read_files` results no
+longer re-cut to the 8k cap #15254); OpenCode `12a661ea40` (about 940
+commits since 2026-10-27, not scanned in depth); OpenClaw `6bc38b0158`
+(OpenClaw ID tunnels, native research jobs resumed from durable wakes);
+Hermes `4b03ae8923` (plugin catalog entries only); `anthropics/claude-code-action`
+`115e0b2c49` (version bumps). `SWE-agent/mini-swe-agent`: the shallow
+clone since 2026-10-27 is empty, consistent with no commits since
+2026-09-03.
+
+Web: searched for new coding, review and data agents, MCP revisions and
+lab engineering posts from the last two weeks. No MCP revision after
+2026-07-28 and no new Anthropic engineering post was found; the one
+first-party item is the message-threads article above. Aggregator
+reports of a DeepSeek coding agent (2026-11-01) and Pi 1.5.0 were not
+verifiable from primary sources beyond Pi's repository, and were not
+used. A releases.sh digest (2026-11-02) was used only to confirm
+version numbers already read from Piebald.
+
 ## OpenClaw 2.0 (read 2026-08-31)
 
 `github.com/openclaw/openclaw` at `5f714ef` (`main`, 2026-08-31). MIT.

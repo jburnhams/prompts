@@ -312,6 +312,31 @@ SQL-and-row-count answer form, the `input_rows` fan-out stub from `data.md`
   A harness-triggered reveal (a monitor's `reveal`) uses mid-conversation
   tool changes, a beta on current Opus, Fable and Sonnet 5.5 models
   (2026-10-23; [`keel/tools-and-agents.md`](./keel/tools-and-agents.md) §4b).
+- **Anthropic message threads** *(beta `message-threads-2026-08-12`,
+  added 2026-11-09)*: a continue request sends only the new messages, which
+  cut median time to first token by about 35% at 500k–1M tokens in Claude
+  Code, with no change in tokens billed. Keel may use them as a transport
+  for long runs, under four rules taken from the platform docs. (1) Keel's
+  own transcript stays the record. A thread is best-effort (it expires 5
+  minutes after its last request, and `thread_not_found` gives no reason),
+  so every expiry, refusal, fallback-model turn or dropped stream is a
+  replay from Keel's copy. (2) `system` and `tools` are create-only, and
+  `model`, `tool_choice`, `thinking` and `mcp_servers` are fixed, so a
+  `Expand` that grows the tools array, a model switch and a `HandOff`
+  each start a new thread. A `defer_loading` reveal changes no request
+  field and needs none. *Not verified:* whether the docs' mid-conversation
+  tool-change path (a monitor's `reveal`) can be sent on a continue
+  request; until it is, a reveal starts a new thread too. (3) A response with
+  `stop_reason: "refusal"` is never continued, because the refused turn
+  may already be stored. (4) Threads are **not ZDR-eligible** (contents
+  held in memory for up to an hour) and are refused for HIPAA-ready
+  organisations, so they are **on by default** *(owner, interview
+  2026-11-09)* for every deployment on a supported platform, and off
+  for any deployment under zero-retention or HIPAA terms. A deployment
+  can also opt out. A `thread_unsupported_request` error turns threads
+  off for the rest of that run and sends the full conversation, rather
+  than failing the turn. Not on Bedrock or Vertex (Anthropic-managed
+  Google Cloud only).
 - **Bedrock `Converse`:** no deferral, no advisor tool. Sources are revealed as
   text; tools by the once-only array growth in a small economy run, or by
   `HandOff`. *Not verified:* how Bedrock orders and invalidates cache

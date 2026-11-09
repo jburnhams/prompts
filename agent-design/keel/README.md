@@ -31,7 +31,7 @@ there.
 |---|---|---|
 | this file | §0–§2 | the four use cases, the concept list, the layers |
 | [`run-spec.md`](./run-spec.md) | §3, §6 | What defines a run, and how a template makes it reusable. |
-| [`tools-and-agents.md`](./tools-and-agents.md) | §4 | Tool sources, groups, grants, visibility, agents and harness checks. |
+| [`tools-and-agents.md`](./tools-and-agents.md) | §4 | Tool sources, groups, grants, visibility, agents, harness checks, and server requests and task handles (§4e). |
 | [`endings.md`](./endings.md) | §5 | Generated ending tools, and tools marked as endings. |
 | [`outputs.md`](./outputs.md) | §7 (7a–7d, 7g) | Results, sinks, continuations, gates, and where a PR gets opened. |
 | [`pipelines.md`](./pipelines.md) | §7e, §7f | Template stages wired together, and the pipeline run as the durable record of work. |

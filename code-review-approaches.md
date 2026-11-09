@@ -960,6 +960,89 @@ marked "subordinate to the task and instructions above". Incremental
 reviews are anchored to the agent's own comments (#4292). No change to
 the reviewer's own instructions.
 
+## 17. PR-Agent: one finding type, a deterministic risk row, and approval pinned to a head (read 2026-11-09)
+
+Read from `qodo-ai/pr-agent` at `18da6dd31f` (2026-11-09; previous read
+`c6a076d6f9`), by diff for the commits named. About 235 commits landed
+in two weeks. Four bear on Forge's review.
+
+**`/improve` merges into `/review` (#4729, #4774, #4775).** A new
+`pr_agent/algo/findings.py` defines one frozen `Finding` (path, body,
+line range, header, label, existing and improved code, score,
+confidence), built from a review issue or a code suggestion, and both
+tools now publish it. One detail in the constructor is a safety rule:
+a review issue's body has any ```` ```suggestion ```` fence rewritten to
+```` ```text ````, so prose findings can never render as a committable
+GitHub suggestion. Only the suggestion path, with its `existing_code`
+and `improved_code`, can produce one. Forge's `AddComment` already makes
+`suggestion` a separate flag, and its body "must contain only the exact
+replacement source" (`agent-design/tools.md`). PR-Agent got to the same
+place by merging two tools that had drifted apart.
+
+**Deterministic risk checks (#4702), on by default.** A model-free scan
+renders a "Risk checks" row in the review table when it finds anything,
+and adds nothing when it doesn't. It looks for three things: changed
+sensitive paths (a default glob list covering CI, manifests and
+lockfiles, Dockerfiles, Terraform and migrations, plus `.pr_agent.toml`
+itself and `CODEOWNERS`), risky shapes in added lines (`DROP TABLE`,
+`ALTER … RENAME`, `REVOKE`, `TRUNCATE`, auth and secret keywords, cache
+flushes), and deleted files. Three implementation choices are worth
+copying, and Forge's floor (`agent-design/risk.md` §3a) has only the
+first of them:
+
+- **Paths come from the unfiltered file list.** The scan reads
+  `get_pr_file_paths()` and then adds `get_filtered_diff_file_names()`,
+  so files cut from the model's diff (lockfiles, large files) still
+  count.
+- **The model cannot forge the row.** Before the deterministic row is
+  added, any key in the model's output that normalises to
+  `riskchecks`, `deterministicrisk` or `structuralreach`, "whatever its
+  separators", is removed. #4522 fixed an earlier version of this for
+  the structural-reach row ("drop look-alike structural_reach keys").
+  A row that readers trust because it is deterministic can be imitated
+  by model output, and by injected content through the model, unless
+  the harness owns its name.
+- **Regexes are host-only.** `extra_risky_shapes` "must be configured
+  through host configuration … and cannot be overridden by repository
+  `.pr_agent.toml` files", because "regex execution has security
+  implications". Sensitive-path globs can be set by the repository;
+  custom regexes cannot.
+
+The structural-reach row (#4421, opt-in) is the same idea fed from a
+build-graph tool's JSON instead of globs. It is the nearest published
+counterpart to Forge's blast-radius graph built from evidence
+(`agent-design/risk.md` §12f).
+
+**Stated standards and ADRs (#4395).** The reviewer prompt gains one
+conditional instruction, present only when organisational or repository
+context was loaded: "Flag a violation only when a rule there explicitly
+covers the changed code; name the rule and its source file in the
+issue. Never invent rules, and skip rules that the code explicitly
+waives (e.g., a lint-ignore comment)." Forge's conventions findings
+already cite a section (`agent-design/review.md`). The waiver clause is
+the part Forge's prompt does not state; it is recorded here, not adopted.
+
+**Auto-approval pinned to the reviewed head (#4700).** "Approve the PR
+head that was reviewed, not whatever head exists now." The provider
+compares the head SHA it read with the current one, skips the approval
+if they differ, and passes the reviewed commit to the approval call.
+`enable_auto_approval` also became host-only. Forge does not approve,
+but its attention tier is bound to a snapshot for the same reason
+(`agent-design/risk.md` §11a).
+
+Smaller changes: commit messages are now included in `/review` and
+`/improve` prompts (#4603); a visible note when a fallback model wrote
+the output (#4765); retries when `/ask` output is truncated (#4746,
+after #4533 did the same for reviews); and invalid boolean settings
+fail closed (#4740).
+
+**What this changes here.** One amendment, to `agent-design/risk.md`
+§3a: floor drivers are written only by the harness, computed over every
+changed path including elided ones, and line-content patterns are
+allowed. The weekly pass proposed them as host-only, following PR-Agent.
+In interview the owner allowed them from the base branch's policy file
+too, with a linear-time regex engine and a length cap.
+
 ## Design takeaways
 
 A few things stood out across all fourteen:

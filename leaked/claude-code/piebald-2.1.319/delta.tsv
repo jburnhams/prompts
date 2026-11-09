@@ -1,0 +1,158 @@
+status	name	cc_version	file
+D	Agent Prompt: Conversation summarization (capped variant)	2.1.290	agent-prompt-conversation-summarization-capped-variant.md
+D	Agent Prompt: Conversation summarization (lean variant)	2.1.290	agent-prompt-conversation-summarization-lean-variant.md
+D	Agent Prompt: Conversation summarization (short variant)	2.1.296	agent-prompt-conversation-summarization-short-variant.md
+M	Agent Prompt: Conversation summarization with additional instructions	2.1.318	agent-prompt-conversation-summarization-with-additional-instructions.md
+M	Agent Prompt: Onboarding guide generator	2.1.318	agent-prompt-onboarding-guide-generator.md
+D	Agent Prompt: PR follow-up cron (PR Steward label check)	2.1.284	agent-prompt-pr-follow-up-cron-pr-steward-label-check.md
+D	Agent Prompt: PR follow-up cron	2.1.284	agent-prompt-pr-follow-up-cron.md
+M	Agent Prompt: /schedule slash command	2.1.317	agent-prompt-schedule-slash-command.md
+M	Agent Prompt: Security monitor for autonomous agent actions (first part)	2.1.319	agent-prompt-security-monitor-for-autonomous-agent-actions-first-part.md
+M	Agent Prompt: /security-review slash command	2.1.318	agent-prompt-security-review-slash-command.md
+M	Agent Prompt: Subagent delegation configuration classifier	2.1.317	agent-prompt-subagent-delegation-configuration-classifier.md
+M	Agent Prompt: Web reading specialist	2.1.319	agent-prompt-web-reading-specialist.md
+M	Data: Artifact ask-first intake form instructions	2.1.317	data-artifact-ask-first-intake-form-instructions.md
+A	Data: Artifact ask-first intake without listed design systems	2.1.319	data-artifact-ask-first-intake-without-listed-design-systems.md
+A	Data: Artifact built-in connector guidance	2.1.319	data-artifact-built-in-connector-guidance.md
+M	Data: attributionProject setting	2.1.318	data-attributionproject-setting.md
+A	Data: Claude API local sign-in guide	2.1.319	data-claude-api-local-sign-in-guide.md
+M	Data: Claude Code agent proxy troubleshooting guide	2.1.317	data-claude-code-agent-proxy-troubleshooting-guide.md
+M	Data: Claude Code gateway protocol	2.1.319	data-claude-code-gateway-protocol.md
+A	Data: denyInsteadOfPrompting setting	2.1.319	data-denyinsteadofprompting-setting.md
+A	Data: Gateway GovCloud upstream isolation warning	2.1.319	data-gateway-govcloud-upstream-isolation-warning.md
+M	Data: Gateway ignored X-Forwarded-For warning	2.1.318	data-gateway-ignored-x-forwarded-for-warning.md
+A	Data: Gateway model policy overlap warning	2.1.319	data-gateway-model-policy-overlap-warning.md
+M	Data: Interrupt receipt cancelled field	2.1.318	data-interrupt-receipt-cancelled-field.md
+M	Data: Interrupt receipt still queued field	2.1.318	data-interrupt-receipt-still-queued-field.md
+M	Data: Managed Agents quickstart — Bug hunter	2.1.319	data-managed-agents-quickstart-bug-hunter.md
+M	Data: Managed Agents quickstart — Contract tracker	2.1.319	data-managed-agents-quickstart-contract-tracker.md
+M	Data: Managed Agents quickstart — Explainer video maker	2.1.319	data-managed-agents-quickstart-explainer-video-maker.md
+M	Data: Managed Agents quickstart — Incident commander	2.1.319	data-managed-agents-quickstart-incident-commander.md
+M	Data: Managed Agents quickstart — Sprint retro facilitator	2.1.319	data-managed-agents-quickstart-sprint-retro-facilitator.md
+M	Data: Managed Agents quickstart — Structured extractor	2.1.319	data-managed-agents-quickstart-structured-extractor.md
+M	Data: Managed Agents quickstart — Support agent	2.1.319	data-managed-agents-quickstart-support-agent.md
+M	Data: Managed Agents quickstart — Watchlist scanner	2.1.319	data-managed-agents-quickstart-watchlist-scanner.md
+A	Data: MCP call check_permissions field	2.1.319	data-mcp-call-check-permissions-field.md
+M	Data: MCP read resource control request	2.1.317	data-mcp-read-resource-control-request.md
+M	Data: MCP server status error_code field	2.1.317	data-mcp-server-status-error-code-field.md
+A	Data: MCP server status urlHost field	2.1.317	data-mcp-server-status-urlhost-field.md
+M	Data: MCP status control request liveReply field	2.1.317	data-mcp-status-control-request-livereply-field.md
+A	Data: REPL asynchronous context API declarations	2.1.318	data-repl-asynchronous-context-api-declarations.md
+A	Data: REPL synchronous context API declarations	2.1.318	data-repl-synchronous-context-api-declarations.md
+M	Data: SDK API error kind field	2.1.317	data-sdk-api-error-kind-field.md
+M	Data: SDK api_error_params field	2.1.319	data-sdk-api-error-params-field.md
+A	Data: SDK can_use_tool decision_reason_code field	2.1.319	data-sdk-can-use-tool-decision-reason-code-field.md
+A	Data: SDK get_settings policy_origins field	2.1.317	data-sdk-get-settings-policy-origins-field.md
+A	Data: SDK initialize response hook_on_failure_supported field	2.1.317	data-sdk-initialize-response-hook-on-failure-supported-field.md
+A	Data: SDK MCP server connectorId field	2.1.319	data-sdk-mcp-server-connectorid-field.md
+A	Data: SDK model fallback api_refusal_cyber_verification field	2.1.317	data-sdk-model-fallback-api-refusal-cyber-verification-field.md
+M	Data: SDK read_file anchor as_written kind	2.1.317	data-sdk-read-file-anchor-as-written-kind.md
+A	Data: SDK read_file lossy field	2.1.317	data-sdk-read-file-lossy-field.md
+A	Data: SDK result credential_expires_at field	2.1.318	data-sdk-result-credential-expires-at-field.md
+A	Data: SDK result message_normalization_detail field	2.1.317	data-sdk-result-message-normalization-detail-field.md
+A	Data: SDK result process_turn_states field	2.1.319	data-sdk-result-process-turn-states-field.md
+A	Data: SDK result process_turn_threads field	2.1.319	data-sdk-result-process-turn-threads-field.md
+A	Data: SDK result request_build_detail field	2.1.318	data-sdk-result-request-build-detail-field.md
+A	Data: SDK result tool_schema_build_detail field	2.1.317	data-sdk-result-tool-schema-build-detail-field.md
+A	Data: SDK set_has_subscribers control request	2.1.319	data-sdk-set-has-subscribers-control-request.md
+A	Data: SDK startup failure reason codes	2.1.318	data-sdk-startup-failure-reason-codes.md
+A	Data: SDK system init ultrathink_typed_raises field	2.1.317	data-sdk-system-init-ultrathink-typed-raises-field.md
+A	Data: SDK UI attach draws field	2.1.319	data-sdk-ui-attach-draws-field.md
+A	Data: SDK ui_invalidate event	2.1.318	data-sdk-ui-invalidate-event.md
+A	Data: SDK ui_invalidate instances field	2.1.319	data-sdk-ui-invalidate-instances-field.md
+A	Data: SDK user message ultrathink_typed field	2.1.317	data-sdk-user-message-ultrathink-typed-field.md
+A	Data: SDK voice-call message origin schema	2.1.319	data-sdk-voice-call-message-origin-schema.md
+A	Data: SDK warning model_restriction field	2.1.317	data-sdk-warning-model-restriction-field.md
+A	Data: Self-hosted runner control-plane idle release notice	2.1.318	data-self-hosted-runner-control-plane-idle-release-notice.md
+A	Data: Self-named CA certificate drop debug guidance	2.1.318	data-self-named-ca-certificate-drop-debug-guidance.md
+A	Data: Self-named extra CA certificate warning	2.1.318	data-self-named-extra-ca-certificate-warning.md
+M	Data: Server classifier beta rejection warning	2.1.319	data-server-classifier-beta-rejection-warning.md
+M	Data: sshHostCommands setting	2.1.319	data-sshhostcommands-setting.md
+A	Data: Thin-client diff dialog noDiffReason field	2.1.318	data-thin-client-diff-dialog-nodiffreason-field.md
+M	Data: Thin-client diff dialog schema	2.1.318	data-thin-client-diff-dialog-schema.md
+M	Data: Tool result display metadata field	2.1.319	data-tool-result-display-metadata-field.md
+M	Data: Tool use display metadata field	2.1.317	data-tool-use-display-metadata-field.md
+A	Data: Worktree isolation redirected git directory refusal	2.1.319	data-worktree-isolation-redirected-git-directory-refusal.md
+A	Data: Worktree isolation symlinked host layout refusal	2.1.319	data-worktree-isolation-symlinked-host-layout-refusal.md
+A	Data: Worktree isolation unreadable host registry refusal	2.1.319	data-worktree-isolation-unreadable-host-registry-refusal.md
+A	Data: Worktree isolation unverified host repository refusal	2.1.319	data-worktree-isolation-unverified-host-repository-refusal.md
+A	Data: Worktree registry inspection and cleanup guidance	2.1.319	data-worktree-registry-inspection-and-cleanup-guidance.md
+A	Skill: Claude API authentication status check	2.1.319	skill-claude-api-authentication-status-check.md
+A	Skill: Claude API CLI installation guidance	2.1.319	skill-claude-api-cli-installation-guidance.md
+A	Skill: Claude API sign-in guidance	2.1.319	skill-claude-api-sign-in-guidance.md
+M	Skill: /doctor slash command	2.1.319	skill-doctor-slash-command.md
+M	Skill: Generate permission allowlist from transcripts	2.1.319	skill-generate-permission-allowlist-from-transcripts.md
+A	Skill: /loop external wakeup handover	2.1.319	skill-loop-external-wakeup-handover.md
+M	Skill: /loop slash command (dynamic mode)	2.1.319	skill-loop-slash-command-dynamic-mode.md
+A	Skill: Mod plugin packaging on request	2.1.319	skill-mod-plugin-packaging-on-request.md
+M	Skill: Plugin eval authoring interview	2.1.319	skill-plugin-eval-authoring-interview.md
+M	Skill: Schedule recurring cron and run immediately	2.1.319	skill-schedule-recurring-cron-and-run-immediately.md
+M	Skill: /send-to-project message preload description	2.1.318	skill-send-to-project-message-preload-description.md
+M	Skill: /send-to-project message slash command	2.1.318	skill-send-to-project-message-slash-command.md
+M	Skill: /send-to-project work brief preload description	2.1.318	skill-send-to-project-work-brief-preload-description.md
+M	Skill: Update config settings file locations	2.1.318	skill-update-config-settings-file-locations.md
+M	System Prompt: Artifact comment thread triage	2.1.317	system-prompt-artifact-comment-thread-triage.md
+D	System Prompt: Artifact patch turn edit composer	2.1.290	system-prompt-artifact-patch-turn-edit-composer.md
+A	System Prompt: Auto mode voice-call consent rule	2.1.319	system-prompt-auto-mode-voice-call-consent-rule.md
+M	System Prompt: Claude in Chrome browser automation	2.1.319	system-prompt-claude-in-chrome-browser-automation.md
+A	System Prompt: Coordinator artifact delegation (MCP tools)	2.1.317	system-prompt-coordinator-artifact-delegation-mcp-tools.md
+M	System Prompt: Hook evaluator truncated transcript note	2.1.319	system-prompt-hook-evaluator-truncated-transcript-note.md
+A	System Reminder: Approved Claude Doc plan readback	2.1.319	system-reminder-approved-claude-doc-plan-readback.md
+A	System Reminder: Artifact database batch blocked for repeated refused writes	2.1.319	system-reminder-artifact-database-batch-blocked-for-repeated-refused-writes.md
+A	System Reminder: Artifact database batch not-found refusal	2.1.319	system-reminder-artifact-database-batch-not-found-refusal.md
+A	System Reminder: Artifact database not-found write refusal	2.1.319	system-reminder-artifact-database-not-found-write-refusal.md
+A	System Reminder: Async hook success additional context	2.1.318	system-reminder-async-hook-success-additional-context.md
+A	System Reminder: Bash version command refusal	2.1.317	system-reminder-bash-version-command-refusal.md
+A	System Reminder: Code Mode auto mode agent message refusal	2.1.319	system-reminder-code-mode-auto-mode-agent-message-refusal.md
+A	System Reminder: Code Mode auto mode hook rewrite refusal	2.1.318	system-reminder-code-mode-auto-mode-hook-rewrite-refusal.md
+A	System Reminder: Code Mode auto mode subagent creation refusal	2.1.319	system-reminder-code-mode-auto-mode-subagent-creation-refusal.md
+A	System Reminder: Email file reference unnamed recipients refusal	2.1.317	system-reminder-email-file-reference-unnamed-recipients-refusal.md
+A	System Reminder: Email file reference unsafe subject refusal	2.1.317	system-reminder-email-file-reference-unsafe-subject-refusal.md
+D	System Reminder: File already in context	2.1.199	system-reminder-file-already-in-context.md
+D	System Reminder: File summary completeness disclosure	2.1.173	system-reminder-file-summary-completeness-disclosure.md
+A	System Reminder: Hidden image after chat file deletion	2.1.317	system-reminder-hidden-image-after-chat-file-deletion.md
+A	System Reminder: Hidden images after chat file deletion	2.1.317	system-reminder-hidden-images-after-chat-file-deletion.md
+M	System Reminder: Lines selected in IDE	2.1.319	system-reminder-lines-selected-in-ide.md
+A	System Reminder: Malformed attachment file reference	2.1.317	system-reminder-malformed-attachment-file-reference.md
+A	System Reminder: MCP connector call outside session refusal	2.1.319	system-reminder-mcp-connector-call-outside-session-refusal.md
+A	System Reminder: MCP connector file path refusal	2.1.319	system-reminder-mcp-connector-file-path-refusal.md
+A	System Reminder: MCP connector missing conversation messages refusal	2.1.319	system-reminder-mcp-connector-missing-conversation-messages-refusal.md
+A	System Reminder: MCP connector name too long for file approval	2.1.319	system-reminder-mcp-connector-name-too-long-for-file-approval.md
+A	System Reminder: MCP connector unreadable saved tool definitions refusal	2.1.319	system-reminder-mcp-connector-unreadable-saved-tool-definitions-refusal.md
+A	System Reminder: MCP task monitoring continues after a failure	2.1.319	system-reminder-mcp-task-monitoring-continues-after-a-failure.md
+A	System Reminder: MCP task monitoring stopped	2.1.319	system-reminder-mcp-task-monitoring-stopped.md
+D	System Reminder: Memory sync mass-deletion guard	2.1.280	system-reminder-memory-sync-mass-deletion-guard.md
+A	System Reminder: Oversized mentioned file reading guidance	2.1.318	system-reminder-oversized-mentioned-file-reading-guidance.md
+A	System Reminder: Plan mode is active (diskless session)	2.1.317	system-reminder-plan-mode-is-active-diskless-session.md
+A	System Reminder: PreToolUse hook timeout recovery	2.1.318	system-reminder-pretooluse-hook-timeout-recovery.md
+A	System Reminder: Project document file rewrite without current text refusal	2.1.319	system-reminder-project-document-file-rewrite-without-current-text-refusal.md
+M	System Reminder: Read truncation retry guidance	2.1.319	system-reminder-read-truncation-retry-guidance.md
+M	System Reminder: Remote machine separate project copies	2.1.317	system-reminder-remote-machine-separate-project-copies.md
+M	System Reminder: Reserved-address MCP server refusal	2.1.319	system-reminder-reserved-address-mcp-server-refusal.md
+A	System Reminder: Resumed command approval directory verification failure	2.1.318	system-reminder-resumed-command-approval-directory-verification-failure.md
+A	System Reminder: Sandbox hard-linked guarded file refusal	2.1.317	system-reminder-sandbox-hard-linked-guarded-file-refusal.md
+M	System Reminder: Staged files failed to arrive	2.1.318	system-reminder-staged-files-failed-to-arrive.md
+A	System Reminder: Voice-call record background framing	2.1.319	system-reminder-voice-call-record-background-framing.md
+A	System Reminder: Voice-call record synthetic tool notice	2.1.319	system-reminder-voice-call-record-synthetic-tool-notice.md
+M	Tool Description: Bash (Git commit instructions)	2.1.318	tool-description-bash-git-commit-instructions.md
+M	Tool Description: Bash (PR creation instructions)	2.1.318	tool-description-bash-pr-creation-instructions.md
+A	Tool Description: Browser unlinked chat cloud fallback guidance	2.1.319	tool-description-browser-unlinked-chat-cloud-fallback-guidance.md
+M	Tool Description: claude.ai Project	2.1.319	tool-description-claude-ai-project.md
+D	Tool Description: Claude in Chrome shortcuts execute	2.1.173	tool-description-claude-in-chrome-shortcuts-execute.md
+M	Tool Description: DesignSync	2.1.317	tool-description-designsync.md
+A	Tool Description: EndConversation (two-call confirmation)	2.1.319	tool-description-endconversation-two-call-confirmation.md
+A	Tool Description: ExitPlanMode (Claude Doc session)	2.1.317	tool-description-exitplanmode-claude-doc-session.md
+A	Tool Description: Poll Code Mode idle and event waiting	2.1.318	tool-description-poll-code-mode-idle-and-event-waiting.md
+M	Tool Description: Project local_file read-only workflow	2.1.319	tool-description-project-local-file-read-only-workflow.md
+A	Tool Description: ReadWidgetContext	2.1.319	tool-description-readwidgetcontext.md
+M	Tool Description: RemoteTrigger prompt	2.1.319	tool-description-remotetrigger-prompt.md
+A	Tool Description: REPL asynchronous output and polling instructions	2.1.318	tool-description-repl-asynchronous-output-and-polling-instructions.md
+A	Tool Description: REPL dispatched script execution and event delivery	2.1.318	tool-description-repl-dispatched-script-execution-and-event-delivery.md
+A	Tool Description: REPL persistent helper interface	2.1.319	tool-description-repl-persistent-helper-interface.md
+A	Tool Description: REPL script and shell timeouts	2.1.318	tool-description-repl-script-and-shell-timeouts.md
+A	Tool Description: REPL	2.1.318	tool-description-repl.md
+M	Tool Description: SendToProject message	2.1.318	tool-description-sendtoproject-message.md
+M	Tool Description: Skill proposal rendering	2.1.319	tool-description-skill-proposal-rendering.md
+M	Tool Description: Skill-scoped git push refusal	2.1.319	tool-description-skill-scoped-git-push-refusal.md
+A	Tool Description: WrapUp	2.1.317	tool-description-wrapup.md
+M	Tool Parameter: matched ask rule	2.1.319	tool-parameter-matched-ask-rule.md

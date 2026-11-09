@@ -378,6 +378,7 @@
         "permission_denied",
         "dependency_abandoned",
         "repeated_infra_failure",
+        "expired_task_handle",
         "approval_inputs_changed",
         "draft_requires_sandbox",
         "sandbox_write_blocked"
