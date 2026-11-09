@@ -556,7 +556,9 @@ re-litigated later.
   If a program were ever given APIs of its own (files, processes), it
   would run in the container under `Bash`'s confinement instead, which
   is DeepSeek's reasoning (`../code-mode/README.md`, "What runs the
-  program").
+  program"). **The engine is chosen when the trigger fires, not now**
+  (owner, interview 2026-11-09): the three candidates stay recorded
+  here, and the choice is made against the task that fires the trigger.
 - **A pure-TS engine as the `table://` resolver.** An implementation
   note rather than a design change — the ref contract is already
   substrate-neutral, which is the whole point of `data.md` §2a — but it
