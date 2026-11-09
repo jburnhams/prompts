@@ -210,17 +210,24 @@ floor idea and hit the problems Forge's text left open:
    still match path rules. PR-Agent adds its filtered file names back
    before scanning for the same reason. Elision decides what the model
    reads, never what the floor sees.
-3. **Rules may also match added lines, but only from harness
-   configuration.** A rule may carry `added_line` patterns (for
-   example `DROP TABLE`, `TRUNCATE`, `REVOKE … FROM`, `ALTER … RENAME`
-   for the migration kind, which then fires on a DDL shape outside a
-   migration directory). Such patterns are accepted only from harness
-   configuration, never from the base branch's repository policy file:
-   a pattern from the repository is an untrusted regex run by the
-   harness, and it is a way to make a rule match nothing. That is
-   PR-Agent's host-only rule for `extra_risky_shapes`. Path globs stay
-   settable from the base branch as before. A content match is still a
-   touch match: it names the line, and it does not become a finding.
+3. **Rules may also match added lines, from harness configuration or
+   the base branch's policy file** *(owner, interview 2026-11-09)*. A
+   rule may carry `added_line` patterns (for example `DROP TABLE`,
+   `TRUNCATE`, `REVOKE … FROM`, `ALTER … RENAME` for the migration kind,
+   which then fires on a DDL shape outside a migration directory). They
+   come from the same two places as path rules, harness configuration
+   or the base SHA's copy of the policy file, never the head's. Because
+   a repository pattern is an untrusted regex run by the harness, three
+   limits apply to every pattern whatever its source: it is compiled
+   with a linear-time engine (RE2 semantics, so no backreferences or
+   lookaround), it is rejected at load if it fails to compile or exceeds
+   a length cap, and a repository-sourced content rule can only name a
+   minimum tier, never lower one (the existing asymmetry above). A PR
+   that edits the policy file is already a `high` driver, so a pattern
+   changed to match nothing cannot pass unreviewed. A content match is
+   still a touch match: it names the line, and it does not become a
+   finding. This is wider than PR-Agent, whose `extra_risky_shapes` is
+   host-only.
 
 What this supersedes: nothing in the kinds table. It makes explicit
 that the floor is harness-owned (the invariant `tier >= floor` was

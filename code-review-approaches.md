@@ -1038,8 +1038,10 @@ fail closed (#4740).
 
 **What this changes here.** One amendment, to `agent-design/risk.md`
 §3a: floor drivers are written only by the harness, computed over every
-changed path including elided ones, and repository policy may not carry
-line-content patterns.
+changed path including elided ones, and line-content patterns are
+allowed. The weekly pass proposed them as host-only, following PR-Agent.
+In interview the owner allowed them from the base branch's policy file
+too, with a linear-time regex engine and a length cap.
 
 ## Design takeaways
 
