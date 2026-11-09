@@ -541,6 +541,22 @@ re-litigated later.
   refusals. Persistence would follow Pi's codemode: a program's state
   changes come back as a result for the harness to apply, and a failed
   program applies none. The trigger is unchanged.
+  **Where the interpreter would run** *(added 2026-11-09)*. On the
+  harness side, beside the loop, not in the run's container. It would
+  be a capability-free engine whose only globals are the granted tool
+  functions, so each call leaves it as an ordinary tool call and reaches
+  the container or MCP server through Keel's harness checks
+  (`keel/tools-and-agents.md` §4d) as today. The
+  candidate engines are Codex's choice (V8 in a sidecar process with V8's
+  sandbox and outside termination) and Pi's (QuickJS on WASI in a
+  worker, with a heap limit). An in-process `node:vm` context is not
+  one, because it is not a boundary even in Claude Code's own use. A
+  step budget in the style of Claude Code's is worth having on whichever
+  engine is chosen, because a wall clock cannot stop a synchronous loop.
+  If a program were ever given APIs of its own (files, processes), it
+  would run in the container under `Bash`'s confinement instead, which
+  is DeepSeek's reasoning (`../code-mode/README.md`, "What runs the
+  program").
 - **A pure-TS engine as the `table://` resolver.** An implementation
   note rather than a design change — the ref contract is already
   substrate-neutral, which is the whole point of `data.md` §2a — but it

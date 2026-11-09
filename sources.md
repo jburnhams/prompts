@@ -423,6 +423,17 @@ the commits named were read.
 | **Pi** | `github.com/badlogic/pi-mono` | `packages/codemode/README.md` (read in full, sparse checkout); `git log` for codemode subjects (subagents can use code mode, terminal tool code-mode-only, 2026-11-04) | `ea1cfcc4c8` (2026-11-09; first read of this package) |
 | **Message threads** | `platform.claude.com/docs/en/build-with-claude/message-threads` (vendor docs, beta `message-threads-2026-08-12`); `claude.com/resources/articles/message-threads` (2026-11-02) | the whole docs page: create/continue/replay, field groups, caching, recovery, refusal and fallback rules, compaction, unsupported features, ZDR note; the article's ~35% TTFT figure | fetched 2026-11-09 |
 
+**Code Mode executors (read 2026-11-09, after Jonathan asked what runs
+the programs).** For the table in `code-mode/README.md` ("What runs the
+program"):
+
+| Source | Where | What was read |
+|---|---|---|
+| **Codex** | `openai/codex` `8703d32bd0`, sparse | `codex-rs/code-mode-runtime/Cargo.toml`, `src/v8_init.rs`, `src/runtime/{mod,globals,module_loader}.rs`; `codex-rs/Cargo.toml` (the `v8` pin and fork); the tree under `codex-rs/code-mode-host/` |
+| **Claude Code** | The shipped binary `/opt/claude-code/bin/claude` (2.1.319, Bun single-file executable), scanned as raw bytes with the recipe in "Reading the shipped Claude Code binary" below | The REPL's context setup (`codeGeneration: {strings: false, wasm: false}`, `importModuleDynamically` rejection, the engine-check probe), the step-counter source and its stop messages, the tool-call cap. Minified; identifiers are meaningless. The source rewrite that inserts step calls was not located |
+| **DeepSeek** | `deepseek-ai/deepseek-harness` `fcc0ad4` (2026-11-04; prev. `47f9438`) | `.agents/notes/implemented/architecture/2026-09-11-sandboxed-node-ptc-runtime.md` (read in full). Code Mode was renamed PTC (`run_code`) on 2026-08-25; the runtime package itself was not read |
+| **Pi** | as in the table above | `packages/codemode/package.json` (`quickjs-wasi` 3.6.2) |
+
 **Codex Guardian V3, listed and not used.** About forty commits (39 with "Guardian" in the subject) move
 Codex's approval reviewer from a fixed transcript to *evidence*: an
 immutable snapshot of original history (accepted user messages,

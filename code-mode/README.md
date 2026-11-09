@@ -162,6 +162,64 @@ reports `storeWrites`, and "Failed executions report no writes." The
 README says nothing about approval, so gating is presumably per call in
 the host's tool `execute`. That is inferred, not read.
 
+## What runs the program: interpreters and their bounds (read 2026-11-09)
+
+None of these runs model code in a container. Each puts a JavaScript
+engine next to the agent loop, gives it nothing but the tool functions,
+and bounds it in-process or in a sidecar. The exception is DeepSeek,
+which moved the other way. Read from code or shipped binary unless
+marked.
+
+| Implementation | Engine and library | Process boundary | Bounds | What the engine is denied |
+|---|---|---|---|---|
+| **Cloudflare** | A fresh Worker per execution (`DynamicWorkerExecutor`, a V8 isolate from the Worker Loader binding), or an iframe in the browser (`cloudflare.md`) | Separate isolate on Cloudflare; the user's tab | Isolate limits; 30 s iframe timeout, which cannot stop `while(true)` | No network (`default-src 'none'` CSP in the iframe); tools by RPC or `postMessage` |
+| **Codex** | `v8` crate (rusty_v8, pinned to an `openai-oss-forks` fork at `=152.2.0`) built with `v8_enable_sandbox`, plus `deno_core_icudata` for ICU data only; not `deno_core` itself | A separate `codex-code-mode-host` process, reached over stdio or gRPC, with its own macOS signing entitlements | `terminate_execution()` from the host, an optional `max_heap_size_bytes`, a JIT switch (`--jitless`) | `console`, `Atomics`, `SharedArrayBuffer` and `WebAssembly` deleted from the global; code is one ES module (`exec_main.mjs`); globals are `tools`, `ALL_TOOLS`, `setTimeout`, `text`, `image`, `store`/`load`, `notify`, `yield_control`, `exit` |
+| **Pi** | `quickjs-wasi` 3.6.2: QuickJS compiled to WASI (package README) | A worker thread per execution, or a Durable Object in a separate Worker | `timeoutMs`, `memoryLimitBytes` (heap), QuickJS's interrupt handler; a deadlocked script fails at once | No timers, `fetch`, `process`, modules or `WebAssembly`; `eval` only makes more code inside the VM |
+| **Claude Code `REPL`** | The JavaScript runtime's own `node:vm` on Bun (JavaScriptCore), found in the shipped 2.1.319 binary | **None**: a `vm` context inside the Claude Code process | A **step budget** ("a step is one pass through a loop or one call of a function"), a per-turn wall clock (`runInContext(…, {timeout})`), a cap on tool calls per script, a 600 s script deadline | Global created with a `null` prototype; `codeGeneration: {strings: false, wasm: false}` (no `eval`, no `new Function`, no WASM); dynamic `import` rejected; `Promise.prototype` patched; values cloned across the boundary |
+| **DeepSeek** (`run_code`, formerly Code Mode) | A fresh **Node process** per call, running erasable TypeScript with direct Node APIs (`dsh-ptc-runtime-node`; design note `2026-09-11-sandboxed-node-ptc-runtime.md` at `deepseek-ai/deepseek-harness` `fcc0ad4`) | **The same OS sandbox as Bash** (`ctx.sandbox`), with the process lifetime owned by `ctx.subprocess` | 120 s elapsed deadline (cap 600 s), V8 old-generation heap limit, bounded control-channel frames | Nothing at the language level, by design: an empty `process.env`, and the OS sandbox does the rest |
+
+**Three findings.**
+
+- **Claude Code's interpreter is not a security boundary, and it knows.**
+  Node's own docs say `node:vm` is not one. Claude Code hardens the realm
+  anyway: no string or WASM code generation, no imports, and an engine
+  check at start-up. The check runs a probe in a fresh context to test
+  whether a host-realm `Function.prototype` leaks through a resolved
+  thenable. If the runtime fails it, the tool refuses to run: "the
+  JavaScript engine under Claude Code failed Code Mode's engine check.
+  Run Claude Code with the repository's pinned Bun". The real boundary
+  is that every tool function the script calls goes through the normal
+  permission checks and the Bash sandbox. The **step budget** is the
+  unusual part. The counter's source is in the binary, and loops and
+  function calls are charged against it, so the script source must be
+  rewritten before it runs. The rewrite itself was not located; that
+  part is inferred. A source-level step counter catches `while(true)`
+  where a wall-clock timeout cannot, and the clock-stop message is
+  honest about the remaining gap: "The step budget counts loops and
+  calls, not the time one built-in call takes, such as a regular
+  expression match over a long input."
+- **Codex takes the opposite engineering choice for the same goal.** It
+  embeds V8 directly in a separate host process, with V8's own sandbox
+  enabled and dangerous globals deleted. Termination comes from outside
+  the isolate. There is no instrumentation.
+- **DeepSeek rejected the in-process realm explicitly.** Its design note
+  lists "Use an in-process JavaScript realm" and "Copy Codex Code Mode's
+  execution model" as alternatives considered and not taken. The reason
+  is that it wants model programs to use Node APIs directly, and "A
+  language-level realm does not enforce the filesystem and process
+  policy required for direct Node APIs. OS confinement and a host-owned
+  process lifetime are the required protections." It also records that
+  a worker "isolates JavaScript state but does not apply the calling
+  Session's OS sandbox policy", which is why it moved off workers.
+
+**The choice these split on** is whether the program gets capabilities
+of its own. If it gets only the tool functions (Cloudflare, Codex, Pi,
+Claude Code), a lightweight interpreter beside the loop is enough, and
+the container stays where `Bash` runs. If it gets the host's APIs
+(DeepSeek), it needs the same OS confinement as `Bash`, which for Keel
+means running it in the run's container. The Keel placement is in
+`../agent-design/future.md`'s Code Mode item.
+
 ## The honest caveats, collected
 
 Each implementation names its own limits, and they rhyme:
