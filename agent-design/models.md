@@ -330,9 +330,13 @@ SQL-and-row-count answer form, the `input_rows` fan-out stub from `data.md`
   `stop_reason: "refusal"` is never continued, because the refused turn
   may already be stored. (4) Threads are **not ZDR-eligible** (contents
   held in memory for up to an hour) and are refused for HIPAA-ready
-  organisations, so they are a per-deployment opt-in that is off for any
-  deployment under zero-retention terms. Not on Bedrock or Vertex
-  (Anthropic-managed Google Cloud only).
+  organisations, so they are **on by default** *(owner, interview
+  2026-11-09)* for every deployment on a supported platform, and off
+  for any deployment under zero-retention or HIPAA terms. A deployment
+  can also opt out. A `thread_unsupported_request` error turns threads
+  off for the rest of that run and sends the full conversation, rather
+  than failing the turn. Not on Bedrock or Vertex (Anthropic-managed
+  Google Cloud only).
 - **Bedrock `Converse`:** no deferral, no advisor tool. Sources are revealed as
   text; tools by the once-only array growth in a small economy run, or by
   `HandOff`. *Not verified:* how Bedrock orders and invalidates cache
