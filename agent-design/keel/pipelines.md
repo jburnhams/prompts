@@ -130,7 +130,8 @@ retry instead:
   survived (`retained` or `fresh`).
   Since 2026-11-09 it also carries `pending_tasks`, the MCP task
   handles still unresolved, which the retry follows rather than
-  reissuing (`tools-and-agents.md` §4e).
+  reissuing; an expired handle blocks the stage with
+  `expired_task_handle` instead of retrying (`tools-and-agents.md` §4e).
 - **One fixed paragraph in the opening message** when the block is
   present, adapted from Claude Code 2.1.309: the calls in flight may not
   have run, or not completely; check what each did before issuing it

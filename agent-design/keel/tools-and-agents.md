@@ -308,8 +308,15 @@ person watching it, so both need rules.
   were still unresolved when the attempt died or ended. A retry's fixed
   paragraph tells it to follow each handle (a `harness/FollowTask` call
   the harness provides only when the block is present) before doing that
-  step again. A handle past its TTL is listed as `expired`, with the
-  same "may have run" wording as a call in flight.
+  step again.
+- **An expired handle blocks the stage instead** *(owner, interview
+  2026-11-09)*. If any inherited handle is past its TTL, or the server
+  no longer knows it, the retry does not start: the stage is blocked
+  with `expired_task_handle`, naming the server, tool and task, so a
+  person checks the outside system before anything reruns. A live
+  handle can be checked safely by the agent; an expired one cannot be
+  checked at all, and the retry would have to guess whether a long
+  external job already ran.
 
 **Why.** Claude Code 2.1.319 cancels elicitation when no one will answer
 ("an MCP server's request for input is cancelled unless an Elicitation
