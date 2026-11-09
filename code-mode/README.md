@@ -103,9 +103,10 @@ share:
   would run it twice." See `../agent-run-recovery.md` §5 for the same
   rule applied to MCP tasks.
 - **Child agents are values in the program.** `spawnContext({name,
-  initialPrompt, fork?})` returns a handle with `status`, `tail(n)`,
-  `result()` and `log(text)`; `listContexts()` reports each context's
-  token cost. That is sub-agent orchestration written as code, not as
+  initialPrompt, fork?})` returns only `{name, role}`; the handle is
+  looked up as `contexts[name]`, which has `status`, `tail(n)`,
+  `result()` and `log(text)` (inside a context, `contexts.lead` is the
+  main thread). `listContexts()` reports each context's token cost. That is sub-agent orchestration written as code, not as
   tool calls (`../agent-subagent-architectures.md`).
 
 **How auto mode gates a program.** `../agent-design/tools.md` rules out a
