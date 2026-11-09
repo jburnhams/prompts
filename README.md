@@ -15,6 +15,12 @@ repo here has been restructured at least once), the commits read, and the
 sparse-clone recipe for re-fetching any of them in a couple of minutes.
 Start there before re-deriving where a harness keeps its tool definitions.
 
+**[→ `leaked/claude-code/piebald-2.1.319/`](./leaked/claude-code/piebald-2.1.319)** —
+the delta from v2.1.316 to v2.1.319 (2026-11-05): 87 pieces added, 10
+removed, 60 changed, listed in `delta.tsv`, with sixteen stored verbatim
+and folded into `code-mode/README.md` (Claude Code's `REPL`),
+`agent-permissions-approval.md` §2g and `agent-run-recovery.md` §5.
+
 **[→ `leaked/claude-code/piebald-2.1.316/`](./leaked/claude-code/piebald-2.1.316)** —
 the delta from v2.1.310 to v2.1.316 (2026-10-31): 45 pieces added, 14
 removed, 57 changed, listed in `delta.tsv`, with nine stored verbatim and
@@ -1201,7 +1207,9 @@ data** rather than editing a repository. See
 A sixth category: harnesses that replace a **tool list** with a **typed
 API and a sandbox**, so the model writes a program and intermediate
 results never enter the conversation. All four known implementations are
-now covered — two as full sources elsewhere. See
+now covered — two as full sources elsewhere — plus Claude Code's `REPL`
+and Pi's codemode (2026-11-09), including how Claude Code's auto mode
+gates a program. See
 [`code-mode/README.md`](./code-mode/README.md).
 
 | File | Implementation | Read from source? |
@@ -1211,6 +1219,7 @@ now covered — two as full sources elsewhere. See
 | [`code-mode/webmcp.md`](./code-mode/webmcp.md) | `navigator.modelContext` — a *page* registering tools with the browser. **Assessed and parked**, with re-check triggers recorded | yes — the adapter and example in `cloudflare/agents` |
 | [`codex/README.md`](./codex) | Codex `tool_mode: "code_mode_only"` | yes, in the Codex re-read |
 | [`deepseek-harness/`](./deepseek-harness) | DeepSeek Code Mode — tools as compiling `.d.ts` | yes, in that folder |
+| [`code-mode/README.md`](./code-mode/README.md) | Claude Code `REPL` (2.1.318–2.1.319) and Pi `@earendil-works/pi-codemode` | Claude Code: shipped prompt pieces; Pi: package README |
 
 ## Papers
 

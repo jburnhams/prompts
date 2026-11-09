@@ -257,3 +257,72 @@ part of any grant, so no agent, param or prompt can remove them, and
 they apply to every agent. Goose's sub-agents running with no hooks
 (`../../agent-subagent-architectures.md` §7d) is the failure this is
 shaped against.
+
+### 4e. Server requests and deferred results in a hands-off run *(added 2026-11-09)*
+
+**Amendment.** Keel calls MCP servers, and an MCP server can do two
+things during a call that §4a–§4d did not cover: ask for input
+(elicitation), and hand back a task handle instead of a result (the
+`io.modelcontextprotocol/tasks` extension). A Keel run usually has no
+person watching it, so both need rules.
+
+**Elicitation is answered by the harness, never by waiting.**
+
+- An elicitation request is answered `cancel` at once, unless the
+  deployment configures an **elicitation responder** for that server: a
+  fixed rule in deployment configuration that answers it from
+  configuration or the run's own `param` inputs. A responder can never
+  come from a template param, a repository file, the model or a
+  sub-agent.
+- The model is never shown the request as something to answer, because
+  an answer would be the model speaking for a person. The tool result
+  carries a harness note instead: the server asked for input this run
+  cannot supply, the request was cancelled, the call may have done
+  nothing; if the step needs that input, use `AskUser` where the
+  template grants `human.ask_user`, or end `blocked` and name what is
+  needed.
+- This holds for every agent, sub-agents included ("No delegate has a
+  human channel", `../tools.md`), and the cancellation is a
+  `server_request` event in the run's record.
+- There is no setting that makes a run wait for a person on an
+  elicitation. `AskUser` is the only way to suspend for a person, and it
+  binds the question to what is approved (`../formats.md` §5).
+
+**A task handle is followed, never reissued.**
+
+- When a call returns a task handle, the harness records it (server,
+  tool, arguments digest, task id, TTL) in the run's events and polls it.
+  The model gets the result as the call's result, or as an event if the
+  model has moved on (as with background `Bash`).
+- If the harness loses track (polling fails past the TTL, the server
+  says it does not know the task, the run is ending), the result is
+  `outcome: unknown` with a fixed note, adapted from Claude Code
+  2.1.319: the task may still be running or may have ended; do not
+  report it as done or failed; do not call the tool again, because a
+  second call may repeat the work. `unknown` is never mapped to an
+  error code that a retry or a monitor would treat as a failure.
+- A run that ends with an `unknown` task lists it in its report, and the
+  pipeline treats it as an external write that may have happened
+  (§7f's existing rule for a dead attempt's writes).
+- **`interrupted_attempt` gains `pending_tasks`**: task handles that
+  were still unresolved when the attempt died or ended. A retry's fixed
+  paragraph tells it to follow each handle (a `harness/FollowTask` call
+  the harness provides only when the block is present) before doing that
+  step again. A handle past its TTL is listed as `expired`, with the
+  same "may have run" wording as a call in flight.
+
+**Why.** Claude Code 2.1.319 cancels elicitation when no one will answer
+("an MCP server's request for input is cancelled unless an Elicitation
+hook answers it") and treats a task it can no longer follow as an
+unknown outcome that must not be repeated
+(`../../agent-permissions-approval.md` §2g,
+`../../agent-run-recovery.md` §5). Keel had neither rule. Without the
+first, a hands-off run either hangs on a request nobody sees or lets the
+model invent the answer. Without the second, a retry runs the long job
+again. The responder is deployment-only for the same reason
+`denyInsteadOfPrompting` ignores project settings: a repository should
+not decide who answers for its own run.
+
+**What it supersedes.** Nothing. `../adk.md` defers the tasks extension
+for the Java stack; this section is what Keel does where a server offers
+it.

@@ -1,8 +1,9 @@
 # Run recovery: what an agent is told when its runner died
 
-*Added 2026-10-26 in the weekly pass; §3–§4 added 2026-11-02. Sources
-and SHAs are in [`sources.md`](./sources.md), "The weekly pass (read
-2026-10-26)" and "(read 2026-11-02)".*
+*Added 2026-10-26 in the weekly pass; §3–§4 added 2026-11-02; §5 added
+2026-11-09. Sources and SHAs are in [`sources.md`](./sources.md), "The
+weekly pass (read 2026-10-26)", "(read 2026-11-02)" and "(read
+2026-11-09)".*
 
 A hosted agent runs in a container that can disappear mid-turn: the node
 is drained, the sandbox runs out of memory, a network partition drops the
@@ -186,6 +187,50 @@ The PR's own limits section is candid: the detector "remains a
 bounded-history heuristic, not a proof of progress", and the evidence is
 synthetic model responses against a local HTTP server, not a live-model
 evaluation. The counting rule is the transferable part.
+
+## 5. Lost track, not failed: work still running somewhere else (read 2026-11-09)
+
+§1–§3 are about the agent's own runner. The remaining case is work the
+agent started that runs somewhere else and reports back later: an MCP
+call that returned a task handle (the `io.modelcontextprotocol/tasks`
+extension, `agent-tool-result-transport.md` §2b) or a script dispatched
+to a REPL. When the harness loses track of that work, the agent does not
+know the outcome, and it should not act as though it does.
+
+Claude Code 2.1.319 adds two notices for MCP tasks
+([`leaked/claude-code/piebald-2.1.319/`](./leaked/claude-code/piebald-2.1.319)).
+When following a task fails but checking continues:
+
+> It did not cancel the task, which may still be running there or may
+> have ended. Its outcome is not known, so do not report it as done or
+> failed. … Unless the user asks, do not call the tool again (that may
+> repeat the work), stop the task, or wait for it.
+
+When checking has stopped, the notice says "No result will arrive
+unless this session is resumed later" and repeats "a second call may
+repeat the work". The REPL's dispatch description makes the same point
+for scripts: "A receipt means the script is queued or running, so
+sending it again would run it twice."
+
+Three rules, shared by both:
+
+1. **Unknown is its own outcome.** Losing track is reported as neither
+   success nor failure. It is the outcome a harness is most tempted to
+   map to `failed`, and the one where `failed` invites a retry that may
+   run the work twice.
+2. **The handle, not the call, is what gets retried.** Reissuing the
+   call starts a second piece of work. Following the handle again, after
+   a resume, is the only safe repeat.
+3. **Waiting is not the agent's job.** Claude Code says "do not … wait
+   for it": the harness keeps checking, and a result that lands later
+   arrives as a notification.
+
+No other source in this collection has text for this case. OpenHands'
+per-conversation budget and Goose's delegate resume (§1) both assume the
+work ran on the agent's own machine. Keel's version is
+[`agent-design/keel/tools-and-agents.md`](./agent-design/keel/tools-and-agents.md)
+§4e, which records task handles in the `interrupted_attempt` block so a
+retry follows them instead of calling again.
 
 Forge's amendments from §3 and §4 are in
 [`agent-design/tools.md`](./agent-design/tools.md) (`Bash`, and

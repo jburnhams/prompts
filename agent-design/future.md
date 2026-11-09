@@ -526,6 +526,21 @@ re-litigated later.
   side-effect boundary (`../code-mode/cloudflare.md`). That is
   substantial machinery this design does not have, which is the argument
   for the trigger rather than for building it speculatively.
+  **The gating rule, if it lands** *(added 2026-11-09)*. Claude Code's
+  `REPL` (2.1.318–2.1.319, `../code-mode/README.md`) has answered "a
+  program is opaque until it runs" in a way this design would adopt as
+  written. (1) A static check reviews the whole program once, before it
+  starts. (2) Any inner call whose payload is model-authored text the
+  check could not read (starting a sub-agent, messaging an agent; for
+  Forge also `AddComment` and any MCP write whose body is a computed
+  string) is refused inside a program, with a note saying the refusal is
+  not a safety judgement and the step can be its own call. (3) A
+  program rewritten after the check (by a hook, a sanitiser, anything)
+  does not run. (4) Calls the check could read still go through
+  per-call harness checks (§4d), so the static check only ever adds
+  refusals. Persistence would follow Pi's codemode: a program's state
+  changes come back as a result for the harness to apply, and a failed
+  program applies none. The trigger is unchanged.
 - **A pure-TS engine as the `table://` resolver.** An implementation
   note rather than a design change — the ref contract is already
   substrate-neutral, which is the whole point of `data.md` §2a — but it

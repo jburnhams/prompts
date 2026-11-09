@@ -189,6 +189,43 @@ A path rule says the same thing in a form the harness can check.
 touches its paths, whatever the review found there. That is the
 difference between a floor and a severity.
 
+**Who writes the floor, over which files, and with which matchers**
+*(amendment, 2026-11-09)*. Three rules, from PR-Agent's deterministic
+risk row (`../code-review-approaches.md` §17), which shipped the same
+floor idea and hit the problems Forge's text left open:
+
+1. **Only the harness writes `floor` and `path_rule` drivers.** The
+   harness merges them into the report after the model's `Complete`
+   call. Any model-written driver with `source: path_rule`, or a
+   `rule` id, is dropped and logged as `forged_floor_driver`. So is any
+   top-level key that normalises (lowercase, separators removed) to
+   `floor`, `pathrule` or `riskfloor`. PR-Agent strips model keys that
+   look like its deterministic row "whatever its separators", and had
+   to fix that once already. A field readers trust because it is
+   deterministic is worth imitating, both for the model and for
+   injected content working through it.
+2. **The floor is computed over every changed path, including elided
+   ones.** Files whose hunks are withheld from the model (`review.md`
+   §2: generated, lock and vendored files, binaries, the per-file cap)
+   still match path rules. PR-Agent adds its filtered file names back
+   before scanning for the same reason. Elision decides what the model
+   reads, never what the floor sees.
+3. **Rules may also match added lines, but only from harness
+   configuration.** A rule may carry `added_line` patterns (for
+   example `DROP TABLE`, `TRUNCATE`, `REVOKE … FROM`, `ALTER … RENAME`
+   for the migration kind, which then fires on a DDL shape outside a
+   migration directory). Such patterns are accepted only from harness
+   configuration, never from the base branch's repository policy file:
+   a pattern from the repository is an untrusted regex run by the
+   harness, and it is a way to make a rule match nothing. That is
+   PR-Agent's host-only rule for `extra_risky_shapes`. Path globs stay
+   settable from the base branch as before. A content match is still a
+   touch match: it names the line, and it does not become a finding.
+
+What this supersedes: nothing in the kinds table. It makes explicit
+that the floor is harness-owned (the invariant `tier >= floor` was
+already harness-checked, §2), and it adds the `added_line` matcher.
+
 ### 3b. Triage: the model's read before fan-out (one cheap context)
 
 A new pipeline step, **1½ (triage)**, between "warranted?" and context
