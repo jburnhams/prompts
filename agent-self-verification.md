@@ -745,6 +745,62 @@ for the residue — the requirements no gate covers — and a way to tell,
 from the transcript, whether the agent actually did it, since every step of
 the audit names an artifact it had to look at.
 
+## 14. Criteria fixed before the work, and a grader that cannot shrink them (added 2026-11-11)
+
+From Deep Agents and its terminal agent dcode, read for
+[`agentic-sdks/`](./agentic-sdks) (§4–§5 of
+[`agentic-sdks/deepagents.md`](./agentic-sdks/deepagents.md)). §13's
+completion audit asks the agent to derive the requirements and then
+prove each one. Its known weak point is the one Codex's text names:
+"do not redefine success around a smaller or easier task", which a
+prompt can only forbid. Deep Agents and dcode attack the same weakness
+mechanically, in two halves.
+
+**Before: draft the criteria, then freeze them.** dcode's `/goal` runs a
+small criteria agent before any work: a flat list of "usually 2-5"
+bullets, "short, concrete, outcome-focused, and necessary to determine
+whether the goal is complete", with three bans: no invented
+requirements ("Do not add documentation, broad cleanup, refactoring,
+migration work, exhaustive checks, or generic testing requirements
+unless the goal explicitly requests or clearly requires them"), no
+implementation detail ("Describe observable results rather than how to
+implement them"), and no empty restatement ("a bullet such as 'the
+requested work is completed as specified' carries no information and is
+never acceptable"). The person accepts, rejects or amends the list, and
+the accepted list becomes the rubric.
+
+**After: grade per criterion, and never on fewer.** Deep Agents'
+`RubricMiddleware` runs a separate grader whenever the agent would stop.
+The verdict is one entry per criterion (a pass carries no gap, a fail
+must), and a validator rejects a `satisfied` result that contains a
+failing criterion. The first pass freezes the criterion names; any later
+verdict covering fewer is retried once with "A previous attempt returned
+only N of the M criteria", and a `satisfied` that is still short becomes
+`needs_revision` marked `unverified`. The grader's prompt makes the
+conservative default explicit: "every criterion you cannot positively
+confirm should be marked failed with a `gap` describing what evidence
+would be needed."
+
+| | §13 completion audit (Codex `/goal`, Forge) | dcode + Deep Agents |
+|---|---|---|
+| Who lists the requirements | the agent, at the end | a criteria agent, before the work, accepted by a person |
+| Who checks them | the agent | a separate grader model |
+| What stops the list shrinking | the prompt's anti-shrinking rule | a frozen count, checked in code |
+| What it costs | nothing extra | one drafting call, one grader call per stop (up to 3) |
+
+The two halves separate cleanly. The grader is an LLM judge, which Forge
+has deferred (`agent-design/README.md`, "Completion integrity"). The
+frozen list and the count check are not: they need no model call at
+grading time, and they turn §13's "do not narrow done" from a rule the
+model must remember into a check the harness runs. Proposal 1 in
+[`agent-design/proposals-agentic-sdks-2026-11.md`](./agent-design/proposals-agentic-sdks-2026-11.md)
+takes only that half.
+
+CrewAI's `LLMGuardrail` is the same idea at its simplest and shows what
+the extra structure buys: one boolean for the whole output, the output
+pasted unframed into the prompt, and a retry count as the only bound
+([`agentic-sdks/other-sdks.md`](./agentic-sdks/other-sdks.md) §4).
+
 ## Absences
 
 - **OpenCode**: no hidden self-review agent (confirmed absence — the

@@ -194,3 +194,62 @@ functions or MCP servers. Differences from Anthropic's:
 *Not verified:* how Bedrock orders and invalidates cache checkpoints for
 `toolConfig` changes. Assume the same tools → system → messages prefix
 order until checked.
+
+## 6. Discovery, deferral, selection, authorisation, and skill-scoped tools (added 2026-11-11)
+
+From the agentic-SDK deep dive ([`agentic-sdks/`](./agentic-sdks)). Its
+most useful distinction is that four things get called "tool search":
+
+| | Question | Who answers |
+|---|---|---|
+| **Discovery** | Which tools exist? | the client, listing servers (`tools/list`) |
+| **Deferral** | Which schemas are withheld from the request until needed? | the harness, by flag (`defer_loading`) |
+| **Selection** | Which small set is active for this call? | the model (provider search), a second model (LangChain `LLMToolSelectorMiddleware`, at most `max_tools` plus an `always_include` list), or a rule |
+| **Authorisation** | May this principal call this tool with these arguments? | the executor, on every call, and the server again |
+
+A system can do any one without the others, and the failure the
+document warns about is treating a later step as if it did an earlier
+one: a deferred tool is still discovered, and a disclosed tool is not
+thereby authorised. Keel already separates them: grants are checked "at
+the executor, every call", and visibility "shapes what the model tries"
+and nothing else (`agent-design/keel/tools-and-agents.md` §4b).
+
+**What the libraries do with it:**
+
+- **LangChain `ProviderToolSearchMiddleware`** defers named tools behind
+  Anthropic's BM25 search or OpenAI's `tool_search`, and raises
+  `ValueError` on any other provider. No fallback.
+- **dcode** (Deep Agents Code 0.2.3) adds the fallback: it defers only
+  MCP tools, only on endpoints verified to speak the provider's native
+  format and on a hard-coded model list, and otherwise logs once and
+  loads eagerly. Because a session can change model mid-thread, it strips
+  the other provider's tool-search blocks from history before each call
+  (`agentic-sdks/deepagents.md` §9).
+- **Pydantic AI `ToolSearch`** picks native search where the model has
+  it and a local `search_tools` function (keywords, BM25, regex or a
+  callable) elsewhere. Its **on-demand capabilities** defer a whole
+  bundle: a capability with `defer_loading=True` collapses to a one-line
+  catalogue entry, and its instructions and tools appear together when
+  the model loads it (`agentic-sdks/pydantic-ai-harness.md` §1).
+
+**Skill-scoped tools (Deep Agents).** A `SKILL.md` lists tools in
+`metadata.include_tools`; the tools become callable only after the
+model reads that file. The middleware recomputes the disclosure from the
+transcript on **every** model call, gates the disclosed tools again at
+tool time, and anchors each tool's definition at the point of the read.
+An include name can resolve to several tools, so one logical name can
+stand for an MCP server's dynamically named ones. This adds a second
+dimension to progressive disclosure: *which procedure the model chose*
+decides which schemas it sees, rather than a search query. Two
+consequences follow from recomputing on every call. When summarisation
+drops the read, the tools go with it; and a resolver that filters by
+principal is applied on every call, not once. Details:
+`agentic-sdks/deepagents.md` §8.
+
+**For Forge.** Keel's `hidden` groups revealed by `Expand` or a monitor
+are the push-by-situation version; skill-scoped tools are
+pull-by-procedure. Forge has no skills and no compaction, so neither the
+mechanism nor its failure applies today. If Forge ever loads procedures
+on demand, Pydantic's bundle (instructions and tools revealed together)
+is the shape to copy, and Deep Agents' re-derivation from the transcript
+is the behaviour to test after any history rewrite.

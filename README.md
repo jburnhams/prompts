@@ -15,6 +15,17 @@ repo here has been restructured at least once), the commits read, and the
 sparse-clone recipe for re-fetching any of them in a couple of minutes.
 Start there before re-deriving where a harness keeps its tool definitions.
 
+**[→ `agentic-sdks/`](./agentic-sdks)** — LangChain Deep Agents and its
+terminal agent `dcode`, LangChain's middleware and MCP adapter, LangGraph,
+Pydantic AI Harness, and the OpenAI, Claude, Microsoft, CrewAI and
+LlamaIndex SDKs (2026-11-11), read from source after
+`agentic_sdks_mcp_deep_dive.docx`. The document's claims are checked
+against source in the folder README. New concepts are in
+[`agent-run-steering.md`](./agent-run-steering.md) and
+[`agent-prompt-cache-health.md`](./agent-prompt-cache-health.md); six
+proposals for Forge, none yet adopted, are in
+[`agent-design/proposals-agentic-sdks-2026-11.md`](./agent-design/proposals-agentic-sdks-2026-11.md).
+
 **[→ `leaked/claude-code/piebald-2.1.319/`](./leaked/claude-code/piebald-2.1.319)** —
 the delta from v2.1.316 to v2.1.319 (2026-11-05): 87 pieces added, 10
 removed, 60 changed, listed in `delta.tsv`, with sixteen stored verbatim
@@ -857,6 +868,19 @@ until this pass started blind. Extended 2026-11-02 with the cases short of a dea
 sandbox resource stop inside a live run (§3), and how OpenHands decides
 two failing calls are the same retry (§4).
 
+**[→ `agent-run-steering.md`](./agent-run-steering.md)** — what a
+harness says to a model while it works (2026-11-11): cadence reminders,
+loop nudges, pinned state notices, Pydantic AI's live trajectory judge
+and Deep Agents' stop-time rubric grader, compared on channel, lifetime,
+cache placement, how a forged steer is told apart from a real one, and
+budget.
+
+**[→ `agent-prompt-cache-health.md`](./agent-prompt-cache-health.md)** —
+what moves a cached prompt prefix, and detecting a collapse from the
+provider's own numbers (2026-11-11): Pydantic AI Harness's
+`WarnOnCacheBusts`, its 5% / 2,000-token threshold, and the
+classification that separates a moved prefix from an expired cache.
+
 **[→ `agent-multi-model.md`](./agent-multi-model.md)** — using more than
 one model in a run (2026-10-22): sub-agents with a model pin, two stages
 joined by a typed handoff, Anthropic's advisor tool (cheap executor, strong
@@ -1091,6 +1115,7 @@ primitive an agent has.
 | [`omp/`](./omp) | [OMP / Oh My Pi](https://github.com/can1357/oh-my-pi) | Coding agent (terminal; fork of `pi-agent/` with LSP/DAP wired in) | MIT |
 | [`librechat/`](./librechat) | [LibreChat](https://github.com/danny-avila/LibreChat) | Self-hosted chat UI + agent framework — stored for its **artifact channel** only | MIT |
 | [`cloudflare-agents/`](./cloudflare-agents) | [Cloudflare Agents SDK](https://github.com/cloudflare/agents) | Agent framework on Durable Objects — context blocks, a file+git sandbox API, skills with gated capabilities, Code Mode over raw CDP, fibers, dynamic agents, A2A and x402 — plus a source-led fourth pass covering what the docs do not say. **10 files** | MIT |
+| [`agentic-sdks/`](./agentic-sdks) | [Deep Agents](https://github.com/langchain-ai/deepagents), [LangChain](https://github.com/langchain-ai/langchain), [Pydantic AI](https://github.com/pydantic/pydantic-ai) and others | Agent SDKs and harness libraries, read for harness mechanisms (rubric grader, goal criteria, trajectory judge, cache-bust detection, per-model profiles). **5 files** | MIT (all) |
 | [`anthropic-skills/`](./anthropic-skills) | [Anthropic Agent Skills](https://github.com/anthropics/skills) | General-purpose **creative** skills (image, art, GIF, page, deck) — not coding agents | Apache-2.0 (the four document skills are source-available and are **not** stored here) |
 
 Note: Roo Code and Copilot Chat's source repos were both archived
