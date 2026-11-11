@@ -97,6 +97,35 @@ re-litigated later.
   is deterministic only (checklist gate + harness `git status`
   cross-check), which can't be prompt-injected or talked out of
   firing. The judge is the layer above, not a replacement.
+  *(2026-11-11, `proposals-agentic-sdks-2026-11.md` §5.)* If it is
+  built, the shape to copy is Deep Agents' `RubricMiddleware`
+  (`../agentic-sdks/deepagents.md` §4): the grader runs when the agent
+  would stop; it returns one verdict per criterion as a discriminated
+  union; the criterion list is frozen after the first pass, a verdict
+  covering fewer criteria gets one coverage retry and is then
+  downgraded to `unverified`; `failed` (the rubric cannot be graded) is
+  kept apart from `grader_error` (the machinery broke); its transcript
+  input is bounded and nonce-framed; it runs at most 3 times; and it
+  never rewrites the final answer. Forge's frozen `acceptance_criteria`
+  (`formats.md` §3c) is already the rubric. **Trigger:** `eval.md`
+  shows false `done` claims surviving the criteria gate
+  (`generative.md` §2c).
+- **A live trajectory judge** *(2026-11-11,
+  `proposals-agentic-sdks-2026-11.md` §5)*. A second model that reads
+  the recent run on a cadence and either says nothing or sends a
+  steer, after Pydantic AI Harness's `TrajectoryJudge`
+  (`../agent-run-steering.md`). In Keel it would be a monitor signal
+  `judge` with a model, a review focus, a cadence, and a token window
+  that always keeps the original request. It runs concurrently and
+  skips a tick while the last one is still running; it claims its call
+  from the run's own budget and skips a tick the budget cannot fit; it
+  observes and steers, never blocks. **The steer is user-channel data,
+  never a system message**, because a model wrote it after reading
+  tool results. It goes in an element named by a random ref minted once
+  and stored, and a harness note names the ref and disowns any other
+  element of that name (`../agent-run-steering.md` §2b). That framing
+  is the part not to skip. **Trigger:** long runs drift in ways the
+  existing monitors cannot name (scope creep, claims nobody checked).
 - **Context compaction.** A run that outgrows its budgets ends via the
   final-turn nudge with an honest partial report (`formats.md` §7)
   rather than summarizing and continuing — compaction is a genuine

@@ -289,6 +289,27 @@ person watching it, so both need rules.
   elicitation. `AskUser` is the only way to suspend for a person, and it
   binds the question to what is approved (`../formats.md` §5).
 
+**On `2026-07-28`, a responder's answer reissues the call** *(added
+2026-11-11, `../proposals-agentic-sdks-2026-11.md` §4)*. Keel speaks the
+stateless revision (§14a, "MCP revision"). There, a server that needs
+input returns `InputRequiredResult`, and answering means sending the
+`tools/call` **again** with the answers; whatever the server did before
+asking can happen twice (`../../agent-run-recovery.md` §6). So:
+
+- A responder may answer only for a tool marked idempotent or
+  read-only: by its group settings, or failing those by its MCP
+  annotations (`idempotentHint: true` or `readOnlyHint: true`).
+  Annotations are server-supplied and not a trust boundary, so a group
+  setting overrides them in both directions (§4b). For any other tool
+  the request is cancelled as if there were no responder, and the
+  harness note adds that the call may have done part of its work.
+- A responder-answered request is recorded as a **reissued call** in
+  the run's events, linked to the first call, with both arguments
+  digests.
+- On a legacy server negotiated at `2025-11-25` or earlier, elicitation
+  is a request inside the open call, nothing is reissued, and the rules
+  above this paragraph apply unchanged.
+
 **A task handle is followed, never reissued.**
 
 - When a call returns a task handle, the harness records it (server,

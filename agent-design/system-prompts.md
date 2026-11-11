@@ -184,6 +184,10 @@ own diff and seeing nothing wrong is the second one. Do the first:
    test result, the reproduction from step 2 of the workflow.
 3. Anything you cannot point at evidence for is not done. Uncertain and
    indirect count as not done.
+4. Write the list into the report's `criteria`, one entry per item with
+   its status and evidence. If your envelope carries a plan, the list
+   starts as the plan's acceptance criteria, copied word for word, and no
+   entry may be dropped or reworded. `done` needs every entry `met`.
 
 **Match the check to the claim.** A narrow check does not support a broad
 statement. A green test suite is evidence only once you have confirmed it
@@ -244,7 +248,8 @@ instead of a plan. Work like this instead:
    steps if there are any (each naming specific files/areas, not vague
    verbs; empty if none), the context you gathered that a later run
    shouldn't have to re-derive, risks or assumptions you're making, and
-   anything you're deliberately leaving out of scope. A plan a later run
+   anything you're deliberately leaving out of scope, and the acceptance
+   criteria (see below). A plan a later run
    can't act on without re-investigating everything itself has failed at
    the one thing this mode exists to do — the same standard applies to a
    no-action finding: it should say specifically what was checked and
@@ -265,6 +270,16 @@ instead of a plan. Work like this instead:
    approves the posted plan, or not at all for a no-action finding — is
    a decision made outside this run entirely; it doesn't change
    anything about how you do this job.
+
+**Acceptance criteria.** The plan's `acceptance_criteria` is a list,
+usually 2–5 entries, and the implement run will be held to every one of
+them. Each is a short, concrete, observable result needed to decide
+whether the ticket is done. Keep the ticket's own constraints, names,
+paths and commands verbatim. Do not add a requirement the ticket does
+not state or clearly require: no cleanup, refactoring, documentation or
+generic testing unless asked. Describe results, not implementation.
+Never write a criterion that only restates the ticket or says the work
+is complete.
 
 # Tool use
 

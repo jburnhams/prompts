@@ -1,8 +1,10 @@
 # Proposals from the agentic-SDK deep dive (2026-11-11)
 
-**Status: proposals only. Nothing in `agent-design/` has been changed.**
-Each item names the sections it would amend, so it can be accepted,
-changed or rejected on its own. The research is in
+**Status: all six adopted (Jonathan, 2026-11-11).** Proposals 1–4 are
+applied to the sections in the "Amends" column; 5 is recorded in
+`future.md` and 6 in `README.md`'s "Per-model prompt variation" row.
+Decision rows are in `keel/decisions.md` §14a. The text below is the
+proposal as it was accepted. The research is in
 [`../agentic-sdks/`](../agentic-sdks) (one file per SDK) and in two new
 feature documents,
 [`../agent-run-steering.md`](../agent-run-steering.md) and
@@ -19,12 +21,12 @@ Prompted by `agentic_sdks_mcp_deep_dive.docx` at the repo root.
 
 | # | Proposal | Amends | Recommendation |
 |---|---|---|---|
-| 1 | Plan fixes the acceptance criteria as a list; `implement` reports on each, and the gate checks the count | `formats.md` §3a, §3c, §6; `system-prompts.md` plan and implement workflows; `generative.md` §2c | Adopt now |
-| 2 | Record prompt-cache collapses as a run event and an eval metric | `eval.md` "Metrics"; `keel/triggers-and-runs.md` §10 (events) | Adopt now |
-| 3 | Recover from a context-overflow refusal by stubbing the trailing tool batch, once | `formats.md` §7; `tools.md` implementation contract | Adopt now |
-| 4 | An elicitation answered by a responder is a reissued call under MCP `2026-07-28` | `keel/tools-and-agents.md` §4e | Adopt now (Keel is on `2026-07-28`) |
-| 5 | Two model judges, recorded with the shape to use if either is ever added | `future.md` | Record only |
-| 6 | Per-model harness profiles: no change, record the evidence | `README.md` "Per-model prompt variation"; `keel/decisions.md` | Record only |
+| 1 | Plan fixes the acceptance criteria as a list; `implement` reports on each, and the gate checks the count | `formats.md` §3a, §3c, §6; `system-prompts.md` plan mode and "Before you claim `done`"; `forge-on-keel/` plan and implement prompts and report schemas; `generative.md` §2c | Adopted |
+| 2 | Record prompt-cache collapses as a run event and an eval metric | `eval.md` "Metrics"; `keel/triggers-and-runs.md` §10 (events); `tools.md` limits table | Adopted |
+| 3 | Recover from a context-overflow refusal by stubbing the trailing tool batch, once | `formats.md` §7 item 3; `tools.md` limits table | Adopted |
+| 4 | An elicitation answered by a responder is a reissued call under MCP `2026-07-28` | `keel/tools-and-agents.md` §4e | Adopted |
+| 5 | Two model judges, recorded with the shape to use if either is ever added | `future.md` | Adopted (recorded) |
+| 6 | Per-model harness profiles: no change, record the evidence | `README.md` "Per-model prompt variation" | Adopted (recorded) |
 
 ---
 

@@ -241,6 +241,8 @@ Computed, from state the harness already holds:
 | Scratch-directory paths referenced from a tracked file | grep of the diff for the scratch prefix | **FAIL** |
 | Placeholder tokens introduced by this run's diff (`TODO`, `FIXME`, `XXX`, `lorem`, `<<<<<<<`) | the diff, added lines only | WARN |
 | Verification commands claimed in `report` that this run never executed in `Bash` | transcript tool-call log | **FAIL** |
+| With a `<plan>`: `report.criteria` is not exactly one entry per plan criterion, with the text unchanged, or an entry is not `met` *(added 2026-11-11)* | the envelope's `<plan>` and `report.criteria`, compared as strings | **FAIL** |
+| Without a `<plan>`: `report.criteria` is empty, or a `met` entry has no evidence *(added 2026-11-11)* | `report.criteria` | **FAIL** |
 | Diff touches the conventions file | `context-files.md`'s structural write protection | WARN |
 
 Still prompted, because nothing above reaches them: *did the change do

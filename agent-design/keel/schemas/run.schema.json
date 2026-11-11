@@ -755,7 +755,11 @@
             "usage",
             "outcome",
             "delivery",
-            "follow_on"
+            "follow_on",
+            "server_request",
+            "reissued_call",
+            "cache_collapse",
+            "context_overflow"
           ]
         },
         "data": {
