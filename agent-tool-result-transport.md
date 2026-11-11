@@ -790,6 +790,9 @@ cross-references are one hop.
   `agent-design/future.md`, with ADK's `ArtifactService` as the substrate
   and OMP's "same tool, new URI scheme" as the model-facing shape.
 - **The design cannot target `2026-07-28`, and the reason generalises.**
+  *(Superseded 2026-11-11: Keel now speaks `2026-07-28` as its primary
+  revision, with support for older servers; `agent-design/keel/decisions.md`
+  §14a. The point about SDK tiers below still holds for `adk-java`.)*
   Read from source on 2026-08-21: `adk-java` at HEAD (`c1bda9c`) pins
   `<mcp.version>1.1.2</mcp.version>`; the MCP Java SDK's
   `ProtocolVersions.java` declares exactly four constants —

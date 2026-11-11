@@ -22,7 +22,7 @@ Prompted by `agentic_sdks_mcp_deep_dive.docx` at the repo root.
 | 1 | Plan fixes the acceptance criteria as a list; `implement` reports on each, and the gate checks the count | `formats.md` §3a, §3c, §6; `system-prompts.md` plan and implement workflows; `generative.md` §2c | Adopt now |
 | 2 | Record prompt-cache collapses as a run event and an eval metric | `eval.md` "Metrics"; `keel/triggers-and-runs.md` §10 (events) | Adopt now |
 | 3 | Recover from a context-overflow refusal by stubbing the trailing tool batch, once | `formats.md` §7; `tools.md` implementation contract | Adopt now |
-| 4 | An elicitation answered by a responder is a reissued call under MCP `2026-07-28` | `keel/tools-and-agents.md` §4e; `adk.md` §5 | Adopt with the `2026-07-28` move |
+| 4 | An elicitation answered by a responder is a reissued call under MCP `2026-07-28` | `keel/tools-and-agents.md` §4e | Adopt now (Keel is on `2026-07-28`) |
 | 5 | Two model judges, recorded with the shape to use if either is ever added | `future.md` | Record only |
 | 6 | Per-model harness profiles: no change, record the evidence | `README.md` "Per-model prompt variation"; `keel/decisions.md` | Record only |
 
@@ -202,12 +202,14 @@ says so in its module docstring. Anything the server did before asking
 happens again unless the server made it idempotent.
 
 **What Keel does.** §4e cancels elicitation unless a deployment
-responder answers it. Today that is safe: ADK Java targets `2025-11-25`,
-where elicitation is a request inside the open call (`adk.md` §0). When
-Keel moves to `2026-07-28`, a responder's answer becomes a second call,
-and §4e does not say so.
+responder answers it. Keel speaks `2026-07-28` as its primary revision
+(`keel/decisions.md` §14a, "MCP revision"; this proposal first assumed
+the older `2025-11-25` ceiling in `adk.md` §0, which no longer applies).
+So a responder's answer is already a second call, and §4e does not say
+so. On a legacy server negotiated at `2025-11-25` or earlier, elicitation
+is still a request inside the open call and §4e stands unchanged.
 
-**Proposal.** Add to §4e, effective with the `2026-07-28` move:
+**Proposal.** Add to §4e:
 
 - A responder-answered elicitation on a stateless server is recorded as
   a **reissued call** in the run's events, linked to the first.
@@ -220,9 +222,9 @@ and §4e does not say so.
   setting overrides them (the deep dive's §6.2, and Keel's existing rule
   that a group can override annotations, `keel/tools-and-agents.md` §4b).
 
-**Why not now.** Keel cannot speak `2026-07-28` before the Java SDK and
-ADK move (`adk.md` §0 estimates early 2027). Recording it now puts the
-rule next to the responder it constrains.
+**Why now.** The responder exists and the protocol already reissues the
+call, so without the rule a responder can repeat a non-idempotent side
+effect today.
 
 ## 5. Two model judges, recorded for `future.md`
 

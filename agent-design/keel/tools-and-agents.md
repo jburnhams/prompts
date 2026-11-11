@@ -62,7 +62,8 @@ ending, or both. Two generic mechanisms are what make that work:
   link, whoever opened the PR.
 
 An `McpServer` records the transport, the pinned protocol version
-(capped at what the SDK speaks, `../adk.md` §0), the auth mode (§8),
+(`2026-07-28` by default, an older revision for a legacy server; §14a
+"MCP revision"), the auth mode (§8),
 whether its `instructions` text is ignored or included as untrusted
 context, a description cap, the two-axis limits from `../cloudflare.md`
 §2d, an egress allowlist for stdio processes, and a **tool snapshot**.

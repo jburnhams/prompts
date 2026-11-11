@@ -288,7 +288,7 @@ side effects outside conversation state) are the generic form.
 **For Keel.** Keel does not replay: a retry is a fresh attempt
 (`agent-design/keel/pipelines.md` §7f), and a dead attempt's writes are
 treated as writes that may have happened. Item 2 does reach it, though,
-once Keel speaks `2026-07-28`: a deployment elicitation responder
+because Keel speaks `2026-07-28`: a deployment elicitation responder
 (`agent-design/keel/tools-and-agents.md` §4e) would answer by reissuing
 the call. Proposal 4 in
 [`agent-design/proposals-agentic-sdks-2026-11.md`](./agent-design/proposals-agentic-sdks-2026-11.md).

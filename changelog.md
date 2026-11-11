@@ -15,6 +15,7 @@ All notable changes to this repository, grouped by day, newest first. Generated 
 - `agent-self-verification.md` §14 — new: criteria fixed before the work and a grader that cannot shrink them, against §13's completion audit.
 - `agent-design/proposals-agentic-sdks-2026-11.md` — new, **proposals only; nothing else in `agent-design/` changed**. §0 maps the document's eight design rules onto Keel (seven already met). Six proposals: (1) plan fixes acceptance criteria as a list and the implement gate checks one verified entry per criterion; (2) cache collapses as a run event and eval metric; (3) recover from a context-overflow refusal by stubbing the trailing tool batch once; (4) under `2026-07-28` a responder-answered elicitation is a reissued call, allowed only for idempotent or read-only tools; (5) the stop-time grader and live judge recorded for `future.md`; (6) per-model profiles: no change, evidence recorded.
 - `sources.md` — new "Agentic SDKs (read 2026-11-11)" section with SHAs. `README.md` — pointers and a sources row.
+- **Correction from Jonathan: Keel speaks MCP `2026-07-28`** as its primary revision, with support for older servers. Recorded as a decision row in `keel/decisions.md` §14a; `keel/tools-and-agents.md` §4a's pinned-version note updated; `adk.md` §0 and `agent-tool-result-transport.md` §10 marked superseded for Keel (the SDK-tier analysis is kept). Proposal 4 is now "adopt now", and `agent-run-recovery.md` §6 no longer says "once Keel speaks".
 
 ## 2026-11-09
 
