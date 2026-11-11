@@ -78,7 +78,12 @@
       }
     },
     "acceptance_criteria": {
-      "type": "string"
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Observable results the implement run is held to, usually 2-5. Fixed at plan time; an amended plan keeps every unaffected entry verbatim. May be empty for a no-action finding."
     }
   },
   "required": [

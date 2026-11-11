@@ -790,6 +790,9 @@ cross-references are one hop.
   `agent-design/future.md`, with ADK's `ArtifactService` as the substrate
   and OMP's "same tool, new URI scheme" as the model-facing shape.
 - **The design cannot target `2026-07-28`, and the reason generalises.**
+  *(Superseded 2026-11-11: Keel now speaks `2026-07-28` as its primary
+  revision, with support for older servers; `agent-design/keel/decisions.md`
+  §14a. The point about SDK tiers below still holds for `adk-java`.)*
   Read from source on 2026-08-21: `adk-java` at HEAD (`c1bda9c`) pins
   `<mcp.version>1.1.2</mcp.version>`; the MCP Java SDK's
   `ProtocolVersions.java` declares exactly four constants —
@@ -841,3 +844,45 @@ needs one real call against a running stack.
 - **Is the o200k_base proxy honest for Claude?** §1a's ratios should be
   re-run on the target tokenizer before any number here is used as a
   budget.
+
+## 12. Where a large result goes: four paths in the agentic SDKs (added 2026-11-11)
+
+From the agentic-SDK deep dive ([`agentic-sdks/`](./agentic-sdks)). The
+document's table of four data paths for a large MCP result holds up
+against source, with one correction and one addition.
+
+| Path | What the model sees | Where the full data lives | Source |
+|---|---|---|---|
+| **Shape the result at the server**: count, schema, sample rows, an opaque handle with expiry, and narrow follow-up operations | a compact contract | the server | the document's recommendation; this collection's MCP "Stateful Tools" row in §7a is the same idea |
+| **Split at the client**: `structuredContent` to the application, `content` to the model | the server's `content` blocks only | `ToolMessage.artifact` (`MCPToolArtifact`), in application state | LangChain `langchain.mcp` (`agentic-sdks/langchain-langgraph.md` §2) |
+| **Offload after the fact**, above a size threshold | a path, read advice and a preview | the agent's filesystem backend | Deep Agents (20,000 tokens; 5 head and 5 tail lines, each clipped at 1,000 characters, not the "10-line preview" the document says); Pydantic AI Harness `ToolOutputLimits` `Spill` (handle, preview and a "shape sketch", read back through a bounded `read_tool_result` whose `pattern` is a literal substring, not a regex) |
+| **Clip on overflow**, after the provider refused the request | the trailing tool batch shrunk: a file read head-sliced with a pointer to the file, anything else offloaded and stubbed | as above | Deep Agents `_overflow_clip.py` |
+
+The addition is the fourth row. The first three act when a result is
+produced; the fourth acts when a request has already failed for size,
+which is the case a between-turns budget check cannot catch (a single
+tool batch that pushes one request over the window). Deep Agents
+handles it by shrinking only the **trailing** batch, the part the model
+has not yet seen, so nothing it already reasoned about changes.
+
+Two limits the document states and the sources confirm:
+
+- Offloading reduces **future context**, not transport. The whole result
+  still crosses the wire and enters the client process before it is
+  stubbed. Only the first row saves the bytes.
+- A path in the agent's virtual filesystem is not a durable reference.
+  Deep Agents' default backend is thread-scoped state; its blobs are
+  content-addressed (`blobs/<sha256>`), and a missing one reads "[Binary
+  content from an earlier read_file call is no longer available. Re-read
+  the file if you still need it.]". Forge's refs make lifetime explicit
+  and visible (`agent-design/artifacts.md` §2c, §5.5); the SDKs do not.
+
+**For Forge.** Rows 1–3 are already Forge's design: refs instead of
+payloads (`agent-design/artifacts.md` §4), ADK's single text block, and
+artifacts minted at ingest. Row 4 is not: proposal 3 in
+[`agent-design/proposals-agentic-sdks-2026-11.md`](./agent-design/proposals-agentic-sdks-2026-11.md).
+
+One open question from §11 now has a partial answer. LangChain's adapter
+handles the `2026-07-28` statelessness for elicitation by driving the
+`InputRequiredResult` loop itself, and only against servers at the
+modern protocol version; a legacy server gets a plain `call_tool`.

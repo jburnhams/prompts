@@ -432,6 +432,13 @@ the plan → implement pipeline reads.
   ],
   "regression_evidence": "string — how a test added by this run was shown to FAIL on the unfixed code (the command, and what it reported before the fix); null when the run added no regression test",
   "suggested_commit_message": "string — a proposed commit message (summary + body) for whatever picks up this branch to use or adapt; not applied by Forge itself",
+  "criteria": [
+    {
+      "criterion": "string — verbatim from the plan's acceptance_criteria, or derived by the completion audit when there is no plan",
+      "status": "met | not_met | not_verified",
+      "evidence": "string — the command, file or ref that shows it; required when met"
+    }
+  ],
   "judgment_calls": [
     "string — any ambiguity resolved without AskUser, and why; empty array if none"
   ],
@@ -452,6 +459,17 @@ the plan → implement pipeline reads.
   ]
 }
 ```
+
+`criteria` writes down the completion audit's list *(added 2026-11-11,
+`proposals-agentic-sdks-2026-11.md` §1)*. When the envelope carried a
+`<plan>`, it has exactly one entry per plan criterion, with the text
+unchanged; without a plan, it lists the requirements the audit derived
+from the ticket. A criterion the run cannot meet stays in the list as
+`not_met` or `not_verified`, and the run reports `failed`, `blocked` or
+`budget_exhausted` rather than dropping it. The gate that checks this is
+`generative.md` §2c. The guarantee is dcode's: the criterion set cannot
+shrink mid-run. It is not a guarantee that the plan's first
+decomposition was complete.
 
 `spun_off` is how a run reports work it found **outside its own `paths`
 scope and deliberately did not do** — the mechanism specified in
@@ -567,9 +585,25 @@ it was never judged wrong, just already reported.
   "out_of_scope": [
     "string — explicitly not covered by this plan, and why, so an implement run doesn't silently expand scope"
   ],
-  "acceptance_criteria": "string — restated/clarified from the ticket, resolving any ambiguity AskUser didn't need to be raised for"
+  "acceptance_criteria": [
+    "string — one observable result the ticket needs; usually 2–5 entries"
+  ]
 }
 ```
+
+`acceptance_criteria` is a **list**, fixed at plan time *(changed
+2026-11-11 from one free-text string; `proposals-agentic-sdks-2026-11.md`
+§1)*. Each entry is one short, concrete, observable result needed to
+decide whether the ticket is done. The drafting rules, adapted from
+dcode's `/goal` criteria agent (`../agentic-sdks/deepagents.md` §5):
+keep the ticket's own constraints, names, paths and commands verbatim;
+add no requirement the ticket does not state or clearly require (no
+cleanup, refactoring, documentation or generic testing unless asked);
+describe results, not implementation; and never write a criterion that
+only restates the ticket or says the work is complete. A no-action
+finding (`steps: []`) may leave the list empty. The list is what §3a's
+`criteria` must account for and what the completion gate checks
+(`generative.md` §2c).
 
 `steps` is written for a fresh `implement` run with no memory of this
 one to consume — concrete enough to act on (`files`, not just prose)
@@ -923,7 +957,9 @@ callout at the end.
      reverse — wait for an explicit approving reply on the same thread
      before dispatching `implement`. Who may give that reply, and
      that it approves only the plan text it was posted under, is §5a
-     rule 4 (added 2026-10-19).
+     rule 4 (added 2026-10-19). Approving the plan approves its
+     `acceptance_criteria` with it: that list is what the implement
+     run will be held to (§3a `criteria`).
    - **Auto-chained**: dispatch `implement` immediately once
      `Complete(status: "planned")` returns; the posted comment is
      audit trail, not a gate.
@@ -940,7 +976,10 @@ also handling a rejected or amended plan** (a human reply asking for
 changes rather than approving) — that's a new `mode: plan` run, with the
 rejection/amendment appended to its envelope the same way
 `<resumed_answer>` works in §5, not a special case this schema needs its
-own field for.
+own field for. The amended plan **keeps every acceptance criterion the
+amendment did not touch**, verbatim (dcode's amendment rule, "Preserve
+every unaffected acceptance criterion"), so an amendment cannot quietly
+shrink the list.
 
 ---
 
@@ -1021,6 +1060,26 @@ explicit position on what happens at each:
    v2 lever if budget-exhausted runs turn out to be common on
    legitimately-sized tasks — and the `budget_exhausted` status above is
    what makes "common" measurable rather than anecdotal.
+
+3. **A context-overflow refusal is recovered once, then nudged**
+   *(added 2026-11-11, `proposals-agentic-sdks-2026-11.md` §3, after Deep
+   Agents' overflow fallback, `../agentic-sdks/deepagents.md` §6)*. The
+   high-water mark is checked between turns, so one parallel batch of
+   results, each under the ref threshold, can still take a single
+   request over the window. If the provider refuses a request for
+   length, the harness re-renders every result in the **trailing batch**
+   (the results the model has not yet seen) that is larger than
+   `overflow_stub_floor_chars` as an `<artifact>` stub (§8g), minting a
+   ref for each, and sends the request once more. The model sees
+   ordinary stubs it can `Read` with a selector. Nothing it has already
+   reasoned about changes. The harness may mint here because tools and
+   the harness both mint (`artifacts.md` §5.1). The re-render is a
+   `context_overflow` run event (`keel/triggers-and-runs.md` §10) with
+   the number of results stubbed and the bytes moved. If the retried
+   request is refused too, the run gets the final-turn nudge with
+   `budget_exhausted`, exactly as for crossing the high-water mark, and
+   if even the nudge turn cannot fit, the run ends as an infrastructure
+   failure below.
 
 A run killed by infrastructure failure (crash, timeout at a layer below
 the harness) is the one case with no `Complete` — the harness itself

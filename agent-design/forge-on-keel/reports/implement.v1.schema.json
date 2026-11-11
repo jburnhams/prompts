@@ -87,6 +87,50 @@
       "type": "string",
       "description": "Summary line and body for whatever commits this branch."
     },
+    "criteria": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "criterion": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Verbatim from the plan's acceptance_criteria, or derived by the completion audit when there is no plan."
+          },
+          "status": {
+            "enum": [
+              "met",
+              "not_met",
+              "not_verified"
+            ]
+          },
+          "evidence": {
+            "type": "string",
+            "description": "The command, file or ref that shows it."
+          }
+        },
+        "required": [
+          "criterion",
+          "status"
+        ],
+        "additionalProperties": false,
+        "if": {
+          "properties": {
+            "status": {
+              "const": "met"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "criterion",
+            "status",
+            "evidence"
+          ]
+        }
+      },
+      "description": "One entry per acceptance criterion. With a plan, the completion gate checks one entry per plan criterion with the text unchanged (generative.md §2c)."
+    },
     "judgment_calls": {
       "type": "array",
       "items": {
@@ -157,6 +201,7 @@
     "verification",
     "regression_evidence",
     "suggested_commit_message",
+    "criteria",
     "judgment_calls",
     "open_questions",
     "evidence",

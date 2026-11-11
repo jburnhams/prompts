@@ -93,8 +93,30 @@ queued → provisioning → running ⇄ finalizing → ended
 - **Events** (`GET /v1/runs/{id}/events`, SSE): state changes, turns,
   tool calls and results (sizes and status, not bodies), refusals,
   narration, harness notes, reveals, the nudge, gates, artifacts, usage,
-  outcome, deliveries, follow-ons. Bodies are in the transcript, which
-  has its own permission and is audited.
+  outcome, deliveries, follow-ons, `cache_collapse` and
+  `context_overflow`. Bodies are in the transcript, which has its own
+  permission and is audited.
+- **`cache_collapse`** *(added 2026-11-11,
+  `../proposals-agentic-sdks-2026-11.md` §2)*: the harness checks the
+  prompt cache on every response. Per `(provider, endpoint, model)` key
+  and per conversation it keeps the **established prefix**, the largest
+  `cache_read + cache_write` the provider has confirmed. A response
+  whose `cache_read` falls short of that by more than
+  `cache_collapse.min_fraction` (default 5%) **and** at least
+  `cache_collapse.min_tokens` (default 2,000) is a collapse. It is
+  classified against the provider's retention window from the
+  deployment's provider configuration, timed from the same key's
+  previous request: `unexpected` (the window should still hold, so the
+  prefix moved), `unknown` (the provider publishes no window),
+  `ttl_expired`, `compacted` or `unreported`. Only `unexpected` and
+  `unknown` emit the event, with `reason`, the model key,
+  `established_tokens`, `cache_read_tokens` and `missed_tokens`; the
+  mark then re-baselines to what that request established, and stays
+  quiet until a healthy read-back, so a prefix that moves every request
+  reports once. A model fallback starts its own key and does not report.
+  Observe-only: nothing in the run changes. The design and its source
+  (Pydantic AI Harness `WarnOnCacheBusts`) are in
+  `../../agent-prompt-cache-health.md` §2.
 - **Lineage**: `root_run_id` and `depth` across continuations, and
   `resumes` for a resume. `GET /v1/runs?root_run_id=` is everything one
   request led to. A stage run also carries `pipeline_run_id` and

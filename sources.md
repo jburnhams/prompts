@@ -483,6 +483,33 @@ verifiable from primary sources beyond Pi's repository, and were not
 used. A releases.sh digest (2026-11-02) was used only to confirm
 version numbers already read from Piebald.
 
+### Agentic SDKs (read 2026-11-11)
+
+Sources for [`agentic-sdks/`](./agentic-sdks),
+`agent-run-steering.md`, `agent-prompt-cache-health.md`,
+`agent-deferred-tool-loading.md` §6, `agent-tool-result-transport.md`
+§12, `agent-run-recovery.md` §6, `agent-self-verification.md` §14 and
+`agent-design/proposals-agentic-sdks-2026-11.md`. Prompted by
+`agentic_sdks_mcp_deep_dive.docx` (repo root). All repos cloned with
+`--depth 1` at HEAD on 2026-11-11.
+
+| Source | Repo | Paths that matter | SHA read |
+|---|---|---|---|
+| **Deep Agents SDK** (0.7.35) | `github.com/langchain-ai/deepagents` | `libs/ARCHITECTURE.md`; `libs/deepagents/deepagents/graph.py`; `middleware/{rubric,_skill_tools,skills,filesystem,_message_eviction,_overflow_clip,_blob_offload,summarization,subagents,async_subagents,_parent_notifier,patch_tool_calls}.py`; `profiles/harness/{harness_profiles,_anthropic_opus_4_7,_openai_codex,_nvidia_nemotron_3_ultra}.py`; `profiles/_builtin_profiles.py` | `f2a6e02` |
+| **Deep Agents Code** (`dcode` 0.2.7) | same repo, `libs/code` | `THREAT_MODEL.md` (in full), `HOOKS.md`, `CHANGELOG.md` (0.2.3–0.2.7); `deepagents_code/{provider_tool_search,goal_rubric,goal_tools,reliable_rubric,memory_guard,resume_policy}.py`; `auto_mode.py` (header only); `system_prompt.md` (headings) | `f2a6e02` |
+| **LangChain** (`langchain` 1.5.0) | `github.com/langchain-ai/langchain` | `libs/langchain_v1/langchain/mcp/{adapter,tools,elicitation}.py`; `agents/middleware/{provider_tool_search,tool_selection,auto_mode,human_in_the_loop,context_editing,model_refusal}.py` | `771d11b` |
+| **LangGraph** | `github.com/langchain-ai/langgraph` | `libs/langgraph/langgraph/types.py` (`Durability`, `interrupt`) | `5ea88ec` |
+| **Pydantic AI / Pydantic AI Harness** | `github.com/pydantic/pydantic-ai` (Harness is `src/pydantic_ai_harness/`) | `docs/harness/{index,trajectory-judge,system-reminders,warn-on-cache-busts,tool-call-judge,approval-reviewer,detect-loops,tool-output-limits,step-persistence,capability-creation,background-tools,advisor,prompt-injection-defender}.md`; `docs/capabilities/{on-demand,tool-search}.md`; `docs/deferred-tools.md`; `docs/durable_execution/overview.md` | `451c51e` |
+| **OpenAI Agents SDK** (0.24.0) | `github.com/openai/openai-agents-python` | `docs/{sandbox_agents,human_in_the_loop,guardrails,mcp}.md`; `docs/sandbox/{guide,memory}.md` | `64fbde5` |
+| **Claude Agent SDK** (Python, 0.2.180) | `github.com/anthropics/claude-agent-sdk-python` | `src/claude_agent_sdk/types.py` (`ClaudeAgentOptions`, `HookEvent`); `_internal/transport/subprocess_cli.py` | `3cf3446` |
+| **Microsoft Agent Framework** | `github.com/microsoft/agent-framework` | `python/packages/core/agent_framework/_harness/{_agent,_background_agents,_mode,_tool_approval}.py` (docstrings) | `f145644` |
+| **CrewAI** | `github.com/crewAIInc/crewAI` | `lib/crewai/src/crewai/tasks/{llm_guardrail,hallucination_guardrail}.py` | `4254a83` |
+| **LlamaIndex** | `github.com/run-llama/llama_index` | `llama-index-core/llama_index/core/agent/workflow/multi_agent_workflow.py`; `llama-index-integrations/tools/llama-index-tools-mcp-discovery/README.md` | `baeabbf` |
+
+Not re-checked: the document's Terminal-Bench numbers (LangChain blog
+posts of 2025-12-05 and 2026-02-17), cited as the document reports them.
+Google ADK was not re-read (see the ADK rows above).
+
 ## OpenClaw 2.0 (read 2026-08-31)
 
 `github.com/openclaw/openclaw` at `5f714ef` (`main`, 2026-08-31). MIT.

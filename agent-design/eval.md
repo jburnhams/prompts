@@ -317,6 +317,26 @@ to kill a mechanism if it misbehaves rather than to score a run:
   the retention window is too short and the pass is buying context space
   with tool calls.
 
+Two more from the agentic-SDK pass *(added 2026-11-11,
+[`proposals-agentic-sdks-2026-11.md`](./proposals-agentic-sdks-2026-11.md)
+§2–§3)*, both diagnostics:
+
+- **cache read ratio** — cache-read input tokens over all input tokens,
+  per run and per model key. Keel keeps the cached prefix still by
+  construction (a fixed tools array and system prompt, reveals as
+  mid-conversation messages), and this is the number that checks the
+  claim. A drop with no `ttl_expired` explanation is a regression in
+  whatever renders the request.
+- **cache collapses by reason** — the count of `cache_collapse` events
+  (`keel/triggers-and-runs.md` §10), split by `reason`. An `unexpected`
+  collapse in a sandbox run is a bug report: something moved the prefix
+  (`../agent-prompt-cache-health.md` §1 lists the usual causes).
+- **context-overflow recoveries** — the count of `context_overflow`
+  events (`formats.md` §7), and how many of those runs still ended in
+  `budget_exhausted`. A rising count means results under the ref
+  threshold are arriving in batches big enough to overflow, and the
+  threshold or the high-water mark wants tuning.
+
 Efficiency aggregates are **per-task means, never sums**. Errored runs
 score 0 and stay in the accuracy denominator but are **excluded from
 efficiency means**, so a crash cannot flatter the token numbers.

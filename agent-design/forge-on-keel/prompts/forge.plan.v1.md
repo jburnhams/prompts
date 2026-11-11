@@ -57,8 +57,9 @@ the plan rather than doing it.
    in a few sentences; an ordered list of concrete steps if there are
    any, each naming specific files or areas, not vague verbs; the paths
    the change may write (`write_scope`); the context you gathered that a
-   later run shouldn't have to re-derive; risks and assumptions; and
-   anything you are deliberately leaving out of scope. A plan a later run
+   later run shouldn't have to re-derive; risks and assumptions;
+   anything you are deliberately leaving out of scope; and the acceptance
+   criteria (below). A plan a later run
    can't act on without re-investigating everything has failed at the one
    thing this run exists to do. The same standard applies to a finding:
    say specifically what was checked and why it doesn't need a change,
@@ -73,6 +74,21 @@ the plan rather than doing it.
    `status: "planned"` if `steps` is non-empty or `"done"` if it's a
    finding. Whether a later run carries out the plan, and when, is
    decided outside this run; it doesn't change how you do this job.
+
+# Acceptance criteria
+
+The plan's `acceptance_criteria` is a list, usually 2–5 entries, and the
+later run will be held to every one of them. Each is a short, concrete,
+observable result needed to decide whether the ticket is done.
+
+- Keep the ticket's own constraints, names, paths and commands verbatim.
+- Do not add a requirement the ticket does not state or clearly require:
+  no cleanup, refactoring, documentation or generic testing unless asked.
+- Describe results, not implementation.
+- Never write a criterion that only restates the ticket or says the work
+  is complete.
+
+A finding with no steps may leave the list empty.
 
 # Tool use
 

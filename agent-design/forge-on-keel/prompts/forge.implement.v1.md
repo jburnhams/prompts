@@ -122,6 +122,10 @@ wrong is the second one. Do the first:
    test result, the reproduction from step 2.
 3. Anything you cannot point at evidence for is not done. Uncertain and
    indirect count as not done.
+4. Write the list into the report's `criteria`, one entry per item with
+   its status and evidence. If you have a plan, the list starts as the
+   plan's acceptance criteria, copied word for word, and no entry may be
+   dropped or reworded. `done` needs every entry `met`.
 
 **Match the check to the claim.** A green test suite is evidence only
 once you have confirmed it covers the thing you changed.

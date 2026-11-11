@@ -1,9 +1,10 @@
 # Run recovery: what an agent is told when its runner died
 
 *Added 2026-10-26 in the weekly pass; §3–§4 added 2026-11-02; §5 added
-2026-11-09. Sources and SHAs are in [`sources.md`](./sources.md), "The
-weekly pass (read 2026-10-26)", "(read 2026-11-02)" and "(read
-2026-11-09)".*
+2026-11-09; §6 added 2026-11-11 from the agentic-SDK deep dive. Sources
+and SHAs are in [`sources.md`](./sources.md), "The weekly pass (read
+2026-10-26)", "(read 2026-11-02)", "(read 2026-11-09)" and "Agentic SDKs
+(read 2026-11-11)".*
 
 A hosted agent runs in a container that can disappear mid-turn: the node
 is drained, the sandbox runs out of memory, a network partition drops the
@@ -237,3 +238,57 @@ Forge's amendments from §3 and §4 are in
 "Repeated invalid calls" in the implementation contract) and
 [`agent-design/keel/run-spec.md`](./agent-design/keel/run-spec.md)
 (`monitors[]` counting).
+
+## 6. Replay: when a framework runs your step again (read 2026-11-11)
+
+§1–§5 are about what the *agent* is told. The agentic SDKs read for
+[`agentic-sdks/`](./agentic-sdks) add the layer underneath: the
+framework itself re-executes work, by design, in three places a harness
+author may not expect.
+
+1. **LangGraph resumes a node from its start.** `interrupt()` pauses
+   inside a node; resuming with `Command(resume=…)` "resumes from the
+   start of the node, **re-executing** all logic" (`langgraph/types.py`).
+   Anything the node did before the interrupt happens again. Resume
+   values are matched to `interrupt()` calls by order, so interrupts
+   must not fire concurrently. Writes from sibling tasks that finished
+   are kept.
+2. **An MCP elicitation under `2026-07-28` is a retried call.** A server
+   that needs input returns `InputRequiredResult`, and the client sends
+   the `tools/call` **again** with the answers (LangChain's
+   `langchain/mcp/elicitation.py`, which drives the loop so each round is
+   one interrupt). Whatever the server did before it asked is repeated
+   unless the server made it idempotent. So an elicitation answered
+   inside LangGraph is replayed twice over: once by the protocol, once by
+   the node.
+3. **A durable engine replays the journal.** Pydantic AI on Temporal,
+   DBOS, Prefect, Restate and five others journals model requests and
+   the tool calls it wraps; after a crash, completed ones replay from
+   the journal and "the one in flight" is retried
+   (`pydantic-ai/docs/durable_execution/overview.md`). The in-flight call
+   is the one that may have half-happened. A capability's own external
+   writes are not journaled unless wrapped: Pydantic's trajectory judge
+   warns that its `on_verdict` callback "is not part of the durable
+   operation, so a replay calls it again".
+
+The library answer to all three is the same, and Pydantic AI Harness
+ships it: **a tool-effect ledger outside the conversation.**
+`StepPersistence` records each call's `started`, `completed` and
+`failed` against `(run_id, tool_call_id)`, and "after a crash, a tool
+with a `started` record and no terminal update should be treated as
+`unknown_after_crash`: the side effect may or may not have happened". It
+also marks a snapshot `interrupted` when it holds a tool call with no
+result, and `continue_run` will not resume from one unless asked. That
+is §5's "unknown is its own outcome" with a storage format.
+
+The deep-dive document's rules for side effects (put confirmation
+before irreversible work, use stable operation ids, record completed
+side effects outside conversation state) are the generic form.
+
+**For Keel.** Keel does not replay: a retry is a fresh attempt
+(`agent-design/keel/pipelines.md` §7f), and a dead attempt's writes are
+treated as writes that may have happened. Item 2 does reach it, though,
+because Keel speaks `2026-07-28`: a deployment elicitation responder
+(`agent-design/keel/tools-and-agents.md` §4e) would answer by reissuing
+the call. Proposal 4 in
+[`agent-design/proposals-agentic-sdks-2026-11.md`](./agent-design/proposals-agentic-sdks-2026-11.md).

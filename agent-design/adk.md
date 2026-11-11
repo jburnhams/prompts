@@ -25,6 +25,13 @@ be re-checked on a version bump.
 
 ## 0. Which MCP are we even speaking?
 
+> **Superseded for Keel (2026-11-11).** Keel speaks `2026-07-28` as its
+> primary revision and keeps support for servers on older revisions
+> (`keel/decisions.md` §14a, "MCP revision"). The SDK-tier analysis
+> below is kept as the record of why this was once a ceiling; it still
+> describes `adk-java`'s own MCP client, not Keel's: Keel uses ADK but
+> has its own MCP client.
+
 Numbered zero because it precedes every other decision here, and because
 the answer is not the one anybody wants.
 
