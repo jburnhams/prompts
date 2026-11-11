@@ -343,6 +343,10 @@ spill is a pointer into state with a lifetime of its own:
   not just how much was cut, and the exact call that retrieves the rest.
   A path on its own defers the decision without informing it. `formats.md`
   §8e specifies the wording for `Bash`, the only v1 tool that spills.
+  *(2026-11-11: `artifacts.md` §4 and §5.1 make spilling general. Both
+  tools and the harness may mint an artifact; the harness spills any
+  non-write result over `spill_threshold_chars`, whatever tool produced
+  it. Confirmed by Jonathan.)*
 
 **A transport cap and a context cap are two numbers, not one**
 ([`cloudflare.md`](./cloudflare.md) §2d). How much a tool may *fetch or

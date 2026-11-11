@@ -188,6 +188,9 @@ what happens then. The likely behaviour is an infrastructure failure: no
 - The re-render is a `context_overflow` run event, so `eval.md` can
   count it.
 
+Harness minting is already allowed: tools and the harness may both mint
+(`artifacts.md` §5.1, confirmed 2026-11-11), so this needs no new path.
+
 **Why now.** It turns an unspecified failure into an existing mechanism
 (refs) and an existing status, and it touches only results the model has
 not yet seen, so nothing it already reasoned about changes.
