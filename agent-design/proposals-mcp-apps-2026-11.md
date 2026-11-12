@@ -21,6 +21,11 @@ feature document
   artifact kind, and charts as `*.vl.json` Vega-Lite specs that cite a
   `table://` ref and are "rendered by the destination" (`data.md` §2a,
   §2b, §2e). What it lacks is a destination that renders them.
+- **Keel already supports artifacts from MCP servers** (Jonathan,
+  2026-11-12): a server returns an artifact ref, and the agent has
+  tools to query or manipulate the artifact without ingesting the data.
+  Lens's own servers therefore already keep rows out of the model; the
+  gap is only third-party servers that put rows in `structuredContent`.
 - **Tools and the harness may both mint artifacts** (confirmed
   2026-11-11), so storing a view's payload is not a new mint path.
 
@@ -35,7 +40,7 @@ needed whatever is decided about the second.
 
 | # | Proposal | Direction | Would amend | Recommendation |
 |---|---|---|---|---|
-| 1 | Allow the `content` / `structuredContent` split in Keel's client; `structuredContent` is minted as an artifact, never put in context | consumer | `artifacts.md` §8; `generative.md` §5a; `data.md` §2d | Adopt now |
+| 1 | When a server sends `structuredContent` instead of an artifact ref, the harness mints the ref itself; `structuredContent` never enters context | consumer | `artifacts.md` §8; `generative.md` §5a; `data.md` §2d | Adopt now |
 | 2 | Honour `visibility`: app-only tools are never grantable to a model; `_meta.ui` is part of the snapshot digest | consumer | `keel/tools-and-agents.md` §4a, §4b; `tools.md` | Adopt now |
 | 3 | Declare `io.modelcontextprotocol/ui` per run, only when the run's result has a renderer | consumer | `keel/tools-and-agents.md` §4a; `keel/run-spec.md` | Adopt with 4 |
 | 4 | Record a view as a run artifact, with its template pinned by digest | consumer and producer | `artifacts.md` §5.1; `keel/outputs.md` §7a, §7b; `run.schema.json` | Adopt with 3 |
@@ -46,17 +51,21 @@ needed whatever is decided about the second.
 
 ---
 
-## 1. Allow the split, and store `structuredContent` as an artifact
+## 1. Treat `structuredContent` as an artifact the server didn't mint
 
-**What.** Lift `artifacts.md` §8's "one text block, no
-`structuredContent`" rule for Keel's MCP client. The rule for a call
-result becomes:
+**What.** Keel's servers already return artifact refs, and the agent
+queries the artifact with its own tools. This proposal only covers the
+servers that don't, which are mostly third-party servers built for MCP
+Apps hosts. Lift `artifacts.md` §8's "one text block, no
+`structuredContent`" rule for Keel's MCP client, and handle a call
+result like this:
 
 - the model sees the projection of `content` that `formats.md` already
   defines (text blocks, refs as text);
 - a `structuredContent` payload is **minted as an artifact** by the
-  harness (`table://` when it is tabular, `artifact://` otherwise) and
-  the result's stub cites it;
+  harness (`table://` when it is tabular, `artifact://` otherwise), so
+  it gets the same ref and the same query tools as one a Keel server
+  returned. The result's stub cites it;
 - `structuredContent` is **never appended to the model's context**,
   including when `content` is empty. An empty `content` gets a stub
   that names the artifact and its size.
@@ -71,9 +80,12 @@ rather than inherit one. And data servers built for MCP Apps put rows
 in `structuredContent` (Paddle, Rill, `cohort-heatmap`), so Lens will
 meet them as a consumer.
 
-**Cost.** A change to the client's result handling and to
-`artifacts.md` §8's wording. `data.md` §2d's spill already does the
-same thing for tabular text, so the stub grammar exists.
+**Cost.** Small. Only the client's result handling and `artifacts.md`
+§8's wording change; the artifact store, the stub and the query tools
+already exist. For Keel's own servers nothing changes. For proposal 5,
+it means the view and the agent read the same artifact: the view's
+`lens_table_page` is a thin app-only wrapper over the query tools the
+agent already has.
 
 ## 2. Honour `visibility`, and pin `_meta.ui` in the snapshot
 
