@@ -98,12 +98,12 @@ measures:
     expr: sum(net_amount)            # DSL expression over mapped fields
     unit: GBP
     format: currency
-    additive: true                   # sums across any dimension (used by §6)
+    rollup: sum                      # how it may be re-aggregated (Hex §2 item 2; used by §6)
     description: "Net of refunds and VAT, in GBP"
   - name: active_customers
     expr: count_distinct(customer_id)
     approx_expr: approx_count_distinct(customer_id)
-    additive: false
+    rollup: none                     # distinct counts don't merge without a sketch
     description: "Customers with at least one order in the period"
 instructions: |
   "Revenue" always means net revenue. Q1 starts in April.
@@ -283,7 +283,8 @@ warning sentence with the remedy; effective limits echoed.
 
 **Additivity.** Rill checks it on the data because "the metrics view
 does not declare which measures add up". Under proposal 1 the
-definition declares it (`additive`), and the data check stays as a
+definition declares it (`rollup: sum`, or `semi_additive` across
+non-time dimensions), and the data check stays as a
 guard (shown plus rest equals total within 1e-6 relative).
 
 **Why.** Each rule prevents a misleading chart that renders without
@@ -363,7 +364,7 @@ working.
 
 | Extension | Rill's form | Why the harness needs it | SQL it parses from |
 |---|---|---|---|
-| **Named measures**, referenced by name and not re-aggregatable | `measures: [{name: revenue}]` over a definition's `expression`; derived measures reference other measures (`type: derived`, `requires`) | the model cannot redefine revenue; formats, units and additivity travel with the number; "never compute" becomes enforceable | `MEASURE(revenue)` or a bare `revenue` column of a metrics relation, grouped by its dimensions; `SUM(revenue)` over it is refused as re-aggregation (Hex's grammar rejects the same) |
+| **Named measures**, referenced by name, re-aggregated only as their declared `rollup` allows | `measures: [{name: revenue}]` over a definition's `expression`; derived measures reference other measures (`type: derived`, `requires`) | the model cannot redefine revenue; formats, units and additivity travel with the number; "never compute" becomes enforceable | `MEASURE(revenue)` or a bare `revenue` column of a metrics relation, grouped by its dimensions; wrapping it (`SUM(MEASURE(revenue))`) is allowed only as its `rollup` permits: sum of sums, min of mins, averages and ratios rolled up from their parts, last value across time for semi-additive measures, nothing for distinct counts without a sketch (the rules in `proposals-hex-2026-11.md` §2 item 2) |
 | **Time bucket** as a typed operation | `dimensions: [{name: ts, compute: {time_floor: {dimension: ts, grain: month}}}]`, with the definition's calendar (`first_day_of_week`, `first_month_of_year`) and a `time_zone` | grain becomes a parameter a view can change (proposal 4); fiscal calendars apply without the model knowing them; charts get a temporal semantic type at the right grain | `date_trunc('month', ts)`, `DATE_TRUNC`, `toStartOfMonth(ts)`, … each dialect's spelling normalised to one node |
 | **Time range** as a typed field, with a **resolved** output | `time_range: {start, end}` or `{expression: "1M as of latest/D offset -1M"}`, `iso_duration`, `iso_offset`, `round_to_grain`; the result returns `resolved_time_range` | provenance can record the absolute range (proposal 2); narrowing can compare ranges (proposal 3); policies can cap range length (Rill's `max_time_range_days`) | `WHERE ts >= … AND ts < …` on the time field becomes the range; anything else on it stays a filter |
 | **"As of latest"** anchoring | the `latest` anchor in Rill's time expressions resolves to the data's maximum time, not now | stale data does not silently return an empty "last 7 days"; the resolved range shows what "latest" was | none in SQL; DSL only |
@@ -388,7 +389,10 @@ working.
   metrics view). Hex's semantic models do, and so does
   `proposals-hex-2026-11.md` §2 (PR #46). That section's "DSL extensions
   from Hex's model" also covers the `MEASURE()` marker this section
-  uses, closed measures (refusing `SUM(MEASURE(x))`), filtered and
+  uses, per-measure roll-up rules for wrapping a measure (sum, min/max, avg
+  and ratio from their parts, semi-additive, none without a sketch),
+  two-level aggregates with an explicit inner grain
+  (`sparse_inner_grain`), filtered and
   composed measures, semi-additive measures, a `fanout_risk` refusal,
   views as a policy scope, field visibility, and importers. The two
   lists are written to fit together.
