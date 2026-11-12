@@ -5,7 +5,7 @@
   in-app analyst and developer agents, and an **MCP Apps** chart view.
   Read for what a semantic layer does to a data agent's tool surface,
   prompts and provenance, and for the most complete data app found in
-  [`../../mcp-apps/`](../../mcp-apps) (on PR #44).
+  [`../../mcp-apps/`](../../mcp-apps).
 - **Vendor**: Rill Data · **Licence**: Apache-2.0 · **Source**:
   `github.com/rilldata/rill`
 - **Read**: 2026-11-12, at `516bc91` (2026-11-11). The chart work is PR
@@ -56,15 +56,15 @@ claim citing the ref and SQL behind it (`answer.v1`, `data.md` §2f).
 
 | Question | Lens today | Rill | Read |
 |---|---|---|---|
-| What does the model query? | SQL over described sources; it chooses joins on documented keys | a structured query over a metrics view; **no SQL, no joins** | Rill trades reach for correctness: the join and the metric definition were made once by a person |
+| What does the model query? | SQL over described sources; it chooses joins on documented keys. Keel's query DSL parses that SQL, applying field mapping and policies (Jonathan, 2026-11-12) | a structured query over a metrics view; **no SQL, no joins** | Rill trades reach for correctness: the join and the metric definition were made once by a person. Keel has Rill's lower half (mapping, policies, a structured query); proposal 1 adds measures on top |
 | Where does meaning live? | the data overview and `DescribeSource`; a semantic layer deferred (`data.md` §4a: "the content, not the plumbing, is the hard part") | metrics view YAML (descriptions, formats, `ai_instructions`), project `ai_instructions`, scoped skills | Rill is the open-source instance `agent-data-analysis.md` §8 said did not exist; it has no verified-query repository |
 | How much data enters context? | `table://` stub plus a capped preview; selectors to read more | 25 rows by default, 250 maximum, inline; charts send 20 rows as a fallback table | Lens's ref model is stricter; Rill relies on aggregation keeping results small |
 | What is the citation? | a `table://` ref with `produced_by` (SQL, row counts) | the recorded tool call, as an `open_url` that replays it | the same idea: the claim cites the query, not a copy of its rows |
 | Who computes? | SQL, in the run | the metrics layer (`comparison_delta`, `comparison_ratio`); "NEVER perform manual calculations" | Lens's rule "never state a number that did not come from a query" is the same rule without a layer to enforce it |
-| What does a chart cite? | a `table://` snapshot | a **live binding** (metrics view, range, filter, grain) re-run on every view change | a snapshot is reproducible; a binding is interactive. Proposal 2 keeps both |
-| Who writes the chart? | the model writes Vega-Lite; the write path validates columns and refuses embedded rows | the model writes a chart type and channel bindings; a compiler derives scales, formats, sort, stack, colours and layout from semantic types | proposal 1 |
-| What stops a chart contradicting the text? | nothing specific | a chart's filter must narrow the filter of the data the findings came from, checked on the expression tree | proposal 3 |
-| Who renders? | "the destination", which Lens does not have yet (PR #44 proposals 5–6) | the MCP Apps widget in Claude, ChatGPT, Cursor, VS Code; a link out elsewhere | proposal 4 refines PR #44's |
+| What does a chart cite? | a `table://` snapshot | a **live binding** (metrics view, range, filter, grain) re-run on every view change | a snapshot is reproducible; a binding is interactive. Proposal 4 keeps both |
+| Who writes the chart? | the model writes Vega-Lite; the write path validates columns and refuses embedded rows | the model writes a chart type and channel bindings; a compiler derives scales, formats, sort, stack, colours and layout from semantic types | proposal 5 |
+| What stops a chart contradicting the text? | nothing specific | a chart's filter must narrow the filter of the data the findings came from, checked on the expression tree | proposal 3, on the DSL tree |
+| Who renders? | "the destination", the Keel UI as an MCP Apps host (MCP Apps proposals B5–B6) | the MCP Apps widget in Claude, ChatGPT, Cursor, VS Code; a link out elsewhere | proposal 7 adds details to B6 and B14 |
 | Authority | the invoking user's delegation | the session's claims, through metrics-view security policies, for every tool including the view's re-queries | the same; Rill does not bind a view's calls to the chart that opened it |
 
 ## Corrections to `mcp-apps/data-analysis.md` §2

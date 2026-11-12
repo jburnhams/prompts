@@ -530,6 +530,58 @@ rendering `analysis.md` with the loader's delimiters (`{%`, `%}`) in a
 standalone Go program; Rill's own tests were not run. PR #10016's review
 thread was not re-read; `mcp-apps/data-analysis.md` §2 summarises it.
 
+### MCP Apps (read 2026-11-12)
+
+Sources for [`mcp-apps/`](./mcp-apps), `agent-interactive-views.md`,
+the 2026-11-12 notes in `agent-tool-result-transport.md` §8 and
+`agent-generative-output.md` §4c, and
+`agent-design/proposals-mcp-apps-2026-11.md`. Repos cloned on
+2026-11-12; `ext-apps` and `mcp-ui` with `--depth 50`, the others
+sparse at `--depth 1`.
+
+| Source | Repo | Paths that matter | SHA read |
+|---|---|---|---|
+| **MCP Apps spec and SDK** (`@modelcontextprotocol/ext-apps` 2.1.0) | `github.com/modelcontextprotocol/ext-apps` | `specification/2026-01-26/apps.mdx` (stable), `specification/draft/apps.mdx` (in full; last changed 2026-11-04 by #717); `docs/{overview,patterns,migrate-to-2,csp-cors,authorization,testing-mcp-apps,agent-skills}.md`; `RELEASES.md`; `examples/{cohort-heatmap,customer-segmentation,budget-allocator,scenario-modeler,system-monitor}-server/server.ts`; `README.md` (clients) | `ea3e9d0` |
+| **MCP-UI** (`@mcp-ui/client` 7.1.1, `@mcp-ui/server` 6.1.0) | `github.com/MCP-UI-Org/mcp-ui` | `README.md`, `docs/src/guide/supported-hosts.md`, `sdks/*/package.json` | `2b10490` |
+| **MCP docs: extensions** | `github.com/modelcontextprotocol/modelcontextprotocol` | `docs/extensions/{overview,client-matrix}.mdx`, `docs/extensions/apps/overview.mdx` (negotiation under `2026-07-28`: per-request `_meta` client capabilities, `server/discover`) | `99a8e46` |
+| **Codex** (pass-through host) | `github.com/openai/codex` | `codex-rs/codex-mcp/src/client_capabilities.rs` (`client_mcp_extensions`); `codex-rs/codex-mcp/src/connection_manager/tool_catalog.rs` (`tool_is_model_visible`); `codex-rs/protocol/src/{mcp,items}.rs` (`MCP_APP_UI_EXTENSION_ID`, `McpAppUi`); `codex-rs/app-server-protocol/src/protocol/v2/item.rs` (`McpToolCall.mcp_app_ui`); `codex-rs/core/src/mcp_tool_call.rs` (meta keys incl. `openai/outputTemplate`, `ui/resourceUri`) | `c0cc9fc` |
+| **Open WebUI** | `github.com/open-webui/open-webui` | `backend/open_webui/utils/mcp/apps.py` (CSP builder, HMAC binding, 5 MB cap), `backend/open_webui/utils/mcp/client.py` (`call_tool`, `normalize_tool_result`) | `main`, fetched raw 2026-11-12 (no SHA recorded: commit API not available to this session) |
+| **Cline** | `github.com/cline/cline` | `sdk/packages/core/src/extensions/mcp/apps.ts` | `main`, fetched raw 2026-11-12 |
+
+Vendor documentation, read 2026-11-12:
+
+- Claude — `claude.com/docs/connectors/building/mcp-apps/` pages
+  `getting-started`, `app-tools` (limits table), `entry-points`,
+  `send-messages` (8,000 characters, user agreement), and
+  `instance-supersession` (`BroadcastChannel` election, `ui.domain`
+  scope, iOS `toolInfo.id` undefined on rehydrate).
+- ChatGPT — `developers.openai.com/apps-sdk/mcp-apps-in-chatgpt`
+  (standard-to-`window.openai` mapping, ChatGPT-only extensions).
+- VS Code — `code.visualstudio.com/api/extension-guides/ai/mcp`
+  (MCP Apps section: inline only, messages prefill, context as
+  attachments) and the 2026-01-26 blog.
+- Microsoft 365 Copilot — `learn.microsoft.com/microsoft-365/copilot/extensibility/plugin-mcp-apps`
+  and `…-ui-guidelines` (inline required, side-by-side optional);
+  Andrew Connell's series for the declarative-agent restriction.
+- Cursor 2.6 changelog and forum; Goose docs (`goose-docs.ai`,
+  interactive chat and the 2026-01-22 "MCP-UI to MCP Apps" post); FastMCP
+  apps docs; Vercel AI SDK `ai-sdk-core/mcp-apps`; Spring AI blog
+  2026-03-18.
+- Data apps — Rill PR `rilldata/rill#10016` (merged 2026-11-07) with its
+  review thread; Paddle changelog 2026-10-20; Hex blog "Hex connector in
+  Claude"; Lloyd Richards, "MCP Apps: Generative Data Visualization"
+  (2026-04-07); AWS dev.to AgentCore sales demo; `KyuRish/mcp-dashboards`
+  README; `oriliz/dsh-mcp-apps-host` README.
+- Secondary — mcpbundles host-compatibility guide (vendor docs checked
+  2026-10-20); Thoughtworks Radar vol. 35 (Assess); Backslash Security
+  on SEP-1865's attack surface; A2UI docs "Agent UI Ecosystem".
+
+Not done: no host was exercised live, and none of the data apps was
+run. Goose's, LibreChat's and Cursor's host code was not read; GitHub
+code search found no MCP Apps strings in Goose, LibreChat, Gemini CLI,
+Zed or OpenCode, which for Goose contradicts its docs and is more
+likely a search-index gap than absence.
+
 ## OpenClaw 2.0 (read 2026-08-31)
 
 `github.com/openclaw/openclaw` at `5f714ef` (`main`, 2026-08-31). MIT.
