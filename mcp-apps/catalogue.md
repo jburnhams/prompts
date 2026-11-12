@@ -110,7 +110,7 @@ them accordingly, or move them behind an app-only tool the view calls.
 
 | Server | What the view does | How data reaches it | Evidence |
 |---|---|---|---|
-| **Hex** (launch partner) | Shows the Hex agent's thinking steps, then a carousel of charts and tables with citations, styled from Hex; starts and continues Hex Threads | Server runs its own agent; the view shows its outputs | Hex blog; Claude listing |
+| **Hex** (launch partner) | Shows the Hex agent's thinking steps, then a carousel of charts and tables ("citations" per Claude's announcement, not Hex's docs), styled from Hex; starts and continues Hex Threads; widgets expire after 24 h. Full read: [`../data-agents/hex/`](../data-agents/hex) (2026-11-12) | Server runs its own agent; the view shows its outputs | Hex blog and docs; Claude listing |
 | **Amplitude** (launch partner) | Analytics charts the user can adjust in place | Server-side query | Launch coverage |
 | **Rill** (`create_chart`, merged 2026-11-07) | A Svelte + Vega widget compiles a Flint chart spec on the client; fullscreen controls for grain, top-N, comparison, chart type; follows host and project themes; "Open in Rill" replays the call | Model sends a **chart spec plus a semantic-layer binding** (metrics view, range, filter, grain), not rows. Server runs the query and returns rows, field metadata and theme. **An app-only `chart_data` tool** re-queries on control changes. **`ui/update-model-context` reports the current view** back. Text fallback is a Markdown table and a link. | PR #10016 |
 | **Paddle** (2026-10-20) | Revenue, refunds, chargebacks, conversion charts with grain and preset ranges | Server-side metrics; text answer when the host can't render | Changelog |
