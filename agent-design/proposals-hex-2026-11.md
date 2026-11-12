@@ -142,9 +142,33 @@ Rill's does not.
    not read in this pass. Hex's YAML queries are the other option, and
    they break the "parse to and from SQL" property, which is the DSL's
    best feature.
-2. **Measures are closed under aggregation.** `SUM(MEASURE(x))` is
-   refused (`measure_reaggregated`), as Hex's grammar refuses
-   `sum(total_revenue)`.
+2. **Wrapping a measure is allowed when a declared rollup rule makes
+   it safe.** *(Revised 2026-11-12: Jonathan asked "can we not allow
+   safe rules when to wrap measures?" Yes. Hex refuses all
+   re-aggregation; Keel can do better.)* Each measure declares how it
+   rolls up, and the compiler accepts an outer aggregate only when it
+   matches:
+
+   | Measure kind | Safe wrap | Refused | Compiled as |
+   |---|---|---|---|
+   | additive (`sum`, `count`) | `SUM` | `AVG`, `COUNT` without an explicit inner grain (see below) | sum of partial sums |
+   | `min` / `max` | `MIN` / `MAX` respectively | anything else | min of mins, max of maxes |
+   | `avg` | `AVG` as a rollup | `SUM(MEASURE(avg_x))` | decomposed: `SUM(sum_x) / SUM(count_x)`, never an average of averages |
+   | ratio (`a / b`) | rollup | summing the ratio | numerator and denominator rolled up separately, then divided |
+   | semi-additive over `date` | `SUM` across other dimensions; last (or first) value across `date` | `SUM` across `date` | per its `semi_additive` rule |
+   | `count_distinct`, `median`, percentiles | none, unless the measure is backed by a mergeable sketch (HLL, t-digest) and marked approximate | every wrap | re-query at the outer grain instead |
+
+   This covers the **rollup** case: the same metric at a coarser grain,
+   such as daily revenue rolled up to months. A **two-level aggregate**,
+   such as the average of daily revenue, asks a different question and
+   is also legitimate. It is allowed when the inner query names its
+   grain explicitly (`GROUP BY day`). The compiler must then fill the
+   empty periods in that grain (days with no orders count as zero),
+   because an average over only the days that had rows is the commonest
+   silent error in this shape. If it cannot fill them, for example
+   because the grain is not a time dimension, it refuses with
+   `sparse_inner_grain`. Anything else is `measure_reaggregated`, with
+   the measure's allowed wraps listed in the refusal.
 3. **Filtered and composed measures.** A measure can carry boolean
    filters (`revenue_from_us_deliveries` = `sum(price)` where
    `is_delivery` and `region = 'US'`) or be a formula over other measures
@@ -306,7 +330,7 @@ imported.
 **Questions still open.**
 
 1. **Which of extensions 1–8 are worth it first?** Recommendation:
-   relations with cardinality (5, staged as in §2a) and closed measures (2), because
+   relations with cardinality (5, staged as in §2a) and rollup rules for measures (2), because
    together they remove the fan-out and double-aggregation traps that
    Lens's quick path is most exposed to. Semi-additive measures (4)
    come next if any deployment has snapshot tables.
