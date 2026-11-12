@@ -289,6 +289,12 @@ it as a split, not a single rendering. The doc's closing rule —
 *"audience is a property of a content block, not of a tool call"* — is
 now protocol.
 
+*Update 2026-11-12:* the split is the extension's recommendation, not a
+guarantee. For app tools (the one case Claude documents), Claude reads
+`structuredContent` only when `content` has no text, and Open WebUI appends it to the model's context
+whenever it differs from the text. Data apps built on the split, and
+what breaks, are in [`mcp-apps/data-analysis.md`](./mcp-apps/data-analysis.md).
+
 ### 4d. Let the page fetch its own data at runtime
 
 The published artifact gets a capability and reads the data itself. In
