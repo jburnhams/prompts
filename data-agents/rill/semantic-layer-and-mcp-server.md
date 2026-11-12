@@ -40,6 +40,22 @@ to a metrics view that does not exist) is skipped "so that the
 validation actually keeps invalid instructions away from the agents".
 A project skill replaces a built-in of the same name.
 
+**Generating a metrics view** (`runtime/server/generate_metrics_view.go`,
+needs `EditRepo`). A model is asked for "up to 10 suggested metrics"
+from a table's columns and types: "valid SQL aggregation expressions
+that use only the COUNT, SUM, MIN, MAX, and AVG functions. Do not use
+any complex aggregations and do not use WHERE or FILTER". The model's
+YAML supplies only measures (name, display name, expression,
+description). The time dimension, dimensions, format preset
+(`humanize`) and connector are filled in by code. Each measure is
+validated against the database, and invalid ones are dropped, in up to
+three passes. After a 30-second timeout or on error, a non-AI generator
+writes `COUNT(*)` plus a `SUM` per float column. One defect: the
+name-collision guard's condition is inverted
+(`if _, ok := columns[measure.Name]; !ok { measure.Name += "_measure" }`),
+so it renames measures that do *not* collide with a column, once per
+validation pass.
+
 This is the shape `../../agent-data-analysis.md` §8 attributed only to
 closed products (Snowflake Cortex Analyst, Databricks Genie): logical
 fields with business meaning over a physical table, written and

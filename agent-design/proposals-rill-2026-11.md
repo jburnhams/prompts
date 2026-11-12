@@ -48,6 +48,13 @@ means:
 | A **time dimension** with grains, calendar, comparison periods computed by the layer (`comparison_delta`, `comparison_ratio`) | not mentioned | second gap |
 | Descriptions, `ai_instructions`, scoped skills | not mentioned | meaning, which is the hard part |
 
+**Jonathan's answers (2026-11-12, second round):** the DSL expresses
+"some" of this and is **currently a subset of SQL**, and he wants ideas
+for extending it (§10). The agent writes **both** the DSL and SQL.
+Field mappings and policies are **metadata in MCP**, so a definition
+layer belongs there too (§11). Who writes metric definitions is open,
+and he asked for ideas (§12).
+
 So the plumbing §4a deferred mostly exists. What is missing is a place
 to write down **measures and their meaning** on top of the mapping.
 
@@ -64,6 +71,9 @@ to write down **measures and their meaning** on top of the mapping.
 | 7 | Details for first-party views and other hosts, from Rill's server | B6, B9, B14 | Fold into B6 and B14 |
 | 8 | A publish check that refuses template delimiters in prompt text | `keel/run-spec.md` §3; registry publish | Adopt now (small) |
 | 9 | Considered, not proposed | — | Record the reason |
+| 10 | **Extending the DSL** beyond a SQL subset, in three tiers, each a thing the harness can check or compile and SQL text cannot | a new DSL page (`keel/query-dsl.md`) | **Discuss**; tier 1 is what 1–4 need |
+| 11 | Metrics definitions are **MCP metadata** beside field mappings, pinned by digest in the server snapshot | `keel/tools-and-agents.md` §4a, §4b | Adopt with 1 |
+| 12 | **Who writes definitions**: drafted by an agent and reviewed as a PR, grown from usage, imported where a layer exists, each with tests | `lens-on-keel/`; `keel/memory.md`; `eval.md` | **Discuss** |
 
 ---
 
@@ -339,17 +349,142 @@ templated source can carry the same dead text.
   in `list_metrics_views`). See proposal 1: definitions' instructions go
   in the context block.
 
+## 10. Extending the DSL beyond a SQL subset
+
+The principle: **add to the DSL only what the harness can do something
+with**, meaning check it, compile it, edit it or explain it, and what SQL
+text either cannot say or says in too many ways to check. Everything
+below exists in Rill's query (`runtime/metricsview/query.go`) or its
+metrics view spec, read at `516bc91`. The SQL forms each extension
+should parse from are given so that the "agent writes both" path keeps
+working.
+
+### Tier 1: what proposals 1–4 need
+
+| Extension | Rill's form | Why the harness needs it | SQL it parses from |
+|---|---|---|---|
+| **Named measures**, referenced by name and not re-aggregatable | `measures: [{name: revenue}]` over a definition's `expression`; derived measures reference other measures (`type: derived`, `requires`) | the model cannot redefine revenue; formats, units and additivity travel with the number; "never compute" becomes enforceable | `MEASURE(revenue)` or a bare `revenue` column of a metrics relation, grouped by its dimensions; `SUM(revenue)` over it is refused as re-aggregation (Hex's grammar rejects the same) |
+| **Time bucket** as a typed operation | `dimensions: [{name: ts, compute: {time_floor: {dimension: ts, grain: month}}}]`, with the definition's calendar (`first_day_of_week`, `first_month_of_year`) and a `time_zone` | grain becomes a parameter a view can change (proposal 4); fiscal calendars apply without the model knowing them; charts get a temporal semantic type at the right grain | `date_trunc('month', ts)`, `DATE_TRUNC`, `toStartOfMonth(ts)`, … each dialect's spelling normalised to one node |
+| **Time range** as a typed field, with a **resolved** output | `time_range: {start, end}` or `{expression: "1M as of latest/D offset -1M"}`, `iso_duration`, `iso_offset`, `round_to_grain`; the result returns `resolved_time_range` | provenance can record the absolute range (proposal 2); narrowing can compare ranges (proposal 3); policies can cap range length (Rill's `max_time_range_days`) | `WHERE ts >= … AND ts < …` on the time field becomes the range; anything else on it stays a filter |
+| **"As of latest"** anchoring | the `latest` anchor in Rill's time expressions resolves to the data's maximum time, not now | stale data does not silently return an empty "last 7 days"; the resolved range shows what "latest" was | none in SQL; DSL only |
+| **Comparison range** and **computed comparison measures** | `comparison_time_range`, and measures computed as `comparison_value`, `comparison_delta`, `comparison_ratio`, `percent_of_total`; validated non-overlapping and of similar length (±20%) | period-over-period is the commonest data question and the commonest place for a model to make arithmetic or alignment errors; the layer computes it once | a self-join or a `CASE WHEN ts in period` pattern is too varied to parse reliably; **DSL only**, which is fine because the agent writes both |
+| **Filter as a tree** with typed operators | `where: {cond: {op: and, exprs: [...]}}` with `eq`, `in`, `nin`, `lt`, `like`, … | proposal 3's narrowing check walks it; policies compose with it; a view's filter controls edit it | the `WHERE` clause, which a SQL-subset parser already produces |
+
+### Tier 2: what makes results trustworthy
+
+| Extension | Rill's form | Why |
+|---|---|---|
+| **Top-N with a remainder** | `chartquery`'s top-N pre-query per dimension, and an "Other" row added only when the measure adds up | one query shape for "top 10 and the rest" instead of a hand-written CTE; the additivity check lives in one place (proposal 6) |
+| **Spine**: fill missing buckets | `spine: {time: {start, end, grain}}`, `treat_nulls_as` on the measure | a time series with gaps draws as a straight line across missing days; a spine makes the gap a zero or a null on purpose |
+| **Exact or approximate** per measure | `exact_expression` beside `expression`; `exact: true` in the query; "Tell the user which precision was used" | approximate distinct counts are what make interactive queries cheap; the DSL records which one a figure used |
+| **Query limits as policy** | `require_time_range`, `max_time_range_days`, default and maximum row limits, applied to AI queries only | these are policies Keel can attach per surface or principal, enforced before SQL is rendered, with Rill's one-line truncation warning |
+
+### Tier 3: later, on demand
+
+- **Window measures** (running totals, moving averages): Rill has
+  `window` on measures, partitioned by time.
+- **Pivot** (`pivot_on`) and **having** on measures.
+- **Joins with declared cardinality**: Rill has none (one table per
+  metrics view). Hex's semantic models do, and so does
+  `proposals-hex-2026-11.md` §2 (PR #46). That section's "DSL extensions
+  from Hex's model" also covers the `MEASURE()` marker this section
+  uses, closed measures (refusing `SUM(MEASURE(x))`), filtered and
+  composed measures, semi-additive measures, a `fanout_risk` refusal,
+  views as a policy scope, field visibility, and importers. The two
+  lists are written to fit together.
+
+### What each extension costs the SQL path
+
+Tier 1 and 2 extensions either parse from a recognisable SQL pattern
+(`date_trunc`, a range on the time field, `MEASURE()`) or are DSL-only.
+That is acceptable because the agent writes both: the prompt says "for
+comparisons, top-N with a remainder and gap-filled series, use the
+DSL". A canonical serialised form of the DSL also gives every query a
+stable hash, which is what provenance, caching and the re-query binding
+key on.
+
+## 11. Definitions are MCP metadata, pinned like tool descriptions
+
+**What.** A data server publishes its metrics definitions the way it
+already publishes field mappings and policies (Jonathan: "metadata in
+MCP"):
+
+- as a **resource** per definition (for example
+  `metrics://warehouse/orders`), listed at `:discover`, or as `_meta`
+  on the query tool, whichever form the mapping metadata already uses;
+- Keel **pins each definition by digest** in the server snapshot, so a
+  changed definition is drift like a changed tool description
+  (`keel/tools-and-agents.md` §4b; MCP Apps B2 does the same for view
+  templates). A run records which definition versions its figures used
+  (proposal 2's policy version, generalised);
+- definitions' `instructions` and descriptions go into the opening
+  message's context block under the server's trust tier, never as
+  instructions in a result field (Rill's `ai_instructions` pattern is
+  what not to copy);
+- policies stay authoritative on the server side: a definition never
+  widens access, it only names and describes.
+
+**Why.** It keeps one place for "what this data means" that every
+client of the server sees, Keel's agents, the Keel UI's views and third
+party hosts (B14) alike, and it reuses snapshot pinning Keel already
+has. Rill's equivalent is the metrics view YAML in the project, read
+through `get_metrics_view`.
+
+## 12. Who writes the definitions
+
+Ideas, in the order they would pay off for a deployment that has none.
+
+1. **An agent drafts them; a person merges them.** Rill's
+   `GenerateMetricsViewFile` asks a model for "up to 10 suggested
+   metrics" from a table's columns and types, restricted to "COUNT,
+   SUM, MIN, MAX, and AVG" with no `WHERE` or `FILTER`, fills in the
+   time dimension and dimensions **deterministically**, then validates
+   each measure against the database and **drops the invalid ones**
+   (up to three passes). On timeout (30 s) or error it falls back to a
+   non-AI generator (`COUNT(*)` plus `SUM` of float columns). For Keel
+   that is a `lens.define` template: read the mapping, the schema and
+   column profiles, draft a definition, compile each measure through the
+   DSL and run a probe query, and open the result as a pull request on
+   the repo that holds the metadata, reviewed like Forge's output. The
+   person supplies the meaning; the agent supplies the typing. (Rill's
+   generator also shows why the validation pass matters: a measure-name
+   collision check has its condition inverted, renaming every
+   non-colliding measure. The validator caught bad SQL, not bad names.)
+2. **Grown from usage.** Lens's run history already holds the queries
+   people ask. A consolidation job (the `keel/memory.md` consolidator
+   in `propose` mode) looks for the same aggregate over the same mapped
+   field across runs, above a distinct-user threshold (the Hex thread's
+   proposal 3 uses the same threshold for context gaps), and proposes it
+   as a measure with the questions that used it as examples. Definitions
+   then appear where people actually ask, not where a schema suggests.
+3. **Promoted from accepted answers.** When a user accepts or reuses an
+   answer, its DSL query becomes a **verified query** attached to the
+   definition (the Cortex Analyst and Genie half that Rill lacks), and
+   any ad-hoc aggregate in it becomes a candidate measure.
+4. **Imported where a layer exists.** dbt MetricFlow, Cube, LookML,
+   Snowflake semantic views. The Hex thread's proposal 2 covers
+   importers; they write the same MCP metadata.
+5. **Every definition carries tests.** A few example queries with
+   expected results (or invariants: revenue is non-negative, sums of
+   parts equal the total for additive measures), run when the
+   definition changes and in `eval.md`'s Suite 4. A definition change
+   that moves a test result is a reviewed change, not a silent one.
+
+The recommendation is 1 with 5 to start, 2 once runs accumulate, and 4
+when a customer brings a layer. All three write proposals for a person
+to merge; none lets an agent change a definition in place.
+
 ## Questions for the discussion
 
-1. **The DSL.** Does it express aggregation, grouping, time bucketing
-   and comparison ranges, or only selection and filtering? Is it
-   model-facing (a tool the agent writes) or only the harness's internal
-   form of the SQL the agent writes?
-2. **Field mapping and policies.** Where are they defined (per source,
-   per tenant, per deployment), and do policies take principal
-   attributes (Rill's `{{ .user.domain }}`)?
-3. **Who would write metrics definitions** in the first deployments,
-   and do any already have them elsewhere (dbt MetricFlow, Cube, Looker,
-   Snowflake semantic views) that could be imported?
+Answered 2026-11-12: the DSL is a subset of SQL today; the agent writes
+both; mappings and policies are MCP metadata; authoring is open.
+Remaining:
+
+1. **Which tier-1 extensions** in §10 are worth building first? Named
+   measures and the time bucket unlock most of 1–4.
+2. **In what form is the MCP metadata published today** (resources,
+   `_meta` on tools, a custom method)? §11 should use the same.
+3. **Which of §12's routes** fits the first deployments, and where does
+   the metadata live as files (the data server's repo, a config repo)?
 4. **Proposal 5**: is a chart-type vocabulary acceptable now that the
    stored form stays Vega-Lite and the Keel UI can compile in the view?
