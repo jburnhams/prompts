@@ -32,6 +32,7 @@ from it is in [`../agent-design/data.md`](../agent-design/data.md).
 | [`postgres-mcp/`](./postgres-mcp) | A database MCP server where the access mode changes the **tool description and the MCP annotations**, not just the driver | MIT | 2026-09-12 |
 | [`matlab-mcp/`](./matlab-mcp) | MathWorks' own MCP server. Session lifecycle as tools, a disciplined annotation taxonomy, and user-declared custom tools over MATLAB functions | Apache-2.0 | 2026-09-12 |
 | [`btw/`](./btw) | Posit's R toolkit: introspection tools by default, `run_r` **off** by default, and four named projections of a data frame with stated selection criteria | MIT | 2026-09-12 |
+| [`rill/`](./rill) | A BI tool whose **metrics layer** is the agent's only data surface: structured metric queries instead of SQL, charts as a Flint chart type plus a binding the server queries, an MCP Apps chart view with an app-only re-query tool. The open-source semantic layer §7b said was missing | Apache-2.0 | 2026-11-12 |
 | [`positron/`](./positron) | Not an agent — the **Data Explorer OpenRPC protocol**, i.e. what a data viewer exposes as a machine surface, including `convert_to_code` | Elastic-2.0 | 2026-09-12 |
 
 ## Read but not stored as folders
@@ -46,7 +47,9 @@ from it is in [`../agent-design/data.md`](../agent-design/data.md).
   [`../codeact-hyperlight/`](../codeact-hyperlight).
 - **Snowflake Cortex Analyst** and **Databricks Genie** — closed, but the
   *semantic-model YAML + verified-query repository* shape is documented
-  and is the main thing the open sources here lack. §7b.
+  and is the main thing the open sources here lack. §7b. *(2026-11-12:
+  [`rill/`](./rill) is an open-source semantic layer of this shape,
+  without the verified-query repository.)*
 - **Jupyter AI** (`jupyterlab/jupyter-ai`, `c961b89`) — the repo is now a
   thin shell over submodules; nothing prompt-bearing was retrievable in
   this pass. Worth re-checking.

@@ -15,6 +15,14 @@ repo here has been restructured at least once), the commits read, and the
 sparse-clone recipe for re-fetching any of them in a couple of minutes.
 Start there before re-deriving where a harness keeps its tool definitions.
 
+**[→ `data-agents/rill/`](./data-agents/rill)** — Rill (2026-11-12), an
+open-source BI tool whose metrics layer is the only thing its agents
+query, read for its MCP server, its analyst prompts, and its interactive
+chart: the model writes a Flint chart type and a binding, the server
+queries, an MCP Apps view re-queries through an app-only tool. Mapped
+to Lens in the folder README; eight proposals, none adopted, in
+[`agent-design/proposals-rill-2026-11.md`](./agent-design/proposals-rill-2026-11.md).
+
 **[→ `agentic-sdks/`](./agentic-sdks)** — LangChain Deep Agents and its
 terminal agent `dcode`, LangChain's middleware and MCP adapter, LangGraph,
 Pydantic AI Harness, and the OpenAI, Claude, Microsoft, CrewAI and
@@ -1223,6 +1231,7 @@ data** rather than editing a repository. See
 | [`data-agents/postgres-mcp/`](./data-agents/postgres-mcp) | [Postgres MCP Pro](https://github.com/crystaldba/postgres-mcp) | Access mode changes the tool description and annotations, not just the driver | MIT |
 | [`data-agents/matlab-mcp/`](./data-agents/matlab-mcp) | [MATLAB MCP Server](https://github.com/matlab/matlab-mcp-server) | MathWorks' own; session lifecycle as tools; JSON-declared custom tools over MATLAB functions | Apache-2.0 |
 | [`data-agents/btw/`](./data-agents/btw) | [btw](https://github.com/posit-dev/btw) | Posit's R toolkit: 25 introspection tools on, `run_r` off by default | MIT |
+| [`data-agents/rill/`](./data-agents/rill) | [Rill](https://github.com/rilldata/rill) | Metrics layer as the agent's only data surface; MCP server; Flint chart specs bound to queries the server runs; an MCP Apps chart view with an app-only re-query tool | Apache-2.0 |
 | [`data-agents/positron/`](./data-agents/positron) | [Positron](https://github.com/posit-dev/positron) | Not an agent — the Data Explorer OpenRPC protocol, i.e. what a viewer exposes | Elastic-2.0 |
 | [`data-agents/hyperparam/`](./data-agents/hyperparam) | [Hyperparam / HypStack](https://github.com/hyparam) | Pure-JS data stack built for browsers *and* agent sandboxes — squirreling (SQL, 0 deps), hyparquet, icebird, `squirreling-mcp` | MIT |
 | [`data-agents/arquero/`](./data-agents/arquero) | [Arquero](https://github.com/uwdata/arquero) | The verb-based counter-case: dataframes in JS, expressions as a restricted DSL that ends in codegen | BSD-3-Clause |
