@@ -33,6 +33,7 @@ from it is in [`../agent-design/data.md`](../agent-design/data.md).
 | [`matlab-mcp/`](./matlab-mcp) | MathWorks' own MCP server. Session lifecycle as tools, a disciplined annotation taxonomy, and user-declared custom tools over MATLAB functions | Apache-2.0 | 2026-09-12 |
 | [`btw/`](./btw) | Posit's R toolkit: introspection tools by default, `run_r` **off** by default, and four named projections of a data frame with stated selection criteria | MIT | 2026-09-12 |
 | [`positron/`](./positron) | Not an agent — the **Data Explorer OpenRPC protocol**, i.e. what a data viewer exposes as a machine surface, including `convert_to_code` | Elastic-2.0 | 2026-09-12 |
+| [`hex/`](./hex) | **Closed source, read from docs and behaviour.** A commercial analytics agent exposed as an MCP server with an MCP App in Claude; the semantic layer the open sources here lack, with queries as files in 4.0; context, warnings, suggestions and evals as a managed loop. Every claim tagged evidence or inference | proprietary; `hex-skills` MIT | 2026-11-12 |
 
 ## Read but not stored as folders
 
@@ -46,7 +47,9 @@ from it is in [`../agent-design/data.md`](../agent-design/data.md).
   [`../codeact-hyperlight/`](../codeact-hyperlight).
 - **Snowflake Cortex Analyst** and **Databricks Genie** — closed, but the
   *semantic-model YAML + verified-query repository* shape is documented
-  and is the main thing the open sources here lack. §7b.
+  and is the main thing the open sources here lack. §7b. Hex, the third
+  closed product with that shape, now has a folder of its own
+  ([`hex/`](./hex), 2026-11-12).
 - **Jupyter AI** (`jupyterlab/jupyter-ai`, `c961b89`) — the repo is now a
   thin shell over submodules; nothing prompt-bearing was retrievable in
   this pass. Worth re-checking.

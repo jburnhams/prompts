@@ -562,6 +562,69 @@ code search found no MCP Apps strings in Goose, LibreChat, Gemini CLI,
 Zed or OpenCode, which for Goose contradicts its docs and is more
 likely a search-index gap than absence.
 
+### Hex (read 2026-11-12)
+
+Sources for [`data-agents/hex/`](./data-agents/hex) and
+`agent-design/proposals-hex-2026-11.md`. **Hex is closed source**: the
+product, the MCP server and the `hex` CLI are proprietary, and no system
+prompt or tool schema is public. Nothing was run against a Hex
+workspace.
+
+Hex documentation, fetched 2026-11-12 with `Accept: text/markdown` (the
+site serves Markdown for every page, per `learn.hex.tech/llms.txt`):
+
+- `docs/api-integrations/mcp-server` (tools, roles, clients, the Claude
+  widgets and their 24-hour expiry), `…/hex-agent-data-connection-access`
+  (sensitive connections), `…/cli`, `…/api/overview`, `…/external-apps`.
+- `docs/explore-data/threads`, `…/notebook-view/notebook-agent`,
+  `…/chat-with-app`, `…/tasks`; `docs/getting-started/ai-overview`.
+- `docs/agent-management/{context-studio, observability, suggestions,
+  governed-mode, evals, agent-personalization}`,
+  `…/context-management/{guides, context-sync, models,
+  endorsements-in-context-studio, reference-repositories}`.
+- `docs/connect-to-data/semantic-models/{intro-to-semantic-models,
+  viewing-and-using-semantic-models}`,
+  `…/semantic-authoring/{semantic-authoring-overview,
+  modeling-specification}`.
+- `docs/hex-4-0/{what-is-hex-4-0, semantic-models-in-hex-4-0,
+  beta-roadmap}` (roadmap "Last updated November 10, 2026").
+- Changelog RSS (20 items, 2026-06-02 to 2026-11-10) and the pages for
+  2026-03-03, 04-14, 06-02, 07-14, 07-21, 07-30, 08-04, 08-10, 08-18,
+  09-15, 09-22, 09-29, 10-22, 10-30, 11-10. `2026-01-26` returns 404.
+- Pages that return only a title as Markdown (client-rendered) and were
+  not read: `share-insights/explore`, `…/hex-agent-in-slack`,
+  `…/apps/generative-apps`, `…/apps/snapshots`.
+
+Repos, cloned `--depth 20`:
+
+| Repo | Licence | SHA read | Paths that matter |
+|---|---|---|---|
+| `github.com/hex-inc/hex-skills` | MIT | `17f928f` (2026-11-11) | `skills/context-consultant/{SKILL.md, agents/eval-engineer.md, agents/context-architect.md, references/{advanced-context, evals-and-preview-loop}.md, hex-guides/guide-writing-guide.md}`; `skills/looker-migration/{SKILL.md, reference/{sql-review, visual-qa-loop}.md}`; `snowflake-coco/README.md`, `snowflake-coco/hex/hex-project/SKILL.md` |
+| `github.com/hex-inc/action-context-toolkit` | MIT | `6246f48` (2026-11-10) | `README.md` |
+| `github.com/hex-inc/hex-cli` | proprietary | `14bf790` | `README.md`, `LICENSE` only; releases are binaries |
+
+Other first-party pages: hex.tech blog "Hex connector in Claude"
+(2026-01-26), "Introducing Hex 4.0" (dated 2026-10-27 on the blog, the
+changelog entry is 2026-11-10), "Evals" (2026-08-04), "MCPs with Hex"
+(2025-03-20, about the earlier community `hex-mcp`, not the official
+server); `hex.tech/llms.txt`; the Claude directory listing
+`claude.com/connectors/hex` (4 tools, "Added November 2025"); Claude's
+"interactive tools in Claude" announcement (2026-01-26).
+
+Behaviour: one unauthenticated `initialize` POST to
+`https://app.hex.tech/mcp` (401 with an RFC 9728 `resource_metadata`
+pointer) and a GET of `/.well-known/oauth-protected-resource`.
+
+Secondary, used only where tagged: ZenML LLMOps Database, "Building
+Production Data Agents with Long-Running Context and Iterative
+Workflows" (a summary of a talk by Izzy Miller of Hex; 2026, no exact
+date).
+
+Not done: the MCP tools' schemas, the `ui://` view and its CSP, and the
+4.0 project tools sit behind OAuth and were not seen. The agent-skill
+the CLI installs (`hex install agent-skill`) ships inside the binary and
+was not read.
+
 ## OpenClaw 2.0 (read 2026-08-31)
 
 `github.com/openclaw/openclaw` at `5f714ef` (`main`, 2026-08-31). MIT.
