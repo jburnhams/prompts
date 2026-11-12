@@ -120,6 +120,63 @@ writes goes through the DSL, mapping and policy apply on the way to SQL
 whichever way the agent wrote it. That includes SQL the model wrote
 directly, because the parser reads SQL back into the DSL.
 
+**What we know about the DSL** (Jonathan, 2026-11-12, answering the
+same questions in the Rill thread): it is **currently a subset of SQL**;
+the agent writes **both** the DSL and SQL; field mappings and policies
+are **metadata in MCP**, served alongside the tools; and he wants ideas
+for extending it. The Rill proposals (`proposals-rill-2026-11.md`, PR
+#45) cover extensions taken from Rill's query model (named measures,
+time floor and grain, comparison ranges, deltas, relative time) and who
+authors definitions. This section adds only what Hex's model has and
+Rill's does not.
+
+**Extensions from Hex's model** [docs; `../data-agents/hex/semantic-layer.md` §2]:
+
+1. **Keep it SQL-shaped, so the round trip holds.** Because the DSL is a
+   SQL subset and the agent writes both, a measure should look like SQL,
+   not like a new clause language: a mapped measure is a virtual column
+   used through a marker, for example
+   `SELECT region, MEASURE(total_revenue) FROM orders GROUP BY region`.
+   Databricks metric views use this `MEASURE()` form and Snowflake
+   semantic views have their own clause; both are from prior knowledge,
+   not read in this pass. Hex's YAML queries are the other option, and
+   they break the "parse to and from SQL" property, which is the DSL's
+   best feature.
+2. **Measures are closed under aggregation.** `SUM(MEASURE(x))` is
+   refused (`measure_reaggregated`), as Hex's grammar refuses
+   `sum(total_revenue)`.
+3. **Filtered and composed measures.** A measure can carry boolean
+   filters (`revenue_from_us_deliveries` = `sum(price)` where
+   `is_delivery` and `region = 'US'`) or be a formula over other measures
+   (`profits` = `revenue - costs`). Both live in the mapping metadata,
+   so the agent never re-derives them.
+4. **Semi-additive measures.** For snapshot tables, a measure declares
+   the dimension it must not be summed over and which value to pick
+   (`over: date, pick: max`, optional `groupings: account_id`). Without
+   this, "total balance" over a month is silently thirty times too big.
+   It is the same failure as fan-out, and the mapping is the only place
+   that can know it.
+5. **Relations with cardinality.** The mapping declares joins between
+   mapped tables as `many_to_one`, `one_to_many` or `one_to_one`, with
+   the key condition. The compiler then picks the join path, so the
+   agent names fields, not keys. When the agent aggregates a measure
+   across a `one_to_many` join, the compiler either aggregates before
+   joining or refuses (`fanout_risk`). This makes Suite 4's fan-out trap
+   structural.
+6. **Views as named subsets, which double as policy scope.** A Hex
+   semantic view selects and renames fields for an audience and is
+   "presentational only". In Keel the same subset can be what a policy
+   grants: an invoker or deployment sees the `sales` view's fields and
+   nothing else. That gives one object for both curation and access.
+7. **Visibility on fields** (`public`, `internal`, `private`), so a
+   helper dimension can feed a measure without being offered to the
+   agent.
+8. **Importers write MCP metadata.** Since mappings are MCP metadata,
+   an importer for dbt MetricFlow, Cube, Snowflake Semantic Views or
+   Hex's YAML turns a customer's existing models into that metadata,
+   versioned, and a claim records the metadata version it compiled
+   under. Hex runs five such importers.
+
 **What, if the answers to the questions below allow it.**
 
 1. **The agent's query surface is the DSL, with SQL accepted and parsed
@@ -162,23 +219,21 @@ the semantic layer because "the content, not the plumbing, is the hard
 part". With the DSL, the plumbing exists and the content can be
 imported.
 
-**Questions for the discussion.**
+**Questions still open.**
 
-1. **What does the DSL express today?** Field mapping to columns only,
-   or to expressions? Aggregations as named measures? Joins, with
-   cardinality? Time grain? Parameters?
-2. **What can a policy say?** Allow or deny a source or field, row
-   filters (row-level security), column masking, limits on cost or row
-   counts? Is a policy bound to the invoker, the deployment, or the
-   surface (proposal 5's per-surface rule)?
-3. **How lossless is SQL → DSL?** Which SQL does the parser refuse
-   (window functions, CTEs, dialect functions)? The refusal rate on
-   Suite 4's question set would show whether "all SQL goes through the
-   DSL" is practical for Lens or only for the quick path.
-4. **Where is the DSL specified?** It should get a page in
-   `agent-design/` (for example `keel/query-dsl.md`) before Lens's
-   prompts and schemas depend on it.
-5. **Which customer semantic layer to import first**, if any?
+1. **Which of extensions 1–8 are worth it first?** Recommendation:
+   relations with cardinality (5) and closed measures (2), because
+   together they remove the fan-out and double-aggregation traps that
+   Lens's quick path is most exposed to. Semi-additive measures (4)
+   come next if any deployment has snapshot tables.
+2. **Policies apply to both DSL and SQL**, per Jonathan. Does that hold
+   for SQL outside the DSL subset (refused, or run under a coarser
+   policy)? The answer decides whether `unparseable` is a refusal or a
+   fallback.
+3. **Where is the DSL specified?** A page in `agent-design/` (for
+   example `keel/query-dsl.md`) would let Lens's prompts and schemas
+   cite it. This should probably be written jointly with the Rill
+   thread's extensions.
 
 ## 3. Context gaps on the answer, and an aggregation with a user threshold *(adopt the field; discuss the aggregation)*
 
@@ -324,8 +379,9 @@ why it chose them, and Lens can offer both.
 
 ## Questions for the discussion
 
-1. Proposal 2: what the DSL already expresses (measures, joins,
-   policies), and whether all agent SQL should go through it.
+1. Proposal 2: which DSL extensions to take first (recommendation:
+   relations with cardinality and closed measures), and where the DSL
+   gets specified.
 2. Proposal 3: is a scheduled aggregation pipeline worth building before
    there is enough traffic to clear a two-user threshold?
 3. Proposal 4: who writes stratum C, and is it scored against the same
