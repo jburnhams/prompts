@@ -79,8 +79,10 @@ same thing for tabular text, so the stub grammar exists.
 
 **What.**
 
-- At `:discover`, a tool whose `_meta.ui.visibility` lacks `"model"` is
-  recorded as `app_only` in the snapshot. A `ToolRef` naming it is
+- At `:discover`, visibility defaults to `["model", "app"]` when
+  `_meta.ui.visibility` is absent (the spec's default, so ordinary tools
+  are unaffected). A tool whose **explicit** visibility array lacks
+  `"model"` is recorded as `app_only` in the snapshot. A `ToolRef` naming it is
   refused at publish (a new rule, alongside R4 and R8), so it can never
   be in an agent's grant, loaded, deferred or revealed.
 - `_meta.ui.resourceUri` and `_meta.ui.visibility` join the per-tool
@@ -235,9 +237,12 @@ control. The rules, from `agent-interactive-views.md` §2:
 - **Audit.** A view's calls are in the run record. The DeepSeek Harness
   plugin's bridge calls "never reach the session JSONL"; that is the
   failure to avoid.
-- **Binding.** A view's callback is bound to the run and tool that
-  opened it (Open WebUI's HMAC over server and tool is one way), so a
-  view from one answer cannot page another answer's tables.
+- **Binding.** A view's callback is bound to the **run (or view)**,
+  the server and the tool that opened it, and every `table://` it pages
+  is checked against that run's artifacts. Open WebUI's HMAC covers only
+  `[server_id, tool_name]`, so two answers from the same tool share a
+  binding; Keel's has to add the run identity, or a view from one answer
+  could page another answer's tables.
 
 ## 8. Not now, with the reason
 
