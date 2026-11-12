@@ -22,7 +22,10 @@ None rests on the secondary talk write-up alone. "Hex does X" here means
   guess a column name or a join key". There is no way to say which
   sources are trusted, which must never be used, or which a given
   surface may see.
-- **Lens has no semantic layer.** `data.md` §4a deferred it: "the
+- **Lens has no semantic layer, but Keel has the plumbing for one.**
+  Keel has a query DSL that parses to and from SQL, with field mapping
+  and policies (Jonathan, 2026-11-12; not yet in these docs). `data.md`
+  §4a deferred the semantic layer: "the
   content, not the plumbing, is the hard part". Hex shows what the
   plumbing looks like once a customer has the content, and that most
   customers' content will arrive from dbt MetricFlow, Cube, Snowflake or
@@ -41,7 +44,7 @@ None rests on the secondary talk write-up alone. "Hex does X" here means
 | # | Proposal | Evidence | Would amend | Recommendation |
 |---|---|---|---|---|
 | 1 | Source flags the harness enforces: `excluded` is filtered out before the model sees it, `endorsed` is marked in the overview; a run-level `source_policy` labelled as steering | docs, source | `lens-on-keel/*.template.json` (`data_overview`); `keel/examples/warehouse.mcp-server.json`; `data.md` §2c | Adopt now |
-| 2 | **A semantic layer as a fourth selector**: prefer a governed measure, cite the semantic query as provenance, and state (or ask) before leaving the governed layer | docs, source | `data.md` §2c, §4a; `lens-on-keel/prompts/`; `reports/answer.v1.schema.json` | **Discuss** |
+| 2 | **A semantic layer on Keel's query DSL**: import semantic models into its field mapping, route all agent SQL through it so mapping and policy always apply, and cite the DSL query as provenance (revised after Jonathan's note on the DSL) | docs, source; Keel DSL from Jonathan | `data.md` §2c, §4a; `lens-on-keel/prompts/`; `reports/answer.v1.schema.json`; a new DSL spec page | **Discuss** |
 | 3 | Context gaps as a typed field on the answer, aggregated into improvement requests with a distinct-user threshold | docs | `reports/answer.v1.schema.json`; `memory.md` §6 | Adopt the field; discuss the aggregation |
 | 4 | Suite 4 grows SQL ground truth computed at grade time, method and answer judges, and an inference-trap stratum; context changes are gated by a preview run | docs, source | `eval.md` Suite 4, Metrics | Adopt now |
 | 5 | If Lens's server is exposed to other hosts, use Hex's run-behind-a-tool shape and a per-surface source policy | docs | `proposals-mcp-apps-2026-11.md` proposals 6, 9 and 14 | Fold into MCP Apps 14 |
@@ -89,53 +92,93 @@ the run record? Recommendation: no. The run record should show that a
 source was filtered, by name, so a reviewer can tell an exclusion from
 an absence.
 
-## 2. A semantic layer as a fourth selector *(discuss)*
+## 2. A semantic layer on Keel's query DSL *(discuss)*
 
-**What.** When a deployment's warehouse server exposes semantic models
-(through a semantic-query tool, for dbt MetricFlow, Cube, Snowflake
-Semantic Views, Databricks metric views, or Hex itself):
+*Revised 2026-11-12 after Jonathan pointed out that **Keel already has a
+query DSL that parses to and from SQL, with field mapping and
+policies.** The design docs do not describe that DSL yet, so this
+section says what it would need and asks what it already has. The first
+version of this proposal invented a new "fourth selector" shaped on
+Hex's `.query.yml`. That is no longer needed.*
 
-1. **A fourth selector beside SQL** in `data.md` §2c: a structured
-   semantic query naming a project, a base model or view, measures,
-   dimensions with grain, and filters. Shape it on Hex's `.query.yml`
-   (`../data-agents/hex/semantic-layer.md` §3), which is a closed,
-   validated spec: unknown keys are errors, and governed measures cannot
-   be re-aggregated.
-2. **Provenance**: a claim may cite the semantic query (and the SQL the
-   layer compiled it to, when the server returns it) instead of
-   hand-written SQL. `answer.v1`'s `claims[]` gains an optional
-   `semantic` object; the provenance gate accepts either.
-3. **A prompt rule for the quick and investigate prompts**: "If a
-   governed measure answers the question, use it. If you write SQL for a
-   question a governed measure covers, say why." And a policy switch,
-   per deployment, for Hex's stricter stance: "only query raw source
-   tables with your explicit approval", which in Keel is an `AskUser`
-   suspension.
-4. **Semantic sources sort first** in the overview, as endorsed sources
-   do in proposal 1.
+**The reframe.** Most of what a semantic layer gives Hex, the DSL can
+already give Keel, and in one respect it gives more:
 
-**Why.** Every agent Hex ships prefers semantic models, and Hex's skill
-explains the failure the rule prevents: once models exist, guides that
-repeat metric definitions "*tempt* the agent into raw SQL"
-(`semantic-layer.md` §5). Declared relation cardinality removes the
-fan-out trap at the source, which Suite 4's stratum T currently tests
-for by prompt. And `data.md` §4a's reason for deferring, that someone
-has to write down what "active customer" means, is answered by
-deployments that already have, in tools Lens would read rather than
-replace.
+| What Hex's semantic layer does | Where it lives in Hex | Where it would live in Keel |
+|---|---|---|
+| Logical names over physical columns (`Sales.Revenue`, a renamed dimension) | semantic model dimensions, semantic views ("presentational only") | **DSL field mapping** |
+| Governed aggregations (`total_revenue`, cannot be re-aggregated) | model measures; the query grammar rejects `sum(total_revenue)` | a **measure** kind in the mapping, if the DSL can carry one (question 1) |
+| Join paths with declared cardinality | model relations (`many_to_one`, …) | mapping-level joins, if the DSL has them (question 1) |
+| Which sources the agent may use | Governed mode, which "isn't a security control" | **DSL policies**, which are enforced when the query compiles, so they *are* a control |
+| A closed, validated query spec | `.query.yml`: unknown keys are errors | the DSL's parser |
+| Provenance of a number | a cell in a DAG, walked back by Inspect | the DSL query on the claim, plus the SQL it compiled to |
+
+The last-but-two row is the main gain. Hex has to tell admins that its
+source filter is only steering, because the agent can still write SQL
+against anything the user can read. In Keel, if every query the agent
+writes goes through the DSL, mapping and policy apply on the way to SQL
+whichever way the agent wrote it. That includes SQL the model wrote
+directly, because the parser reads SQL back into the DSL.
+
+**What, if the answers to the questions below allow it.**
+
+1. **The agent's query surface is the DSL, with SQL accepted and parsed
+   into it.** `RunSQL` keeps its name and contract, but the harness
+   parses the SQL into the DSL, applies mapping and policy, and compiles
+   back. SQL the parser cannot read is refused with a closed reason
+   (`unparseable`, `policy_denied`, `unmapped_field`), the same pattern
+   as `data.md` §2e's chart-spec refusals. The model may also write the
+   DSL directly where that is shorter or clearer.
+2. **Semantic models are imported into the mapping, not consumed through
+   a vendor tool.** dbt MetricFlow, Cube, Snowflake Semantic Views and
+   Hex's YAML all describe dimensions, measures and relations. A
+   per-format importer writes them into the DSL's mapping for a
+   deployment. Hex's own five importers show this is routine
+   (`../data-agents/hex/semantic-layer.md` §1). Lens then has one query
+   surface whatever the customer's layer is.
+3. **The data overview lists logical names.** It shows mapped fields
+   and measures, not physical tables, with measures listed first. That
+   is what Hex means by "heavily prioritizes semantic models".
+4. **Provenance cites the DSL query.** A claim in `answer.v1` carries the
+   DSL query and the compiled SQL, plus the mapping and policy versions
+   it compiled under. The DSL is the reviewable form, and the SQL is
+   what ran.
+5. **Proposal 1's flags become policies.** `excluded` is a deny policy,
+   `endorsed` is overview metadata, and `source_policy` is a named
+   policy set. The "steering, not a permission" label then applies only
+   to endorsement.
+6. **A prompt rule in the quick and investigate prompts**: "If a mapped
+   measure answers the question, use it rather than re-deriving it from
+   columns." If the DSL marks measures as closed under aggregation, the
+   harness enforces this as well.
+
+**Why.** Hex's skill names the failure this prevents: a model that
+re-derives a governed metric in its own SQL drifts from the definition.
+Hex's answer is policy text in `hex.md` plus an approval step
+(`semantic-layer.md` §5). Keel can make it structural. Declared join
+cardinality would also remove the fan-out trap at the source, which
+Suite 4's stratum T now tests for by prompt. And `data.md` §4a deferred
+the semantic layer because "the content, not the plumbing, is the hard
+part". With the DSL, the plumbing exists and the content can be
+imported.
 
 **Questions for the discussion.**
 
-1. **Which layer first?** Hex imports five formats; Lens should probably
-   target one tool contract and let each warehouse server translate. Is
-   there a customer layer to aim at?
-2. **Ask or state?** Hex's semantic-first policy asks before leaving the
-   layer. A hands-off run cannot ask cheaply (`AskUser` suspends). Is
-   "state why" enough for the quick path, with "ask" only in
-   `investigate`?
-3. **Does this reopen `data.md` §4a's deferral** or stay a deployment
-   option? Recommendation: reopen it, scoped to *consuming* a layer;
-   authoring one stays out.
+1. **What does the DSL express today?** Field mapping to columns only,
+   or to expressions? Aggregations as named measures? Joins, with
+   cardinality? Time grain? Parameters?
+2. **What can a policy say?** Allow or deny a source or field, row
+   filters (row-level security), column masking, limits on cost or row
+   counts? Is a policy bound to the invoker, the deployment, or the
+   surface (proposal 5's per-surface rule)?
+3. **How lossless is SQL → DSL?** Which SQL does the parser refuse
+   (window functions, CTEs, dialect functions)? The refusal rate on
+   Suite 4's question set would show whether "all SQL goes through the
+   DSL" is practical for Lens or only for the quick path.
+4. **Where is the DSL specified?** It should get a page in
+   `agent-design/` (for example `keel/query-dsl.md`) before Lens's
+   prompts and schemas depend on it.
+5. **Which customer semantic layer to import first**, if any?
 
 ## 3. Context gaps on the answer, and an aggregation with a user threshold *(adopt the field; discuss the aggregation)*
 
@@ -281,8 +324,8 @@ why it chose them, and Lens can offer both.
 
 ## Questions for the discussion
 
-1. Proposal 2: which semantic layer, if any, do Lens's first deployments
-   have, and should "ask before raw SQL" be available as a policy?
+1. Proposal 2: what the DSL already expresses (measures, joins,
+   policies), and whether all agent SQL should go through it.
 2. Proposal 3: is a scheduled aggregation pipeline worth building before
    there is enough traffic to clear a two-user threshold?
 3. Proposal 4: who writes stratum C, and is it scored against the same
