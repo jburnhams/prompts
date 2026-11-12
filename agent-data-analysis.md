@@ -992,7 +992,11 @@ asking*, which is otherwise the least tractable part of autonomous
 analysis.
 
 **4. A semantic layer with verified queries.** No open source in this
-folder, but it is the state of the art in the closed products
+folder when this was written *(corrected 2026-11-12: Rill's metrics
+views, [`data-agents/rill/`](./data-agents/rill), are an open-source
+semantic layer of this shape, with person-written measures, formats,
+descriptions, `ai_instructions` and security policies, and the only data
+surface its agents get; it has no verified-query repository)*, but it is the state of the art in the closed products
 (Snowflake Cortex Analyst, Databricks Genie) and it is the thing this
 folder most conspicuously lacks. The shape: a YAML model declaring
 logical tables, columns, relationships and business terms on top of the
@@ -1397,7 +1401,8 @@ addresses two agents, or an agent and a human, editing concurrently with
 any guarantee.
 
 **7. The semantic layer.** §8. Open source has schema; the closed
-products have meaning. The gap is not technical, it is that someone has
+products have meaning (Rill, read 2026-11-12, is the open exception;
+see §8). The gap is not technical, it is that someone has
 to write it down — which makes it a repo-resident, reviewable artifact
 problem, and therefore exactly the kind of thing this collection's
 context-file work already knows how to think about.

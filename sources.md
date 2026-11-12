@@ -510,6 +510,26 @@ Not re-checked: the document's Terminal-Bench numbers (LangChain blog
 posts of 2025-12-05 and 2026-02-17), cited as the document reports them.
 Google ADK was not re-read (see the ADK rows above).
 
+### Rill (read 2026-11-12)
+
+Sources for [`data-agents/rill/`](./data-agents/rill) and
+`agent-design/proposals-rill-2026-11.md`. Prompted by the MCP Apps deep
+dive (PR #44). Cloned with `--depth 50` on 2026-11-12; Flint with
+`--depth 5`.
+
+| Source | Repo | Paths that matter | SHA read |
+|---|---|---|---|
+| **Rill** (runtime, MCP server, agents) | `github.com/rilldata/rill` | `runtime/ai/{mcp,ai,create_chart,chart_flint,chart_data,chart_semantics,metrics_view_query,metrics_view_list,metrics_view_get,metrics_view_summary,query_sql,skills,analyst_agent,router_agent,ui_context,click_ui,external_tools_search,memory_update,util,ai_test}.go`; `runtime/ai/chartquery/{build,execute,flint}.go`, `flint_catalog.json`; `runtime/ai/mcpapp/{README.md,mcpapp.go}`; `runtime/ai/instructions/{instructions.go,data/analysis.md,data/charts.md,data/resources/metrics_view.md}`; `runtime/metricsview/query_expression_narrows.go`; `runtime/drivers/registry.go` (AI limits); `admin/server/mcp.go` (comments) | `516bc91` (2026-11-11) |
+| **Rill MCP Apps widget** | same repo, `web-mcp-app/` | `src/App.svelte`, `src/lib/{controls,caption,host.svelte}.ts`, `scripts/check-size.mjs`, `package.json` | `516bc91` |
+| **Rill Flint compiler and eject** | same repo, `web-common/src/features/custom-viz/flint/` | `compile.ts` (header), `semantic-types.ts`, `eject.ts` (header) | `516bc91` |
+| **Rill PRs** | same repo | #10016 (`3f25106`, 2026-11-07, commit message read in full), #10089 (`80a505e`, 2026-11-03) | — |
+| **Flint** (0.4.1 pinned by Rill; upstream 1.0) | `github.com/microsoft/flint-chart` | `README.md`, `agent-skills/` (listing) | `a794557` (2026-10-21) |
+
+The template finding in `agents-and-prompts.md` §3 was checked by
+rendering `analysis.md` with the loader's delimiters (`{%`, `%}`) in a
+standalone Go program; Rill's own tests were not run. PR #10016's review
+thread was not re-read; `mcp-apps/data-analysis.md` §2 summarises it.
+
 ### MCP Apps (read 2026-11-12)
 
 Sources for [`mcp-apps/`](./mcp-apps), `agent-interactive-views.md`,
