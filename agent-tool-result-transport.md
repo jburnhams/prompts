@@ -700,6 +700,14 @@ answer that nobody uses.
   and is supported by Claude (web and desktop), VS Code Insiders, Goose and
   Postman. This is the most mature "return it to the user" mechanism in
   the ecosystem.
+  *Update 2026-11-12: the default CSP blocks external requests, but a
+  resource can declare `connectDomains`, `resourceDomains`,
+  `frameDomains` and `baseUriDomains`, so a view need not be
+  self-contained. The host list is now much longer (ChatGPT, Microsoft
+  365 Copilot, Cursor and others; Claude Code does not render), and hosts
+  disagree on whether `structuredContent` reaches the model. See
+  [`mcp-apps/`](./mcp-apps) and
+  [`agent-interactive-views.md`](./agent-interactive-views.md).*
 - **Harness-side file channels.** Claude Code's current tool surface
   carries the file-shaped equivalent — a send-file tool that takes a list
   of paths plus a `display` hint (`render` inline vs `attach` as a
