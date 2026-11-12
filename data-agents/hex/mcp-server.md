@@ -136,9 +136,9 @@ read**, which is a different axis from who is asking. [inference]
   calling it as an app tool. The docs' wording ("the Hex Connector will
   … make `get_thread` calls") and the fact that the model later
   "summarize[s]" suggest the model receives at least the final
-  `get_thread` result. A view polling an app-only status tool, as
-  `../../mcp-apps/README.md` describes for long runs, would not cost
-  model turns; nothing here says which Hex does.
+  `get_thread` result. A view polling an app-only status tool, the
+  shape `../../agent-interactive-views.md` §5 calls a run behind a
+  view, would not cost model turns; nothing here says which Hex does.
 - *What reaches the model.* `get_thread` returns "any charts, tables, or
   visualizations". Whether that means rows in `content`, rows only in
   `structuredContent`, or cell references is not stated. The existence

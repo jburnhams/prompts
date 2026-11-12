@@ -44,7 +44,7 @@ None rests on the secondary talk write-up alone. "Hex does X" here means
 | 2 | **A semantic layer as a fourth selector**: prefer a governed measure, cite the semantic query as provenance, and state (or ask) before leaving the governed layer | docs, source | `data.md` §2c, §4a; `lens-on-keel/prompts/`; `reports/answer.v1.schema.json` | **Discuss** |
 | 3 | Context gaps as a typed field on the answer, aggregated into improvement requests with a distinct-user threshold | docs | `reports/answer.v1.schema.json`; `memory.md` §6 | Adopt the field; discuss the aggregation |
 | 4 | Suite 4 grows SQL ground truth computed at grade time, method and answer judges, and an inference-trap stratum; context changes are gated by a preview run | docs, source | `eval.md` Suite 4, Metrics | Adopt now |
-| 5 | If Lens becomes an MCP server, use Hex's run-behind-a-tool shape and a per-surface source policy | docs | `proposals-mcp-apps-2026-11.md` proposals 5 and 7 | Fold into MCP Apps 5 |
+| 5 | If Lens's server is exposed to other hosts, use Hex's run-behind-a-tool shape and a per-surface source policy | docs | `proposals-mcp-apps-2026-11.md` proposals 6, 9 and 14 | Fold into MCP Apps 14 |
 | 6 | Two cautions Keel already meets: a run handle must name one execution, and an edit must carry a precondition | docs | none | Record |
 | 7 | Not now: projects as code-defined DAGs, provenance by structure, user memory as a nightly profile, "no routing" | docs, changelog | `future.md` | Record |
 
@@ -212,17 +212,19 @@ nor the completion audit catches it.
 that fail on one step, which are slow to author) and judge calls per
 item.
 
-## 5. If Lens becomes an MCP server *(fold into MCP Apps proposal 5)*
+## 5. If Lens's server is exposed to other hosts *(fold into MCP Apps proposal 14)*
 
-Hex is a worked example of `proposals-mcp-apps-2026-11.md` proposal 5,
-shipping in Claude, ChatGPT, Cursor, Codex, Glean and Figma. If that
-proposal is adopted, take these from Hex (`../data-agents/hex/mcp-server.md`):
+Hex is a worked example of `proposals-mcp-apps-2026-11.md` proposal 14
+("the same servers in other hosts"), shipping in Claude, ChatGPT,
+Cursor, Codex, Glean and Figma, with a view like proposal 6's
+`ui://lens/progress` in front of a long run. If 14 is adopted, take
+these from Hex (`../data-agents/hex/mcp-server.md`):
 
 - **Three verbs on a handle**: start, get, continue. `get` returns
   status and a **wait hint** while running; `continue` is **refused
-  while a run is in progress**. Lens's sketch has `lens_ask` and an
-  app-only `lens_run_status`; add an explicit `lens_continue` with that
-  refusal.
+  while a run is in progress**. Proposal 6's sketch has a `run_status`
+  app tool polling a task handle; add an explicit continue verb with
+  that refusal.
 - **Charts as stable references, an image tool as the fallback.** Hex's
   result names each chart's cell ID and a separate tool renders any of
   them as a PNG "for clients that don't support those widgets". Lens's
@@ -232,7 +234,7 @@ proposal is adopted, take these from Hex (`../data-agents/hex/mcp-server.md`):
   Sensitive sources are off by default for every external surface, and
   "If a Thread is started or continued through MCP, API, or CLI, this
   setting applies to the whole Thread". This belongs in MCP Apps
-  proposal 7's authority rules and uses proposal 1's flags.
+  proposal 9's authority rules and uses proposal 1's flags.
 - **A server-side TTL on view content**, stated to the user (Hex: 24
   hours), rather than relying on the transcript to hold it.
 - **Watch the host's tool cache.** Hex tells Claude users to "Refresh
