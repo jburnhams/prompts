@@ -177,6 +177,90 @@ Rill's does not.
    versioned, and a claim records the metadata version it compiled
    under. Hex runs five such importers.
 
+### 2a. Adding joins safely *(added 2026-11-12)*
+
+Jonathan: the DSL has **no joins today**, and he would like to add them
+"but unclear how to do so safely". There are two kinds of safety to
+cover, and a join can break either one:
+
+- **Correctness.** A join can multiply rows (fan-out), drop rows (an
+  inner join on a nullable or missing key), or combine two
+  one-to-many branches into a cross product (the chasm trap). Each of
+  these returns a plausible number that is wrong. `data.md` §2b's fan-out
+  `!` line warns after the fact; it does not prevent it.
+- **Policy.** A join can widen access: it can expose a restricted table's
+  columns, let a hidden field be used as a filter oracle (`WHERE
+  salary > 100000` reveals who without selecting `salary`), or join
+  across sources with different classifications.
+
+**The design rules.** Each one closes a named failure. Hex supplies the
+first three as a semantic model (`../data-agents/hex/semantic-layer.md`
+§2); the rest are not in Hex's docs.
+
+1. **Joins only along declared relations.** The mapping metadata declares
+   each relation: target, key condition, and cardinality
+   (`many_to_one`, `one_to_one`, `one_to_many`). The agent names the
+   relation or a field reached through it (`orders.customer.region`), and
+   the compiler writes the `ON`. An agent-written `ON`, or a join between
+   tables with no declared relation, is refused (`undeclared_join`). This
+   is the rule everything else depends on: the agent never chooses join
+   keys, which is the source of most wrong joins.
+2. **Cardinality is verified, not trusted.** When the metadata is
+   published, and on a schedule, the harness checks the "one" side's key
+   is unique (`COUNT(*) = COUNT(DISTINCT key)`), and records the
+   null-key rate on the "many" side. A relation that fails is disabled
+   with a reason, and the agent sees `relation_unverified` rather than a
+   wrong number. Hex declares cardinality; nothing in its docs says it
+   checks it. [inference]
+3. **Every query has a grain, its base table, and joins may not change
+   it.** A `many_to_one` or `one_to_one` join cannot add rows, so it is
+   always allowed. Aggregating a base measure across a `one_to_many`
+   join is compiled as aggregate-then-join, a subquery per grain, or
+   else refused (`fanout_risk`). `many_to_many` is never joined
+   directly.
+4. **Outer by default, with the loss counted.** A `many_to_one` join
+   compiles to `LEFT JOIN`, so a missing dimension row never drops a fact
+   row. The result metadata reports `unmatched_rows`, the number of base
+   rows whose key found nothing. `INNER` only when the relation is
+   declared `required` (an enforced foreign key) and the verification in
+   rule 2 found no orphans.
+5. **A runtime row-count assertion.** For lookup-only queries (rule 3's
+   always-allowed case) the compiler knows the row count before and after
+   the joins must be equal, and checks it. A mismatch aborts the query
+   (`fanout_detected`) and disables the relation pending re-verification.
+   This turns `data.md` §2b's warning into a guarantee for the common
+   case.
+6. **Policy is applied per table, before the join.** Each table's row
+   policy is applied in its own subquery, then the subqueries are
+   joined. A join can therefore never return a row that the policy
+   hides on either side. A field the invoker cannot select cannot appear
+   in `ON`, `WHERE`, `HAVING` or `ORDER BY` either (`field_denied`),
+   which closes the filter oracle. Keys can be marked `join_only`: the
+   compiler may use them, but the agent cannot select or filter on them.
+7. **No joins across sources or classifications in v1.** Both sides must
+   be on the same connection and the same sensitivity class. Later, the
+   result inherits the strictest class of any table it touched, which
+   is what proposal 5's per-surface rule needs.
+8. **Provenance names the relations.** A claim records the relation IDs,
+   the metadata version, the compiled SQL, and `unmatched_rows`, beside
+   the `input_rows` it already has.
+
+**Staged rollout.**
+
+| Stage | Allowed | Why it is safe |
+|---|---|---|
+| **1. Lookup joins** | declared `many_to_one` / `one_to_one` only, `LEFT`, uniqueness verified, row-count assertion | Row count cannot change, and rule 5 proves it at runtime. This covers most "revenue by customer region" questions. |
+| **2. Fan-out-safe aggregation** | `one_to_many` with aggregate-then-join compilation | Each measure is computed at its own grain before joining. |
+| **3. Multiple branches** | two or more `one_to_many` from one base (orders → items and orders → payments) | Each branch is aggregated separately and joined at the base grain. This is the chasm trap, and the hardest compilation to get right. |
+| **Never** | agent-written `ON`, `many_to_many` without a declared bridge, cross-source joins | No compile-time rule makes these safe. |
+
+Stage 1 alone gives Lens joins with no new way to be wrong, because the
+only queries it admits cannot change the row count. Recommendation:
+ship stage 1, put Suite 4's fan-out and null-key items in front of the
+compiler as regression tests (they now test the compiler as well as the
+model), and decide on stages 2 and 3 from what stage 1's
+`undeclared_join` and `fanout_risk` refusals show users asking for.
+
 **What, if the answers to the questions below allow it.**
 
 1. **The agent's query surface is the DSL, with SQL accepted and parsed
@@ -222,7 +306,7 @@ imported.
 **Questions still open.**
 
 1. **Which of extensions 1–8 are worth it first?** Recommendation:
-   relations with cardinality (5) and closed measures (2), because
+   relations with cardinality (5, staged as in §2a) and closed measures (2), because
    together they remove the fan-out and double-aggregation traps that
    Lens's quick path is most exposed to. Semi-additive measures (4)
    come next if any deployment has snapshot tables.
