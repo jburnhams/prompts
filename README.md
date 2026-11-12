@@ -21,8 +21,9 @@ hosts support it and how far (Claude fullest, VS Code experimental and
 inline only, Claude Code not at all, Codex as a pass-through), the SDKs
 and frameworks, and what people build, with data apps read closely
 (Rill, Hex, Paddle). The new concept is in
-[`agent-interactive-views.md`](./agent-interactive-views.md); eight
-proposals for Keel and Lens, **none adopted, for discussion**, are in
+[`agent-interactive-views.md`](./agent-interactive-views.md); fifteen
+proposals for Keel as client, host and server, **none adopted, for
+discussion**, are in
 [`agent-design/proposals-mcp-apps-2026-11.md`](./agent-design/proposals-mcp-apps-2026-11.md).
 
 **[→ `agentic-sdks/`](./agentic-sdks)** — LangChain Deep Agents and its
