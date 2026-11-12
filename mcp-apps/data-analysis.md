@@ -67,6 +67,20 @@ That is directly analogous to a Keel run handing results back to a chat
 host, and it is the pattern [`../agent-interactive-views.md`](../agent-interactive-views.md)
 §5 calls *a run behind a view*.
 
+> **Update 2026-11-12.** Hex now has its own folder,
+> [`../data-agents/hex/`](../data-agents/hex), read from Hex's docs.
+> Two corrections to this section. "Citations" is Claude's word, from its
+> 2026-01-26 announcement; Hex's docs describe thinking steps that show
+> "which tables or semantic models the agent is referencing" and let you
+> "spot-check the underlying SQL", and never say citations. And "Claude
+> sees a text summary" is an inference: the docs say Claude "will
+> summarize its key findings" after `get_thread`, but not what that
+> result contains. What the docs do settle: the carousel is real, the
+> connector polls `get_thread` "without user prompting", each chart is
+> a Hex cell with an ID that `get_cell_image` can render for hosts
+> without widgets, and widgets expire after 24 hours
+> (`../data-agents/hex/mcp-server.md` §4).
+
 ## 4. What breaks
 
 - **Rows leak through `content`.** The official

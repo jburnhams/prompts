@@ -20,8 +20,18 @@ open-source BI tool whose metrics layer is the only thing its agents
 query, read for its MCP server, its analyst prompts, and its interactive
 chart: the model writes a Flint chart type and a binding, the server
 queries, an MCP Apps view re-queries through an app-only tool. Mapped
-to Lens in the folder README; eight proposals, none adopted, in
+to Lens in the folder README; twelve proposals, none adopted, built on Keel's query DSL, in
 [`agent-design/proposals-rill-2026-11.md`](./agent-design/proposals-rill-2026-11.md).
+
+**[→ `data-agents/hex/`](./data-agents/hex)** — Hex, the closed-source
+AI analytics platform, read from its docs, changelog, MCP server and
+public skills repo (2026-11-12), with every claim tagged as evidence or
+inference: an agent behind three MCP tools and an MCP App in Claude, a
+semantic layer whose 4.0 queries are files, context managed as four
+assets with exclusions as metadata, warnings clustered into suggestions,
+and evals graded against SQL run at grade time. Seven proposals for Lens,
+**none adopted, for discussion**, are in
+[`agent-design/proposals-hex-2026-11.md`](./agent-design/proposals-hex-2026-11.md).
 
 **[→ `mcp-apps/`](./mcp-apps)** — MCP Apps (SEP-1865, the `ui://`
 interactive-view extension) in depth (2026-11-12): how it works, which
@@ -1246,6 +1256,7 @@ data** rather than editing a repository. See
 | [`data-agents/rill/`](./data-agents/rill) | [Rill](https://github.com/rilldata/rill) | Metrics layer as the agent's only data surface; MCP server; Flint chart specs bound to queries the server runs; an MCP Apps chart view with an app-only re-query tool | Apache-2.0 |
 | [`data-agents/positron/`](./data-agents/positron) | [Positron](https://github.com/posit-dev/positron) | Not an agent — the Data Explorer OpenRPC protocol, i.e. what a viewer exposes | Elastic-2.0 |
 | [`data-agents/hyperparam/`](./data-agents/hyperparam) | [Hyperparam / HypStack](https://github.com/hyparam) | Pure-JS data stack built for browsers *and* agent sandboxes — squirreling (SQL, 0 deps), hyparquet, icebird, `squirreling-mcp` | MIT |
+| [`data-agents/hex/`](./data-agents/hex) | [Hex](https://hex.tech) docs, changelog, MCP server; [`hex-skills`](https://github.com/hex-inc/hex-skills) `17f928f` | Closed source, read from docs: Threads behind an MCP tool and an MCP App, semantic models and 4.0 semantic query files, context assets, warnings and suggestions, evals with the published bootstrap prompt | proprietary; `hex-skills` MIT |
 | [`data-agents/arquero/`](./data-agents/arquero) | [Arquero](https://github.com/uwdata/arquero) | The verb-based counter-case: dataframes in JS, expressions as a restricted DSL that ends in codegen | BSD-3-Clause |
 
 ## Code Mode
