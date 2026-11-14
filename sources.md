@@ -691,6 +691,18 @@ observability and X-Ray docs; Transluce's Docent docs and launch post;
 blogs dating the GenAI conventions' move to their own repo
 (2026-06-12, semconv v1.42.0).
 
+For `telemetry/platform-comparison.md` (fetched 2026-11-14): Datadog
+`docs.datadoghq.com/llm_observability/instrument/otel_instrumentation/`;
+AWS `bedrock-agentcore/latest/devguide/observability-view.html`,
+`AmazonCloudWatch/latest/monitoring/GenAI-observability.html` and
+`…/coding-agents-insights.html`; Splunk
+`help.splunk.com/en/splunk-observability-cloud/observability-for-ai/splunk-ai-agent-monitoring`
+plus Splunk blogs and .conf26 coverage; Grafana Agent Observability
+and AI Observability docs; Langfuse self-host pricing page and
+third-party comparisons. Langfuse `LICENSE` (MIT outside `ee/`,
+copyright ClickHouse, Inc.) and Phoenix `LICENSE` (Elastic 2.0) read at
+the SHAs above.
+
 Next pass: diff `semantic-conventions-genai` from `e6658f1` (watch for a
 first tagged release and the schema URL), Claude Code's monitoring page
 (read past 100k), and read LlamaIndex's instrumentation module, W&B

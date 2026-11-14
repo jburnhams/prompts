@@ -33,6 +33,7 @@
 | [`harnesses-and-sdks.md`](./harnesses-and-sdks.md) | Claude Code, Codex, Gemini CLI, OpenCode, Pi, Goose and the Claude Agent SDK; ten agent SDKs in a table; seven patterns across them. |
 | [`platforms-and-storage.md`](./platforms-and-storage.md) | Four kinds of platform; how Langfuse, Mastra, Phoenix and Braintrust store traces, and what they agree on; the session views that recur and what each answers. |
 | [`analysis-and-alerts.md`](./analysis-and-alerts.md) | What gets analysed and from which signal; evaluations from traces; loop detection in and after the run; the alerts that matter, by who acts on them. |
+| [`platform-comparison.md`](./platform-comparison.md) | Side by side: Langfuse, Phoenix, AWS X-Ray/CloudWatch, Datadog, Grafana, Splunk, Honeycomb, LangSmith on ingest, agent view, evals, content, self-hosting and fit for Keel; what the comparison means for Keel. |
 | [`catalogue.md`](./catalogue.md) | Counts: how many ways there are on each axis, which are most common, and the best approaches seen. |
 
 The cross-source concept is in
