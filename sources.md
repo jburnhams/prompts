@@ -645,6 +645,69 @@ Not done: the MCP tools' schemas, the `ui://` view and its CSP, and the
 the CLI installs (`hex install agent-skill`) ships inside the binary and
 was not read.
 
+### Agent telemetry (read 2026-11-14)
+
+Sources for [`telemetry/`](./telemetry), [`agent-telemetry.md`](./agent-telemetry.md)
+and `agent-design/proposals-telemetry-2026-11.md`. Repos were cloned
+`--depth 1 --filter=blob:none`, most with `--sparse` on the paths
+below. Nothing was run; no exporter was pointed at a backend.
+
+| Repo | SHA read | Paths that matter |
+|---|---|---|
+| `open-telemetry/semantic-conventions-genai` | `e6658f1` (2026-11-06) | `docs/gen-ai/{README, gen-ai-spans, gen-ai-agent-spans, mcp}.md`, `model/{gen-ai,mcp}/*.yaml` (span, metric and event ids), `changelog.d/` (90 pending fragments, 20 breaking) |
+| `open-telemetry/semantic-conventions` | `45b690d` | `docs/gen-ai/` (the pre-move copy) |
+| `modelcontextprotocol/modelcontextprotocol` | `0175d20` | `seps/414-request-meta.md`, `docs/specification/2026-07-28/basic/index.mdx` (`_meta` reserved keys) |
+| `Arize-ai/openinference` | `f35f8be` (2026-11-13) | `spec/{semantic_conventions, configuration}.md`, `python/instrumentation/` (38), `js/packages/` (11 instrumentations + `openinference-genai` converter) |
+| `traceloop/openllmetry` | `e3d651a` (2026-11-05) | `packages/opentelemetry-semantic-conventions-ai/…/semconv_ai/__init__.py`, `…instrumentation-openai/…/utils.py` (`TRACELOOP_TRACE_CONTENT` default), `…instrumentation-mcp/…/instrumentation.py` |
+| `openai/codex` | `641e2e362c` | `codex-rs/otel/{README.md, src/}`, `codex-rs/rmcp-client/src/trace_context.rs` |
+| `google-gemini/gemini-cli` | `4ed06ed0dd` | `docs/cli/telemetry.md`, `packages/core/src/telemetry/{types, semantic}.ts` |
+| `sst/opencode` | `83960f8a56` | `packages/util/src/observability.ts`, `packages/core/src/session/runner/step.ts`, `packages/core/src/tool.ts`, `packages/core/src/config/normalize.ts`, `packages/http-recorder/README.md` |
+| `badlogic/pi-mono` | `827383a152` | `packages/ai/src/telemetry.ts`, `packages/coding-agent/src/core/session-manager.ts` |
+| `block/goose` | `2365bc5e89` | `crates/goose/src/tracing/`, `crates/goose/src/otel/otlp.rs` |
+| `anthropics/claude-agent-sdk-python` | `32e96114c1` | `src/claude_agent_sdk/_internal/transport/subprocess_cli.py` (TRACEPARENT injection) |
+| `openai/openai-agents-python` | `64fbde5d02` | `docs/tracing.md`, `src/agents/tracing/span_data.py` |
+| `pydantic/pydantic-ai` | `fb64b4100c` | `pydantic_ai_slim/pydantic_ai/models/instrumented.py`, `docs/logfire.md` |
+| `langchain-ai/langsmith-sdk` | `290f06a628` | `python/langsmith/run_trees.py`, `python/langsmith/_internal/otel/` |
+| `microsoft/agent-framework` | `92838b6049` | `python/packages/core/agent_framework/observability.py` |
+| `google/adk-python` | `12aab4aaaa` | `src/google/adk/telemetry/` (incl. `sqlite_span_exporter.py`, `_stable_semconv.py`) |
+| `google/adk-java` | `1b11290840` | `core/src/main/java/com/google/adk/telemetry/Tracing.java` |
+| `vercel/ai` | `0e8e0543ae` | `packages/ai/src/telemetry/tracing-channel.ts` |
+| `mastra-ai/mastra` | `94fd1f0a5f` | `observability/` (exporters), `observability/clickhouse-design/`, `observability/mastra/src/repeated-resume-parentage.integration.test.ts` |
+| `crewAIInc/crewAI` | `d7dfa0ef5a` | `lib/crewai/src/crewai/telemetry/{constants, telemetry}.py` |
+| `langfuse/langfuse` | `48a31810e1` | `packages/shared/src/server/otel/{OtelIngestionProcessor, ObservationTypeMapper}.ts`, `packages/shared/clickhouse/migrations/canonical/{0039_create_events_full, 0040_create_events_core, 0041_create_events_core_mv, 0051_add_topics}.up.sql` |
+| `Arize-ai/phoenix` | `a9ce4b0f4d` | `src/phoenix/db/models.py` |
+| `harbor-framework/harbor` | `3cb627394b` | `rfcs/0001-trajectory-format.md` (ATIF v1.8) |
+
+Documentation: Claude Code `code.claude.com/docs/en/monitoring-usage`
+(first 100,000 of about 176,000 characters).
+
+Secondary, used only where tagged: Datadog "LLM Observability natively
+supports OpenTelemetry GenAI semantic conventions" and its OTel
+instrumentation docs; Honeycomb's Agent Observability launch
+(2026-05-12) and Agent Timeline posts; Grafana AI Observability docs
+and blog (OpenLIT); Braintrust's Brainstore posts; write-ups of
+Helicone's acquisition by Mintlify (2026-03-03); AWS Bedrock AgentCore
+observability and X-Ray docs; Transluce's Docent docs and launch post;
+blogs dating the GenAI conventions' move to their own repo
+(2026-06-12, semconv v1.42.0).
+
+For `telemetry/platform-comparison.md` (fetched 2026-11-14): Datadog
+`docs.datadoghq.com/llm_observability/instrument/otel_instrumentation/`;
+AWS `bedrock-agentcore/latest/devguide/observability-view.html`,
+`AmazonCloudWatch/latest/monitoring/GenAI-observability.html` and
+`…/coding-agents-insights.html`; Splunk
+`help.splunk.com/en/splunk-observability-cloud/observability-for-ai/splunk-ai-agent-monitoring`
+plus Splunk blogs and .conf26 coverage; Grafana Agent Observability
+and AI Observability docs; Langfuse self-host pricing page and
+third-party comparisons. Langfuse `LICENSE` (MIT outside `ee/`,
+copyright ClickHouse, Inc.) and Phoenix `LICENSE` (Elastic 2.0) read at
+the SHAs above.
+
+Next pass: diff `semantic-conventions-genai` from `e6658f1` (watch for a
+first tagged release and the schema URL), Claude Code's monitoring page
+(read past 100k), and read LlamaIndex's instrumentation module, W&B
+Weave and MLflow Tracing, which this pass only named.
+
 ## OpenClaw 2.0 (read 2026-08-31)
 
 `github.com/openclaw/openclaw` at `5f714ef` (`main`, 2026-08-31). MIT.

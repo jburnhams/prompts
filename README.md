@@ -33,6 +33,18 @@ and evals graded against SQL run at grade time. Seven proposals for Lens,
 **none adopted, for discussion**, are in
 [`agent-design/proposals-hex-2026-11.md`](./agent-design/proposals-hex-2026-11.md).
 
+**[→ `telemetry/`](./telemetry)** — agent telemetry (2026-11-14): how
+harnesses, SDKs and platforms trace, store, show, analyse and alert on
+agent runs. OTel GenAI semantic conventions (now in their own repo,
+still Development and churning), MCP trace context in `_meta`
+(SEP-414), OpenInference and about fifteen other dialects, Claude Code,
+Codex, Gemini CLI, Pi and ten SDKs, Langfuse/Mastra/Phoenix/Braintrust
+storage, session views, a side-by-side comparison of Langfuse, X-Ray/CloudWatch,
+Datadog, Grafana, Splunk and others, and a catalogue with counts. The concept is in
+[`agent-telemetry.md`](./agent-telemetry.md); fourteen proposals for
+Keel, Forge and Lens, **none adopted, for discussion**, are in
+[`agent-design/proposals-telemetry-2026-11.md`](./agent-design/proposals-telemetry-2026-11.md).
+
 **[→ `mcp-apps/`](./mcp-apps)** — MCP Apps (SEP-1865, the `ui://`
 interactive-view extension) in depth (2026-11-12): how it works, which
 hosts support it and how far (Claude fullest, VS Code experimental and
@@ -897,6 +909,12 @@ until this pass started blind. Extended 2026-11-02 with the cases short of a dea
 sandbox resource stop inside a live run (§3), and how OpenHands decides
 two failing calls are the same retry (§4).
 
+**[→ `agent-telemetry.md`](./agent-telemetry.md)** — the two records
+of an agent run (2026-11-14): a content-free trace for timing, cost,
+errors and alerts, and a transcript for replay and judgement, joined by
+ids, with scores arriving later; why every careful source keeps them
+apart, and nine design rules.
+
 **[→ `agent-run-steering.md`](./agent-run-steering.md)** — what a
 harness says to a model while it works (2026-11-11): cadence reminders,
 loop nudges, pinned state notices, Pydantic AI's live trajectory judge
@@ -1145,6 +1163,7 @@ primitive an agent has.
 | [`librechat/`](./librechat) | [LibreChat](https://github.com/danny-avila/LibreChat) | Self-hosted chat UI + agent framework — stored for its **artifact channel** only | MIT |
 | [`cloudflare-agents/`](./cloudflare-agents) | [Cloudflare Agents SDK](https://github.com/cloudflare/agents) | Agent framework on Durable Objects — context blocks, a file+git sandbox API, skills with gated capabilities, Code Mode over raw CDP, fibers, dynamic agents, A2A and x402 — plus a source-led fourth pass covering what the docs do not say. **10 files** | MIT |
 | [`agentic-sdks/`](./agentic-sdks) | [Deep Agents](https://github.com/langchain-ai/deepagents), [LangChain](https://github.com/langchain-ai/langchain), [Pydantic AI](https://github.com/pydantic/pydantic-ai) and others | Agent SDKs and harness libraries, read for harness mechanisms (rubric grader, goal criteria, trajectory judge, cache-bust detection, per-model profiles). **5 files** | MIT (all) |
+| [`telemetry/`](./telemetry) | [OTel GenAI conventions](https://github.com/open-telemetry/semantic-conventions-genai), [OpenInference](https://github.com/Arize-ai/openinference), harness and SDK telemetry code, platform docs | Agent telemetry: standards, harness and SDK implementations, storage, views, analysis, alerts, platform comparison, catalogue. **7 files** | Apache-2.0 (OTel, OpenInference); others as listed in `sources.md` |
 | [`mcp-apps/`](./mcp-apps) | [ext-apps](https://github.com/modelcontextprotocol/ext-apps), [MCP-UI](https://github.com/MCP-UI-Org/mcp-ui), host docs | MCP Apps: spec mechanics, host and SDK catalogue, data-analysis apps. **4 files** | ext-apps MIT moving to Apache-2.0; MCP-UI Apache-2.0 |
 | [`anthropic-skills/`](./anthropic-skills) | [Anthropic Agent Skills](https://github.com/anthropics/skills) | General-purpose **creative** skills (image, art, GIF, page, deck) — not coding agents | Apache-2.0 (the four document skills are source-available and are **not** stored here) |
 
