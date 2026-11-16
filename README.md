@@ -67,6 +67,13 @@ against source in the folder README. New concepts are in
 proposals for Forge, none yet adopted, are in
 [`agent-design/proposals-agentic-sdks-2026-11.md`](./agent-design/proposals-agentic-sdks-2026-11.md).
 
+**[→ `leaked/claude-code/piebald-2.1.325/`](./leaked/claude-code/piebald-2.1.325)** —
+the delta from v2.1.319 to v2.1.325 (2026-11-13): 79 pieces added, 4
+removed, 87 changed, listed in `delta.tsv`, with eleven stored verbatim
+and folded into `agent-run-recovery.md` §7 (when the model's own
+response fails: cut-off calls, retracted responses, errors never to
+re-send).
+
 **[→ `leaked/claude-code/piebald-2.1.319/`](./leaked/claude-code/piebald-2.1.319)** —
 the delta from v2.1.316 to v2.1.319 (2026-11-05): 87 pieces added, 10
 removed, 60 changed, listed in `delta.tsv`, with sixteen stored verbatim

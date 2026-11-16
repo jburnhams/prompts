@@ -110,6 +110,43 @@ The fields, with the reason each is shaped the way it is:
 - **`budgets`**: crossing `turns` or `context_high_water_tokens` triggers
   the final-turn nudge. `tokens_by_tier` counts the run and its children
   together, so spend can't hide in a cheap child (`../models.md` §10).
+  **Where the hard budgets are checked** *(added 2026-11-16, weekly pass,
+  from Codex's rollout budgets #61578–#61583; `../../sources.md`, "The
+  weekly pass (read 2026-11-16)")*. `tokens_by_tier`, `cost_usd` and
+  `wall_seconds` stop the run harness-side, and until now the spec did not
+  say when the check runs. A check only when a call is scheduled lets work
+  start after the budget is gone, because calls wait for a slot, a gate or
+  a parallel sibling. The harness checks one ledger, shared by the run and
+  all its children, at every **admission point**: before each model
+  request, before each tool handler starts (after it has its slot), before
+  a request is handed to an MCP server, and before a sub-agent is spawned.
+  Then:
+  - A call refused at admission gets a result with `aborted:
+    budget_exhausted` and does not run. Work already running finishes and
+    its result is kept.
+  - A response whose own bill crossed the budget is kept in the
+    transcript, not discarded. It was paid for, and the report needs it.
+  - The run then ends through the final-turn nudge with
+    `budget_exhausted` if the nudge turn still fits in what remains of the
+    run's wall time. The nudge turn is the one model request admitted past
+    a token or cost budget, and it allows no tools but the endings;
+    otherwise the harness ends it as
+    `budget_exhausted` with the last report it has. A pipeline retry
+    (`pipelines.md` §7f) raises budgets as for any `budget_exhausted`.
+  - The transcript records a neutral harness note ("the run's budget was
+    reached"), never an interruption attributed to a person, and the run
+    gets a `budget_stop` event (`triggers-and-runs.md` §10) naming the
+    budget and the admission point.
+  - **Tool-reported charges.** A first-party MCP server may report a
+    charge for a call in the result's `_meta` (`keel/charge`: `{usd}`),
+    for example a warehouse query billed by bytes scanned. The harness
+    adds it to `cost_usd`, keeps it apart from model usage in `Usage`, and
+    ignores it from any server whose registry entry does not set
+    `reports_charges: true` (`schemas/tools.schema.json`). A negative, non-finite or malformed charge is dropped and
+    logged; it never stops the run on its own. Codex lets model-request
+    hooks add charges the same way (#61580). Without this a Lens run's
+    `cost_usd` measures only tokens, which is the smaller part of an
+    expensive analysis.
 - **`outputs`**: sinks and continuations (§7).
 - **`authority`**: who the run may act for (§8).
 - **`concurrency`**: from `../orchestration.md` §4; held through a stage's

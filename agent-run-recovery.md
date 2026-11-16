@@ -1,10 +1,11 @@
 # Run recovery: what an agent is told when its runner died
 
 *Added 2026-10-26 in the weekly pass; §3–§4 added 2026-11-02; §5 added
-2026-11-09; §6 added 2026-11-11 from the agentic-SDK deep dive. Sources
-and SHAs are in [`sources.md`](./sources.md), "The weekly pass (read
-2026-10-26)", "(read 2026-11-02)", "(read 2026-11-09)" and "Agentic SDKs
-(read 2026-11-11)".*
+2026-11-09; §6 added 2026-11-11 from the agentic-SDK deep dive; §7
+added 2026-11-16. Sources and SHAs are in [`sources.md`](./sources.md),
+"The weekly pass (read 2026-10-26)", "(read 2026-11-02)", "(read
+2026-11-09)", "Agentic SDKs (read 2026-11-11)" and "The weekly pass
+(read 2026-11-16)".*
 
 A hosted agent runs in a container that can disappear mid-turn: the node
 is drained, the sandbox runs out of memory, a network partition drops the
@@ -292,3 +293,132 @@ because Keel speaks `2026-07-28`: a deployment elicitation responder
 (`agent-design/keel/tools-and-agents.md` §4e) would answer by reissuing
 the call. Proposal 4 in
 [`agent-design/proposals-agentic-sdks-2026-11.md`](./agent-design/proposals-agentic-sdks-2026-11.md).
+
+## 7. The model's own response failed (read 2026-11-16)
+
+§1–§6 are about tools and runners. This section is about the other half
+of every turn: the model's response itself arriving broken. Five
+harnesses changed how they handle it in one week, and between them they
+cover the four ways a response fails without an API error to say so.
+
+**1. Cut off inside a tool call.** Claude Code 2.1.323 adds a reminder
+for a reply that hit the output-token limit mid-call
+([`system-reminder-output-token-limit-tool-call-cutoff.md`](./leaked/claude-code/piebald-2.1.325/system-reminder-output-token-limit-tool-call-cutoff.md)):
+
+> The cut fell inside a tool call, so that call did not run and nothing
+> of it was kept. Make the call again in a shorter response: split long
+> content across several smaller tool calls. For a long file, write the
+> first part and then append the rest in later calls.
+
+Three facts are stated: the call did not run, nothing was kept, and the
+remedy is a different shape, not the same call again. The SDK side
+(2.1.321, [`data-sdk-api-error-params-field.md`](./leaked/claude-code/piebald-2.1.325/data-sdk-api-error-params-field.md))
+adds `cut` to tell the two causes apart, which `max_output_tokens` alone
+does not: `output_limit` (the request's `max_tokens`) or
+`context_window` (`model_context_window_exceeded`). The first is fixed
+by a shorter response, the second by a smaller context; telling the
+model "split your call" for the second would not help.
+
+**2. A stream that ended early.** Goose #13226 (`0f8a0b9`,
+`crates/goose-provider-types/src/formats/anthropic.rs`, read as a diff)
+now **holds every tool request until `message_stop` arrives**. A stream
+that ends without `message_stop` is a `NetworkError` ("Anthropic stream
+ended without message_stop"), and the held requests are never yielded,
+so no tool from a truncated response runs. The same change stops
+skipping stream events that fail to parse (they are now errors) and maps
+an in-stream `error` event to a typed provider error
+(`authentication_error`, `rate_limit_error`, `billing_error`,
+`request_too_large` as context length, `overloaded_error` as a server
+error). Goose #13266 does the same for Bedrock with streaming off.
+
+OpenCode #60674 (`eccfb82`, `packages/core/src/session/runner/to-llm-message.ts`,
+read as a diff) takes the other position, because it starts local tools
+while the stream is still arriving. A failed stream "is retried from
+what had already happened: the local calls that ran and everything
+before them". Calls the stream cut off before they ran are dropped;
+calls that failed on their input stay, so the model can reissue them;
+the last block's provider state (signatures, reasoning) is not
+replayed, since the stream may have ended mid-block. That is the price
+of early execution: the transcript must record which calls ran, because
+their side effects did.
+
+**3. A response whose tool call could not be parsed.** Claude Code's
+`retracted_message_uuids`
+([`data-sdk-user-message-retracted-message-uuids-field.md`](./leaked/claude-code/piebald-2.1.325/data-sdk-user-message-retracted-message-uuids-field.md),
+2.1.323) is on "the synthetic message that asks the model again after a
+response whose tool call could not be parsed": the CLI has **dropped
+that response from the conversation**, and hosts are told to remove it
+too. If the retries run out, the turn ends with
+`malformed_tool_use_exhausted`, "terminal for the turn, so a consumer
+replaying history must not re-send the prompt by itself"
+([`data-sdk-api-error-kind-field.md`](./leaked/claude-code/piebald-2.1.325/data-sdk-api-error-kind-field.md)).
+
+**4. A content-free completion.** OpenHands SDK #6178 (`a233ffd`,
+`openhands-sdk/openhands/sdk/llm/llm.py`) raises `LLMNoResponseError`
+inside the retry boundary when the only choice has no text, no tool
+call and no reasoning. The commit gives the reason: returning it "would
+persist an empty agent message whose corrective nudge does not break the
+stuck detector's agent streak". One exception: an empty answer with
+`finish_reason == "length"` is not retried, since a deterministic cut
+would only repeat. Claude Code's `empty_completion` (reworded in
+2.1.324) ends the turn as an error after "its one retry and a repeat of
+that retry", "so that a host shows a failure and not a blank reply".
+
+**Which errors may be sent again.** Three sources this week say an error
+class alone does not decide a retry:
+
+- Claude Code's `api_error_type` (2.1.324,
+  [`data-sdk-api-error-type-field.md`](./leaked/claude-code/piebald-2.1.325/data-sdk-api-error-type-field.md)):
+  "A first-party 503 with `x-should-retry: false` says
+  `overloaded_error` though the server said not to retry, so the value
+  alone does not say that a retry can help." The field is dropped on
+  `dlp_request_denied`, because "if its body said `overloaded_error`, a
+  host could send again a request that must not be sent again". The
+  kinds list marks `dlp_request_denied`, `safety_monitor_blocked` and
+  `malformed_tool_use_exhausted` as never to be re-sent, and
+  `tool_history_mismatch` as one where "re-sending the same history
+  fails the same way, and rewinding the conversation is the remedy".
+- Goose #13325 (`ef8933e`, `retry.rs`): a 400 rejecting the thinking
+  setting for the model is a permanent failure, not retried, while a 400
+  about an unsupported tool type still is.
+- Codex #61587 (`3b8bd2e`, commit message only): `PreModelRequest` and
+  `PostModelRequest` hooks get a `request_id` that "stays stable across
+  retries" and an `attempt_number` that increments "for each call to open
+  a response stream", so retries and fallbacks of one generation can be
+  joined.
+
+Crush (`f64fe8e`, `internal/agent/refusal_retry.go`) retries a
+`content_filter` finish once per turn ("A misfire usually clears on the
+first retry; more mostly waits"), and re-requests the step rather than
+continuing it. That is the opposite of Keel's rule for message threads
+(a refused turn is never continued, `agent-design/models.md` §6), but
+the two do not conflict: Crush starts a fresh request and discards what
+the refused attempt streamed.
+
+**The common rule.** A response that did not complete is not a turn.
+Nothing from it runs unless the harness already ran it (OpenCode), and
+then the record must say exactly which calls ran. A response that
+completed but is unusable (unparseable call, no content) is dropped from
+the transcript before the model is asked again, so it cannot feed a
+loop detector or a later replay. The model is told only what it can act
+on: "the call did not run, make it smaller" is useful; "the stream
+dropped" is not, because the harness retries that itself.
+
+**Two smaller pieces from the same releases.** Claude Code 2.1.321's
+"Finishing work" section
+([`system-prompt-work-completion-and-direct-editing.md`](./leaked/claude-code/piebald-2.1.325/system-prompt-work-completion-and-direct-editing.md))
+separates ordinary obstacles ("errors, timeouts, locked files, empty
+results or failing tools", to be diagnosed and worked through) from
+deliberate ones ("a file marked not to be touched, access that was
+intentionally withheld, or a safety guardrail", to be left alone and
+reported). Forge's persistence rule (`agent-design/system-prompts.md`
+§1) already makes the same split for `blocked`. And a new `Yield` tool
+([`tool-description-yield.md`](./leaked/claude-code/piebald-2.1.325/tool-description-yield.md))
+pauses until an asynchronous tool reports, and "also resumes shortly
+before the prompt cache would expire". That is §5's followed handle with
+the cache window as a timer.
+
+**For Keel.** Keel specified context overflow (`agent-design/formats.md`
+§7 item 3) and runner death (§1), but not a model response that
+arrives broken. Amendment: [`agent-design/formats.md`](./agent-design/formats.md)
+§7 item 4, with a row in `agent-design/keel/decisions.md` §14a.

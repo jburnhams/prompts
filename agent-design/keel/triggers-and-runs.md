@@ -93,9 +93,16 @@ queued → provisioning → running ⇄ finalizing → ended
 - **Events** (`GET /v1/runs/{id}/events`, SSE): state changes, turns,
   tool calls and results (sizes and status, not bodies), refusals,
   narration, harness notes, reveals, the nudge, gates, artifacts, usage,
-  outcome, deliveries, follow-ons, `cache_collapse` and
-  `context_overflow`. Bodies are in the transcript, which has its own
-  permission and is audited.
+  outcome, deliveries, follow-ons, `cache_collapse`,
+  `context_overflow`, `response_retry` and `budget_stop`. Bodies are in
+  the transcript, which has its own permission and is audited.
+- **`response_retry`** and **`budget_stop`** *(added 2026-11-16, weekly
+  pass)*: a model response dropped and asked again, with its kind
+  (`output_cut`, `stream_incomplete`, `malformed_response`,
+  `empty_response`), request id and attempt number
+  (`../formats.md` §7 item 4); and a hard budget reached, naming the
+  budget and the admission point where it was caught
+  (`run-spec.md` §3, budgets).
 - **`cache_collapse`** *(added 2026-11-11,
   `../proposals-agentic-sdks-2026-11.md` §2)*: the harness checks the
   prompt cache on every response. Per `(provider, endpoint, model)` key
