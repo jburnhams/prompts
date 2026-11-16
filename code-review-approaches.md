@@ -974,7 +974,10 @@ tools now publish it. One detail in the constructor is a safety rule:
 a review issue's body has any ```` ```suggestion ```` fence rewritten to
 ```` ```text ````, so prose findings can never render as a committable
 GitHub suggestion. Only the suggestion path, with its `existing_code`
-and `improved_code`, can produce one. Forge's `AddComment` already makes
+and `improved_code`, can produce one. *(Superseded at `c1e4fe2d40`: a
+finding can now carry its own `existing_code`/`improved_code` fix and be
+posted as a committable suggestion, after an anchored match check. See
+§18.)* Forge's `AddComment` already makes
 `suggestion` a separate flag, and its body "must contain only the exact
 replacement source" (`agent-design/tools.md`). PR-Agent got to the same
 place by merging two tools that had drifted apart.
@@ -1042,6 +1045,117 @@ changed path including elided ones, and line-content patterns are
 allowed. The weekly pass proposed them as host-only, following PR-Agent.
 In interview the owner allowed them from the base branch's policy file
 too, with a linear-time regex engine and a length cap.
+
+## 18. PR-Agent: a computed merge verdict, fixes on findings, and confidence as a filter (read 2026-11-16)
+
+Read from `qodo-ai/pr-agent` at `c1e4fe2d40` (2026-11-16; previous read
+`18da6dd31f`), by diff for the commits named and from
+`docs/docs/commands/review.md` at HEAD. About 140 commits since
+2026-11-09.
+
+**Correction to §17.** §17 said a review issue's body "can never render
+as a committable GitHub suggestion" and that only the suggestion path
+can produce one. That was true at `18da6dd31f` and is no longer. #4866
+(`cc014f5`, 2026-11-11) adds optional `existing_code` and
+`improved_code` fields to each key issue ("Include whenever a concrete
+code change of at most 10 lines fixes this issue"), and #4867
+(`42153f2`) posts them inline as a committable suggestion when
+`committable_code_suggestions` is on. The safety rule moved rather than
+disappeared: prose still cannot become a suggestion, but a structured
+fix can, after `pr_agent/algo/suggestion_checks.py` confirms that
+`existing_code`, dedented and with trailing whitespace stripped, equals
+the file's lines at the finding's range (from the full head file, or
+from the patch when the file is incomplete). A mismatch renders the fix
+as a plain code block. Python replacements are also compiled before
+being offered. Forge's `AddComment` `suggestion` flag already requires
+exact replacement source (`agent-design/tools.md`); the anchored
+`existing_code` match is the check Forge's harness would need if it ever
+derives a suggestion from a finding instead of from the model's
+explicit flag.
+
+**A merge verdict computed from facts, with the model limited to a veto
+(#4710, `337bed3`).** New `pr_agent/algo/merge_verdict.py`, read in
+full. Its docstring states the rule: "The model describes what it found,
+but a clean recommendation is only trustworthy when facts it cannot see
+agree." Five checks, each of which **fails when it cannot be
+evaluated**:
+
+| Check | Passes when | Unavailable means |
+|---|---|---|
+| CI on reviewed head | the provider reports `passed` | fail ("status unavailable") |
+| Head is current with its base | no file in the PR (old or new name) changed on the base after the head's last completed CI run (`is_head_stale_against_base`, GitHub) | fail |
+| Human authors | the PR author and every commit author are users, not bots; over 250 commits is unknown | fail |
+| No sensitive paths or risky changes | the deterministic risk row (§17) has no findings | fail |
+| Changed lines within cap | added plus removed lines ≤ `max_changed_lines` (default 100); a collapsed or too-large file makes the count unknown | fail |
+
+Any failure makes the base `needs_review`. The model's own
+recommendation and risk level can only raise the result
+(`final_rank = max(base, model recommendation, model risk)`), and an
+unrecognised model value counts as `needs_review`. The verdict scans the
+complete diff "including ignored paths and files already reviewed by an
+incremental review". It can be published as a check run on the exact
+reviewed SHA, where `needs_review` is neutral and only
+`changes_required` fails. The cap, globs and patterns are host-only.
+
+This is Forge's attention design arrived at independently: a
+deterministic floor, escalation only, and "a missing tier means unknown,
+never low" (`agent-design/risk.md` §3, §6). Two of PR-Agent's checks
+are ones Forge does not have. "Human authors" Forge covers differently
+(agents never count as approvers, and `low`'s zero-approval path is for
+trusted authors only). **Base drift** it does not cover: Forge binds a
+tier to the merge-base (§11a), and the merge-base does not move when the
+base branch advances under an unrebased PR. A base commit that changes
+the same files after review is exactly the semantic-conflict case a
+clean verdict should not survive.
+
+**Gated auto-approval (#4855, `1830ec7`).** Off by default and
+host-only. It approves only the exact reviewed commit, only when the
+computed verdict is `no_concerns_found`, the model returned both a
+recommendation and a risk level, and the review covered the whole PR
+(not incremental, nothing left out or clipped, no failed chunk). Each
+`/review` "withdraws the approval PR-Agent gave when it starts, and
+approves again only when it ends with all of these holding", and a push,
+a base change or a reopen dismisses it before any other event filter
+runs.
+
+**Confidence as a filter, not a prompt instruction (#4394, `d425c88`;
+#4866).** #4866 removed two abstention lines from the reviewer prompt
+("For lower-severity concerns, be certain before flagging…" and the
+"report it with an explicit note on what remains uncertain" clause) and
+#4394 added an optional 0–10 `confidence` per finding with an anchored
+scale ("9-10: verified from the visible code, and the trigger scenario
+is concrete. 7-8: very likely… 5-6: plausible but unverified from the
+diff"). Findings below `min_finding_confidence` are dropped **before**
+the `num_max_findings` cut in a chunked review, "so they cannot
+displace a more confident finding", and a run that dropped any "does
+not mark earlier findings as resolved". A missing or out-of-range
+confidence keeps the finding. The model is asked for a confidence only
+when the threshold is set. Forge already keeps abstention out of the
+finder and puts it in a validator (`agent-design/review.md` §5); the
+ordering rule (filter, then cap) and the "a filtered run resolves
+nothing" rule are the parts worth noting. Forge resolves threads only by
+a resolution check (§7b), never by absence, so it is already safe there.
+
+**Per-commit review (#4476, `07abe3a`).** Opt-in. Each commit is
+reviewed against its own parent with its message, and gets its own
+comment. A commit is identified by a fingerprint of its own patch
+"without line numbers", so a rebase that leaves a commit's patch
+unchanged is not reviewed again, while an amend or folded fixup is.
+Fingerprints live in hidden markers in comments PR-Agent wrote; "when
+the git provider cannot confirm that, the whole PR is reviewed in one
+review". Automatic runs stop retrying a failed commit after 3 attempts.
+Forge reviews the PR's interdiff (§7), not commits, so nothing changes.
+
+Smaller: #4945 scopes the unfiltered path checks to the incremental
+file set in incremental and per-commit reviews, except when the merge
+verdict is on (which still scans everything); #4894 stops retrying a
+GitLab suggestion write whose outcome was not confirmed, the
+"unknown is not failed" rule of `agent-run-recovery.md` §5; #4958
+falls back when a help answer is truncated.
+
+**What this changes here.** One amendment, to `agent-design/risk.md`
+§6: base drift becomes a next action and withholds the zero-approval
+path. The tier is unchanged, since §6 keeps tier and next action apart.
 
 ## Design takeaways
 

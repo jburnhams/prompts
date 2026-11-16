@@ -708,6 +708,74 @@ first tagged release and the schema URL), Claude Code's monitoring page
 (read past 100k), and read LlamaIndex's instrumentation module, W&B
 Weave and MLflow Tracing, which this pass only named.
 
+### The weekly pass (read 2026-11-16)
+
+Sources for `agent-run-recovery.md` §7, `code-review-approaches.md` §18,
+and the amendments in `agent-design/formats.md` §7 item 4,
+`keel/run-spec.md` §3 (budgets), `keel/triggers-and-runs.md` §10 and
+`risk.md` §6. Repos were cloned with `--shallow-since=2026-11-05
+--filter=blob:none --no-checkout` and their logs since 2026-11-09
+scanned by subject; only the commits named were read.
+
+| Source | Repo | Paths / commits that matter | SHA read (HEAD) |
+|---|---|---|---|
+| **Claude Code prompt dumps** | `github.com/Piebald-AI/claude-code-system-prompts` (MIT) | `CHANGELOG.md` for 2.1.321–2.1.325; `git diff --name-status d2fd553 7aca957 -- system-prompts` (79 added, 4 removed, 87 changed), recorded as [`delta.tsv`](./leaked/claude-code/piebald-2.1.325/delta.tsv); eleven pieces stored in [`leaked/claude-code/piebald-2.1.325/`](./leaked/claude-code/piebald-2.1.325) | `7aca957` (v2.1.325, 2026-11-13; prev. `d2fd553`) |
+| **PR-Agent** | `github.com/qodo-ai/pr-agent` | `pr_agent/algo/merge_verdict.py` (read in full); `pr_agent/algo/suggestion_checks.py` (read in full); `git_providers/github_provider.py` `is_head_stale_against_base`, `are_all_authors_human`; diffs of #4866 `cc014f5` (`findings.py`, `pr_reviewer_prompts.toml`), #4394 `d425c88` (`output_models.py`, `pr_reviewer.py`, prompt); `docs/docs/commands/review.md` at HEAD (merge recommendation, gated auto-approval, per-commit review, fixes, risk checks); #4867, #4710, #4855, #4476, #4945, #4894 by stat and docs | `c1e4fe2d40` (prev. `18da6dd31f`) |
+| **Goose** | `github.com/block/goose` | #13226 `0f8a0b9` (`crates/goose-provider-types/src/formats/anthropic.rs`, diff read in full); #13325 `ef8933e` (`retry.rs`, `formats/anthropic.rs`); #13266 `3cf3328` by stat | `bf6e1df335` (prev. `0edf2bdc81`) |
+| **OpenCode** | `github.com/sst/opencode` | #60674 `eccfb82` (`packages/core/src/session/runner/to-llm-message.ts`, `step.ts`, diffs read) | `9b57cc05cb` (prev. `12a661ea40`) |
+| **OpenHands SDK** | `github.com/OpenHands/software-agent-sdk` | #6178 `a233ffd` (`openhands-sdk/openhands/sdk/llm/llm.py`, diff read) | `1d4c024966` (prev. `4db1ad742a`) |
+| **Codex CLI** | `github.com/openai/codex` | Commit messages only: rollout budgets #61578 `f226c9c`, #61579 `c8e4cbc`, #61580 `c8c3f70`, #61581 `2e61e8e`, #61582 `ce82e38`, #61583 `eaa25e1`; model request hook ids #61587 `3b8bd2e` | `75fc67e8f4` (prev. `8703d32bd0`) |
+| **Crush** | `github.com/charmbracelet/crush` | `f64fe8e` `internal/agent/refusal_retry.go` (read in full) | `0f9de6aa32` (prev. `f5621d21a5`) |
+
+The Codex budget behaviour in `keel/run-spec.md` is taken from the
+commit messages' "Why" and "What changed" sections, which are detailed,
+and **not from the code**; the admission points and "keep the consumed
+response" rule are as the messages state them.
+
+Scanned and nothing used (logs since 2026-11-09): Pi `6bacbb4b96`
+(about 330 commits; provider retry fixes for bare socket errors #12136
+and "Connection closed." #12093; a draft "chord" design doc);
+Gemini CLI `4ed06ed0dd` (retry status scoping #30266); Cline
+`72b3d71405` (14 commits, none relevant); OpenClaw `cb58f402a3` (about
+2,280 commits; output-limit continuations after long streams #199995,
+fixes to retries of partial writes, not read); Codex's ~60 other
+commits (MCP status pages, Linux sandbox TCP routing #61372, Guardian
+evidence caps #61346, compaction keeping active additional context
+#61390); OpenCode's other ~330 (including keeping the truncated preview
+when tool output cannot be saved #63334, which matches Claude Code's
+new unsaved-output reminder).
+
+Read as documentation: **Self-hosted Claude Managed Agents** (private
+beta, 2026-11-12):
+[`claude.com/resources/articles/self-hosted-claude-managed-agents`](https://claude.com/resources/articles/self-hosted-claude-managed-agents)
+and
+[`platform.claude.com/docs/en/managed-agents/self-hosted-sandboxes-workers`](https://platform.claude.com/docs/en/managed-agents/self-hosted-sandboxes-workers)
+(fetched 2026-11-16). Workers claim sessions from a queue (always-on
+polling, or webhook-triggered on `session.status_run_started`), run
+tools in process or in one sandbox per session, receive a per-session
+`secret` separate from the environment key (needed to mount memory
+stores, "never log it"), and stage files themselves from session
+`metadata`, since "Anthropic doesn't mount files or GitHub repositories
+into self-hosted sandboxes". A webhook handler must "never acknowledge a
+delivery whose work will not run here; a 503 makes the sender retry".
+Self-hosted is the one Managed Agents mode eligible for ZDR. Recorded
+because it is the nearest vendor counterpart to Keel's runner and
+lease model (`agent-design/keel/pipelines.md` §7f); nothing in it
+changes Keel. Also seen, not used: "Building always-on agents"
+(claude.com, 2026-11-13), an inbox, timer and outbox pattern Keel's
+triggers already follow.
+
+Web: searched for new coding, review and data agents, MCP revisions and
+lab engineering posts from the last week. No MCP revision after
+2026-07-28 and no new anthropic.com/engineering post was found. A
+DeepSeek coding agent (2026-11-01) is again reported only by
+aggregators and was not used.
+
+Next pass: diff Piebald from `7aca957` (v2.1.325), PR-Agent from
+`c1e4fe2d40`, Codex from `75fc67e8f4` (read the rollout-budget code in
+`codex-rs/core` if Keel adopts the admission rule), OpenCode from
+`9b57cc05cb`, Goose from `bf6e1df335`.
+
 ## OpenClaw 2.0 (read 2026-08-31)
 
 `github.com/openclaw/openclaw` at `5f714ef` (`main`, 2026-08-31). MIT.

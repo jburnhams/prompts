@@ -866,7 +866,7 @@
     },
     "Budgets": {
       "type": "object",
-      "description": "Crossing turns or context_high_water injects the final-turn nudge (formats.md §7). The others stop the run harness-side.",
+      "description": "Crossing turns or context_high_water injects the final-turn nudge (formats.md §7). The others stop the run harness-side. They are checked at every admission point (before each model request, tool handler start, MCP handoff and sub-agent spawn) against one ledger shared by the run and its children; cost_usd includes charges reported by trusted MCP servers in _meta keel/charge (run-spec.md §3).",
       "properties": {
         "turns": {
           "$ref": "common.schema.json#/$defs/BindableInteger"

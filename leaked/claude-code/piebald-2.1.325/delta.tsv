@@ -1,0 +1,171 @@
+status	name	cc_version	file
+A	Agent Prompt: Background agent state classifier other-thread ask rule	2.1.323	agent-prompt-background-agent-state-classifier-other-thread-ask-rule.md
+A	Agent Prompt: Project thread status card classifier other-thread ask rule	2.1.323	agent-prompt-project-thread-status-card-classifier-other-thread-ask-rule.md
+A	Data: SDK MCP server dataFlowServer field	2.1.323	data-sdk-mcp-server-dataflowserver-field.md
+A	Data: SDK api_error_type field	2.1.324	data-sdk-api-error-type-field.md
+A	Data: SDK can_use_tool plugin field	2.1.321	data-sdk-can-use-tool-plugin-field.md
+A	Data: SDK can_use_tool server_policy_ask_only field	2.1.323	data-sdk-can-use-tool-server-policy-ask-only-field.md
+A	Data: SDK get_workspace_diff omitted field	2.1.323	data-sdk-get-workspace-diff-omitted-field.md
+A	Data: SDK initialize managedSettings parameter	2.1.323	data-sdk-initialize-managedsettings-parameter.md
+A	Data: SDK initialize response managed_settings_applied field	2.1.323	data-sdk-initialize-response-managed-settings-applied-field.md
+A	Data: SDK initialize response other_hook_ask_outranks_host field	2.1.321	data-sdk-initialize-response-other-hook-ask-outranks-host-field.md
+A	Data: SDK initialize sdkMcpServerManifestsOrigin field	2.1.323	data-sdk-initialize-sdkmcpservermanifestsorigin-field.md
+A	Data: SDK interrupt spare_background_tasks field	2.1.321	data-sdk-interrupt-spare-background-tasks-field.md
+A	Data: SDK oauth_token_refresh refused_call field	2.1.324	data-sdk-oauth-token-refresh-refused-call-field.md
+A	Data: SDK plugin_install system message	2.1.323	data-sdk-plugin-install-system-message.md
+A	Data: SDK read_file for_upload field	2.1.323	data-sdk-read-file-for-upload-field.md
+A	Data: SDK read_file liveReply field	2.1.323	data-sdk-read-file-livereply-field.md
+A	Data: SDK read_file offset field	2.1.323	data-sdk-read-file-offset-field.md
+A	Data: SDK read_file requested_path field	2.1.323	data-sdk-read-file-requested-path-field.md
+A	Data: SDK reload_plugins refuse_if_busy field	2.1.324	data-sdk-reload-plugins-refuse-if-busy-field.md
+A	Data: SDK stream event owed_rows field	2.1.324	data-sdk-stream-event-owed-rows-field.md
+A	Data: SDK ui_render component field	2.1.324	data-sdk-ui-render-component-field.md
+A	Data: SDK user message retracted_message_uuids field	2.1.323	data-sdk-user-message-retracted-message-uuids-field.md
+A	Data: SDK warning hook_no_verdict field	2.1.324	data-sdk-warning-hook-no-verdict-field.md
+A	Data: SSL cross-certificate missing root error	2.1.323	data-ssl-cross-certificate-missing-root-error.md
+A	Data: SSL name constraint unsupported type explanation	2.1.323	data-ssl-name-constraint-unsupported-type-explanation.md
+A	Data: Sandbox failIfUnavailable setting	2.1.324	data-sandbox-failifunavailable-setting.md
+A	Data: Sandbox linked worktree write denial warning	2.1.324	data-sandbox-linked-worktree-write-denial-warning.md
+A	Data: Sandbox project false value ignored under higher-priority policy	2.1.324	data-sandbox-project-false-value-ignored-under-higher-priority-policy.md
+A	Data: Sandbox unchecked protected paths warning	2.1.324	data-sandbox-unchecked-protected-paths-warning.md
+A	Data: Teleport stash MERGE_AUTOSTASH refusal	2.1.324	data-teleport-stash-merge-autostash-refusal.md
+A	Data: Teleport stash index update failure error	2.1.324	data-teleport-stash-index-update-failure-error.md
+A	Data: Teleport stash ref without entries refusal	2.1.324	data-teleport-stash-ref-without-entries-refusal.md
+A	Data: Teleport stash unexpected entry refusal	2.1.324	data-teleport-stash-unexpected-entry-refusal.md
+A	Data: Teleport stash unsafe object store or ref table refusal	2.1.323	data-teleport-stash-unsafe-object-store-or-ref-table-refusal.md
+A	Data: Teleport stash unsafe ref file refusal	2.1.323	data-teleport-stash-unsafe-ref-file-refusal.md
+A	Data: Worktree creation outside-repository write refusal	2.1.323	data-worktree-creation-outside-repository-write-refusal.md
+A	Data: Worktree creation partial clone promisor fetch failure error	2.1.323	data-worktree-creation-partial-clone-promisor-fetch-failure-error.md
+A	Data: Worktree creation partial clone too many missing objects error	2.1.323	data-worktree-creation-partial-clone-too-many-missing-objects-error.md
+A	Data: WrapUp tool result nextStep field	2.1.324	data-wrapup-tool-result-nextstep-field.md
+A	Data: askUserQuestionTimeout setting	2.1.323	data-askuserquestiontimeout-setting.md
+A	Data: blockFileToolReadsOutsideWorkingDirectories setting	2.1.323	data-blockfiletoolreadsoutsideworkingdirectories-setting.md
+A	Data: disableClaudeAiConnectors setting	2.1.324	data-disableclaudeaiconnectors-setting.md
+A	Skill: Artifact design direction cards	2.1.324	skill-artifact-design-direction-cards.md
+A	Skill: Artifact design page contract	2.1.324	skill-artifact-design-page-contract.md
+A	Skill: Claude API sign-in errors guidance	2.1.323	skill-claude-api-sign-in-errors-guidance.md
+A	Skill: Mod look reference	2.1.324	skill-mod-look-reference.md
+A	System Prompt: AI development training limits	2.1.321	system-prompt-ai-development-training-limits.md
+A	System Prompt: Artifact deck and design intake	2.1.321	system-prompt-artifact-deck-and-design-intake.md
+A	System Prompt: Claude Fable 5.2 model identity	2.1.321	system-prompt-claude-fable-5-2-model-identity.md
+A	System Prompt: Memory notes and feedback rules	2.1.321	system-prompt-memory-notes-and-feedback-rules.md
+A	System Prompt: Saving skills via review proposals	2.1.324	system-prompt-saving-skills-via-review-proposals.md
+A	System Prompt: Work completion and direct editing	2.1.321	system-prompt-work-completion-and-direct-editing.md
+A	System Reminder: Artifact publish unreadable existing files refusal	2.1.323	system-reminder-artifact-publish-unreadable-existing-files-refusal.md
+A	System Reminder: Attached machine folder released (call result)	2.1.323	system-reminder-attached-machine-folder-released-call-result.md
+A	System Reminder: Attached machine folder released notice	2.1.323	system-reminder-attached-machine-folder-released-notice.md
+A	System Reminder: BrowserBatch outside auto mode refusal	2.1.323	system-reminder-browserbatch-outside-auto-mode-refusal.md
+A	System Reminder: Cron one-time job refused on self-hosted runner	2.1.323	system-reminder-cron-one-time-job-refused-on-self-hosted-runner.md
+A	System Reminder: Deleted attached file notice (single file)	2.1.323	system-reminder-deleted-attached-file-notice-single-file.md
+A	System Reminder: Deleted attached files notice (multiple files)	2.1.323	system-reminder-deleted-attached-files-notice-multiple-files.md
+A	System Reminder: File-backed artifact database write refusal	2.1.321	system-reminder-file-backed-artifact-database-write-refusal.md
+A	System Reminder: Linked computer plugin server copy guidance	2.1.323	system-reminder-linked-computer-plugin-server-copy-guidance.md
+A	System Reminder: Memory listing additions	2.1.324	system-reminder-memory-listing-additions.md
+A	System Reminder: Memory sync delete not sent	2.1.323	system-reminder-memory-sync-delete-not-sent.md
+A	System Reminder: Output token limit tool call cutoff	2.1.323	system-reminder-output-token-limit-tool-call-cutoff.md
+A	System Reminder: Post-compaction conversation reread guidance	2.1.324	system-reminder-post-compaction-conversation-reread-guidance.md
+A	System Reminder: Staged files disk-space recovery	2.1.324	system-reminder-staged-files-disk-space-recovery.md
+A	System Reminder: Teammate spawned metadata	2.1.324	system-reminder-teammate-spawned-metadata.md
+A	System Reminder: Unsaved tool output truncation	2.1.323	system-reminder-unsaved-tool-output-truncation.md
+A	Tool Description: Artifact preflight.js reserved file	2.1.323	tool-description-artifact-preflight-js-reserved-file.md
+A	Tool Description: Artifact preflight.js reserved file (app wording)	2.1.323	tool-description-artifact-preflight-js-reserved-file-app-wording.md
+A	Tool Description: Bash (sandbox — macOS process visibility, no override)	2.1.323	tool-description-bash-sandbox-macos-process-visibility-no-override.md
+A	Tool Description: Bash (sandbox — macOS process visibility, override available)	2.1.323	tool-description-bash-sandbox-macos-process-visibility-override-available.md
+A	Tool Description: Computer use selection card gone guidance	2.1.323	tool-description-computer-use-selection-card-gone-guidance.md
+A	Tool Description: Computer use selection card guidance	2.1.321	tool-description-computer-use-selection-card-guidance.md
+A	Tool Description: ToolSearch (opening, system message wording)	2.1.323	tool-description-toolsearch-opening-system-message-wording.md
+A	Tool Description: Yield	2.1.323	tool-description-yield.md
+A	Tool Parameter: Artifact supporting files (local sources only)	2.1.323	tool-parameter-artifact-supporting-files-local-sources-only.md
+A	Tool Parameter: set_cwd needs_trust trust root	2.1.323	tool-parameter-set-cwd-needs-trust-trust-root.md
+A	Tool Parameter: set_cwd rejection reasons unsafe_path and remote_origin	2.1.323	tool-parameter-set-cwd-rejection-reasons-unsafe-path-and-remote-origin.md
+D	Data: Claude API local sign-in guide	2.1.319	data-claude-api-local-sign-in-guide.md
+D	Skill: Data Visualization	2.1.314	skill-data-visualization.md
+D	System Reminder: Auto mode no verdict after another hook rewrite	2.1.312	system-reminder-auto-mode-no-verdict-after-another-hook-rewrite.md
+D	Tool Description: EndConversation	2.1.206	tool-description-endconversation.md
+M	Agent Prompt: Artifact type creation slash command (MCP connector tools, first-party type)	2.1.323	agent-prompt-artifact-type-creation-slash-command-mcp-connector-tools-first-party-type.md
+M	Agent Prompt: Artifact type creation slash command (first-party type)	2.1.323	agent-prompt-artifact-type-creation-slash-command-first-party-type.md
+M	Agent Prompt: Quick PR creation	2.1.323	agent-prompt-quick-pr-creation.md
+M	Agent Prompt: Quick git commit	2.1.323	agent-prompt-quick-git-commit.md
+M	Agent Prompt: Summarization no-tools guard	2.1.323	agent-prompt-summarization-no-tools-guard.md
+M	Data: Artifact ask-first intake without listed design systems	2.1.321	data-artifact-ask-first-intake-without-listed-design-systems.md
+M	Data: Claude API reference — PHP	2.1.321	data-claude-api-reference-php.md
+M	Data: Claude API reference — Ruby	2.1.321	data-claude-api-reference-ruby.md
+M	Data: Data visualization choosing a form	2.1.324	data-data-visualization-choosing-a-form.md
+M	Data: Data visualization marks and anatomy	2.1.324	data-data-visualization-marks-and-anatomy.md
+M	Data: Interrupt receipt cancelled field	2.1.321	data-interrupt-receipt-cancelled-field.md
+M	Data: Interrupt receipt still queued field	2.1.323	data-interrupt-receipt-still-queued-field.md
+M	Data: MCP call check_permissions field	2.1.324	data-mcp-call-check-permissions-field.md
+M	Data: MCP read resource control request	2.1.323	data-mcp-read-resource-control-request.md
+M	Data: MCP server status error_code field	2.1.324	data-mcp-server-status-error-code-field.md
+M	Data: Message Batches API reference — Python	2.1.321	data-message-batches-api-reference-python.md
+M	Data: Message Batches API — TypeScript	2.1.321	data-message-batches-api-typescript.md
+M	Data: Remote tools reannounce control request	2.1.324	data-remote-tools-reannounce-control-request.md
+M	Data: SDK API error kind field	2.1.324	data-sdk-api-error-kind-field.md
+M	Data: SDK UI attach draws field	2.1.323	data-sdk-ui-attach-draws-field.md
+M	Data: SDK api_error_params field	2.1.321	data-sdk-api-error-params-field.md
+M	Data: SDK can_use_tool decision_reason_code field	2.1.323	data-sdk-can-use-tool-decision-reason-code-field.md
+M	Data: SDK initialize response sdk_mcp_manifests_parked field	2.1.323	data-sdk-initialize-response-sdk-mcp-manifests-parked-field.md
+M	Data: SDK read_file lossy field	2.1.323	data-sdk-read-file-lossy-field.md
+M	Data: SDK result runtime tuning environment bitmask field	2.1.323	data-sdk-result-runtime-tuning-environment-bitmask-field.md
+M	Data: SDK result startup garbage collection counts field	2.1.323	data-sdk-result-startup-garbage-collection-counts-field.md
+M	Data: SDK set model system prompt field	2.1.323	data-sdk-set-model-system-prompt-field.md
+M	Data: SDK startup failure reason codes	2.1.324	data-sdk-startup-failure-reason-codes.md
+M	Data: SDK system init plugin_errors field	2.1.323	data-sdk-system-init-plugin-errors-field.md
+M	Data: SDK thinking_duration_ms field	2.1.321	data-sdk-thinking-duration-ms-field.md
+M	Data: SDK turn handoff required rewind request ID field	2.1.323	data-sdk-turn-handoff-required-rewind-request-id-field.md
+M	Data: SDK ui_invalidate event	2.1.323	data-sdk-ui-invalidate-event.md
+M	Data: SDK ui_invalidate instances field	2.1.323	data-sdk-ui-invalidate-instances-field.md
+M	Data: SDK voice-call message origin schema	2.1.324	data-sdk-voice-call-message-origin-schema.md
+M	Data: Sandbox filesystem disabled setting	2.1.324	data-sandbox-filesystem-disabled-setting.md
+M	Data: Sandbox worktrees directory listing failure warning	2.1.323	data-sandbox-worktrees-directory-listing-failure-warning.md
+M	Data: Tool result display metadata field	2.1.324	data-tool-result-display-metadata-field.md
+M	Data: Tool use display metadata field	2.1.321	data-tool-use-display-metadata-field.md
+M	Data: allowManagedPermissionRulesOnly allowed-tools frontmatter scope	2.1.323	data-allowmanagedpermissionrulesonly-allowed-tools-frontmatter-scope.md
+M	Data: blockWritesOutsideWorkingDirectories setting	2.1.323	data-blockwritesoutsideworkingdirectories-setting.md
+M	Skill: /doctor slash command	2.1.325	skill-doctor-slash-command.md
+M	Skill: Claude API deprecated or retired models notice	2.1.321	skill-claude-api-deprecated-or-retired-models-notice.md
+M	Skill: Claude API sign-in guidance	2.1.323	skill-claude-api-sign-in-guidance.md
+M	Skill: Generate permission allowlist from transcripts	2.1.324	skill-generate-permission-allowlist-from-transcripts.md
+M	Skill: Workflow authoring reference	2.1.323	skill-workflow-authoring-reference.md
+M	System Prompt: Avoiding Unnecessary Sleep Commands (part of PowerShell tool description)	2.1.323	system-prompt-avoiding-unnecessary-sleep-commands-part-of-powershell-tool-description.md
+M	System Prompt: Claude Fable 5.1 model identity	2.1.321	system-prompt-claude-fable-5-1-model-identity.md
+M	System Prompt: Claude in Chrome browser automation	2.1.324	system-prompt-claude-in-chrome-browser-automation.md
+M	System Prompt: Compaction omitted tool result handling	2.1.323	system-prompt-compaction-omitted-tool-result-handling.md
+M	System Prompt: Non-fork subagent delegation examples	2.1.323	system-prompt-non-fork-subagent-delegation-examples.md
+M	System Prompt: Self-hosted runner doctor	2.1.323	system-prompt-self-hosted-runner-doctor.md
+M	System Prompt: Session scratchpad temporary-file guidance	2.1.324	system-prompt-session-scratchpad-temporary-file-guidance.md
+M	System Prompt: Subagent delegation examples	2.1.323	system-prompt-subagent-delegation-examples.md
+M	System Prompt: Windows sandbox profile tool retry guidance	2.1.324	system-prompt-windows-sandbox-profile-tool-retry-guidance.md
+M	System Prompt: Windows sandbox profile tool user guidance	2.1.324	system-prompt-windows-sandbox-profile-tool-user-guidance.md
+M	System Reminder: Attached machine idle disconnect notice	2.1.323	system-reminder-attached-machine-idle-disconnect-notice.md
+M	System Reminder: Attached machine signed-off notice	2.1.323	system-reminder-attached-machine-signed-off-notice.md
+M	System Reminder: Browser extension not connected (mobile app)	2.1.321	system-reminder-browser-extension-not-connected-mobile-app.md
+M	System Reminder: Large file full-content reading guidance	2.1.323	system-reminder-large-file-full-content-reading-guidance.md
+M	System Reminder: MCP connector file path refusal	2.1.324	system-reminder-mcp-connector-file-path-refusal.md
+M	System Reminder: No attached machine request guidance	2.1.323	system-reminder-no-attached-machine-request-guidance.md
+M	System Reminder: Plan approved	2.1.324	system-reminder-plan-approved.md
+M	System Reminder: Project document version conflict recovery	2.1.321	system-reminder-project-document-version-conflict-recovery.md
+M	System Reminder: Reserved-address MCP server refusal	2.1.325	system-reminder-reserved-address-mcp-server-refusal.md
+M	System Reminder: Resumed command approval directory verification failure	2.1.323	system-reminder-resumed-command-approval-directory-verification-failure.md
+M	System Reminder: Staged files failed to arrive	2.1.324	system-reminder-staged-files-failed-to-arrive.md
+M	System Reminder: Subagent write blocked pending worktree isolation	2.1.323	system-reminder-subagent-write-blocked-pending-worktree-isolation.md
+M	System Reminder: Voice-call record background framing	2.1.321	system-reminder-voice-call-record-background-framing.md
+M	System Reminder: Voice-call record synthetic tool notice	2.1.321	system-reminder-voice-call-record-synthetic-tool-notice.md
+M	Tool Description: Agent (usage notes)	2.1.323	tool-description-agent-usage-notes.md
+M	Tool Description: Agent (when to launch subagents)	2.1.323	tool-description-agent-when-to-launch-subagents.md
+M	Tool Description: Artifact action reference	2.1.323	tool-description-artifact-action-reference.md
+M	Tool Description: Artifact quickstart type guidance	2.1.323	tool-description-artifact-quickstart-type-guidance.md
+M	Tool Description: Artifact quickstart type guidance (app wording)	2.1.323	tool-description-artifact-quickstart-type-guidance-app-wording.md
+M	Tool Description: Artifact type discovery guidance	2.1.323	tool-description-artifact-type-discovery-guidance.md
+M	Tool Description: Artifact type discovery guidance (app wording)	2.1.323	tool-description-artifact-type-discovery-guidance-app-wording.md
+M	Tool Description: Background monitor (streaming events)	2.1.323	tool-description-background-monitor-streaming-events.md
+M	Tool Description: Bash (Git commit instructions)	2.1.323	tool-description-bash-git-commit-instructions.md
+M	Tool Description: Invoke skill	2.1.323	tool-description-invoke-skill.md
+M	Tool Description: ListConnectors	2.1.323	tool-description-listconnectors.md
+M	Tool Description: REPL persistent helper interface	2.1.324	tool-description-repl-persistent-helper-interface.md
+M	Tool Description: SearchMcpRegistry	2.1.323	tool-description-searchmcpregistry.md
+M	Tool Description: SendUserFile	2.1.323	tool-description-senduserfile.md
+M	Tool Description: Skill proposal rendering	2.1.324	tool-description-skill-proposal-rendering.md
+M	Tool Description: Workflow	2.1.323	tool-description-workflow.md
+M	Tool Description: claude.ai Project	2.1.321	tool-description-claude-ai-project.md
+M	Tool Parameter: set_cwd needs_trust directory	2.1.323	tool-parameter-set-cwd-needs-trust-directory.md
