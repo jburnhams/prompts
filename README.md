@@ -67,6 +67,12 @@ against source in the folder README. New concepts are in
 proposals for Forge, none yet adopted, are in
 [`agent-design/proposals-agentic-sdks-2026-11.md`](./agent-design/proposals-agentic-sdks-2026-11.md).
 
+**[→ `leaked/claude-code/piebald-2.1.330/`](./leaked/claude-code/piebald-2.1.330)** —
+the delta from v2.1.325 to v2.1.330 (2026-11-20): 118 pieces added, 34
+removed, 127 changed, listed in `delta.tsv`, with seventeen stored
+verbatim, most of them `/steward`, Claude Code's unattended PR watch
+(`code-review-approaches.md` §19).
+
 **[→ `leaked/claude-code/piebald-2.1.325/`](./leaked/claude-code/piebald-2.1.325)** —
 the delta from v2.1.319 to v2.1.325 (2026-11-13): 79 pieces added, 4
 removed, 87 changed, listed in `delta.tsv`, with eleven stored verbatim
@@ -915,6 +921,12 @@ OpenHands not counting an interrupted round, and Keel's retry, which
 until this pass started blind. Extended 2026-11-02 with the cases short of a death: a
 sandbox resource stop inside a live run (§3), and how OpenHands decides
 two failing calls are the same retry (§4).
+
+**[→ `mcp-events.md`](./mcp-events.md)** — MCP's Events extension
+(SEP-3415, merged 2026-11-19): servers that list what can be watched,
+with poll, push and signed-webhook delivery, cursors and termination;
+OpenCode's automations read as the one client in code; who else is
+reported to support it; and what it changes for a trigger system.
 
 **[→ `agent-telemetry.md`](./agent-telemetry.md)** — the two records
 of an agent run (2026-11-14): a content-free trace for timing, cost,

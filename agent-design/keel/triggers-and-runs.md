@@ -55,6 +55,90 @@ The wait conditions in `../medium.md` §4c (`jira`, `build`, `pr`,
 dispatcher. They're not triggers, because they resume existing work
 rather than create it.
 
+### 9a. Events from MCP servers *(proposed 2026-11-23, weekly pass)*
+
+**Amendment.** MCP gained a standard way for a server to say what can
+be watched: the Events extension (`io.modelcontextprotocol/events`,
+SEP-3415, merged 2026-11-19, defined for `2026-07-28` only). Until now
+every `event` source above needed a provider adapter behind `POST
+/v1/events/{provider}`. Keel already connects to the servers that wrap
+Jira, GitHub and the warehouse, so a server that offers events can be a
+trigger source with no adapter. This adds `source.kind: mcp_event`
+(`schemas/trigger.schema.json`) and changes nothing for the existing
+providers.
+
+What the extension gives (`../../mcp-events.md` has the detail):
+`events/list` returns event types with an `inputSchema` for
+subscription arguments and a `payloadSchema`; an occurrence is
+`{eventId, name, timestamp, data, cursor}`; delivery is poll, push or a
+signed webhook with a TTL the client refreshes; cursors are opaque and
+replay is optional per type; `truncated: true` says events were
+skipped; a `terminated` signal ends a subscription when access is
+revoked or the type changes. The client owns every subscription, and the
+spec leaves "what the agent does with an event" to the client.
+
+The rules:
+
+- **Keel is the client, and the trigger is the subscription.** The
+  registry of `mcp_event` triggers is the client-owned subscription
+  list the spec asks for. Subscriptions are opened by the dispatcher
+  with the credential `run_as` resolves to, never by a model and never
+  from a run. Arguments are literals or config-trust params, validated
+  against `inputSchema` at publish, so event or model text can never
+  widen what is watched. `events/list` is pinned in the server
+  snapshot (`tools-and-agents.md` §4a) like `tools/list`; a type that
+  disappears or changes its schema follows the server's `drift_policy`.
+- **The model never chooses the delivery mode.** `auto` prefers
+  webhook, because Keel already has a signed inbound endpoint and
+  webhook survives a dispatcher restart without a held connection, then
+  poll (honouring `nextPollMs`), then push.
+- **The cursor commits with the Firing.** Each occurrence is one
+  `Firing` with `event_id` and `cursor`, written in one transaction, so a
+  crash replays from the last committed cursor and the repeat is caught
+  by `eventId` (recorded `deduped`, filter not evaluated). OpenCode's
+  automations commit the cursor "together, only after any handoff is
+  durable" for the same reason. The trigger's own `dedupe` still applies
+  on top, across subscriptions.
+- **A gap is a Firing, not silence.** `truncated: true`, or a cursor the
+  server no longer accepts, records `result: gap`. With the default
+  `on_gap: fire_gap` the template also starts once with `event.gap =
+  true` and no payload, and is expected to read authoritative state
+  through tools instead of trusting it saw everything. The spec says the
+  same: agents "should use tools to read authoritative state, and should
+  not rely solely on event payloads".
+- **A trigger that was disabled restarts from now.** Re-enabling does
+  not replay what happened while it was off (OpenCode resets the cursor
+  to null for the same reason); `catch_up` is for schedules only.
+- **Payload is `trust: external`, and small.** `data` binds only to
+  external-trust params (§6), as every `event` source does, and reaches
+  the model as a nonce-wrapped block. An occurrence over
+  `max_payload_bytes` is recorded `skipped_oversize` and the cursor
+  moves past it, so one large event cannot stall the watch (OpenCode
+  #65673). Templates should bind ids and fetch content with tools, which
+  is the spec's "payload minimality" from the receiving side.
+- **Authority is checked at firing, not only at subscribe.** Receipt of
+  an event is not authority to act (the spec's "action time" rule). The
+  run is admitted under the trigger's `run_as` exactly as any other
+  firing, so a revoked delegation refuses the firing with
+  `delegation_missing` even if the server has not yet terminated the
+  subscription. OpenCode re-checks the authorising session and grant
+  before every delivery.
+- **`terminated` disables the trigger.** The Firing is recorded
+  `subscription_ended` with the error code; `Forbidden` disables the
+  trigger and notifies its owner, while `NotFound` and `Unsupported`
+  mark it for re-validation against a fresh `events/list`. A webhook
+  subscription that fails refresh is treated the same way.
+
+Not in this amendment: using MCP events for a stage's `waiting_on`
+(§7f's settle conditions could subscribe instead of polling, and the
+spec's open question 4, task state as events, would make that
+natural); and multi-type subscriptions (open question 3). Status: the
+SEP is marked Final, the TypeScript SDK reference implementation is
+still in review, and Keel's own MCP client would carry this. OpenCode
+shipped push delivery against it on 2026-11-21; Claude does not
+support it yet; ChatGPT is reported to support webhook delivery only
+(secondhand, `../../mcp-events.md` §4).
+
 ---
 
 ## 10. Runs
@@ -94,7 +178,8 @@ queued → provisioning → running ⇄ finalizing → ended
   tool calls and results (sizes and status, not bodies), refusals,
   narration, harness notes, reveals, the nudge, gates, artifacts, usage,
   outcome, deliveries, follow-ons, `cache_collapse`,
-  `context_overflow`, `response_retry` and `budget_stop`. Bodies are in
+  `context_overflow`, `response_retry`, `budget_stop` and
+  `outbound_rewrite`. Bodies are in
   the transcript, which has its own permission and is audited.
 - **`response_retry`** and **`budget_stop`** *(added 2026-11-16, weekly
   pass)*: a model response dropped and asked again, with its kind
@@ -103,6 +188,10 @@ queued → provisioning → running ⇄ finalizing → ended
   (`../formats.md` §7 item 4); and a hard budget reached, naming the
   budget and the admission point where it was caught
   (`run-spec.md` §3, budgets).
+- **`outbound_rewrite`** *(proposed 2026-11-23, weekly pass)*: text
+  bound for people was changed by the `outbound_text` check, naming the
+  delivery or tool call, the rules that fired and a count per rule,
+  never the text (`tools-and-agents.md` §4d).
 - **`cache_collapse`** *(added 2026-11-11,
   `../proposals-agentic-sdks-2026-11.md` §2)*: the harness checks the
   prompt cache on every response. Per `(provider, endpoint, model)` key

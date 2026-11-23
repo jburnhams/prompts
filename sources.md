@@ -776,6 +776,59 @@ Next pass: diff Piebald from `7aca957` (v2.1.325), PR-Agent from
 `codex-rs/core` if Keel adopts the admission rule), OpenCode from
 `9b57cc05cb`, Goose from `bf6e1df335`.
 
+### The weekly pass (read 2026-11-23)
+
+Sources for `mcp-events.md`, `code-review-approaches.md` §19, and the
+amendments in `agent-design/keel/triggers-and-runs.md` §9a,
+`keel/tools-and-agents.md` §4d (`outbound_text`) and
+`agent-design/medium.md` §1e. Repos were cloned with
+`--shallow-since=2026-11-12 --filter=blob:none --no-checkout` and their
+logs since 2026-11-14 scanned by subject; only the commits and files
+named were read. This branch starts from PR #48's branch
+(`claude/project-thread-yx5qlk`), which was still open.
+
+| Source | Repo | Paths / commits that matter | SHA read (HEAD) |
+|---|---|---|---|
+| **Claude Code prompt dumps** | `github.com/Piebald-AI/claude-code-system-prompts` (MIT) | `CHANGELOG.md` for 2.1.326–2.1.330; `git diff --name-status 7aca957 659d9f4 -- system-prompts` (118 added, 34 removed, 127 changed), recorded as [`delta.tsv`](./leaked/claude-code/piebald-2.1.330/delta.tsv); the `/steward` pieces read in full; seventeen pieces stored in [`leaked/claude-code/piebald-2.1.330/`](./leaked/claude-code/piebald-2.1.330) | `659d9f4` (v2.1.330, 2026-11-20; prev. `7aca957`) |
+| **MCP specification** | `github.com/modelcontextprotocol/modelcontextprotocol` | `seps/3415-events-extension.md` (SEP-3415, merged as `8a18b4b` on 2026-11-19; specification, rationale, security and open questions read in full, webhook wire detail and SDK appendix skimmed); `docs/extensions/events/overview.mdx` (`bbc31f8`) by stat | `1c5f400671` |
+| **OpenCode** | `github.com/sst/opencode` | #65271 `1645a8a` (MCP Events beta push delivery) by stat; at HEAD: `packages/schema/src/automation.ts`, `packages/core/src/automation/event.ts`, `packages/core/src/tool/plugin/mcp-events.ts` read in full; `packages/core/src/automation.ts` in parts (watch loop, `checkWatch`, cursor commit, oversized skip #65673 `562e55a`); #65562 `8a836dd` by subject | `d6379ff0e1` (prev. `9b57cc05cb`) |
+| **PR-Agent** | `github.com/qodo-ai/pr-agent` | #4997 `550e13a` (`pr_agent/algo/mentions/neutralize.py` at HEAD read in full; `github_provider.py` diff read); #5027 `cae539b`, #5026 `7e66f1d` by stat and subject; #5060 (cancel work when a PR closes), #5022 (skip automatic commands when host settings cannot load) by subject | `cae539b375` (prev. `c1e4fe2d40`) |
+| **OpenHands SDK** | `github.com/OpenHands/software-agent-sdk` | #6981 `1414239` (AI disclosure first, diff read); #7068 `ebec01b` by subject | `53ecc14a8a` (prev. `1d4c024966`) |
+| **Codex CLI** | `github.com/openai/codex` | Commit messages only: per-hook `onFailure` #62831 `a1afa12`; budget overflow #62559 `65d69f2` and #62621 `26f70f9` (follow-ups to the 2026-11-16 budget rules); authorisation evidence kept local to forks #62314 `daa59eb`; model-selected search MCP removed #62808 `4360c5f` | `a1604a8c05` (prev. `75fc67e8f4`) |
+
+Scanned and nothing used (logs since 2026-11-14): Goose `059fee25f1`
+(MCP `server.json` import #11934, ACP headers treated as secrets #13435,
+MCP app proxy origin checks #13608); Crush `a787a05d88` (model and
+reasoning switchable mid-run #4325); Pi `69a6993486` (about 220 commits;
+MCP results reach code-mode scripts whole while the model's cut result
+names a file with the full output, `51532e4`); Gemini CLI `eecccfcd5a`
+(ASK_USER kept for shell commands with unresolved expansion #30338,
+system MCP servers with insecure permissions skipped #30283); Cline
+`8075d2e35c` (MCP tool annotations carried through #15381); Codex's ~60
+Guardian commits (V2 scoring, V3 message boards, retention budgets).
+Codex's `onFailure` and Claude Code's MCP hook `on_failure` landed the
+same week with the same two values (`continue`, `block`); recorded only,
+since Keel has no user hooks.
+
+Read as secondary sources, via a fetch agent: Hookdeck, "What are MCP
+events" (table checked 2026-10-26) and its MCP Events guide; WorkOS,
+"MCP events and ChatGPT subscription revocation" (2026-10-01); TanStack
+AI's MCP Events docs. Both Hookdeck and WorkOS sell event
+infrastructure, and both predate the merged SEP. OpenAI's own MCP
+Events guide was not read, so every ChatGPT claim in `mcp-events.md` §4
+is secondhand.
+
+Web: searched for new coding, review and data agents and lab
+engineering posts from the last two weeks. Nothing well sourced was
+found beyond the above. Coder's "Run Week" (2026-11-16 to 20) was seen
+with no detail; a "Claude Code Review launched 2026-11-17" report from
+one aggregator conflicts with the October GA and was not used.
+
+Next pass: diff Piebald from `659d9f4` (v2.1.330), PR-Agent from
+`cae539b375`, Codex from `a1604a8c05`, OpenCode from `d6379ff0e1`, the
+MCP spec from `1c5f400671` (watch `ext-events` and `typescript-sdk#3209`
+for the Events reference implementation, and SEP-2495).
+
 ## OpenClaw 2.0 (read 2026-08-31)
 
 `github.com/openclaw/openclaw` at `5f714ef` (`main`, 2026-08-31). MIT.
@@ -1130,6 +1183,9 @@ Added 2026-10-26: `safety-research/red-teaming-auto-mode` (the attack
 and monitor-hardening code behind `agent-permissions-approval.md` §2d,
 worth reading for the transcript framing it found effective) and
 Agensh's repository, if the `microsoft/Agensh` URL in coverage is real.
+Added 2026-11-23: `modelcontextprotocol/ext-events` and the TypeScript
+SDK's Events implementation (`typescript-sdk#3209`, in review), the
+first official client and server code for SEP-3415.
 
 - Glukhov, Conti, Bogomolov & Golubev (JetBrains Research), *Diff-XYZ: A
   Benchmark for Evaluating Diff Understanding* —

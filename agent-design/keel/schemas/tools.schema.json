@@ -553,7 +553,8 @@
             "conventions_write_flag",
             "secret_scan",
             "egress_allowlist",
-            "anchor_validation"
+            "anchor_validation",
+            "outbound_text"
           ]
         },
         "config": {
@@ -621,6 +622,10 @@
         },
         "pattern": {
           "type": "string"
+        },
+        "outbound": {
+          "type": "boolean",
+          "description": "This argument is text that people will read on an outside system (a comment, a reply, a PR or issue body, a chat message). The outbound_text harness check rewrites it before the call (tools-and-agents.md §4d, proposed 2026-11-23). Sink renders are always outbound."
         }
       },
       "dependentRequired": {

@@ -50,6 +50,8 @@ delivery is a `Delivery` record with its own retry state, so a Jira
 outage loses nothing and can be retried by id. A channel target of
 `{origin: true}` is wherever the request came from (the chat thread, the
 issue, the PR), which the trigger records as `Run.origin`.
+A rendered body passes the `outbound_text` check before delivery
+(`tools-and-agents.md` §4d, proposed 2026-11-23).
 
 ### 7c. Continuations and pipeline edges
 

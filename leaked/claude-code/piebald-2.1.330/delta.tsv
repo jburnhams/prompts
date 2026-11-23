@@ -1,0 +1,280 @@
+status	name	cc_version	file
+A	Agent Prompt: App task list end-of-turn check with tie-breaker	2.1.328	agent-prompt-app-task-list-end-of-turn-check-with-tie-breaker.md
+A	Agent Prompt: App task list end-of-turn check	2.1.329	agent-prompt-app-task-list-end-of-turn-check.md
+A	Agent Prompt: App task list interrupted turn check	2.1.328	agent-prompt-app-task-list-interrupted-turn-check.md
+A	Agent Prompt: App task list progress tracker	2.1.328	agent-prompt-app-task-list-progress-tracker.md
+D	Agent Prompt: Claude Test author	2.1.310	agent-prompt-claude-test-author.md
+D	Agent Prompt: Claude Test explorer	2.1.310	agent-prompt-claude-test-explorer.md
+M	Agent Prompt: /code-review GitLab comment posting	2.1.328	agent-prompt-code-review-gitlab-comment-posting.md
+M	Agent Prompt: /code-review part 10 ReportFindings output format	2.1.328	agent-prompt-code-review-part-10-reportfindings-output-format.md
+M	Agent Prompt: /code-review part 2 low effort mode	2.1.329	agent-prompt-code-review-part-2-low-effort-mode.md
+M	Agent Prompt: /code-review part 3 extra-high and maximum effort modes	2.1.329	agent-prompt-code-review-part-3-extra-high-and-maximum-effort-modes.md
+M	Agent Prompt: /code-review part 8 GitHub comment posting	2.1.328	agent-prompt-code-review-part-8-github-comment-posting.md
+M	Agent Prompt: /code-review part 9 fix application	2.1.328	agent-prompt-code-review-part-9-fix-application.md
+M	Agent Prompt: /code-review unavailable-agent inline mode	2.1.329	agent-prompt-code-review-unavailable-agent-inline-mode.md
+M	Agent Prompt: Dream memory consolidation	2.1.328	agent-prompt-dream-memory-consolidation.md
+M	Agent Prompt: Inherited context for worktree sub-agent	2.1.330	agent-prompt-inherited-context-for-worktree-sub-agent.md
+D	Agent Prompt: Parent messages and user authorization (lean rewrite)	2.1.301	agent-prompt-parent-messages-and-user-authorization-lean-rewrite.md
+M	Agent Prompt: Quick git commit	2.1.327	agent-prompt-quick-git-commit.md
+M	Agent Prompt: Quick PR creation	2.1.327	agent-prompt-quick-pr-creation.md
+A	Agent Prompt: Ship pull request metadata writer	2.1.330	agent-prompt-ship-pull-request-metadata-writer.md
+M	Agent Prompt: Status line setup	2.1.327	agent-prompt-status-line-setup.md
+D	Agent Prompt: Subagent reporting notes (lean rewrite)	2.1.301	agent-prompt-subagent-reporting-notes-lean-rewrite.md
+M	Agent Prompt: Web fetch agent usage guidance	2.1.328	agent-prompt-web-fetch-agent-usage-guidance.md
+M	Agent Prompt: Web reading specialist	2.1.328	agent-prompt-web-reading-specialist.md
+A	Data: additionalDirectoryConfigRoots setting	2.1.329	data-additionaldirectoryconfigroots-setting.md
+M	Data: allowedMcpServers setting	2.1.328	data-allowedmcpservers-setting.md
+M	Data: Artifact ask-first intake form instructions	2.1.328	data-artifact-ask-first-intake-form-instructions.md
+D	Data: Artifact publish merged-over newer version file changes notice	2.1.285	data-artifact-publish-merged-over-newer-version-file-changes-notice.md
+M	Data: attributionProject setting	2.1.327	data-attributionproject-setting.md
+A	Data: availableModels setting	2.1.328	data-availablemodels-setting.md
+M	Data: Claude Code agent proxy troubleshooting guide	2.1.329	data-claude-code-agent-proxy-troubleshooting-guide.md
+M	Data: Claude Code gateway protocol	2.1.328	data-claude-code-gateway-protocol.md
+D	Data: Claude Test spec file format	2.1.310	data-claude-test-spec-file-format.md
+A	Data: Conversation resume requires active organization settings	2.1.329	data-conversation-resume-requires-active-organization-settings.md
+A	Data: desktopMcpServersListScope setting	2.1.329	data-desktopmcpserverslistscope-setting.md
+M	Data: Files API reference — TypeScript	2.1.326	data-files-api-reference-typescript.md
+M	Data: Interrupt cancel queued parameter	2.1.330	data-interrupt-cancel-queued-parameter.md
+M	Data: Interrupt receipt cancelled field	2.1.330	data-interrupt-receipt-cancelled-field.md
+M	Data: Interrupt receipt still queued field	2.1.330	data-interrupt-receipt-still-queued-field.md
+A	Data: MCP hook on_failure field	2.1.328	data-mcp-hook-on-failure-field.md
+A	Data: Organization changed conversation restart refusal	2.1.329	data-organization-changed-conversation-restart-refusal.md
+A	Data: Organization provider sign-in changed request refusal	2.1.329	data-organization-provider-sign-in-changed-request-refusal.md
+A	Data: Organization sign-in not named by computer settings	2.1.329	data-organization-sign-in-not-named-by-computer-settings.md
+M	Data: Rate limit grace signal	2.1.328	data-rate-limit-grace-signal.md
+A	Data: REPL Bash helper declarations	2.1.328	data-repl-bash-helper-declarations.md
+A	Data: REPL PowerShell helper declarations	2.1.328	data-repl-powershell-helper-declarations.md
+A	Data: Required Anthropic sign-in host provider refusal	2.1.329	data-required-anthropic-sign-in-host-provider-refusal.md
+A	Data: Required Anthropic sign-in missing without organization setting	2.1.329	data-required-anthropic-sign-in-missing-without-organization-setting.md
+A	Data: Required Anthropic sign-in organization has no cloud provider	2.1.329	data-required-anthropic-sign-in-organization-has-no-cloud-provider.md
+A	Data: Required Anthropic sign-in rejects gateway-managed sessions	2.1.329	data-required-anthropic-sign-in-rejects-gateway-managed-sessions.md
+A	Data: Required Anthropic sign-in unused recovery guidance	2.1.329	data-required-anthropic-sign-in-unused-recovery-guidance.md
+A	Data: Required Anthropic sign-in unused without organization setting	2.1.329	data-required-anthropic-sign-in-unused-without-organization-setting.md
+M	Data: Rewind files skippedLinks field	2.1.326	data-rewind-files-skippedlinks-field.md
+A	Data: Sandbox Windows backend setting	2.1.329	data-sandbox-windows-backend-setting.md
+M	Data: Sandbox worktrees directory listing failure warning	2.1.329	data-sandbox-worktrees-directory-listing-failure-warning.md
+M	Data: SDK API error kind field	2.1.330	data-sdk-api-error-kind-field.md
+M	Data: SDK api_error_params field	2.1.328	data-sdk-api-error-params-field.md
+M	Data: SDK api_error_type field	2.1.327	data-sdk-api-error-type-field.md
+M	Data: SDK can_use_tool decision_reason_code field	2.1.330	data-sdk-can-use-tool-decision-reason-code-field.md
+D	Data: SDK can_use_tool server_policy_ask_only field	2.1.323	data-sdk-can-use-tool-server-policy-ask-only-field.md
+A	Data: SDK get_settings additionalDirectoryConfigRootsWithheld field	2.1.329	data-sdk-get-settings-additionaldirectoryconfigrootswithheld-field.md
+M	Data: SDK get_settings policy_origins field	2.1.329	data-sdk-get-settings-policy-origins-field.md
+A	Data: SDK get_task_output agent message frames field	2.1.329	data-sdk-get-task-output-agent-message-frames-field.md
+A	Data: SDK get_workspace_diff newPath field	2.1.329	data-sdk-get-workspace-diff-newpath-field.md
+A	Data: SDK initialize disallowedTools parameter	2.1.327	data-sdk-initialize-disallowedtools-parameter.md
+A	Data: SDK initialize host_dropped_env field	2.1.327	data-sdk-initialize-host-dropped-env-field.md
+A	Data: SDK initialize mcpServers parameter	2.1.326	data-sdk-initialize-mcpservers-parameter.md
+A	Data: SDK initialize response mcp_servers_applied field	2.1.326	data-sdk-initialize-response-mcp-servers-applied-field.md
+A	Data: SDK initialize response settings_applied field	2.1.327	data-sdk-initialize-response-settings-applied-field.md
+A	Data: SDK initialize settings parameter	2.1.327	data-sdk-initialize-settings-parameter.md
+M	Data: SDK MCP server dataFlowServer field	2.1.326	data-sdk-mcp-server-dataflowserver-field.md
+A	Data: SDK MCP server errors field	2.1.326	data-sdk-mcp-server-errors-field.md
+A	Data: SDK plugin requiredByOrganization field	2.1.327	data-sdk-plugin-requiredbyorganization-field.md
+M	Data: SDK read_file anchor field	2.1.330	data-sdk-read-file-anchor-field.md
+A	Data: SDK read_file diff rootId field	2.1.327	data-sdk-read-file-diff-rootid-field.md
+M	Data: SDK read_file for_upload field	2.1.326	data-sdk-read-file-for-upload-field.md
+M	Data: SDK read_file offset field	2.1.330	data-sdk-read-file-offset-field.md
+M	Data: SDK read_file requested_path field	2.1.330	data-sdk-read-file-requested-path-field.md
+A	Data: SDK result memory_check_detail field	2.1.327	data-sdk-result-memory-check-detail-field.md
+M	Data: SDK result process_turn_threads field	2.1.329	data-sdk-result-process-turn-threads-field.md
+M	Data: SDK result request_build_detail field	2.1.327	data-sdk-result-request-build-detail-field.md
+A	Data: SDK set_message_waiting control request	2.1.326	data-sdk-set-message-waiting-control-request.md
+M	Data: SDK startup failure reason codes	2.1.327	data-sdk-startup-failure-reason-codes.md
+M	Data: SDK stream event owed_rows field	2.1.330	data-sdk-stream-event-owed-rows-field.md
+M	Data: SDK turn handoff required rewind request ID field	2.1.330	data-sdk-turn-handoff-required-rewind-request-id-field.md
+M	Data: SDK UI attach draws field	2.1.326	data-sdk-ui-attach-draws-field.md
+M	Data: SDK ui_invalidate event	2.1.326	data-sdk-ui-invalidate-event.md
+A	Data: SDK ui_message control request	2.1.326	data-sdk-ui-message-control-request.md
+M	Data: SDK ui_render component field	2.1.329	data-sdk-ui-render-component-field.md
+A	Data: SDK ui_render props field	2.1.326	data-sdk-ui-render-props-field.md
+A	Data: SDK UI Shader backdrop component	2.1.326	data-sdk-ui-shader-backdrop-component.md
+A	Data: Self-hosted runner disableAllHooks warning	2.1.328	data-self-hosted-runner-disableallhooks-warning.md
+M	Data: Self-hosted runner orchestrator command help	2.1.328	data-self-hosted-runner-orchestrator-command-help.md
+A	Data: Server classifier instruction file retry warning	2.1.327	data-server-classifier-instruction-file-retry-warning.md
+M	Data: Tool result display metadata field	2.1.327	data-tool-result-display-metadata-field.md
+M	Data: Tool use display metadata field	2.1.328	data-tool-use-display-metadata-field.md
+M	Data: Tool use reference — C#	2.1.326	data-tool-use-reference-c.md
+M	Data: Tool use reference — Ruby	2.1.326	data-tool-use-reference-ruby.md
+M	Data: Turn handoff available event schema	2.1.327	data-turn-handoff-available-event-schema.md
+M	Skill: Artifact design direction cards	2.1.326	skill-artifact-design-direction-cards.md
+M	Skill: Artifact design page contract	2.1.328	skill-artifact-design-page-contract.md
+M	Skill: Claude API sign-in guidance	2.1.326	skill-claude-api-sign-in-guidance.md
+D	Skill: Claude Test sign-in	2.1.275	skill-claude-test-sign-in.md
+M	Skill: Code Review (conventions dimension)	2.1.329	skill-code-review-conventions-dimension.md
+A	Skill: Code Review extra-high bugs and conventions mode	2.1.328	skill-code-review-extra-high-bugs-and-conventions-mode.md
+A	Skill: Code Review finding severity and summaries	2.1.328	skill-code-review-finding-severity-and-summaries.md
+A	Skill: Code Review high bugs and conventions mode	2.1.328	skill-code-review-high-bugs-and-conventions-mode.md
+M	Skill: Code Review inline xhigh mode	2.1.328	skill-code-review-inline-xhigh-mode.md
+A	Skill: Code Review language and wrapper correctness angles	2.1.328	skill-code-review-language-and-wrapper-correctness-angles.md
+A	Skill: Code Review named target diff instructions	2.1.329	skill-code-review-named-target-diff-instructions.md
+M	Skill: Code Review (Output — findings JSON array)	2.1.328	skill-code-review-output-findings-json-array.md
+M	Skill: Code Review (Phase 0 — gather the diff)	2.1.329	skill-code-review-phase-0-gather-the-diff.md
+A	Skill: Code Review unavailable target diff fallback	2.1.329	skill-code-review-unavailable-target-diff-fallback.md
+M	Skill: Computer Use MCP	2.1.328	skill-computer-use-mcp.md
+A	Skill: Design-sync artifact support unavailable	2.1.329	skill-design-sync-artifact-support-unavailable.md
+A	Skill: Design-sync Artifact tool call instructions	2.1.329	skill-design-sync-artifact-tool-call-instructions.md
+A	Skill: Design-sync Artifacts MCP call instructions	2.1.329	skill-design-sync-artifacts-mcp-call-instructions.md
+A	Skill: Design-sync design system move to Claude	2.1.329	skill-design-sync-design-system-move-to-claude.md
+M	Skill: /doctor slash command	2.1.330	skill-doctor-slash-command.md
+M	Skill: /doctor /usage flagged check	2.1.329	skill-doctor-usage-flagged-check.md
+M	Skill: /explain-usage measured usage slash command	2.1.330	skill-explain-usage-measured-usage-slash-command.md
+M	Skill: Generate permission allowlist from transcripts	2.1.326	skill-generate-permission-allowlist-from-transcripts.md
+M	Skill: /insights report output	2.1.326	skill-insights-report-output.md
+M	Skill: /loop external wakeup handover	2.1.330	skill-loop-external-wakeup-handover.md
+D	Skill: Mod look reference	2.1.324	skill-mod-look-reference.md
+A	Skill: Steward next check-in timing	2.1.330	skill-steward-next-check-in-timing.md
+A	Skill: Steward pull request comment snapshot	2.1.330	skill-steward-pull-request-comment-snapshot.md
+A	Skill: Steward review only	2.1.330	skill-steward-review-only.md
+A	Skill: Steward start pull request watch	2.1.330	skill-steward-start-pull-request-watch.md
+A	Skill: Steward unattended watch rules	2.1.330	skill-steward-unattended-watch-rules.md
+A	Skill: Steward waiting and stopping	2.1.330	skill-steward-waiting-and-stopping.md
+A	Skill: Steward watch ended	2.1.330	skill-steward-watch-ended.md
+A	Skill: Steward watch pass steps	2.1.330	skill-steward-watch-pass-steps.md
+A	Skill: Steward watch pass	2.1.330	skill-steward-watch-pass.md
+A	Skill: Update config all settings index	2.1.326	skill-update-config-all-settings-index.md
+M	Skill: Workflow authoring reference	2.1.330	skill-workflow-authoring-reference.md
+M	System Prompt: Agent thread notes	2.1.326	system-prompt-agent-thread-notes.md
+M	System Prompt: Artifact comment edit composer	2.1.330	system-prompt-artifact-comment-edit-composer.md
+M	System Prompt: Artifact comment fast acknowledgement	2.1.330	system-prompt-artifact-comment-fast-acknowledgement.md
+M	System Prompt: Artifact comment reply composer	2.1.330	system-prompt-artifact-comment-reply-composer.md
+M	System Prompt: Artifact deck and design intake	2.1.328	system-prompt-artifact-deck-and-design-intake.md
+A	System Prompt: Artifact tool usage and publishing	2.1.329	system-prompt-artifact-tool-usage-and-publishing.md
+D	System Prompt: Background session instructions (lean rewrite)	2.1.301	system-prompt-background-session-instructions-lean-rewrite.md
+D	System Prompt: Background session worktree isolation (lean rewrite)	2.1.301	system-prompt-background-session-worktree-isolation-lean-rewrite.md
+D	System Prompt: Background worktree persistence (lean rewrite)	2.1.301	system-prompt-background-worktree-persistence-lean-rewrite.md
+A	System Prompt: Check in before costly work	2.1.330	system-prompt-check-in-before-costly-work.md
+D	System Prompt: Context management (lean rewrite)	2.1.301	system-prompt-context-management-lean-rewrite.md
+A	System Prompt: Cross-session message attribution during compaction	2.1.327	system-prompt-cross-session-message-attribution-during-compaction.md
+D	System Prompt: Delivering requested work (lean rewrite)	2.1.301	system-prompt-delivering-requested-work-lean-rewrite.md
+D	System Prompt: Focus mode (lean rewrite)	2.1.301	system-prompt-focus-mode-lean-rewrite.md
+D	System Prompt: Handling corrections (lean rewrite)	2.1.301	system-prompt-handling-corrections-lean-rewrite.md
+D	System Prompt: Harness instructions (lean rewrite)	2.1.301	system-prompt-harness-instructions-lean-rewrite.md
+D	System Prompt: Irreversible action caution (lean rewrite)	2.1.301	system-prompt-irreversible-action-caution-lean-rewrite.md
+A	System Prompt: Linux sandbox private network retry guidance	2.1.326	system-prompt-linux-sandbox-private-network-retry-guidance.md
+A	System Prompt: Linux sandbox private network user alternatives	2.1.326	system-prompt-linux-sandbox-private-network-user-alternatives.md
+D	System Prompt: Memory hygiene (lean rewrite)	2.1.301	system-prompt-memory-hygiene-lean-rewrite.md
+M	System Prompt: Memory instructions	2.1.328	system-prompt-memory-instructions.md
+M	System Prompt: Minimal mode	2.1.326	system-prompt-minimal-mode.md
+D	System Prompt: Outcome-first communication style (lean rewrite)	2.1.301	system-prompt-outcome-first-communication-style-lean-rewrite.md
+A	System Prompt: Phone reply and approval formatting	2.1.330	system-prompt-phone-reply-and-approval-formatting.md
+M	System Prompt: PR Steward handoff guidance	2.1.326	system-prompt-pr-steward-handoff-guidance.md
+A	System Prompt: Project upload naming guidance	2.1.328	system-prompt-project-upload-naming-guidance.md
+A	System Prompt: Read resources as text or files	2.1.328	system-prompt-read-resources-as-text-or-files.md
+A	System Prompt: Sandbox AWS STS and IAM credential masking	2.1.329	system-prompt-sandbox-aws-sts-and-iam-credential-masking.md
+M	System Prompt: Self-hosted runner doctor	2.1.330	system-prompt-self-hosted-runner-doctor.md
+M	System Prompt: Self-hosted runner setup	2.1.328	system-prompt-self-hosted-runner-setup.md
+A	System Prompt: Step-by-step collaboration preference	2.1.330	system-prompt-step-by-step-collaboration-preference.md
+D	System Prompt: System reminder interpretation (lean rewrite)	2.1.301	system-prompt-system-reminder-interpretation-lean-rewrite.md
+A	System Prompt: Untrusted external input guidance	2.1.327	system-prompt-untrusted-external-input-guidance.md
+A	System Prompt: Windows MXC sandbox environment	2.1.326	system-prompt-windows-mxc-sandbox-environment.md
+A	System Prompt: Windows sandbox worktree commands	2.1.329	system-prompt-windows-sandbox-worktree-commands.md
+M	System Prompt: Writing subagent prompts	2.1.328	system-prompt-writing-subagent-prompts.md
+M	System Reminder: AppifactRepl Slides deck workflow	2.1.326	system-reminder-appifactrepl-slides-deck-workflow.md
+A	System Reminder: Auto mode safety check unavailable	2.1.327	system-reminder-auto-mode-safety-check-unavailable.md
+M	System Reminder: Background MCP call stopping session warning	2.1.326	system-reminder-background-mcp-call-stopping-session-warning.md
+A	System Reminder: Background update empty reply guidance	2.1.329	system-reminder-background-update-empty-reply-guidance.md
+A	System Reminder: Bash refused on MXC sandbox backend	2.1.329	system-reminder-bash-refused-on-mxc-sandbox-backend.md
+A	System Reminder: BrowserBatch outside auto mode refusal (navigate first)	2.1.326	system-reminder-browserbatch-outside-auto-mode-refusal-navigate-first.md
+M	System Reminder: /btw side question	2.1.330	system-reminder-btw-side-question.md
+M	System Reminder: Claude Doc comment wake guidance	2.1.330	system-reminder-claude-doc-comment-wake-guidance.md
+A	System Reminder: Claude in Chrome MCP servers disabled by policy	2.1.330	system-reminder-claude-in-chrome-mcp-servers-disabled-by-policy.md
+A	System Reminder: Cloud container replaced with outputs folder	2.1.330	system-reminder-cloud-container-replaced-with-outputs-folder.md
+A	System Reminder: Cloud container replaced with repositories	2.1.330	system-reminder-cloud-container-replaced-with-repositories.md
+A	System Reminder: Cross-session message held after delivery check	2.1.328	system-reminder-cross-session-message-held-after-delivery-check.md
+M	System Reminder: Cross-session message held notice	2.1.328	system-reminder-cross-session-message-held-notice.md
+A	System Reminder: Deferred tools available (shortened list)	2.1.327	system-reminder-deferred-tools-available-shortened-list.md
+M	System Reminder: Exited plan mode	2.1.329	system-reminder-exited-plan-mode.md
+M	System Reminder: File truncated	2.1.326	system-reminder-file-truncated.md
+D	System Reminder: Hook stopped continuation prefix	2.1.31	system-reminder-hook-stopped-continuation-prefix.md
+A	System Reminder: Linked computer removed from account	2.1.328	system-reminder-linked-computer-removed-from-account.md
+M	System Reminder: MCP connector name too long for file approval	2.1.328	system-reminder-mcp-connector-name-too-long-for-file-approval.md
+M	System Reminder: MCP server connection retry guidance	2.1.326	system-reminder-mcp-server-connection-retry-guidance.md
+A	System Reminder: MCP servers require authentication	2.1.326	system-reminder-mcp-servers-require-authentication.md
+M	System Reminder: New Slides deck parallel AppifactRepl workflow	2.1.326	system-reminder-new-slides-deck-parallel-appifactrepl-workflow.md
+M	System Reminder: New Slides deck two-step AppifactRepl workflow	2.1.326	system-reminder-new-slides-deck-two-step-appifactrepl-workflow.md
+M	System Reminder: Oversized mentioned file reading guidance	2.1.326	system-reminder-oversized-mentioned-file-reading-guidance.md
+A	System Reminder: Oversized non-user message (ends only)	2.1.327	system-reminder-oversized-non-user-message-ends-only.md
+A	System Reminder: Oversized user message (ends only)	2.1.326	system-reminder-oversized-user-message-ends-only.md
+A	System Reminder: Oversized user message (saved to file)	2.1.328	system-reminder-oversized-user-message-saved-to-file.md
+A	System Reminder: Parent must enter worktree before spawning	2.1.330	system-reminder-parent-must-enter-worktree-before-spawning.md
+D	System Reminder: Post-compaction conversation reread guidance	2.1.324	system-reminder-post-compaction-conversation-reread-guidance.md
+A	System Reminder: Preview browser executable refusal	2.1.327	system-reminder-preview-browser-executable-refusal.md
+A	System Reminder: Previously invoked skills and reload instructions	2.1.328	system-reminder-previously-invoked-skills-and-reload-instructions.md
+M	System Reminder: Previously invoked skills	2.1.328	system-reminder-previously-invoked-skills.md
+A	System Reminder: Project document partial edit failure	2.1.328	system-reminder-project-document-partial-edit-failure.md
+A	System Reminder: Project document rewrite refusal with current text	2.1.326	system-reminder-project-document-rewrite-refusal-with-current-text.md
+A	System Reminder: Project document size limit refusal	2.1.329	system-reminder-project-document-size-limit-refusal.md
+A	System Reminder: Project document version conflict with current text	2.1.328	system-reminder-project-document-version-conflict-with-current-text.md
+M	System Reminder: Reserved-address MCP server refusal	2.1.330	system-reminder-reserved-address-mcp-server-refusal.md
+M	System Reminder: Resumed command approval directory verification failure	2.1.329	system-reminder-resumed-command-approval-directory-verification-failure.md
+A	System Reminder: Resumed session may be missing earlier work	2.1.328	system-reminder-resumed-session-may-be-missing-earlier-work.md
+A	System Reminder: Runner left repositories out at startup	2.1.330	system-reminder-runner-left-repositories-out-at-startup.md
+M	System Reminder: Session context	2.1.327	system-reminder-session-context.md
+M	System Reminder: Session continuation	2.1.330	system-reminder-session-continuation.md
+A	System Reminder: Ship branch behind a cloud watcher	2.1.330	system-reminder-ship-branch-behind-a-cloud-watcher.md
+M	System Reminder: Staged files disk-space recovery	2.1.328	system-reminder-staged-files-disk-space-recovery.md
+A	System Reminder: Steward checkout changed unexpectedly	2.1.330	system-reminder-steward-checkout-changed-unexpectedly.md
+A	System Reminder: Steward CI run outside failed runs	2.1.330	system-reminder-steward-ci-run-outside-failed-runs.md
+A	System Reminder: Steward merge changes execution settings	2.1.330	system-reminder-steward-merge-changes-execution-settings.md
+A	System Reminder: Steward merge path unreadable	2.1.330	system-reminder-steward-merge-path-unreadable.md
+A	System Reminder: Steward refused shell command formatting	2.1.330	system-reminder-steward-refused-shell-command-formatting.md
+A	System Reminder: Steward unattended command refusal	2.1.330	system-reminder-steward-unattended-command-refusal.md
+A	System Reminder: Suggested read-only task origin	2.1.330	system-reminder-suggested-read-only-task-origin.md
+A	System Reminder: Suggested task approval check-in	2.1.330	system-reminder-suggested-task-approval-check-in.md
+A	System Reminder: Unsupported connector file reference refusal	2.1.327	system-reminder-unsupported-connector-file-reference-refusal.md
+D	System Reminder: Workflow isolated worktree	2.1.242	system-reminder-workflow-isolated-worktree.md
+D	Tool Description: Agent delegation summary (lean rewrite)	2.1.301	tool-description-agent-delegation-summary-lean-rewrite.md
+D	Tool Description: Agent delegation tradeoffs (lean rewrite)	2.1.301	tool-description-agent-delegation-tradeoffs-lean-rewrite.md
+M	Tool Description: Agent explicit-spawn restriction	2.1.329	tool-description-agent-explicit-spawn-restriction.md
+D	Tool Description: Agent result visibility (lean rewrite)	2.1.301	tool-description-agent-result-visibility-lean-rewrite.md
+M	Tool Description: Agent (usage notes)	2.1.330	tool-description-agent-usage-notes.md
+D	Tool Description: Agent (when to launch subagents, lean rewrite)	2.1.301	tool-description-agent-when-to-launch-subagents-lean-rewrite.md
+M	Tool Description: Agent (when to launch subagents)	2.1.330	tool-description-agent-when-to-launch-subagents.md
+D	Tool Description: Artifact comments guidance (app wording)	2.1.271	tool-description-artifact-comments-guidance-app-wording.md
+M	Tool Description: Artifact comments guidance	2.1.330	tool-description-artifact-comments-guidance.md
+A	Tool Description: Artifact publish action	2.1.329	tool-description-artifact-publish-action.md
+A	Tool Description: Artifact publish edits action	2.1.329	tool-description-artifact-publish-edits-action.md
+M	Tool Description: Artifact publishing and update guidance	2.1.328	tool-description-artifact-publishing-and-update-guidance.md
+A	Tool Description: Artifact quickstart action and skill loading guidance	2.1.329	tool-description-artifact-quickstart-action-and-skill-loading-guidance.md
+A	Tool Description: Artifact read action	2.1.329	tool-description-artifact-read-action.md
+D	Tool Description: AskUserQuestion (lean rewrite)	2.1.301	tool-description-askuserquestion-lean-rewrite.md
+M	Tool Description: Background monitor (streaming events)	2.1.326	tool-description-background-monitor-streaming-events.md
+M	Tool Description: Bash (Git commit instructions)	2.1.330	tool-description-bash-git-commit-instructions.md
+M	Tool Description: claude.ai Project	2.1.328	tool-description-claude-ai-project.md
+A	Tool Description: Claude in Chrome account switched-off guidance	2.1.329	tool-description-claude-in-chrome-account-switched-off-guidance.md
+M	Tool Description: Claude in Chrome switched-off and unlinked chat guidance	2.1.327	tool-description-claude-in-chrome-switched-off-and-unlinked-chat-guidance.md
+M	Tool Description: Claude in Chrome switched-off chat guidance	2.1.327	tool-description-claude-in-chrome-switched-off-chat-guidance.md
+M	Tool Description: Code review command	2.1.328	tool-description-code-review-command.md
+M	Tool Description: CronCreate	2.1.330	tool-description-croncreate.md
+M	Tool Description: DesignSync	2.1.330	tool-description-designsync.md
+D	Tool Description: Edit minimal old_string guidance	2.1.173	tool-description-edit-minimal-old-string-guidance.md
+M	Tool Description: EnterWorktree	2.1.330	tool-description-enterworktree.md
+M	Tool Description: ExitWorktree	2.1.330	tool-description-exitworktree.md
+A	Tool Description: Gmail attachment file references	2.1.327	tool-description-gmail-attachment-file-references.md
+D	Tool Description: Grep compact (lean rewrite)	2.1.301	tool-description-grep-compact-lean-rewrite.md
+D	Tool Description: Invoke skill (lean rewrite)	2.1.301	tool-description-invoke-skill-lean-rewrite.md
+M	Tool Description: ListAgents (no SendMessage tool)	2.1.328	tool-description-listagents-no-sendmessage-tool.md
+M	Tool Description: ListAgents	2.1.328	tool-description-listagents.md
+A	Tool Description: PauseGoal	2.1.326	tool-description-pausegoal.md
+M	Tool Description: PowerShell (git guidance)	2.1.327	tool-description-powershell-git-guidance.md
+M	Tool Description: PowerShell	2.1.330	tool-description-powershell.md
+M	Tool Description: ProposeGoal	2.1.326	tool-description-proposegoal.md
+M	Tool Description: REPL asynchronous output and polling instructions	2.1.329	tool-description-repl-asynchronous-output-and-polling-instructions.md
+A	Tool Description: REPL call batching costs	2.1.329	tool-description-repl-call-batching-costs.md
+M	Tool Description: REPL dispatched script execution and event delivery	2.1.329	tool-description-repl-dispatched-script-execution-and-event-delivery.md
+M	Tool Description: REPL persistent helper interface	2.1.330	tool-description-repl-persistent-helper-interface.md
+M	Tool Description: REPL script and shell timeouts	2.1.330	tool-description-repl-script-and-shell-timeouts.md
+A	Tool Description: Resume MCP task tracking	2.1.328	tool-description-resume-mcp-task-tracking.md
+M	Tool Description: SendMessage cross-session guidance	2.1.328	tool-description-sendmessage-cross-session-guidance.md
+M	Tool Description: TaskCreate	2.1.327	tool-description-taskcreate.md
+D	Tool Description: ToolSearch (lean rewrite)	2.1.301	tool-description-toolsearch-lean-rewrite.md
+A	Tool Description: Wait for session events	2.1.328	tool-description-wait-for-session-events.md
+M	Tool Description: WebFetch (concise)	2.1.329	tool-description-webfetch-concise.md
+M	Tool Description: WebFetch	2.1.329	tool-description-webfetch.md
+M	Tool Description: WebSearch (concise)	2.1.327	tool-description-websearch-concise.md
+M	Tool Description: WebSearch	2.1.327	tool-description-websearch.md
+M	Tool Description: Workflow (lean rewrite)	2.1.328	tool-description-workflow-lean-rewrite.md
+M	Tool Description: Workflow	2.1.328	tool-description-workflow.md
+M	Tool Parameter: matched ask rule	2.1.329	tool-parameter-matched-ask-rule.md
+A	Tool Parameter: Workflow resume run ID	2.1.326	tool-parameter-workflow-resume-run-id.md

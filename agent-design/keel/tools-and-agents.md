@@ -259,6 +259,51 @@ they apply to every agent. Goose's sub-agents running with no hooks
 (`../../agent-subagent-architectures.md` §7d) is the failure this is
 shaped against.
 
+**`outbound_text`** *(proposed 2026-11-23, weekly pass)*. Text that
+people will read on another system is rewritten by the harness before
+it leaves: every sink render (`outputs.md` §7b) and every tool argument
+whose `ParamOverride` says `outbound: true` (the body of a PR comment, a
+thread reply, a PR description, a Jira comment, a chat message). The
+check exists because a post is the one write whose effect is chosen by
+whoever reads it next. An `@name` notifies a person; `Fixes #12` closes
+an issue on merge; `[skip ci]` turns off the checks a gate relies on;
+a line like `/merge` or `bors r+` is a command to another bot. A model
+that quotes a log, a comment or a file can emit any of these without
+meaning to, and an injected input can make it mean to. The rules:
+
+1. **Mentions are neutralised** unless the handle is in the check's
+   `config.mention_allow` (usually the requester). PR-Agent's
+   neutraliser (#4997, #5027; `neutralize.py` read in full) is the reference for what
+   "a mention" covers: it inserts a zero-width space after `@` outside
+   code spans and fenced blocks, also matches entity-encoded `@`
+   (`&#64;`, `&#x40;`, `&commat;`), handles HTML tags that GitHub drops
+   and that would join `@` to the next word, and skips URLs.
+2. **Closing keywords** (`close`, `fix`, `resolve` and their forms
+   before an issue reference) are neutralised unless the reference is
+   one the run was started for (`Run.origin` or a stage link).
+3. **CI directives** (`[skip ci]`, `[ci skip]`, `[no ci]`,
+   `***NO_CI***`, and the provider's own list) are removed. A commit
+   message is not covered by this check; `git_write_blocklist` and the
+   bound git server own commits.
+4. **Bot commands**: a line that begins with `/` or with a word on
+   `config.bot_commands` is indented into a code block.
+5. **Disclosure first.** When `config.disclosure` is set,
+   it is prepended as the first line, not appended. OpenHands moved its
+   disclosure to the first sentence on 2026-11-20 (#6981) and Claude
+   Code's PR watch requires the first sentence to say Claude Code wrote
+   it, because a reader who stops after a line, and a notification
+   preview, see only the opening.
+6. **Every rewrite is an `outbound_rewrite` event** naming the rule and
+   the count, never the text, so a template whose posts keep being
+   rewritten shows up.
+
+Rewriting rather than refusing is deliberate: a refused post in a
+hands-off run is a lost deliverable, and nothing above changes what the
+text says to a reader. Claude Code's unattended PR watch states the
+same list as prompt rules ("No @name, no URL ... no closing keyword
+... no CI command ... no word that a bot obeys"); Keel puts it at the
+boundary so no prompt has to remember it.
+
 ### 4e. Server requests and deferred results in a hands-off run *(added 2026-11-09)*
 
 **Amendment.** Keel calls MCP servers, and an MCP server can do two
