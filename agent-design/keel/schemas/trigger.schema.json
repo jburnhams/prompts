@@ -563,7 +563,8 @@
           "type": "string"
         },
         "provider": {
-          "type": "string"
+          "type": "string",
+          "description": "For mcp_event sources, mcp:<server id>."
         },
         "type": {
           "type": "string"
@@ -581,16 +582,41 @@
         },
         "payload": {
           "type": "object"
+        },
+        "gap": {
+          "type": "boolean",
+          "description": "mcp_event only: true on the one event a gap Firing starts (triggers-and-runs.md §9a, on_gap: fire_gap). It carries no payload; the run reconciles from authoritative state through tools. Added 2026-11-23."
         }
       },
       "required": [
         "id",
         "provider",
         "type",
-        "at",
-        "payload"
+        "at"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "gap": {
+            "const": true
+          }
+        },
+        "required": [
+          "gap"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "payload"
+          ]
+        }
+      },
+      "else": {
+        "required": [
+          "payload"
+        ]
+      }
     }
   }
 }

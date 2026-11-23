@@ -102,7 +102,8 @@ The rules:
 - **A gap is a Firing, not silence.** `truncated: true`, or a cursor the
   server no longer accepts, records `result: gap`. With the default
   `on_gap: fire_gap` the template also starts once with `event.gap =
-  true` and no payload, and is expected to read authoritative state
+  true` and no payload (the `Event` schema's `gap` field; `provider`
+  is `mcp:<server>`), and is expected to read authoritative state
   through tools instead of trusting it saw everything. The spec says the
   same: agents "should use tools to read authoritative state, and should
   not rely solely on event payloads".
