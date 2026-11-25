@@ -1081,6 +1081,58 @@ explicit position on what happens at each:
    if even the nudge turn cannot fit, the run ends as an infrastructure
    failure below.
 
+4. **A model response that arrives broken is not a turn** *(added
+   2026-11-16, weekly pass, from Claude Code 2.1.321–2.1.324, Goose
+   #13226, OpenCode #60674 and OpenHands SDK #6178;
+   `../agent-run-recovery.md` §7)*. Until now this was unspecified, and
+   in a hands-off run "whatever the SDK does" can mean a half-written
+   `Write` call or an empty assistant message in the transcript.
+   - **Tool calls start only after the response completes.** The
+     harness holds every call from a response until the provider's
+     completion event (`message_stop`, or the provider's equivalent),
+     then dispatches the batch. A stream that ends without one is a
+     transport failure: nothing from it runs and nothing from it is
+     kept. This is Goose's position. OpenCode starts tools during the
+     stream and must then record which calls ran; Keel gives up that
+     latency (small next to tool time in a hands-off run) so that a
+     failed response never has side effects.
+   - **Cut off inside a call.** A response stopped by the output limit
+     (`stop_reason: max_tokens`, or the provider's equivalent, as
+     opposed to the context window) whose last block is an unfinished
+     call is dropped from the transcript, and the next request carries
+     a fixed harness note: the call did not run, nothing of it was kept,
+     split long content into smaller calls (for a file, `Write` the
+     first part and append the rest). This is Claude Code 2.1.323's
+     text, adapted. It counts toward the `consecutive_tool_errors`
+     monitor (`keel/run-spec.md` §3) as error type `output_cut` on that
+     tool, so a model that keeps producing oversized calls meets the
+     same streak rule as any other repeated failure. A cut caused by
+     the context window is item 3, not this.
+   - **Unparseable or content-free responses** (a call whose arguments
+     are not valid JSON for the schema's top level, a call to no tool,
+     or no text, no call and no reasoning without a length stop) are
+     dropped from the transcript and the request is sent again, at most
+     twice. They are never written as an assistant turn, because a
+     stored empty turn does not break the loop detector's streak
+     (OpenHands #6178) and a stored malformed one gets replayed. After
+     the retries the run ends as an infrastructure failure below, with
+     the kind recorded (`malformed_response` or `empty_response`).
+   - **Errors that must not be sent again.** A request refused by a
+     data-loss or safety policy, or a response blocked by a provider's
+     safety monitor, ends the run as an infrastructure failure at once;
+     it is never retried, and a later retry attempt does not re-send the
+     same history. A provider's "do not retry" signal (for example
+     `x-should-retry: false`) wins over the error's class. A 400 that
+     rejects a request setting for the model is permanent. A rejected
+     tool-use/result pairing is a harness bug, not a provider fault, and
+     ends the run rather than being retried into the same rejection.
+   - **Records.** Each dropped response and each retry is a
+     `response_retry` run event (`keel/triggers-and-runs.md` §10) with
+     the kind, a stable request id and the attempt number, so retries of
+     one generation can be joined (Codex #61587's shape). Usage for
+     dropped responses is still counted toward budgets, because it was
+     billed.
+
 A run killed by infrastructure failure (crash, timeout at a layer below
 the harness) is the one case with no `Complete` — the harness itself
 posts the failure note to the originating ticket/PR, so silence still

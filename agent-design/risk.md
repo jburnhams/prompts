@@ -379,6 +379,24 @@ it applies:
   the tier, which is about the change itself. Merging the two is how
   queues end up showing a PR as "needs review" when the next step is
   actually the author's.
+- **Base drift is a next action, and it closes the zero-approval path**
+  *(added 2026-11-16, weekly pass, from PR-Agent's merge verdict #4710;
+  `../code-review-approaches.md` §18)*. A tier is bound to the
+  merge-base (§11a), and the merge-base does not move when the base
+  branch advances under a PR that is not rebased. So a base commit that
+  changes a file the PR also changes (old or new path) after the review
+  leaves the tier valid while the reviewed combination no longer exists.
+  On each base push the harness intersects the base's changed paths since
+  the bound merge-base with the PR's changed paths. A non-empty
+  intersection sets the next action to `author: update branch (base
+  changed N reviewed files)`, and `low`'s zero-approval rule (after
+  calibration) does not apply until a review session binds to a new
+  merge-base. The tier itself is unchanged, since it describes the
+  change, and the intersection is not a floor driver. PR-Agent's
+  equivalent check fails its clean verdict outright, and fails it too
+  when the provider cannot answer; Forge's version fails closed the same
+  way: if the base's changed paths cannot be read, the zero-approval
+  path is closed.
 
 ---
 

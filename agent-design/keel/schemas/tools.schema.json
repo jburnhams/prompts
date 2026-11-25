@@ -96,6 +96,11 @@
           "default": "ignore",
           "description": "The server's own instructions text. If included it is framed as untrusted context, never as system prompt."
         },
+        "reports_charges": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, a keel/charge {usd} value in a call result's _meta is added to the run's cost_usd budget and recorded apart from model usage (run-spec.md §3, budgets). Ignored when false. Added 2026-11-16."
+        },
         "description_cap_chars": {
           "type": "integer",
           "minimum": 256,
