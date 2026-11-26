@@ -204,6 +204,83 @@ never by the agent:
   human still mid-review. Activity resets the timer; title and label edits
   don't.
 
+### 1e. What a PR watch adds to 1a–1d *(proposed 2026-11-23, weekly pass)*
+
+**Amendment.** Claude Code 2.1.330 ships `/steward`, a local PR watch
+that does what 1a and 1c do between them: one pass per wake-up over
+checks, conflicts, review findings and comments, pushing fixes, until
+the PR is merged or closed. Its prompts are the most detailed
+unattended-PR rules published so far
+(`leaked/claude-code/piebald-2.1.330/`). Most of it Forge already has:
+harness-side caps (1d), wait-for-quiet (1d), one standing-firm reply
+per thread (`review.md` §3), comments from members only (1c), "not mine
+to fix" as an outcome (1a). Five rules are new to Forge and are adopted
+here, as dispatcher and envelope rules, not prompt text:
+
+1. **A red check is attributed before it is fixed.** A failure is the
+   branch's only if the base is not red the same way at its current
+   head, and a re-run did not fail again on lines the diff does not
+   touch. The dispatcher, not the run, does both: it reads the base's
+   check for the same job, and it re-runs a failed job **once**, and
+   only when it died before any test ran or failed on something
+   outside the diff. Only a failure that survives both dispatches a
+   1a run; anything else posts once that the failure is not this
+   change's and raises the attention tier. This gives 1a's "not mine
+   to make" a test instead of a judgement, and moves the one re-run
+   Forge allows out of `future.md`'s "active CI control" into the
+   dispatcher, where the model still has no re-run verb.
+2. **One push per round, and the next push waits for the checks.**
+   After a Forge push, further fix or responder dispatches for that PR
+   hold until every check on the pushed head has reported, or a
+   timeout (30 minutes as Forge's default; Steward's value is not in the
+   extraction), because each push restarts CI and a
+   second push hides the first one's result. A conflict does not wait.
+   The cap in 1d also gains a **per-cause** limit: three pushes for one
+   red check, one bot finding or one reviewer ask, after which that
+   cause goes to a human even if the PR's round budget is not spent.
+3. **Optional comments never start a run.** A comment its author
+   marked optional (nit, minor, non-blocking) is carried in the next
+   responder envelope if one runs for another reason, and answered
+   there; it never dispatches one by itself.
+4. **Which comments reach the envelope is decided by write access,
+   not membership, and the rest are counted.** 1c's "repository
+   members / a configured reviewer list" becomes: people with write
+   access to the repository, plus bots the deployment names. Steward
+   says it plainly: "Mere membership of the organization doesn't
+   count." Comments from anyone else are left out of the envelope
+   entirely (the model never sees their words) and the run's report
+   carries `comments_not_read: N` with links, so a human can choose to
+   name a bot or act. Lines that quote someone else are stripped, and a
+   comment that contains the opening of an HTML comment is flagged
+   `may_hide`: part of it may not render on the PR page, so its author
+   may never have seen it, and only a request in it to stop counts.
+5. **A base merge that changes what runs is a human's.** When bringing
+   the branch up to date would change CI configuration, the repository's
+   agent context files (`context-files.md`), MCP or tool configuration,
+   or git hooks and git configuration, the dispatcher does not let a fix
+   run merge the base; it posts that the branch needs a human update and
+   names the files. Steward goes further on a laptop (it ends the watch if
+   any such file changes in a way its own merge does not explain);
+   Forge's container and bound git server (`keel/decisions.md`, git
+   metadata row) already remove most of that risk, but a merged-in CI or
+   context-file change would still alter what the next run trusts.
+   `risk.md` §6's base-drift rule decides the tier; this decides who
+   merges.
+
+Not adopted: Steward's command fence (an allowlist of exact `gh` and
+`git` lines, one write per call, no shell substitution). It exists
+because Steward runs in the user's own shell; Forge has no git writes
+in `Bash` at all (`keel/outputs.md` §7g). And Steward's readiness
+wording ("Ready: checks pass and comments are answered. Merging is
+yours") is already Forge's: a run reports and a human merges.
+
+**Correction.** `../agent-subagent-architectures.md` §7c describes PR
+Steward as an agent that "watches a PR, fixes CI and merges it",
+following the 2.1.284 handoff text. From
+2.1.326 the handoff text says "fix its CI and work through its review
+comments", and `/steward`'s rules forbid merging, queueing or setting
+auto-merge. PR Steward no longer merges.
+
 ---
 
 ## 2. New tools

@@ -9,6 +9,12 @@ behind) the real thing, so treat this as a data point, not a spec.
 
 ## Files
 
+**[`piebald-2.1.330/`](./piebald-2.1.330)** (added 2026-11-23) is the
+delta to v2.1.330: a `delta.tsv` of the 279 pieces added, removed or
+changed since 2.1.325, and seventeen of them stored verbatim (the
+`/steward` PR watch and its unattended rules, review severities,
+untrusted external input, MCP hook `on_failure`).
+
 **[`piebald-2.1.325/`](./piebald-2.1.325)** (added 2026-11-16) is the
 delta to v2.1.325: a `delta.tsv` of the 170 pieces added, removed or
 changed since 2.1.319, and eleven of them stored verbatim (the

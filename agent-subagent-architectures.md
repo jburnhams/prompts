@@ -807,6 +807,13 @@ label). If the user is away it must not choose for them. Ownership is a
 label anyone can read, which is the lease idea of
 `agent-design/orchestration.md` §5 carried on the PR itself.
 
+*Correction, 2026-11-23.* From Claude Code 2.1.326 the handoff text says
+PR Steward can "fix its CI and work through its review comments"; the
+word "merge" is gone, and the 2.1.330 `/steward` rules forbid merging,
+queueing or auto-merge outright. The local `/steward` watch and its
+rules are in `agent-design/medium.md` §1e and
+`leaked/claude-code/piebald-2.1.330/`.
+
 ## 7d. October 2026: delegation never widens authority
 
 *Added 2026-10-19.* In one week (2026-10-07 to 2026-10-16) four harnesses

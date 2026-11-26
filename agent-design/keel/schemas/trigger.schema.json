@@ -383,6 +383,59 @@
         },
         {
           "type": "object",
+          "description": "An MCP server's event type, through the io.modelcontextprotocol/events extension (SEP-3415). Keel is the subscribing client and owns the subscription, its cursor and its delivery mode. Proposed 2026-11-23; see ../triggers-and-runs.md §9a.",
+          "properties": {
+            "kind": {
+              "const": "mcp_event"
+            },
+            "server": {
+              "type": "string",
+              "description": "A registered McpServer id (tools.schema.json). It must advertise the extension at :discover; the event type must be in its events/list, which is pinned in the server snapshot like tools."
+            },
+            "event": {
+              "type": "string",
+              "description": "The event type name from events/list."
+            },
+            "arguments": {
+              "type": "object",
+              "description": "Subscription arguments, validated against the event type's inputSchema at publish. Literals or config-trust params only; never event or model text."
+            },
+            "delivery": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "webhook",
+                "poll",
+                "push"
+              ],
+              "default": "auto",
+              "description": "auto prefers webhook (Keel already has a signed inbound endpoint), then poll, then push. The model never chooses."
+            },
+            "on_gap": {
+              "type": "string",
+              "enum": [
+                "fire_gap",
+                "ignore"
+              ],
+              "default": "fire_gap",
+              "description": "When a delivery says truncated: true, or a cursor is unusable and the subscription restarts from now: record a Firing with result gap and, with fire_gap, also start the template once with event.gap = true so it can reconcile from authoritative state."
+            },
+            "max_payload_bytes": {
+              "type": "integer",
+              "minimum": 1024,
+              "default": 65536,
+              "description": "An occurrence larger than this is recorded as a skipped Firing and the cursor moves past it."
+            }
+          },
+          "required": [
+            "kind",
+            "server",
+            "event"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
           "description": "Another template's runs ending. Use this to subscribe across owners; within one template, prefer a declared continuation.",
           "properties": {
             "kind": {
@@ -466,7 +519,10 @@
             "skipped_concurrency",
             "rate_limited",
             "refused",
-            "test"
+            "test",
+            "skipped_oversize",
+            "gap",
+            "subscription_ended"
           ]
         },
         "refusal": {
@@ -481,6 +537,14 @@
         },
         "pipeline_run_id": {
           "$ref": "common.schema.json#/$defs/Id"
+        },
+        "cursor": {
+          "type": "string",
+          "description": "mcp_event only: the subscription position after this occurrence. Committed in the same transaction as the Firing, never before it."
+        },
+        "event_id": {
+          "type": "string",
+          "description": "mcp_event only: the server's eventId. A repeat within the same subscription is recorded as deduped without evaluating the filter."
         }
       },
       "required": [
@@ -499,7 +563,8 @@
           "type": "string"
         },
         "provider": {
-          "type": "string"
+          "type": "string",
+          "description": "For mcp_event sources, mcp:<server id>."
         },
         "type": {
           "type": "string"
@@ -517,16 +582,41 @@
         },
         "payload": {
           "type": "object"
+        },
+        "gap": {
+          "type": "boolean",
+          "description": "mcp_event only: true on the one event a gap Firing starts (triggers-and-runs.md §9a, on_gap: fire_gap). It carries no payload; the run reconciles from authoritative state through tools. Added 2026-11-23."
         }
       },
       "required": [
         "id",
         "provider",
         "type",
-        "at",
-        "payload"
+        "at"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "gap": {
+            "const": true
+          }
+        },
+        "required": [
+          "gap"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "payload"
+          ]
+        }
+      },
+      "else": {
+        "required": [
+          "payload"
+        ]
+      }
     }
   }
 }
