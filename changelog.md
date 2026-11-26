@@ -2,6 +2,12 @@
 
 All notable changes to this repository, grouped by day, newest first. Generated from git history.
 
+## 2026-11-26
+
+**Pointed the repo at the prompts glossary, on branch `claude/project-thread-oneclm`.** The `prompts` taxonomy in `jburnhams/taxonomies` reached stage 1 (in use) today, so this adds a `CLAUDE.md` telling agents and readers to use its preferred labels. No existing doc is renamed in this change.
+
+- `CLAUDE.md`: **new**. Links the glossary and facets, says to use heading words and add missing ones as `candidate` entries there, lists the common slips (agent vs. harness, mode, second model).
+
 ## 2026-11-23
 
 **Weekly research pass (scheduled), on branch `claude/project-thread-unyrt0`.** Asked to check tracked sources for changes, look for new projects and approaches from the last week or two, and fold the most relevant into Forge's design. Three findings mattered. MCP merged an Events extension (SEP-3415, 2026-11-19), so a server can say what can be watched and deliver it by poll, push or signed webhook with cursors, and OpenCode already drives automations from it. Claude Code 2.1.330 ships `/steward`, the most detailed published rule set for watching a PR unattended. And three projects tightened what an agent's posts may contain (mentions, closing keywords, CI directives, disclosure first). The branch starts from PR #48's branch, which was still open, so the 2026-11-16 changes appear in this PR's diff until #48 merges.
