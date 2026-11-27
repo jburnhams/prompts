@@ -89,9 +89,9 @@ execution is consolidated into a single summary in your history."
   the easiest 25%" framing, a similar quantified-threshold instinct
   applied to a different decision).
 - **Explicit concurrency-safety mandate, phrased as a hard rule**: "You
-  should NEVER run multiple sub-agents in a single turn if their
+  should NEVER run multiple subagents in a single turn if their
   abilities mutate the same files or resources... Only run multiple
-  sub-agents in parallel when their tasks are independent... or if
+  subagents in parallel when their tasks are independent... or if
   parallel execution is explicitly requested by the user." This is a
   file-conflict-aware version of the generic "batch independent tool
   calls" instruction most sources give for ordinary tools — here scoped

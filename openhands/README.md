@@ -109,7 +109,7 @@ became **three coexisting mechanisms**:
   call via `subagent_type` (default `"general-purpose"`), with a
   `resume: <task_id>` parameter to re-attach to a specific prior
   sub-agent conversation. Its tool description reads as closely
-  modeled on Claude Code's own Task tool phrasing ("Launch a sub-agent
+  modeled on Claude Code's own Task tool phrasing ("Launch a subagent
   to handle complex, multi-step tasks autonomously... each delegation
   has overhead — use them when the task genuinely benefits from a
   separate agent... A single grep, find, or cat command would answer

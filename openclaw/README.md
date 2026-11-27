@@ -505,7 +505,7 @@ half in `agent-self-verification.md`.
 - **The prompt says its own guardrails are advisory.**
   `docs/concepts/system-prompt.md`: "Safety guardrails in the system prompt
   are advisory, not enforcement. Use tool policy, exec approvals,
-  sandboxing, and channel allow lists for hard enforcement; **operators can
+  sandboxing, and channel allowlists for hard enforcement; **operators can
   disable prompt guardrails by design**." Rare candour.
 - **Approval UI is a channel capability.** On channels with native approval
   cards the prompt tells the model to rely on that UI first, and to include

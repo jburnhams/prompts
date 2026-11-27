@@ -511,7 +511,7 @@ a 1:1 correspondence with task lists (Team = TaskList)," and
 (`shutdown_request`/`shutdown_response`/`plan_approval_request`/
 `plan_approval_response`) match what had only been inferred before.
 This is a genuinely different shape from anything in the §7 table
-above — a **supervisor-worker structure layered as a tool-allow list
+above — a **supervisor-worker structure layered as a tool allow list
 policy over the same primitive as ordinary two-party delegation**
 (`COORDINATOR_MODE_ALLOWED_TOOLS` vs. `ASYNC_AGENT_ALLOWED_TOOLS`
 picking which policy applies), broadcast/direct/cross-session
@@ -545,7 +545,7 @@ exposes `agent(prompt, opts?)`, `pipeline(items, ...stages)`,
 script body with top-level await, gated behind the same user-opt-in rule
 ("ONLY when the user explicitly asks for a workflow or for large
 multi-agent orchestration … for one or two delegations, prefer plain
-sub-agent calls"). Four primitives with four matching names is not
+subagent calls"). Four primitives with four matching names is not
 convergent evolution; this is the second appearance of one design, and
 worth reading as such. Where it differs is instructive:
 
@@ -891,7 +891,7 @@ declares the tools; every role gets a subset".
 opposite directions, and are worth reading together because they agree
 on when each direction is right.
 
-**Anthropic, "Building agents: When to fold sub-agents into your main
+**Anthropic, "Building agents: When to fold subagents into your main
 agent loop"** (Diane Sarkis, claude.com, 2026-10-22; read through a
 summarising fetch). The Applied AI team's observation across enterprise
 deployments is that a single agent with progressively disclosed context

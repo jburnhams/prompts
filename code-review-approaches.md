@@ -77,7 +77,7 @@ one command that branches.
 ## 2. System prompt / preamble — what's sent before the diff
 
 *(Revised after a direct challenge to the first draft of this section —
-"surely running a full coding harness system prompt just to do a review is
+"surely running a full coding-agent system prompt just to do a review is
 massive context bloat, doesn't OpenCode have a leaner mode?" That's a
 fair question, and checking it properly surfaced a more interesting
 answer than the original version had. Findings and their sourcing below.)*

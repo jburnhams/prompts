@@ -469,7 +469,7 @@ explicitly since the vocabulary ("thinking," "reasoning") overlaps:
   channel** — Grok Build (leaked), `<task_completion_discipline>`'s
   rule 1, "Tool-call first, narration second": "Any past-tense or
   present-continuous prose describing an action ('I launched...', 'I'm
-  now reading...', 'The sub-agent is working on...') MUST be paired with
+  now reading...', 'The subagent is working on...') MUST be paired with
   the corresponding tool call in the same assistant response. If you
   end a turn with such a sentence but no tool call, the action did not
   happen." Every mechanism above governs *whether/how much* to narrate;

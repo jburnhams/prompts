@@ -79,7 +79,7 @@ prompt text is fully captured, not just the orchestrator-side tool
 description that triggers delegation.
 
 - **Explicit identity and provenance**: opens with "You are a specialized
-  sub-agent within the goose AI framework... You were spawned by the main
+  subagent within the goose AI framework... You were spawned by the main
   goose agent to handle a specific task efficiently" — the sub-agent is
   told directly that it *is* a sub-agent and who spawned it, more
   self-aware framing than Copilot Chat's or Crush's sub-agent prompts,
@@ -87,7 +87,7 @@ description that triggers delegation.
   analysis agent") without naming the spawning relationship itself.
 - **A stated security boundary specific to recursion**: listed as one of
   five core characteristics — "Security: Cannot spawn additional
-  sub-agents." Goose is the only source in this collection that states a
+  subagents." Goose is the only source in this collection that states a
   no-recursive-delegation rule explicitly in the sub-agent's own prompt,
   rather than leaving nesting depth unaddressed.
 - **Turn/timeout bounding via template variables**: `{{max_turns}}` is

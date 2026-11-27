@@ -1903,7 +1903,7 @@ Pre-approved executables (exact arguments are enforced at runtime; no approval p
 ```
 
 Capped at ten entries, filtered to allow list patterns containing a path
-separator or `~`, and wrapped in a `try/catch` because *"allow list
+separator or `~`, and wrapped in a `try/catch` because *"allowlist
 loading is best-effort; don't block tool creation."* Every other
 mechanism in this section varies a tool by *model family*, *capability*
 or *config*; this one varies it by the contents of a file the operator

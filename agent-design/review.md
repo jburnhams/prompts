@@ -863,7 +863,7 @@ counter-example, and a deliberate one: `dsh-code-review` contains **zero**
 mentions of sub-agents, delegation, or parallelism — one context runs
 `change-scope`, reads the diff and enough surrounding code, and reports.
 That is not a harness limitation. The same repo's
-`dsh-find-simplifications` says "use parallel sub-agents when the user
+`dsh-find-simplifications` says "use parallel subagents when the user
 asks for **breadth** or many candidates — give each agent a **domain**",
 and its `workflow` tool exists precisely for fan-out ("an audit over many
 files, a migration, multi-angle research, adversarial verification of
@@ -894,7 +894,7 @@ whole diff into every brief, so a specialist starts with the context
 already assembled and spends its tool calls only on code the diff points
 *at*. DeepSeek states the same principle for the one delegation it does
 brief carefully (`dsh-translate-docs`): "the briefing is the translator's
-whole working set — the sub-agent does not re-read the guidance corpus
+whole working set — the subagent does not re-read the guidance corpus
 and does not re-derive the diff."
 
 So multi-stage's real cost is not duplicated discovery. It is N× calls

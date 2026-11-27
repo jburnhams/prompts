@@ -42,7 +42,7 @@ This is the taxonomy the rest of the spec hangs on.
 | Delegate to the sub-model? | **no** | yes | yes |
 
 The last row is the one that stops this design from being "add a vision
-sub-agent." Delegation works when the image *answers a question* — "does the
+subagent." Delegation works when the image *answers a question* — "does the
 button render," "what does this error say." It is wrong when the image *is
 the requirement*: a mockup cannot be reduced to twenty tokens of answer
 without discarding the thing you needed it for. So vision is a **routing

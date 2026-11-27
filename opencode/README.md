@@ -87,7 +87,7 @@ purpose-built agent-session protocol.
 - **Tool ID is literally `"task"`.** Parameters: `description` (3-5
   word label), `prompt` (the task), `subagent_type`, an optional
   `task_id` ("resume a previous task... the task will continue the same
-  sub-agent session as before instead of creating a fresh one"), and —
+  subagent session as before instead of creating a fresh one"), and —
   gated behind an experimental flag — `background` ("Run the agent in
   the background. You will be notified when it completes. DO NOT sleep,
   poll, or proactively check on its progress").
@@ -119,7 +119,7 @@ purpose-built agent-session protocol.
 - **Custom sub-agents via Markdown files** — `{agent,agents}/**/*.md`
   with YAML frontmatter, functionally the same convention as Claude
   Code's `.claude/agents/*.md`, confirmed intentional: a code comment in
-  `config/markdown.ts` explicitly notes "other coding harnesses like claude
+  `config/markdown.ts` explicitly notes "other coding agents like claude
   code allow invalid yaml in their frontmatter."
 - **Recursion denied by default, not silently allowed**:
   `subagent-permissions.ts`'s `deriveSubagentSessionPermission()` denies
@@ -493,7 +493,7 @@ no distillation agent, but its per-model prompt family contains three
   It also carries the collection's clearest in-prompt rationale for why
   the file exists at all: "`README.md` files are for humans... `AGENTS.md`
   complements this by containing the extra, sometimes detailed context
-  coding harnesses need: build steps, tests, and conventions that might
+  coding agents need: build steps, tests, and conventions that might
   clutter a README."
 - **`default.txt`/`trinity.txt` use the ask-a-human variant**, word-for-
   word shared with Amp: "if you are unable to find the correct command,

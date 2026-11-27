@@ -98,7 +98,7 @@ Two things to take from it:
   already the safe direction. This is the escalate-only principle applied
   to agent effort rather than to a tier.
 - **The prompt names the repo's own risk surface.** "Treat any change
-  touching content sanitization, actor/bot allow lists, config restoration,
+  touching content sanitization, actor/bot allowlists, config restoration,
   prompt construction, or shell command construction as high-risk." This
   is a per-repo sensitive-path list written as prose, the same idea as the
   medium-tier examples in the post (caching, the auto-updater, system

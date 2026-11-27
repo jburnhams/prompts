@@ -831,7 +831,7 @@ is told, and the turn carries on." Five properties go with it:
   is the one route by which a tool call itself, rather than the model,
   asks a person something.
 - **It covers delegates.** It applies "in every kind of session,
-  sub-agents and agent teams included."
+  subagents and agent teams included."
 - **The repository cannot set it.** It is "Read from user settings,
   --settings and managed settings; project and local settings are
   ignored, and true in any of those sources wins." The same rule as

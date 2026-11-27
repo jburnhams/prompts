@@ -357,7 +357,7 @@ replaying history must not re-send the prompt by itself"
 `openhands-sdk/openhands/sdk/llm/llm.py`) raises `LLMNoResponseError`
 inside the retry boundary when the only choice has no text, no tool
 call and no reasoning. The commit gives the reason: returning it "would
-persist an empty agent message whose corrective steer does not break the
+persist an empty agent message whose corrective nudge does not break the
 stuck detector's agent streak". One exception: an empty answer with
 `finish_reason == "length"` is not retried, since a deterministic cut
 would only repeat. Claude Code's `empty_completion` (reworded in

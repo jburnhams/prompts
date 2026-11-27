@@ -738,7 +738,7 @@ it cannot be sure the deny held.
   independent-convergence case, the same signal this collection's
   other docs have repeatedly flagged for sub-agent protocols,
   compaction pipelines, and permission-classifier LLMs**: two
-  unrelated engineering teams solved "how do we let a coding harness
+  unrelated engineering teams solved "how do we let a coding agent
   edit files freely without real risk" with the same core idea (a
   hidden git repo used purely as a checkpoint engine) and diverged
   only on the details that reflect each product's own priorities —
