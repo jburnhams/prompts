@@ -17,14 +17,26 @@ Read it before writing a research doc or a design doc here.
   word instead.
 - If a concept you need has no entry, ask for one (below) rather than inventing a word
   here.
-- Stage 1 (the kernel words and the `area`, `decider` and `moment` facets) is in use from
-  2026-11-26. Each area (context, control, ...) gets its own words in a later stage.
+- In use: stage 1 (the kernel words; facets `area`, `decider`, `moment`) and stage 2, the
+  context area (facets `operation`, `content`, `reach`), from 2026-11-26; stage 3, the
+  control area (facets `target`, `response`), from 2026-11-27. The other areas (tool use,
+  coordination, output, verification, operations) get their own words in later stages;
+  until then use the kernel words and ask for the rest.
+- Existing docs are being renamed to the heading words; until that lands, older wording in
+  a doc you are not otherwise changing can stay.
 - Words inside stored prompts and sources (`leaked/`, `skills/`, each source folder's
   stored files) and Keel's schema identifiers keep their authors' wording.
 - Common slips: **agent** is a model configured to act, not a product; Claude Code,
   Codex and Goose are **harnesses**. "Mode" alone is ambiguous: say **permission mode**
   for the approval sense. A separate model that checks or helps is a **second model**
-  (judge, monitor, classifier and grader are its aliases).
+  (judge, monitor, classifier and grader are its aliases); one that holds an action until
+  it answers (Codex's Guardian, the auto-mode classifier) is a **blocking monitor**.
+- Changed 2026-11-27 (stage 3): a **steer** redirects the agent, and a **system reminder**
+  is the harness channel, which also carries notices that redirect nothing. An
+  **escalation** passes one decision up (to a person, a stricter check or a higher risk
+  tier); a **handoff** passes the work. A run's **authority** is what it may do; which
+  instruction wins is **precedence**. Clearing old tool results to fit the window is part
+  of **compaction**; cutting a result when it arrives is **truncation**.
 
 ### Looking up and asking for terms
 
