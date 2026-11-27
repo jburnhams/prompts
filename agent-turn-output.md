@@ -1,15 +1,15 @@
 # Turn output: session titles and reasoning display
 
 A further drill-down alongside [`agent-context-compaction.md`](./agent-context-compaction.md):
-a single LLM turn in a coding agent typically produces several distinct
+a single LLM turn in a coding harness typically produces several distinct
 things at once — narration text, tool calls, and (for reasoning models)
 thinking/chain-of-thought content — plus, separately, most products need
 a short label for the session/task itself somewhere in a history list or
 sidebar. The underlying mechanism that lets one API response carry
 interleaved text/tool-call/thinking blocks is a **model-API capability**
-every scaffold just consumes (Anthropic's Messages API, OpenAI's
+every harness just consumes (Anthropic's Messages API, OpenAI's
 Responses API, Gemini's `thinkingConfig` all expose this natively) — but
-what scaffolds *do* with that capability varies a lot: whether reasoning
+what harnesses *do* with that capability varies a lot: whether reasoning
 is shown by default or hidden until opted into, whether a session gets
 an AI-generated title at all or just the raw first message truncated,
 and how much prose narration the model is instructed to produce between
@@ -227,7 +227,7 @@ full reasoning hidden — a middle ground between "show everything" and
 
 Worth calling out specifically: OpenAI's own Responses API already
 returns a *summary* of reasoning, not raw chain-of-thought — that's an
-API-level design choice upstream of any scaffold. Codex then draws its
+API-level design choice upstream of any harness. Codex then draws its
 **own** separate raw-vs-summary distinction on top of that: `reasoning_effort`
 (how much the model reasons) and `model_reasoning_summary` (an enum —
 `Auto`/`Concise`/`Detailed`/`None`) are independently configurable, and
@@ -241,9 +241,9 @@ many independently configurable layers between "the model reasoned" and
 Claude Code's `redacted_thinking` blocks (Anthropic's API-level
 safety-redacted/encrypted reasoning content) render only as an opaque
 placeholder — this is the model provider withholding content from the
-scaffold entirely, not a display decision Claude Code itself makes.
+harness entirely, not a display decision Claude Code itself makes.
 Worth distinguishing from every other "hidden by default" row above,
-where the scaffold *has* the content and chooses not to show it.
+where the harness *has* the content and chooses not to show it.
 
 ### 2c. A magic keyword to boost reasoning budget — one source, worth flagging for a meta-reason
 
@@ -266,7 +266,7 @@ session.
 ### 2e. Devin's `<think>` tool — a third category this doc's native-vs-prompted split doesn't capture
 
 Every other finding in §2 is a native model-API reasoning mechanism
-with a visibility *toggle* the scaffold controls. Devin's leaked
+with a visibility *toggle* the harness controls. Devin's leaked
 `<think>` tool is neither that nor ordinary prompted narration (§3) —
 it's a **prompted tool call whose content is categorically invisible by
 design**, not gated behind a setting: "Freely describe and reflect on
@@ -276,7 +276,7 @@ here**, so you can think freely." Three properties set it apart:
 - **Structurally hidden, not defaulted-hidden** — nothing in the prompt
   describes a way to surface it; every other "hidden by default" row
   in the table above is a toggle on native reasoning content the
-  scaffold *has* and chooses not to show (§2b makes the same
+  harness *has* and chooses not to show (§2b makes the same
   distinction for Claude Code's provider-redacted content, for a
   different reason).
 - **Mandatory at named checkpoints, not just available** — a numbered
@@ -392,7 +392,7 @@ explicitly since the vocabulary ("thinking," "reasoning") overlaps:
   on top — but the channel names (`commentary`/`final`) are a direct
   match to OpenAI's Harmony/`gpt-oss` `analysis`/`commentary`/`final`
   taxonomy, worth flagging since Amp's own prompt states the underlying
-  model here is Claude, not an OpenAI model — evidence of a scaffold
+  model here is Claude, not an OpenAI model — evidence of a harness
   borrowing another vendor's turn-output vocabulary rather than a
   model-native mechanism carrying over. **A grounding data point for
   this, from a leaked, differently-provenanced Codex capture**:

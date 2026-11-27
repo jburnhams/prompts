@@ -1,6 +1,6 @@
 # Crush
 
-- **Type**: Coding agent (Charm's terminal AI coding agent)
+- **Type**: Coding harness (Charm's terminal AI coding harness)
 - **License**: FSL-1.1-MIT (source-available, converts to MIT after 2 years
   per version)
 - **Source**: https://github.com/charmbracelet/crush
@@ -196,7 +196,7 @@ confirmed in these prompt-only files.
   formatting issue." That "max 3 times" clause is a bounded-retry cap,
   unusually specific for a purely prompted (§7) mechanism.
 - **A mechanically-sourced input, worth distinguishing from a true
-  gate (§8-adjacent)**: when `.Config.LSP` is populated, tool output
+  gate (§8-adjacent)**: when `.Config.LSP` is populated, tool result
   automatically includes lint/typecheck diagnostics alongside normal
   results — a real non-LLM signal injected into context — but nothing
   in the captured prompt blocks completion if the model just ignores

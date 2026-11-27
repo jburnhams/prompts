@@ -13,7 +13,7 @@ A TypeScript monorepo — 51 package groups, ~7,400 files — built on a
 vendored copy of [Cordis](https://github.com/cordiverse/cordis), a
 dependency-injection/plugin framework. The organising claim is
 "**everything is a plugin**": the tool registry, the system-prompt
-assembler, the sandbox, compaction, subagents, plan mode and the agent
+assembler, the sandbox, compaction, sub-agents, plan mode and the agent
 loop itself are all Cordis plugins registered through `ctx.effect()`, and
 a deployment is a `cordis.yml` file naming which ones to load.
 

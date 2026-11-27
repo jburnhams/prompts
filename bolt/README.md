@@ -36,7 +36,7 @@ a browser.
   says to prefer Node.js scripts over shell scripts since "the environment
   doesn't fully support shell scripts."
 - **Search**: none of the usual text-search tools (`grep`, `find`, `rg`)
-  are in the shell allowlist — search has to be done via Node scripting
+  are in the shell allow list — search has to be done via Node scripting
   or `head`/`tail`/`sort` pipelines instead.
 - **Code execution**: `python3` is present but explicitly **standard-library
   only** — "there is NO `pip` support," and "even some standard library
@@ -47,7 +47,7 @@ a browser.
 - **Editing**: no dedicated edit tool — `<boltAction type="file">` carries
   the **complete file contents**, not a diff, matching the whole-file-rewrite
   pattern common to this collection's app-builder archetype.
-- **Browser/web**: `curl` is in the allowlist (network access from inside
+- **Browser/web**: `curl` is in the allow list (network access from inside
   the sandbox), but no browser-automation/screenshot tool.
 - **Multimodal**: not addressed.
 - **Sandbox/isolation**: the sandbox *is* the whole runtime — StackBlitz's

@@ -141,11 +141,11 @@ are all about the *runtime's* limits rather than about design:
   for any reason, don't use artifacts and use regular code blocks
   instead, which will not attempt to render the component."*
 
-The pinned `lucide-react@0.263.1` and the single-CDN allowlist are the
-same shape of constraint as the Artifact tool's CSP allowlist
+The pinned `lucide-react@0.263.1` and the single-CDN allow list are the
+same shape of constraint as the Artifact tool's CSP allow list
 (`cdnjs`, `jsdelivr/npm`, `cdn.tailwindcss.com`, `code.jquery.com`,
 Google Fonts, nothing else). Two independent artifact runtimes, two
-allowlists, both centred on cdnjs.
+allow lists, both centred on cdnjs.
 
 `recharts` being in the allowed set is the answer to "how does this host
 draw a chart": the model writes JSX against a charting library the

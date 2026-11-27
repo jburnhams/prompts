@@ -208,8 +208,8 @@ The principles behind that division:
    request (report, an unlisted source, a multi-step question) is read once at
    turn 0, so it goes in the prompt. The rule that depends on a result (no
    rows, a repeated error) is only visible after the result, so it goes in the
-   result as a harness note. The advisor docs bear this out: a turn-2 nudge
-   raised a Haiku executor's pass rate by about 7 points, a nudge that came
+   result as a harness note. The advisor docs bear this out: a turn-2 steer
+   raised a Haiku executor's pass rate by about 7 points, a steer that came
    later than the model's natural first call cost 3–4, and extra under-calling
    fixes on Opus were net flat because they caused over-calling elsewhere.
    Timed at the moment of need is the version that does not backfire.
@@ -288,7 +288,7 @@ an objective signal. These are checks Forge already makes plus a few cheap ones:
 Rules:
 
 - **`Expand` is free to use within a run; `HandOff` is bounded.** At most two
-  hand-offs per request (`quick → investigate → report` is the longest chain),
+  handoffs per request (`quick → investigate → report` is the longest chain),
   never in a loop. The ledger's attempt budget still bounds everything.
 - **Escalation is clamped by config.** A deployment sets the highest tier a
   request may reach. A model cannot raise it, and neither can anything it read.

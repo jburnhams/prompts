@@ -47,12 +47,12 @@ only `import(` hits are JSDoc type annotations. The engine parses SQL to
 an AST and walks it. **Model-written SQL never becomes JavaScript**,
 which is a materially smaller surface than any harness that hands model
 output to an interpreter (`../../agent-data-analysis.md` §10b's
-allowlist problem does not arise, because there is nothing to allow).
+allow list problem does not arise, because there is nothing to allow).
 
 **3. The SQL is read-only by construction.** No `INSERT`, `UPDATE`,
 `DELETE`, `CREATE` or `DROP` exists in the grammar. Compare
 [`../postgres-mcp/`](../postgres-mcp), which achieves the same end by
-parsing with `pglast` and validating against an allowlist of statement
+parsing with `pglast` and validating against an allow list of statement
 node types — necessary there, because the engine underneath can write.
 
 **4. Cell-level laziness makes an `llm()` UDF affordable.** Rows are

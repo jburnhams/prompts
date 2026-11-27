@@ -1,22 +1,22 @@
 # Data-analysis agents: harnesses, tools and techniques
 
 Read from source across thirteen harnesses in
-[`data-agents/`](./data-agents), plus the coding agents already in this
+[`data-agents/`](./data-agents), plus the coding harnesses already in this
 collection. The question behind it: **this repo's design
 ([`agent-design/`](./agent-design)) covers coding and review. What would
 it take to cover data analysis in the same framework — and what, if
 anything, is genuinely different?**
 
 The short answer is that less is different than expected, and the
-differences are sharper than expected. A data agent is not a coding agent
+differences are sharper than expected. A data agent is not a coding harness
 with pandas in the prompt. Four things change, and they change together:
 
 1. **The agent's work product is not a diff.** It is an answer, a chart,
    a table, a report — an *artifact* that has to be rendered by something
-   and looked at by someone. Coding agents can pretend their output is
+   and looked at by someone. Coding harnesses can pretend their output is
    text; data agents cannot.
 2. **The interesting state lives in a running process, not on disk.** A
-   coding agent's world is the working tree, which it can re-read at any
+   coding harness's world is the working tree, which it can re-read at any
    time. A data agent attached to a kernel has a namespace it cannot see,
    which drifts from its own transcript every turn.
 3. **The data is too big to look at, always.** A repository fits in a
@@ -49,7 +49,7 @@ Everything below is organised around those.
 ## 1. What the category actually is
 
 [`agent-archetypes.md`](./agent-archetypes.md) sorts this collection's
-coding agents into six archetypes on two axes (who drives the loop; how
+coding harnesses into six archetypes on two axes (who drives the loop; how
 fixed the role structure is). The data agents do not land in new
 archetypes — they land in the *same* ones, which is the first useful
 finding:
@@ -72,7 +72,7 @@ Two pieces of ecological context before the mechanics, because they
 affect how much of this is readable at all:
 
 - **Open Interpreter — the archetypal "chat with your data by running
-  code" project — is now a Rust coding agent.** `main` at `2885d0d`
+  code" project — is now a Rust coding harness.** `main` at `2885d0d`
   (2026-09-08) is a Codex-derived harness optimised for low-cost models.
   The Python code interpreter last shipped in `v0.4.2` (2024-10-24).
 - **Positron Assistant left the open-source tree.** The Positron repo now
@@ -127,7 +127,7 @@ queue on success, discard on raise); deletes are destructive and the
 skill tells the agent to query `ctx.graph.descendants(cid)` first. That
 **blast-radius query before a destructive operation** is the single most
 portable idea in the notebook section, and nothing in this collection's
-coding agents has an equivalent.
+coding harnesses has an equivalent.
 
 ### 2b. The chart canvas
 
@@ -459,7 +459,7 @@ And the honesty marker: Data Formulator's third backend is named
 `not_a_sandbox.py`. A file called `local_sandbox.py` and a file called
 `unsafe_local.py` get chosen differently in a hurry.
 
-Note that the *prompt-level* allowlist and the *enforcement-level* one
+Note that the *prompt-level* allow list and the *enforcement-level* one
 are deliberately not identical. Data Formulator's prompt bans matplotlib;
 the audit hook does not. The ban on drawing is a product decision, not a
 security one, and conflating them would make both harder to reason about.
@@ -599,7 +599,7 @@ Three things transfer beyond MATLAB:
   Functionality is licensed per toolbox, so what the model can write
   depends on this machine's licence. Rather than guessing, it asks. The
   Python equivalent — "which libraries are available" — is universally
-  answered by a static allowlist in the prompt, which is a static answer
+  answered by a static allow list in the prompt, which is a static answer
   to a dynamic question.
 - **The self-referential warning.** *"Do not use `restoredefaultpath` as
   it will remove the MCP server functions from the path and break this
@@ -937,7 +937,7 @@ For a framework that wants to cover the whole range:
 
 ## 8. Grounding: schema, semantics, verified queries
 
-The failure mode a data agent has that a coding agent does not: it can
+The failure mode a data agent has that a coding harness does not: it can
 write *syntactically valid, successfully-executing* code against columns
 that mean something other than what it assumed.
 
@@ -1007,7 +1007,7 @@ the requirement that verified SQL be written against the *logical* names.
 That is retrieval-augmented generation with a human-curated corpus, and
 the thing that makes it work is not the retrieval — it is that someone
 had to write down what "active customer" means. Vanna 1.x was open-source
-RAG over exactly this shape; Vanna 2.0 moved to a general agent framework
+RAG over exactly this shape; Vanna 2.0 moved to a general agent SDK
 and the semantic layer became a deployment concern.
 
 The framework consequence: **a data mode needs a place to put
@@ -1022,7 +1022,7 @@ semantics.
 
 ## 9. Verification, and what "wrong" looks like
 
-A coding agent can run the tests. A data agent has three verification
+A coding harness can run the tests. A data agent has three verification
 signals, all weak, and the sources use them unevenly.
 
 ### 9a. It ran
@@ -1140,18 +1140,18 @@ a reader, it skips a confirmation.**
 ### 10b. Read-only SQL, done right and done wrong
 
 **Done right** — Postgres MCP's `SafeSqlDriver` parses with `pglast`
-(Postgres's own parser) and validates against an allowlist of *statement
+(Postgres's own parser) and validates against an allow list of *statement
 node types* — `SelectStmt`, `ExplainStmt`, `VariableShowStmt`,
 `VacuumStmt`, `DeclareCursorStmt`, `FetchStmt`, `ClosePortalStmt`,
 `PrepareStmt`, `DeallocateStmt`, `CreateExtensionStmt` — **plus an
-allowlist of functions**, because `SELECT pg_read_file('/etc/passwd')` is
+allow list of functions**, because `SELECT pg_read_file('/etc/passwd')` is
 a perfectly good `SelectStmt`. Plus a 30-second timeout, because
 read-only is not the same as harmless on a shared warehouse.
 
 **Done less right** — PandasAI's `is_sql_query_safe` matches
 `[r"\bINSERT\b", r"\bUPDATE\b", r"\bDELETE\b", r"\bDROP\b", …]`. A
 blocklist of keywords must anticipate every dangerous construct; an
-allowlist of node types enumerates the safe ones, which is a much shorter
+allow list of node types enumerates the safe ones, which is a much shorter
 and much more stable list.
 
 **And Vanna's dispatch is not a safety mechanism at all**:
@@ -1190,7 +1190,7 @@ Two patterns ship side by side in Open Interpreter's profiles, and the
 contrast is instructive:
 
 - `llama31-database.py` interpolates the **DSN, including any password,
-  into the system message** — so it is in every request, every log and
+  into the system prompt** — so it is in every request, every log and
   any transcript.
 - `snowpark.yml` teaches the model to read credentials **from the
   environment inside the executed code**.

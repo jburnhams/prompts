@@ -8,7 +8,7 @@
 
 Vanna 1.x was a RAG-over-SQL library: embed schema and example queries,
 retrieve, generate SQL, run it. 2.0 is a different program — a tool-using
-agent framework with a **dual-channel result type**, a component system
+agent SDK with a **dual-channel result type**, a component system
 for rendering, and capabilities injected by the host.
 
 It earns its place here for one function. `RunSqlTool.execute` is the

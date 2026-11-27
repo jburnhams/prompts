@@ -1,6 +1,6 @@
 # Augment SWE-bench Verified Agent
 
-- **Type**: Coding agent (SWE-bench Verified benchmark agent — same category
+- **Type**: Coding harness (SWE-bench Verified benchmark agent — same category
   as `swe-agent/` and `openhands/` in this collection, not to be confused
   with `leaked/augment-code/`, which is a leaked snapshot of Augment's
   separate commercial IDE product)

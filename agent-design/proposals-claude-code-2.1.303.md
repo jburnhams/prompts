@@ -118,7 +118,7 @@ it "separates the worker that read untrusted input … from the worker
 that executes the privileged action".
 
 **What Forge does.** A resumed run inherits the suspended run's full
-transcript, untrusted PR text and tool output included, plus the reply
+transcript, untrusted PR text and tool result included, plus the reply
 (`formats.md` §5).
 
 **Proposal.** Split `AskUser` by kind:

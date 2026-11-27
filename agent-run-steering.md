@@ -34,7 +34,7 @@ grader do, and that changes several of the answers below.
 ### 2a. Which channel the text goes in
 
 - **Harness-authored fixed text goes in as a system prompt.** Pydantic's
-  reminders and loop nudges, Claude Code's reminders, and Keel's harness
+  reminders and loop steers, Claude Code's reminders, and Keel's harness
   notes (in their own field of a tool result, `agent-design/models.md`
   §2) are all the harness speaking.
 - **Model-authored text goes in as user-channel data.** Pydantic's
@@ -82,7 +82,7 @@ and deleting an old one invalidates later thinking blocks.
 
 ### 2e. Whether it blocks the run
 
-- Reminders, nudges and notices: no extra call, nothing to block on.
+- Reminders, steers and notices: no extra call, nothing to block on.
 - The **trajectory judge runs concurrently**: the agent keeps going and
   the steer lands on a later request. A tick that finds the last
   evaluation still running is skipped. Under durable execution it is
@@ -130,7 +130,7 @@ pasted unframed into its prompt.
 ## 4. Consequences for Forge
 
 - Forge has the rule-based end already: monitors with fixed harness
-  notes, the completion gate's checklist, the final-turn nudge. It has
+  notes, the completion gate's checklist, the final-turn steer. It has
   rejected a model judge at completion for v1.
 - The cheapest import is not a judge at all: dcode's **criteria frozen
   before the work** gives Forge's existing completion audit a fixed list

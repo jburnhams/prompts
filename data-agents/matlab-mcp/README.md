@@ -51,7 +51,7 @@ functionality is licensed per toolbox, so what the model can write
 depends on what is installed *on this machine, under this licence*.
 Rather than guessing and failing, the model asks. The equivalent for
 Python is the import list, which every harness in this folder handles by
-declaring an allowlist in the prompt — a static answer to a question that
+declaring an allow list in the prompt — a static answer to a question that
 is dynamic.
 
 **`check_matlab_code` is a linter, exposed separately from execution and

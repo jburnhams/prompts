@@ -503,11 +503,11 @@ credentials:
 - **Host allowlist before connection**, credentials attached per-host and
   never carried across a redirect.
 - **Redirects followed manually, revalidating each hop** against the host
-  allowlist and an IP block-list (loopback, private, link-local, multicast,
+  allow list and an IP block-list (loopback, private, link-local, multicast,
   reserved), with a hop cap. Automatic redirect following is how a host
   check gets bypassed. **Redirect policy is a three-value choice**, not a
   boolean — `allowlisted`, `same-origin`, `none` — because "follow
-  redirects" and "follow them anywhere the allowlist permits" are
+  redirects" and "follow them anywhere the allow list permits" are
   different postures and a deployment should be able to pick the
   narrower one ([`cloudflare.md`](./cloudflare.md) §2d).
 - **The block-list has two traps that are silent when got wrong**, both

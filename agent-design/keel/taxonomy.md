@@ -245,7 +245,7 @@ Visibility never grants.
 
 **Harness check.** Enforcement at the tool boundary for every agent,
 which no grant can remove: sanitiser, git-write blocklist,
-read-before-edit, secret scan, egress allowlist and so on.
+read-before-edit, secret scan, egress allow list and so on.
 *Where:* `tools.checks`.
 *Not:* a **completion check** (§5).
 

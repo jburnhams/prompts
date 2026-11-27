@@ -194,7 +194,7 @@ the hard part of learning from human review is refusing to extract.
 
 **[→ `openclaw/`](./openclaw)** — OpenClaw 2.0 (`v2026.8.1`, MIT, read
 2026-08-31): a messaging **gateway with a personal assistant in it** that
-grew a coding agent as one of its surfaces, and by far the largest source
+grew a coding harness as one of its surfaces, and by far the largest source
 here (35,739 files, 159 plugins, 747 doc pages). The inversion is what
 makes it interesting — a coding turn is one mode among many, so the prompt
 is assembled per *surface* from ~60 runtime parameters with a **declared
@@ -213,7 +213,7 @@ lines. Alongside it, **Swarm** takes the field's strongest position on
 orchestration — *"There is no graph DSL and no separate workflow format.
 The program is the orchestration"* — with `Promise.all`/`while`/
 `Promise.race` as the control flow, JSON-Schema-validated child results
-with one corrective nudge, and collector approvals that **fail closed into
+with one corrective steer, and collector approvals that **fail closed into
 data the program can branch on**. Other firsts: an **allow-or-escalate**
 model in the exec-approval path (it cannot deny, so a compromised reviewer
 degrades to asking a human); **compaction that fails closed** after
@@ -275,14 +275,14 @@ entry, `gpt-6-astra`, is also the first model here whose entire tool
 surface is one JavaScript-execution tool (`tool_mode: "code_mode_only"`).
 
 **[→ `coding-agent-approaches.md`](./coding-agent-approaches.md)** — the
-companion doc, one level down: a comparison of the *full* coding-agent
+companion doc, one level down: a comparison of the *full* coding harness
 system prompts themselves (identity, per-model variants, environment
 injection, tool-use policy, code-editing format, planning, project-memory
 files, safety, communication style), with particular focus on OpenHands,
 OpenCode, Codex, Claude Code, and Cursor.
 
 **[→ `agent-tool-surfaces.md`](./agent-tool-surfaces.md)** — a further
-drill-down focused specifically on *what tools each scaffold actually
+drill-down focused specifically on *what tools each harness actually
 gives the model*: shell type/persistence, search tooling, code execution,
 browser/web access, multimodal handling, async/background execution,
 persistent memory & deployment, sandbox/isolation, and extensibility
@@ -516,7 +516,7 @@ of a content block, not of a tool call.**
 
 **[→ `agent-subagent-architectures.md`](./agent-subagent-architectures.md)**
 — a companion drill-down on one specific tool-surface capability: when
-and how a scaffold spawns another agent. Covers delegation triggers,
+and how a harness spawns another agent. Covers delegation triggers,
 calling protocol (stateless tool-call vs. persistent addressable child
 vs. shared-conversation handoff vs. async background process vs.
 multi-party orchestration topologies), whether the sub-agent gets its
@@ -528,7 +528,7 @@ Magentic), a structurally different N-party design found nowhere else
 in the collection.
 
 **[→ `agent-context-compaction.md`](./agent-context-compaction.md)** —
-a further drill-down on how a scaffold survives running out of context
+a further drill-down on how a harness survives running out of context
 mid-task, across 21 sources: trigger model (proactive token-threshold
 checks vs. reactive-on-API-error vs. manual commands vs. Cline's
 model-proposes/user-approves third shape), prompt shape (free text vs.
@@ -582,7 +582,7 @@ standing open question about `update_topic`: it is a progress-narration
 channel, not a session-title generator.
 
 **[→ `agent-self-verification.md`](./agent-self-verification.md)** — a
-further drill-down on how (and whether) a scaffold checks its own work
+further drill-down on how (and whether) a harness checks its own work
 before calling a task done, distinct from `code-review-approaches.md`
 (which is about reviewing *someone else's* PR). Covers: the shared
 "reproduce bug → fix → verify → edge cases → submit" workflow template
@@ -597,7 +597,7 @@ Agent Framework's `with_judge()` nudge-not-restart pattern), the
 OpenCode's `/review` command are general diff-review utilities, not
 self-checks), hook-based user-configured gates (Claude Code's `Stop`
 hooks — the one such mechanism actually shipped externally, alongside a
-leaked internal-only adversarial verification subagent), and Jules's
+leaked internal-only adversarial verification sub-agent), and Jules's
 per-action mandatory verification, hidden pre-commit tool, and
 Playwright-screenshot-as-proof frontend verification — the most
 granular self-review discipline found anywhere in this collection. A
@@ -612,7 +612,7 @@ exceptions" language — without any confirmed code-level enforcement
 PR-draft-state gate).
 
 **[→ `agent-permissions-approval.md`](./agent-permissions-approval.md)**
-— a further drill-down on how a scaffold decides whether an action
+— a further drill-down on how a harness decides whether an action
 needs a human first, across 21 sources. This turned out to be the
 richest single doc in the whole collection: Codex CLI's permission
 architecture is not one mechanism but five cooperating subsystems
@@ -632,7 +632,7 @@ third, independently-converged instance of the same idea —
 also confirmed **ant-gated** (excluded from the externally-available
 mode set), the same internal-only pattern this collection's
 self-verification doc found for Claude Code's adversarial verification
-subagent, now showing up a second time in an unrelated subsystem. Also
+sub-agent, now showing up a second time in an unrelated subsystem. Also
 covers: static-vs-LLM risk classification
 (OpenHands's genuinely pluggable choice between trusting the model's
 own self-tag or a separate Dockerized static analyzer), scope/
@@ -667,7 +667,7 @@ word-for-word match between Claude Code's leaked prompt and OpenCode's
 own base persona.
 
 **[→ `agent-memory-learning.md`](./agent-memory-learning.md)** — what a
-scaffold keeps *after* the session ends, across ~30 sources: the five
+harness keeps *after* the session ends, across ~30 sources: the five
 scope levels a fact can belong to (task, session, repo-shared,
 repo-private, user-global, org) and the two sources with explicit
 routing rules between them; who writes memory (the working model
@@ -684,7 +684,7 @@ files**, named `MEMORY.md` by three unrelated products; retrieval
 policy (Codex's "skip memory when the request is self-contained" plus a
 4–6-step search budget vs. Antigravity's "🚨 MANDATORY FIRST STEP");
 signal gates that make **no-op the encouraged default**; the memory tool
-surfaces and what each scaffold actually injects — including an exact
+surfaces and what each harness actually injects — including an exact
 read/write inversion between agents that can write memory but never
 fetch it (Cursor, Augment) and Codex, which reads freely but may not
 edit its own store, plus the two newest designs (Claude Code, Gemini
@@ -936,7 +936,7 @@ apart, and nine design rules.
 
 **[→ `agent-run-steering.md`](./agent-run-steering.md)** — what a
 harness says to a model while it works (2026-11-11): cadence reminders,
-loop nudges, pinned state notices, Pydantic AI's live trajectory judge
+loop steers, pinned state notices, Pydantic AI's live trajectory judge
 and Deep Agents' stop-time rubric grader, compared on channel, lifetime,
 cache placement, how a forged steer is told apart from a real one, and
 budget.
@@ -964,7 +964,7 @@ four things that actually differ (the work product has to be rendered;
 the interesting state lives in a process the agent cannot see; the data
 never fits, so every read is a projection; and running it proves
 nothing). Two pieces of ecological context frame the pass: **Open
-Interpreter's `main` is now a Rust coding agent** — the archetypal
+Interpreter's `main` is now a Rust coding harness** — the archetypal
 "chat with your data by running code" project last shipped its Python
 interpreter in `v0.4.2` — and **Positron Assistant has left Posit's
 open-source tree**, leaving only the call site
@@ -1053,7 +1053,7 @@ converged from four directions** — Cloudflare, Anthropic, Codex and
 DeepSeek, all four now covered in [`code-mode/`](./code-mode) — and that
 the two discovery answers are one idea bound to different substrates:
 Anthropic's filesystem of `.ts` wrappers makes **the tool catalogue a
-repository** a coding agent already knows how to read, while Cloudflare's
+repository** a coding harness already knows how to read, while Cloudflare's
 `search()`/`describe()` is what you use in a browser, where there is no
 filesystem. §4 re-derives the sandbox question under a **blast-radius
 threat model** (the model is careless, not hostile) and gets a different
@@ -1158,29 +1158,29 @@ primitive an agent has.
 
 | Folder | Project | Type | License |
 |---|---|---|---|
-| [`cline/`](./cline) | [Cline](https://github.com/cline/cline) | Coding agent (IDE extension) | Apache-2.0 |
-| [`aider/`](./aider) | [Aider](https://github.com/Aider-AI/aider) | Coding agent (terminal) | Apache-2.0 |
+| [`cline/`](./cline) | [Cline](https://github.com/cline/cline) | Coding harness (IDE extension) | Apache-2.0 |
+| [`aider/`](./aider) | [Aider](https://github.com/Aider-AI/aider) | Coding harness (terminal) | Apache-2.0 |
 | [`pr-agent/`](./pr-agent) | [PR-Agent / Qodo Merge](https://github.com/qodo-ai/pr-agent) | Code review agent | Apache-2.0 |
-| [`swe-agent/`](./swe-agent) | [SWE-agent](https://github.com/SWE-agent/SWE-agent) | Coding agent (issue resolver) | MIT |
-| [`openhands/`](./openhands) | [OpenHands](https://github.com/All-Hands-AI/OpenHands) | Coding agent (autonomous SWE) | MIT |
-| [`opencode/`](./opencode) | [OpenCode](https://github.com/anomalyco/opencode) | Coding agent (terminal, multi-provider) | MIT |
-| [`roocode/`](./roocode) | [Roo Code](https://github.com/RooCodeInc/Roo-Code) | Coding agent (VS Code extension, Cline fork) | Apache-2.0 |
-| [`copilot-chat/`](./copilot-chat) | [GitHub Copilot Chat](https://github.com/microsoft/vscode-copilot-chat) | Coding agent (VS Code agent mode + CLI) | MIT |
-| [`codex/`](./codex) | [Codex CLI](https://github.com/openai/codex) | Coding agent (OpenAI's terminal agent) — re-read 2026-09-12 at GPT-6; the prompt corpus is now a served catalog, see [`codex/model-catalog.md`](./codex/model-catalog.md) | Apache-2.0 |
-| [`goose/`](./goose) | [Goose](https://github.com/block/goose) | Coding agent (Block, CLI + desktop) | Apache-2.0 |
-| [`crush/`](./crush) | [Crush](https://github.com/charmbracelet/crush) | Coding agent (Charm, terminal) | FSL-1.1-MIT |
+| [`swe-agent/`](./swe-agent) | [SWE-agent](https://github.com/SWE-agent/SWE-agent) | Coding harness (issue resolver) | MIT |
+| [`openhands/`](./openhands) | [OpenHands](https://github.com/All-Hands-AI/OpenHands) | Coding harness (autonomous SWE) | MIT |
+| [`opencode/`](./opencode) | [OpenCode](https://github.com/anomalyco/opencode) | Coding harness (terminal, multi-provider) | MIT |
+| [`roocode/`](./roocode) | [Roo Code](https://github.com/RooCodeInc/Roo-Code) | Coding harness (VS Code extension, Cline fork) | Apache-2.0 |
+| [`copilot-chat/`](./copilot-chat) | [GitHub Copilot Chat](https://github.com/microsoft/vscode-copilot-chat) | Coding harness (VS Code agent mode + CLI) | MIT |
+| [`codex/`](./codex) | [Codex CLI](https://github.com/openai/codex) | Coding harness (OpenAI's terminal agent) — re-read 2026-09-12 at GPT-6; the prompt corpus is now a served catalog, see [`codex/model-catalog.md`](./codex/model-catalog.md) | Apache-2.0 |
+| [`goose/`](./goose) | [Goose](https://github.com/block/goose) | Coding harness (Block, CLI + desktop) | Apache-2.0 |
+| [`crush/`](./crush) | [Crush](https://github.com/charmbracelet/crush) | Coding harness (Charm, terminal) | FSL-1.1-MIT |
 | [`bolt/`](./bolt) | [Bolt.new](https://github.com/stackblitz/bolt.new) | AI app-building agent (browser) | MIT |
-| [`gemini-cli/`](./gemini-cli) | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | Coding agent (Google, terminal) | Apache-2.0 |
-| [`augment-swebench-agent/`](./augment-swebench-agent) | [Augment SWE-bench Agent](https://github.com/augmentcode/augment-swebench-agent) | Coding agent (SWE-bench Verified baseline) | MIT |
-| [`mini-swe-agent/`](./mini-swe-agent) | [mini-swe-agent](https://github.com/SWE-agent/mini-swe-agent) | Coding agent ("the 100 line" SWE-bench baseline) | MIT |
-| [`live-swe-agent/`](./live-swe-agent) | [Live-SWE-agent](https://github.com/OpenAutoCoder/live-swe-agent) | Coding agent (writes its own tools mid-task) | MIT |
-| [`composio-swekit/`](./composio-swekit) | [Composio SWE-Kit](https://github.com/ComposioHQ/composio) | Coding agent + PR review, multi-role framework | Apache-2.0 |
+| [`gemini-cli/`](./gemini-cli) | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | Coding harness (Google, terminal) | Apache-2.0 |
+| [`augment-swebench-agent/`](./augment-swebench-agent) | [Augment SWE-bench Agent](https://github.com/augmentcode/augment-swebench-agent) | Coding harness (SWE-bench Verified baseline) | MIT |
+| [`mini-swe-agent/`](./mini-swe-agent) | [mini-swe-agent](https://github.com/SWE-agent/mini-swe-agent) | Coding harness ("the 100 line" SWE-bench baseline) | MIT |
+| [`live-swe-agent/`](./live-swe-agent) | [Live-SWE-agent](https://github.com/OpenAutoCoder/live-swe-agent) | Coding harness (writes its own tools mid-task) | MIT |
+| [`composio-swekit/`](./composio-swekit) | [Composio SWE-Kit](https://github.com/ComposioHQ/composio) | Coding harness + PR review, multi-role framework | Apache-2.0 |
 | [`codeact-hyperlight/`](./codeact-hyperlight) | [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) | Tool-use pattern (CodeAct) + sandboxed execution, not a standalone agent | MIT |
-| [`pi-agent/`](./pi-agent) | [Pi](https://github.com/badlogic/pi-mono) | Coding agent (minimal terminal harness) | MIT |
-| [`zed/`](./zed) | [Zed](https://github.com/zed-industries/zed) | Coding agent (AI-native code editor's Agent Panel) | GPL-3.0-or-later / Apache-2.0 |
-| [`omp/`](./omp) | [OMP / Oh My Pi](https://github.com/can1357/oh-my-pi) | Coding agent (terminal; fork of `pi-agent/` with LSP/DAP wired in) | MIT |
-| [`librechat/`](./librechat) | [LibreChat](https://github.com/danny-avila/LibreChat) | Self-hosted chat UI + agent framework — stored for its **artifact channel** only | MIT |
-| [`cloudflare-agents/`](./cloudflare-agents) | [Cloudflare Agents SDK](https://github.com/cloudflare/agents) | Agent framework on Durable Objects — context blocks, a file+git sandbox API, skills with gated capabilities, Code Mode over raw CDP, fibers, dynamic agents, A2A and x402 — plus a source-led fourth pass covering what the docs do not say. **10 files** | MIT |
+| [`pi-agent/`](./pi-agent) | [Pi](https://github.com/badlogic/pi-mono) | Coding harness (minimal terminal harness) | MIT |
+| [`zed/`](./zed) | [Zed](https://github.com/zed-industries/zed) | Coding harness (AI-native code editor's Agent Panel) | GPL-3.0-or-later / Apache-2.0 |
+| [`omp/`](./omp) | [OMP / Oh My Pi](https://github.com/can1357/oh-my-pi) | Coding harness (terminal; fork of `pi-agent/` with LSP/DAP wired in) | MIT |
+| [`librechat/`](./librechat) | [LibreChat](https://github.com/danny-avila/LibreChat) | Self-hosted chat UI + agent SDK — stored for its **artifact channel** only | MIT |
+| [`cloudflare-agents/`](./cloudflare-agents) | [Cloudflare Agents SDK](https://github.com/cloudflare/agents) | Agent SDK on Durable Objects — context blocks, a file+git sandbox API, skills with gated capabilities, Code Mode over raw CDP, fibers, dynamic agents, A2A and x402 — plus a source-led fourth pass covering what the docs do not say. **10 files** | MIT |
 | [`agentic-sdks/`](./agentic-sdks) | [Deep Agents](https://github.com/langchain-ai/deepagents), [LangChain](https://github.com/langchain-ai/langchain), [Pydantic AI](https://github.com/pydantic/pydantic-ai) and others | Agent SDKs and harness libraries, read for harness mechanisms (rubric grader, goal criteria, trajectory judge, cache-bust detection, per-model profiles). **5 files** | MIT (all) |
 | [`telemetry/`](./telemetry) | [OTel GenAI conventions](https://github.com/open-telemetry/semantic-conventions-genai), [OpenInference](https://github.com/Arize-ai/openinference), harness and SDK telemetry code, platform docs | Agent telemetry: standards, harness and SDK implementations, storage, views, analysis, alerts, platform comparison, catalogue. **7 files** | Apache-2.0 (OTel, OpenInference); others as listed in `sources.md` |
 | [`mcp-apps/`](./mcp-apps) | [ext-apps](https://github.com/modelcontextprotocol/ext-apps), [MCP-UI](https://github.com/MCP-UI-Org/mcp-ui), host docs | MCP Apps: spec mechanics, host and SDK catalogue, data-analysis apps. **4 files** | ext-apps MIT moving to Apache-2.0; MCP-UI Apache-2.0 |
@@ -1199,7 +1199,7 @@ published by the vendor. 34 sources so far — see
 provenance and reliability. Most came in bulk from one community aggregator
 repo; a few (Factory/Droid, Lumo, **Jules**, **GitHub Copilot CLI**,
 **Grok Build**) from standalone gists/mirror-repo subfolders. Jules
-(Google's async coding agent) is worth flagging specifically: its leaked
+(Google's async coding harness) is worth flagging specifically: its leaked
 prompt has the most granular self-review discipline found anywhere in this
 collection — mandatory verification after *every* file-modifying action
 (not just before submission), plus a dedicated pre-commit tool, an explicit
@@ -1212,7 +1212,7 @@ in two embedding contexts (standalone terminal vs. inside VS Code), with a
 first-class SQL tool for todo tracking and cross-session memory not
 matched by any other source in this collection. See
 [`leaked/github-copilot-cli/README.md`](./leaked/github-copilot-cli/README.md).
-Grok Build (xAI's coding CLI, this collection's first xAI coding-agent
+Grok Build (xAI's coding CLI, this collection's first xAI coding harness
 coverage) is worth flagging for a different reason: several of its tool
 descriptions and behavioral rules are near-verbatim matches to Claude
 Code's own leaked tool descriptions (`Read`/`Edit`/`Write`, the Bash
@@ -1232,7 +1232,7 @@ alongside Bolt and Gemini CLI above.
 ## Skills / plugins
 
 A third category: Claude Code "skills"/plugins — small, self-contained
-prompts that define a single slash command or subagent (e.g. "review my
+prompts that define a single slash command or sub-agent (e.g. "review my
 uncommitted changes") rather than a whole standalone agent. Officially
 published, but licensing varies (MIT to Anthropic's source-available
 commercial terms) — see [`skills/README.md`](./skills/README.md).
@@ -1279,11 +1279,11 @@ data** rather than editing a repository. See
 
 | Folder | Project | Type | License |
 |---|---|---|---|
-| [`data-agents/open-interpreter/`](./data-agents/open-interpreter) | [Open Interpreter](https://github.com/OpenInterpreter/open-interpreter) `v0.4.2` | One `execute(language, code)` over ten backends — the archetype. `main` is now a Rust coding agent | AGPL-3.0 |
+| [`data-agents/open-interpreter/`](./data-agents/open-interpreter) | [Open Interpreter](https://github.com/OpenInterpreter/open-interpreter) `v0.4.2` | One `execute(language, code)` over ten backends — the archetype. `main` is now a Rust coding harness | AGPL-3.0 |
 | [`data-agents/jupyter-mcp/`](./data-agents/jupyter-mcp) | [Jupyter MCP Server](https://github.com/datalayer/jupyter-mcp-server) | 18 MCP tools over a live Jupyter server; cells and individual outputs as resources | BSD-3-Clause |
 | [`data-agents/data-formulator/`](./data-agents/data-formulator) | [Data Formulator](https://github.com/microsoft/data-formulator) | Chart-first analyst; inspection tools vs committing actions; the model may not draw | MIT |
 | [`data-agents/marimo/`](./data-agents/marimo) | [marimo](https://github.com/marimo-team/marimo) | Reactive notebook; four AI modes; a transactional agent API over the user's live kernel, and cell screenshots | Apache-2.0 |
-| [`data-agents/vanna/`](./data-agents/vanna) | [Vanna 2.0](https://github.com/vanna-ai/vanna) | Text-to-SQL as an agent framework; the dual-channel `ToolResult` | MIT |
+| [`data-agents/vanna/`](./data-agents/vanna) | [Vanna 2.0](https://github.com/vanna-ai/vanna) | Text-to-SQL as an agent SDK; the dual-channel `ToolResult` | MIT |
 | [`data-agents/metagpt-di/`](./data-agents/metagpt-di) | [MetaGPT Data Interpreter](https://github.com/FoundationAgents/MetaGPT) | Plan of typed tasks into one kernel; per-task-type guidance; a generated state-probe cell | MIT |
 | [`data-agents/lida/`](./data-agents/lida) | [LIDA](https://github.com/microsoft/lida) | summarise → goals → scaffold → six-dimension self-eval → repair | MIT |
 | [`data-agents/e2b/`](./data-agents/e2b) | [E2B Code Interpreter](https://github.com/e2b-dev/code-interpreter) | The sandbox; `e2b/data` and `e2b/chart` custom MIME types | Apache-2.0 / MIT |
@@ -1323,7 +1323,7 @@ itself (CC-BY 4.0), stored rather than just linked: *"Inside the Scaffold:
 A Source-Code Taxonomy of Coding Agent Architectures"*
 ([arXiv:2604.03515](https://arxiv.org/abs/2604.03515)). Does complementary
 analysis to this repo: instead of comparing prompt text, it compares the
-*scaffold/architecture code* around 13 open-source coding agents (control
+*scaffold/architecture code* around 13 open-source coding harnesses (control
 flow, tool interfaces, context management), grounded in specific file
 paths and commit hashes. A good companion read to
 [`coding-agent-approaches.md`](./coding-agent-approaches.md), and its

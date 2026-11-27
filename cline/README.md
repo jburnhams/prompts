@@ -1,6 +1,6 @@
 # Cline
 
-- **Type**: Coding agent (VS Code / JetBrains / CLI extension)
+- **Type**: Coding harness (VS Code / JetBrains / CLI extension)
 - **License**: Apache-2.0
 - **Source**: https://github.com/cline/cline
 - **Retrieved from tag**: [`v3.20.4`](https://github.com/cline/cline/tree/v3.20.4/src/core/prompts) (2026-07-10)
@@ -135,8 +135,8 @@ above:
   save space in the context window. Refer to the latest file read for
   the most up to date version of this file." Conceptually a narrow
   cousin of Claude Code's `microcompact` (heuristic placeholder
-  replacement of stale tool output) but limited to file-read results
-  specifically, not general tool output.
+  replacement of stale tool result) but limited to file-read results
+  specifically, not general tool result.
 - **Distinct from `new_task`** (above): `new_task` ends the current
   task and starts a genuinely new, separate conversation; these three
   mechanisms all operate *within* the same ongoing task, trimming its

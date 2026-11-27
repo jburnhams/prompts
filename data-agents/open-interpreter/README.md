@@ -19,7 +19,7 @@ skills directory and a Bazel build. The Python code-interpreter is gone
 from the default branch; `v0.4.2` is the last release that contains it.
 
 That direction of travel — the most famous open-source "chat with your
-data by running code" project ending up as a coding agent — is one of two
+data by running code" project ending up as a coding harness — is one of two
 data points in this folder about the category's gravity. The other is
 [`positron/`](../positron): Posit's data-science assistant leaving its
 open-source repository entirely.

@@ -30,4 +30,4 @@ pagination. `:verb` for actions.
 Two deliberate absences. There's **no endpoint that edits a published
 template**, and **no endpoint that changes a running run's spec**. The
 only things that act on a running run are `:stop` (which goes through
-the nudge) and a delegation revoke (which fails its next OBO call).
+the steer) and a delegation revoke (which fails its next OBO call).

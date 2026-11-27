@@ -38,7 +38,7 @@ not mention. Those are the useful part.
 
 | File | What |
 |---|---|
-| [`deepagents.md`](./deepagents.md) | Deep Agents SDK 0.7.35 and Deep Agents Code (`dcode`) 0.2.7: the middleware stack, harness profiles per model, the rubric grader, goal criteria drafting, skill-scoped tools, offload paths, fork subagents, and dcode's threat model |
+| [`deepagents.md`](./deepagents.md) | Deep Agents SDK 0.7.35 and Deep Agents Code (`dcode`) 0.2.7: the middleware stack, harness profiles per model, the rubric grader, goal criteria drafting, skill-scoped tools, offload paths, fork sub-agents, and dcode's threat model |
 | [`langchain-langgraph.md`](./langchain-langgraph.md) | LangChain 1.5 middleware (provider tool search, the LLM tool selector, the risk classifier, context editing) and the new `langchain.mcp` adapter (results, metadata, elicitation as an interrupt); LangGraph's durability modes and node replay |
 | [`pydantic-ai-harness.md`](./pydantic-ai-harness.md) | Pydantic AI's capability model and the Harness library's 80+ capabilities, read for the ones no other source has: the trajectory judge, cache-safe system reminders, cache-bust detection, the approval reviewer, step persistence with a tool-effect ledger, deferred tools |
 | [`other-sdks.md`](./other-sdks.md) | OpenAI Agents SDK (sandbox agents, manifests, memory), Claude Agent SDK, Microsoft Agent Framework's harness agent, CrewAI's LLM guardrail, LlamaIndex |

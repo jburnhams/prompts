@@ -1,6 +1,6 @@
 # Pi (Agent Harness)
 
-- **Type**: Coding agent (minimal terminal harness — "adapt pi to your
+- **Type**: Coding harness (minimal terminal harness — "adapt pi to your
   workflows, not the other way around")
 - **License**: MIT
 - **Source**: https://github.com/badlogic/pi-mono (`packages/coding-agent`)

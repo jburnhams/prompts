@@ -515,7 +515,7 @@ theoretical.
 This is also the pass's third independent sighting of this collection's
 **built-but-not-switched-on** pattern in Claude Code, after
 `yoloClassifier` (`agent-permissions-approval.md`) and the adversarial
-verification subagent (`agent-self-verification.md`). The methodological
+verification sub-agent (`agent-self-verification.md`). The methodological
 note from `agent-tool-implementations.md` holds: source-reading
 establishes what was built; probing establishes what is switched on.
 

@@ -7,7 +7,7 @@
   `packages/opencode/src/cli/cmd/github.*.ts` (2026-07-10)
 
 Added after a direct question about whether OpenCode has a "pure review
-mode" distinct from its general coding agent. Short answer, confirmed by
+mode" distinct from its general coding harness. Short answer, confirmed by
 reading the actual source below: **not by default.** The action is a thin
 wrapper (`action.yml`) that installs the CLI and runs `opencode github
 run`; the real logic is in `github.handler.ts`.
@@ -20,7 +20,7 @@ it:
 
 > `// agent is omitted - server will use default_agent from config or fall back to "build"`
 
-"build" is OpenCode's main, general-purpose, edit-capable coding agent —
+"build" is OpenCode's main, general-purpose, edit-capable coding harness —
 the same one documented in [`../../opencode/`](../../opencode), full of
 tool-use instructions, coding conventions, and edit permissions that have
 nothing to do with reviewing. There *is* a read-only "Plan" agent

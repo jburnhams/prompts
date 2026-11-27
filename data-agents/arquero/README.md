@@ -111,7 +111,7 @@ path ends in **code generation**: the verified AST is compiled to a
 function. The safety therefore rests on the completeness of the
 verifier rather than on the absence of an interpreter, which is a
 strictly weaker position (`../../agent-data-analysis.md` §10b makes the
-same allowlist-versus-absence argument about SQL).
+same allow-list-versus-absence argument about SQL).
 
 For a harness, the practical consequence is that **Arquero expressions
 are model-writable, `aq.escape` is not** — and that distinction has to be
@@ -141,7 +141,7 @@ model-backed UDF.
 And for the specific question of what a model should write, SQL has an
 advantage that has nothing to do with capability — a model that emits
 SQL is emitting a string that the harness can plan, inspect, cost and
-allowlist *before execution*
+allow list *before execution*
 ([`squirreling-mcp`](../hyperparam/squirreling-mcp-tools.md) already
 walks the plan for scan nodes). A chained verb expression has to be
 parsed by the library to learn the same things, and the library parses it

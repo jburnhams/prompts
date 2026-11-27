@@ -122,7 +122,7 @@ Five things fall out of this table:
    protocol over.
 2. **The cost tracks the character mix, not the size.** Prose is cheap to
    escape; code with tabs, quotes and backslashes is twice as expensive.
-   The payloads a coding agent handles are the expensive ones — which is
+   The payloads a coding harness handles are the expensive ones — which is
    why this reads as a bigger problem to agent authors than the average
    number suggests.
 3. **Double-encoding is where it starts to hurt** (1.48×), and
@@ -349,7 +349,7 @@ The SDK's MCP adapter (`tools.ts`) wraps each server tool with
 `createTool({ … execute: () => provider.callTool(…) })` and returns the
 `CallToolResult` **as the tool's output, untyped**. There is no MCP-aware
 flattening at this layer at all. Downstream, in
-`session/persisted-tool-result-content.ts`, a tool output becomes the
+`session/persisted-tool-result-content.ts`, a tool result becomes the
 `content` of a `tool_result` message (`llms/messages.ts`: `content: string
 | Array<TextContent | ImageContent | FileContent>`) by this rule:
 
@@ -401,7 +401,7 @@ posture against exactly this.
 Documented rather than source-read (`code.claude.com/docs/en/mcp`, read
 2026-08-21).
 
-- warning at **10,000 tokens** of MCP tool output (threshold fixed);
+- warning at **10,000 tokens** of MCP tool result (threshold fixed);
 - default cap **25,000 tokens**, raised with `MAX_MCP_OUTPUT_TOKENS`;
 - per-tool opt-out: a server sets `_meta["anthropic/maxResultSizeChars"]`
   in its `tools/list` entry, which raises that tool's threshold up to a
