@@ -1,6 +1,6 @@
 # OpenHands (formerly OpenDevin)
 
-- **Type**: Coding agent (autonomous software engineer)
+- **Type**: Coding harness (autonomous software engineer)
 - **License**: MIT
 - **Source**: https://github.com/All-Hands-AI/OpenHands
 - **Retrieved from tag**: [`0.60.0`](https://github.com/All-Hands-AI/OpenHands/tree/0.60.0/openhands/agenthub/codeact_agent/prompts) (2026-07-10)
@@ -109,7 +109,7 @@ became **three coexisting mechanisms**:
   call via `subagent_type` (default `"general-purpose"`), with a
   `resume: <task_id>` parameter to re-attach to a specific prior
   sub-agent conversation. Its tool description reads as closely
-  modeled on Claude Code's own Task tool phrasing ("Launch a subagent
+  modeled on Claude Code's own Task tool phrasing ("Launch a sub-agent
   to handle complex, multi-step tasks autonomously... each delegation
   has overhead — use them when the task genuinely benefits from a
   separate agent... A single grep, find, or cat command would answer
@@ -339,7 +339,7 @@ controller code that enforces it.
 - **Scope/persistence**: risk assessment runs per-action, every time —
   no persistent "remember this decision" cache was found in the
   controller; `confirmation_mode` itself is a session/config-level
-  toggle, not a per-rule persisted allowlist.
+  toggle, not a per-rule persisted allow list.
 - **Distinct, narrower prompted rules also present in `system_prompt.j2`**:
   a `<SECURITY>` block on credential use ("Only use GITHUB_TOKEN and
   other credentials in ways the user has explicitly requested and would
@@ -350,7 +350,7 @@ controller code that enforces it.
   a new plan and confirm with the user before proceeding" on major
   issues is likewise a prompted, non-structural escalation trigger —
   detecting a "major issue" is left entirely to the model's judgment.
-- No PreToolUse-equivalent hook mechanism or rule-file/allowlist
+- No PreToolUse-equivalent hook mechanism or rule-file/allow list
   concept exists in the local `.j2` files — the entire enforcement
   layer lives in `agent_controller.py`, mirroring Claude Code's split
   between silent prompt text and harness-internal gating, except that

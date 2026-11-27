@@ -76,7 +76,7 @@ summarization tool in either captured version — see
 
 ## 1. What triggers compaction
 
-The clearest three-way split: does the scaffold compact **proactively**
+The clearest three-way split: does the harness compact **proactively**
 (a token-budget check run before it's actually a problem), **reactively**
 (only after the API rejects an oversized request), or does it require a
 **manual** command — and, more interestingly, which sources combine more
@@ -166,7 +166,7 @@ call that rewrites the agent's entire memory of the session.
 included as supporting context, `nestRequiredSummaryHeadings` rewrites
 its five `##` headings to `###`, so a previous summary cannot be
 mistaken for the live contract by the next summariser. A small
-mechanism, and the only instance in this collection of a scaffold
+mechanism, and the only instance in this collection of a harness
 worrying about its own output being re-ingested as instructions.
 
 **Omitted non-text input is marked, with a budget on the markers.**
@@ -312,7 +312,7 @@ summaries as read-time overlays over rewriting stored history.
 
 ## 3. One mechanism vs. a layered pipeline vs. a pluggable strategy
 
-The biggest architectural fork in this survey: does the scaffold have
+The biggest architectural fork in this survey: does the harness have
 *one* way to compact, or does it treat compaction as a set of
 interchangeable/stackable strategies?
 
@@ -320,9 +320,9 @@ interchangeable/stackable strategies?
 |---|---|
 | **A single mechanism** | Crush, Pi, Goose (as captured — no pipeline/fallback structure visible in the prompt text alone) |
 | **Two mechanisms that are not stages of one design and do not fall back to each other — they answer the question differently and a per-model catalog field picks between them** | Codex CLI, as of the 2026-09-12 re-read (superseding this row's earlier single-mechanism entry). Path one is the summarisation pipeline with three backends (local, remote/server-side, no-summary reset). Path two is `TokenBudget`, which does not summarise: it persists the window and hands the model `history` and `notes` tools (§5). What selects between them is not a fallback and not the model's choice — it is `token_budget.enabled` on the model's catalog entry, so **which theory of compaction a session runs on is a property of the model**, decided server-side and refreshed on a five-minute TTL. That is a different kind of pluggability from OpenHands's below: OpenHands makes the algorithm a swappable *component* chosen at config time by whoever starts the agent; Codex makes it a *model capability* that the vendor can change under a running deployment. |
-| **A two-tier fallback: cheap deterministic trim, then expensive LLM summarization** | OpenCode — `prune` (deterministic, truncates/removes old large tool outputs once savings clear a threshold, protecting specific tool-name-tagged content) is tried before invoking the `compaction` sub-agent at all |
+| **A two-tier fallback: cheap deterministic trim, then expensive LLM summarization** | OpenCode — `prune` (deterministic, truncates/removes old large tool results once savings clear a threshold, protecting specific tool-name-tagged content) is tried before invoking the `compaction` sub-agent at all |
 | **A two-tier fallback in the other direction: LLM summarization first, structural truncation as the fallback when summarization itself can't be done** | Copilot Chat — "Full" mode (real LLM call) vs. "Simple" mode (no LLM call at all, just priority-packing raw history with large tool results truncated) — Simple mode exists specifically for when Full mode fails or would exceed budget, i.e. a fallback *for the summarizer*, not a fallback for the underlying task |
-| **A 4-6 stage proactive pipeline, cheapest-first, explicitly not mutually exclusive** | Claude Code — snip (targeted, model-nudged trimming of a specific region) → microcompact (no LLM call — heuristic placeholder-replacement of old tool outputs) → context collapse → autocompact (real LLM summarization), plus a separate reactive path and an experimental session-memory-reuse path. A source comment states directly that "both may run — they are not mutually exclusive." |
+| **A 4-6 stage proactive pipeline, cheapest-first, explicitly not mutually exclusive** | Claude Code — snip (targeted, model-nudged trimming of a specific region) → microcompact (no LLM call — heuristic placeholder-replacement of old tool results) → context collapse → autocompact (real LLM summarization), plus a separate reactive path and an experimental session-memory-reuse path. A source comment states directly that "both may run — they are not mutually exclusive." |
 | **A genuinely pluggable strategy pattern — the compression algorithm itself is a swappable component** | OpenHands — the only source in this survey with this shape. `CondenserBase` is an abstract interface; confirmed concrete implementations are `LLMSummarizingCondenser` (the real strategy), `NoOpCondenser` (explicit disable), and `PipelineCondenser` (chains multiple condensers). Any agent — top-level or sub-agent — selects its own condenser at config time, independent of every other agent in the same delegation tree. |
 | **Multiple parallel, non-pipelined mechanisms — not a fallback chain, not a single strategy either** | Cline — three separate, independently-triggered mechanisms coexist with no confirmed ordering or fallback relationship between them: silent deterministic truncation (keep-first-and-last, drop-the-middle, no LLM call), a user-approved LLM "condense" summarization, and a narrower duplicate-file-read dedup. Structurally distinct from Claude Code's/Copilot's cheapest-first pipelines (§ above) because nothing in what's captured shows one mechanism escalating to the next — they read as independent answers to the same problem rather than stages of one design. |
 
@@ -680,7 +680,7 @@ to decode**. Nothing else surveyed here does anything like it.
   itself is a genuinely distinctive, security-conscious design** found
   nowhere else in this survey — every other compaction prompt treats
   history purely as content to summarize; Gemini CLI's explicitly
-  anticipates that a prior turn's tool output could be adversarial and
+  anticipates that a prior turn's tool result could be adversarial and
   try to hijack the summarization call, and defends against it inline.
   Cursor's early (v1.0/v1.2) `<summarization>` tag is a related but
   narrower idea, worth distinguishing rather than conflating: it's not
@@ -728,7 +728,7 @@ to decode**. Nothing else surveyed here does anything like it.
   work until asked), and a narrow duplicate-file-read dedup — none of
   which call each other in what's captured. This doesn't fit either the
   "single mechanism" or "layered pipeline" bucket cleanly; it reads as
-  a scaffold that grew multiple independent answers to "context is
+  a harness that grew multiple independent answers to "context is
   getting full" over time rather than one designed system, a useful
   reminder that this doc's three-way single/pipeline/pluggable
   typology is itself a simplification some real sources fall outside
@@ -758,7 +758,7 @@ to decode**. Nothing else surveyed here does anything like it.
   place, just tell the model to distrust it" rather than removing or
   summarizing anything. Worth keeping in mind as a design space this
   doc's typology doesn't otherwise cover: not every long-running
-  scaffold needs compaction if it can instead re-assert ground truth
+  harness needs compaction if it can instead re-assert ground truth
   every turn.
 - **Grok Build's todo-reseed contract (§5) is a reminder that "recovery"
   isn't only about conversational content** — every other source in

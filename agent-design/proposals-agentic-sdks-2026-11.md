@@ -45,7 +45,7 @@ for a redesign.
 | 3. Optimise at the source (server-side pagination) | Argument overrides cap `page_size` per tool (`keel/README.md` §0a); Forge does not own the servers | none Forge can close |
 | 4. Artifacts are first-class: origin, identity, time, schema, hash, expiry | Refs with `produced_by`, scheme, immutability and lifetime (`artifacts.md` §2, §5.5; `local.md` §2a) | none |
 | 5. Idempotent side effects, stable operation ids, an external record of completed work | Retries are fresh attempts; dead attempts' writes are "may have happened"; task handles followed, never reissued (`keel/pipelines.md` §7f, `keel/tools-and-agents.md` §4e) | one case under `2026-07-28` (proposal 4) |
-| 6. Bounded subagents: read-only investigators, a separate path for mutations | Review roles have no `Bash`; delegates have no human channel; grants per agent (`review.md` §2, `tools.md` `Task`) | none |
+| 6. Bounded sub-agents: read-only investigators, a separate path for mutations | Review roles have no `Bash`; delegates have no human channel; grants per agent (`review.md` §2, `tools.md` `Task`) | none |
 | 7. Log decision quality, not just output; redact payloads in traces | `eval.md` metrics, run events | prompt-cache health is not measured (proposal 2) |
 | 8. Sandbox executable code, and keep untrusted configuration out | A `checkout` workspace per run (`keel/run-spec.md` §3); tool sources come from Keel configuration, and nothing in the checkout can add an MCP server, hook or skill (`context-files.md` §12) | none |
 
@@ -185,7 +185,7 @@ what happens then. The likely behaviour is an infrastructure failure: no
   every result in the trailing batch above a small floor as an
   `<artifact>` stub (§8g), minting refs for them, and sends the request
   once more. The model sees ordinary stubs it can `Read`.
-- If that request is refused too, the run gets the final-turn nudge
+- If that request is refused too, the run gets the final-turn steer
   with `budget_exhausted`, the same as crossing the high-water mark.
 - The re-render is a `context_overflow` run event, so `eval.md` can
   count it.
@@ -266,7 +266,7 @@ that required scaffolding cannot be excluded. The frontier profiles are
 short (Anthropic's published guidance verbatim for Claude; a bias-to-
 action suffix and a todo tool for Codex). The Nemotron profile is 1,857
 lines, nearly all middleware: a text-to-tool-call parser and about ten
-named guards and nudges.
+named guards and steers.
 
 **What Forge decided.** One canonical prompt per mode; per-model
 variation only as subtraction by heading, if ever (`README.md`,

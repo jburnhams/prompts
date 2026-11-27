@@ -274,7 +274,7 @@ A Forge `implement` run's `Complete` report already carries
 `touches` / `reversibility` declaration, which the harness forwards into
 the review envelope as `author_declared` drivers. They can **only
 raise**: an author, human or agent, saying "this is low risk" is ignored,
-while "this touches billing" is recorded. A coding agent may have every
+while "this touches billing" is recorded. A coding harness may have every
 reason to under-declare. A review that trusted it would be grading its
 own homework.
 
@@ -737,7 +737,7 @@ risk signal sends it to a human. Forge's triage (§3b) adopts this as the
 ### 12d. Track record per agent configuration (RADAR's runbook rule)
 
 RADAR skips per-diff review only for **vetted generators**, and holds AI
-sources to a 60-day clean record, daily caps and a denylist. Forge's own
+sources to a 60-day clean record, daily caps and a deny list. Forge's own
 PRs come from configurations: a prompt version, a model and a task type.
 The harness keeps a **per-configuration record** (follow-up fixes by
 severity, incident links, rejections, volume). Only a configuration with a clean record

@@ -1,6 +1,6 @@
 # OpenCode
 
-- **Type**: Coding agent (terminal-based, multi-provider)
+- **Type**: Coding harness (terminal-based, multi-provider)
 - **License**: MIT
 - **Source**: https://github.com/anomalyco/opencode (formerly `sst/opencode`;
   the GitHub org was renamed)
@@ -87,7 +87,7 @@ purpose-built agent-session protocol.
 - **Tool ID is literally `"task"`.** Parameters: `description` (3-5
   word label), `prompt` (the task), `subagent_type`, an optional
   `task_id` ("resume a previous task... the task will continue the same
-  subagent session as before instead of creating a fresh one"), and —
+  sub-agent session as before instead of creating a fresh one"), and —
   gated behind an experimental flag — `background` ("Run the agent in
   the background. You will be notified when it completes. DO NOT sleep,
   poll, or proactively check on its progress").
@@ -107,9 +107,9 @@ purpose-built agent-session protocol.
   (not promoting) genuinely cancels the child.
 - **Named agent registry with real tool-scope and prompt differences**
   (`agent/agent.ts`): built-ins are `build`/`plan` (primary agents, not
-  delegates), `general` (subagent, no custom prompt — reuses the
+  delegates), `general` (sub-agent, no custom prompt — reuses the
   orchestrator's own base prompt, "execute multiple units of work in
-  parallel"), and `explore` (subagent, its **own dedicated system
+  parallel"), and `explore` (sub-agent, its **own dedicated system
   prompt**, read-only permission set — grep/glob/list/bash/webfetch/
   websearch/read allowed, everything else denied). A sub-agent's
   `prompt` field, when set, **entirely replaces** rather than appends to
@@ -119,7 +119,7 @@ purpose-built agent-session protocol.
 - **Custom sub-agents via Markdown files** — `{agent,agents}/**/*.md`
   with YAML frontmatter, functionally the same convention as Claude
   Code's `.claude/agents/*.md`, confirmed intentional: a code comment in
-  `config/markdown.ts` explicitly notes "other coding agents like claude
+  `config/markdown.ts` explicitly notes "other coding harnesses like claude
   code allow invalid yaml in their frontmatter."
 - **Recursion denied by default, not silently allowed**:
   `subagent-permissions.ts`'s `deriveSubagentSessionPermission()` denies
@@ -210,7 +210,7 @@ the cross-source comparison this feeds into.
   confirmed by reading the session-creation code, not just assumed by
   design intent.
 - **`MAX_STEPS_PROMPT` (documented under "Sub-agents" as a soft
-  turn-cap nudge) is confirmed to be a completely separate mechanism
+  turn-cap steer) is confirmed to be a completely separate mechanism
   from compaction** — different file, keyed off a per-agent step count
   rather than tokens, and it never touches message history at all; it
   only disables tools for the current turn and forces a text wrap-up.
@@ -218,7 +218,7 @@ the cross-source comparison this feeds into.
   their similar "wrap up, you're near a limit" framing.
 - **Concrete numeric thresholds**: a 20,000-token reserved buffer
   before the context window is considered full; a 4,096-token cap on
-  the compaction summary's own output; tool outputs truncated to 2,000
+  the compaction summary's own output; tool results truncated to 2,000
   characters when building the compaction prompt; prune thresholds of
   20,000 tokens minimum savings and 40,000 tokens of protected content.
 - **Two parallel implementations exist in the monorepo** — a
@@ -493,7 +493,7 @@ no distillation agent, but its per-model prompt family contains three
   It also carries the collection's clearest in-prompt rationale for why
   the file exists at all: "`README.md` files are for humans... `AGENTS.md`
   complements this by containing the extra, sometimes detailed context
-  coding agents need: build steps, tests, and conventions that might
+  coding harnesses need: build steps, tests, and conventions that might
   clutter a README."
 - **`default.txt`/`trinity.txt` use the ask-a-human variant**, word-for-
   word shared with Amp: "if you are unable to find the correct command,

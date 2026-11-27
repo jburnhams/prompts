@@ -2,10 +2,10 @@
 
 The companion to [`code-review-approaches.md`](./code-review-approaches.md),
 prompted by that doc's finding that every review tool checked runs on top
-of a full general-purpose coding-agent system prompt rather than a lean
+of a full general-purpose coding harness system prompt rather than a lean
 one — which makes the *content* of those full prompts worth comparing
 directly. This covers the actual persona/tool/behavior prompt that
-governs a coding agent end to end, not just its review-specific
+governs a coding harness end to end, not just its review-specific
 add-ons.
 
 Deeper focus on the five the request called out — **OpenHands, OpenCode,
@@ -100,7 +100,7 @@ per session.
 | Approach | Sources |
 |---|---|
 | A dedicated `<env>` block: cwd, git-repo yes/no, platform, OS version, today's date, model ID/name | Claude Code, OpenCode (near-identical block shape — see §1) |
-| Environment folded into narrative prose rather than a tagged block | OpenHands (no explicit env block in the base prompt — environment is established via tool results), Codex (relies on tool outputs + `AGENTS.md`, not a prompt-level env block) |
+| Environment folded into narrative prose rather than a tagged block | OpenHands (no explicit env block in the base prompt — environment is established via tool results), Codex (relies on tool results + `AGENTS.md`, not a prompt-level env block) |
 | A whole options-struct system that conditionally includes sandbox-specific paragraphs (macOS Seatbelt vs. container sandbox vs. none), git-repo status, hierarchical memory file paths | Gemini CLI (`snippets.ts` — by far the most parameterized env handling in the collection) |
 | Live git status/branch/recent-commits snippet appended to the very end of the prompt (outside the `<env>` block) | Claude Code (`gitStatus:` section at the tail — separate templating pass from the rest) |
 | Environment is a function call result, not template interpolation — a TypeScript `Effect` computes and returns the block at request time | OpenCode (`system.ts`'s `environment()` function, `<env>...</env>` built from live `ctx` object) |
@@ -135,7 +135,7 @@ applied.
 | Editing format left to "use the appropriate tool" without specifying a wire format in the base prompt (delegated entirely to tool schemas) | OpenCode, Roo Code, Crush, Goose, Pi (the *most* minimal case — the base prompt doesn't even name an edit tool's conventions, it just lists whichever tools are registered with a one-line snippet each) |
 | `str_replace`/`view`/`create`/`insert`/`undo_edit` on a single editor tool, `sed`-heavy usage examples for everything else | mini-swe-agent, Live-SWE-agent (both, via a `bash`-only toolset — see next row) |
 | **No dedicated edit tool at all** — bash is the only tool, and file edits happen via heredocs (`cat <<'EOF' > file`) and `sed`; the prompt teaches these as worked examples rather than exposing a structured edit API | mini-swe-agent, Live-SWE-agent — genuinely distinct from every other source here, all of which have at least one dedicated file-editing tool |
-| Instructed to **write its own new tools mid-task** in Python when bash alone isn't a good fit, with a reflection nudge after every action asking whether a new tool would help | Live-SWE-agent only — no other source in this collection gives the model authority to expand its own toolset at runtime; see [`live-swe-agent/README.md`](./live-swe-agent) |
+| Instructed to **write its own new tools mid-task** in Python when bash alone isn't a good fit, with a reflection steer after every action asking whether a new tool would help | Live-SWE-agent only — no other source in this collection gives the model authority to expand its own toolset at runtime; see [`live-swe-agent/README.md`](./live-swe-agent) |
 | A note that **no patch tool is available at all**, so a different tool must be used | Cursor ("There is no apply_patch CLI available in terminal. Use the appropriate tool for editing the code instead.") — notable because Codex explicitly prefers `apply_patch` and Cursor explicitly says it doesn't have one; same underlying concept, opposite availability |
 | Explicit prohibition against a specific patch tool name that doesn't exist in that product, to stop the model hallucinating it | Crush ("Never attempt 'apply_patch' or 'apply_diff' - they don't exist. Use 'edit' or 'multiedit' instead.") — direct evidence that this is a real failure mode vendors have had to patch (pun intended) by naming the wrong tool explicitly |
 
@@ -155,7 +155,7 @@ tool's conventions behaves worse in another" friction in this space.
 | `WRITE_TODOS_TOOL_NAME` referenced as a named, native tool | Gemini CLI |
 | `<todo_spec>` with the most detailed todo-authoring rules of any source: ≤14 words per item, verb-led, "high-level, meaningful, nontrivial (≥5 min)" | Cursor |
 | A "plan mode" / planning tool with an explicit **skip-it-for-easy-tasks** heuristic (roughly bottom quartile of tasks) | Codex CLI ("Skip using the planning tool for straightforward tasks (roughly the easiest 25%)... Do not make single-step plans") |
-| A distinct **mode** (not just a tool) that's read-only and requires an explicit user hand-off to switch into execution | Gemini CLI ("Plan Mode" with an explicit "State Transition Override" paragraph once a plan is approved), OpenCode (`prompt/plan.txt`, `plan-mode.txt`, `build-switch.txt` as separate files) |
+| A distinct **mode** (not just a tool) that's read-only and requires an explicit user handoff to switch into execution | Gemini CLI ("Plan Mode" with an explicit "State Transition Override" paragraph once a plan is approved), OpenCode (`prompt/plan.txt`, `plan-mode.txt`, `build-switch.txt` as separate files) |
 | No explicit planning tool/mode in the base prompt | OpenHands, Aider, Bolt.new, SWE-agent |
 
 ## 7. Coding conventions & the "minimal comments" rule

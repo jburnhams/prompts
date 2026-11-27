@@ -182,7 +182,7 @@ def sanitize_view_column_name(relation_name: str) -> str:
 A hybrid: a real parser for identifier quoting, a keyword blocklist for
 statement safety. The blocklist half is the weaker half — it is the
 approach [`../postgres-mcp/`](../postgres-mcp) rejects in favour of
-validating the parsed statement tree against an allowlist of statement
+validating the parsed statement tree against an allow list of statement
 *types*. A blocklist of keywords must enumerate every dangerous
-construct; an allowlist of node types has to enumerate the safe ones,
+construct; an allow list of node types has to enumerate the safe ones,
 which is a much shorter and much more stable list.

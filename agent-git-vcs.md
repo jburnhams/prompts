@@ -4,9 +4,9 @@ The last of the drill-downs alongside [`agent-context-compaction.md`](./agent-co
 [`agent-turn-output.md`](./agent-turn-output.md),
 [`agent-self-verification.md`](./agent-self-verification.md), and
 [`agent-permissions-approval.md`](./agent-permissions-approval.md):
-when does a coding agent commit, and what does it write? Does anything
+when does a coding harness commit, and what does it write? Does anything
 snapshot the working tree before a risky edit, and can that snapshot
-actually be restored? Does the scaffold isolate parallel work in
+actually be restored? Does the harness isolate parallel work in
 separate git worktrees, or does everyone share one checkout? What
 happens when it's time to open a pull request? The answers turn out to
 range from "nothing at all — git is just another shell command" all
@@ -738,7 +738,7 @@ it cannot be sure the deny held.
   independent-convergence case, the same signal this collection's
   other docs have repeatedly flagged for sub-agent protocols,
   compaction pipelines, and permission-classifier LLMs**: two
-  unrelated engineering teams solved "how do we let a coding agent
+  unrelated engineering teams solved "how do we let a coding harness
   edit files freely without real risk" with the same core idea (a
   hidden git repo used purely as a checkpoint engine) and diverged
   only on the details that reflect each product's own priorities —

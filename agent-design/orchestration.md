@@ -575,7 +575,7 @@ Both halves are things this design lacked, and **both are being taken**:
   cannot satisfy it by feeling stuck.
 - **`budget_exhausted` as its own `Complete` status**, distinct from
   `failed`. `formats.md` §7's run bounding already produces the
-  situation — the final-turn nudge fires and the run reports what it
+  situation — the final-turn steer fires and the run reports what it
   has — but classifies the result as a degraded completion, which loses
   the one fact the ledger needs. "Ran out of room" and "genuinely could
   not do it" are different retry decisions: the first is worth a fresh

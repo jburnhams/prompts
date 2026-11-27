@@ -31,7 +31,7 @@ this folder exists:
 | File | What it is |
 |---|---|
 | [`context-blocks.md`](./context-blocks.md) | `agents/context` — the system prompt assembled from labelled blocks, where the **provider's shape decides both the rendering and which tools the model gets**. The most transferable thing in the SDK |
-| [`tools-and-workspace.md`](./tools-and-workspace.md) | `@cloudflare/shell` — a 24-method filesystem and a 14-method **git client as typed sandbox APIs**, `STATE_SYSTEM_PROMPT` verbatim, transactional multi-file edits with `dryRun`, and the Workspace spill threshold. The coding-agent surface |
+| [`tools-and-workspace.md`](./tools-and-workspace.md) | `@cloudflare/shell` — a 24-method filesystem and a 14-method **git client as typed sandbox APIs**, `STATE_SYSTEM_PROMPT` verbatim, transactional multi-file edits with `dryRun`, and the Workspace spill threshold. The coding harness surface |
 | [`durability.md`](./durability.md) | Fibers (`runFiber`/`stash`/`onFiberRecovered`), the eviction numbers, recovery-aware delivery, frozen prompts, and compaction as a **non-destructive read-time overlay** |
 | [`delegation-and-approval.md`](./delegation-and-approval.md) | Dynamic agents (facets), agent tools, the six human-in-the-loop patterns with the vendor's own decision tree, and the two approval paths that disagree |
 | [`operations.md`](./operations.md) | Thirteen observability channels (read the event names as a list of production failure modes), four kinds of "do something later", scheduling, retries, state sync, and MCP in both directions |
@@ -39,7 +39,7 @@ this folder exists:
 | [`skills.md`](./skills.md) | The third skills implementation in this collection, and the first where **a skill script runs with a gated capability context** and declares its own `allowedTools`. Three generated tools, the catalog prompt, the tagged envelope |
 | [`browser.md`](./browser.md) | Code Mode over **raw CDP** — the protocol, not a verb set — with `cdp.spec()` for live discovery, and a **base64 redactor** that is the most complete implementation yet of `../agent-vision-multimodal.md`'s strip-and-say-so rule |
 | [`interop.md`](./interop.md) | How an agent is addressed and how it reaches peers: **A2A** (agent cards, tasks, SSE), **x402** (an agent that pays), channels, email reply routing, per-source webhook agents |
-| [`implementation.md`](./implementation.md) | **What the source says that the docs do not.** Retracts this folder's fuzzy-matching claim; aged-media eviction (the screenshot problem, shipped in 340 lines); the system prompt assembled from the turn's tool set; two-layer context-overflow handling; non-destructive compaction overlays; the fetch tool's two caps and three-header allowlist; an SSRF block-list with its own historical bug documented |
+| [`implementation.md`](./implementation.md) | **What the source says that the docs do not.** Retracts this folder's fuzzy-matching claim; aged-media eviction (the screenshot problem, shipped in 340 lines); the system prompt assembled from the turn's tool set; two-layer context-overflow handling; non-destructive compaction overlays; the fetch tool's two caps and three-header allow list; an SSRF block-list with its own historical bug documented |
 
 Code Mode lives in [`../code-mode/cloudflare.md`](../code-mode/cloudflare.md)
 — the `codemode` tool, the iframe sandbox and the CSP, **plus the Runtime

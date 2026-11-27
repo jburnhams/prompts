@@ -77,7 +77,7 @@ Codex's choice to keep provenance **separate from trust** ("independent
 of message role, visibility, and trust") is the useful lesson. Trust is a
 policy over provenance, and the policy varies by consumer:
 - To Guardian's reviewer, user messages and `AGENTS.md` can establish
-  authorization; tool output can't.
+  authorization; tool result can't.
 - To a PR reviewer, the repository's conventions file is trusted *at the
   base SHA* and untrusted at head (`agent-design/context-files.md` §5).
 - To the same reviewer, a human reviewer's thread is intent context but

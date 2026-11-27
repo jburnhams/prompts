@@ -1,6 +1,6 @@
 # Composio SWE-Kit
 
-- **Type**: Coding agent framework (SWE issue-resolving + PR review, both
+- **Type**: Coding harness framework (SWE issue-resolving + PR review, both
   as multi-agent pipelines) — a framework for scaffolding these agents
   around Composio's tool ecosystem, not a single fixed agent
 - **License**: Apache-2.0

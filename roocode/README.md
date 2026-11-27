@@ -1,6 +1,6 @@
 # Roo Code
 
-- **Type**: Coding agent (VS Code extension; fork of Cline)
+- **Type**: Coding harness (VS Code extension; fork of Cline)
 - **License**: Apache-2.0
 - **Source**: https://github.com/RooCodeInc/Roo-Code — **archived/read-only as
   of 2026-05-15** (project shut down)
@@ -257,7 +257,7 @@ string-pattern matching.
   on `&&`/`||`/`;`/`|`, each sub-command independently checked against
   flat `allowedCommands`/`deniedCommands` string arrays (longest
   matching prefix wins; ties favor deny), and a chain is only
-  auto-approved if every sub-command matched the allowlist. On top of
+  auto-approved if every sub-command matched the allow list. On top of
   this, `containsDangerousSubstitution()` — a hardcoded regex bank
   catching bash/zsh command-injection-via-parameter-expansion patterns
   (`${var@P}` prompt-string expansion, escape-sequence smuggling,
@@ -410,11 +410,11 @@ by design rather than as a dedup side-effect.
   **displays the resolved path**. So ordering is controlled by the link
   name while provenance shown to the model is the target — a deliberate
   split, and the only place in the collection where those two differ.
-- **A cache/junk-file denylist**, not an allowlist: `shouldIncludeRuleFile`
+- **A cache/junk-file denylist**, not an allow list: `shouldIncludeRuleFile`
   rejects 20 patterns (`*.DS_Store`, `*.swp`, `*.pyc`, `*.lock`, `*.log`,
   `Thumbs.db`, …). Everything else in a rules directory is treated as a
   rule regardless of extension — a `.png` dropped in `.roo/rules/` is read
-  as UTF-8 text (contrast Claude Code's extension allowlist).
+  as UTF-8 text (contrast Claude Code's extension allow list).
 - **Envelopes are Markdown headings with relative paths**:
   `# Rules from <relative path>:` per file inside a directory (joined by
   blank lines, under a `# Rules from .roo directories:` banner),

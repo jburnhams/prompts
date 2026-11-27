@@ -243,11 +243,11 @@ unranged re-read returns the same stub idempotently.
 **Read-only is structural, not a check.** The query binds one immutable
 input as `t` and can only produce a new ref. There is no connection to
 write to, no table to drop, and no statement type to validate — which is
-a stronger position than Postgres MCP's `pglast` allowlist because it
-does not depend on getting the allowlist right. Where a deployment
-resolves `table://` to a live warehouse rather than a file, the allowlist
+a stronger position than Postgres MCP's `pglast` allow list because it
+does not depend on getting the allow list right. Where a deployment
+resolves `table://` to a live warehouse rather than a file, the allow list
 becomes necessary again and Postgres MCP's is the reference
-implementation: **allowlist statement node types, and allowlist
+implementation: **allow list statement node types, and allow list
 functions**, because `SELECT pg_read_file('/etc/passwd')` is a perfectly
 good `SelectStmt`.
 

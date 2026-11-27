@@ -10,7 +10,7 @@ different question of an agent checking its *own* just-completed work,
 and it turns out to span a much wider range of designs than "the model
 decides when it's done" — from nothing at all, through a shared
 benchmark-lineage workflow template, through mechanical non-LLM
-completion gates, up to a dedicated adversarial verification subagent
+completion gates, up to a dedicated adversarial verification sub-agent
 that can't trust the implementer's self-report.
 
 **Methodology note**: twenty-plus sources are covered in real depth, plus
@@ -134,7 +134,7 @@ no model judgment involved.
 |---|---|
 | **A canned checklist re-injected as ordinary tool output, gating repeated submission** | SWE-agent's `review_on_submit_m` bundle — `submit` is wrapped so that, on its first call, it prints a fixed checklist (rerun the reproduction script, delete it, revert any modified test files) as the *next turn's observation* instead of actually submitting; only a second `submit` call (or an internal `-f`/force flag never shown to the model) lets the real submission through. Purely deterministic string templating — no separate model call, and nothing automatically blocks submission if the agent ignores the checklist and just calls `submit` again with only one configured stage. |
 | **A structural precondition check on the completion tool itself** | Roo Code's `AttemptCompletionTool.ts` — blocks `attempt_completion` outright if a tool call failed earlier in the same turn, and (behind a `preventCompletionWithOpenTodos` setting) blocks it if any todo item isn't marked `"completed"`. No model judgment; a code-level guard on one specific tool. |
-| **A gate on ending the turn at all, not on one named completion tool** — the broadest-scoped mechanism in this table | Grok Build (leaked), `<task_completion_discipline>`'s "End-of-turn todo gate": "Before ending a turn (= producing a content-only assistant message with no tool calls), re-read your current todo list. If any item is `pending` or `in_progress` AND that item is not backed by a live background subagent, monitor, or background command, the turn may NOT end... The harness enforces this: if you try to end a turn with unbacked pending/in_progress todos, you will receive a system-reminder and be forced into another turn." Unlike Roo Code's `preventCompletionWithOpenTodos` (which blocks calling one specific tool, `attempt_completion`), this blocks the act of ending a turn with *no tool call whatsoever* while work remains open — a structurally broader gate, since it applies regardless of which (if any) completion-signaling tool the model tries to use. Three explicit exceptions are carved out (a live background subagent/command still running, a destructive operation awaiting authorization, or a hard external blocker with todos marked `cancelled`), each requiring the model to state the exception rather than just going quiet. |
+| **A gate on ending the turn at all, not on one named completion tool** — the broadest-scoped mechanism in this table | Grok Build (leaked), `<task_completion_discipline>`'s "End-of-turn todo gate": "Before ending a turn (= producing a content-only assistant message with no tool calls), re-read your current todo list. If any item is `pending` or `in_progress` AND that item is not backed by a live background sub-agent, monitor, or background command, the turn may NOT end... The harness enforces this: if you try to end a turn with unbacked pending/in_progress todos, you will receive a system-reminder and be forced into another turn." Unlike Roo Code's `preventCompletionWithOpenTodos` (which blocks calling one specific tool, `attempt_completion`), this blocks the act of ending a turn with *no tool call whatsoever* while work remains open — a structurally broader gate, since it applies regardless of which (if any) completion-signaling tool the model tries to use. Three explicit exceptions are carved out (a live background sub-agent/command still running, a destructive operation awaiting authorization, or a hard external blocker with todos marked `cancelled`), each requiring the model to state the exception rather than just going quiet. |
 
 Both are cheap, both are easy to bypass in principle (the model could
 just not report a todo as incomplete, or ignore SWE-agent's checklist
@@ -173,20 +173,20 @@ evaluating completed work, distinct from the agent that produced it.
 | Design | Sources |
 |---|---|
 | **Ensemble generate-then-judge over whole independent task attempts** — not partial delegation, N full separate agent runs judged after the fact | SWE-agent's `RetryAgentConfig`/`sweagent/agent/reviewer.py`: `ScoreRetryLoop` runs a `Reviewer` LLM call (own system/instance prompts, own cost accounting) that assigns a numeric acceptance score to each complete attempt, optionally sampled multiple times for self-consistency; `ChooserRetryLoop` runs several attempts to exhaustion, then a separate `Chooser` call (optionally preceded by a `Preselector`) picks the best. Augment SWE-bench Agent's `ensembler_prompt.py`/`majority_vote_ensembler.py` — a separate model (o1) shown N candidate diffs side by side, picking a majority-vote winner. Both are the *same underlying shape* (generate multiple, judge separately), arrived at independently — one scores/retries, the other majority-votes over a fixed batch. |
-| **A general single-agent "run until done" loop with an optional LLM judge**, checked against the original request text | Microsoft Agent Framework's `AgentLoopMiddleware.with_judge()` (`agent_framework/_harness/_loop.py`) — a fully separate chat-client call returns a structured `JudgeVerdict` (`answered: bool`, `reasoning: str`), checked against the *original user request*, not a todo list; failure produces a nudge (the judge's own reasoning fed back as a new user turn), not a restart; capped tighter than a non-judge loop (5 iterations vs. 10) specifically because judge calls are "costly and probabilistic"; never wired in by default, one of several interchangeable strategies alongside non-LLM alternatives (`todos_remaining()`, `background_tasks_running()`) in the same file. |
+| **A general single-agent "run until done" loop with an optional LLM judge**, checked against the original request text | Microsoft Agent Framework's `AgentLoopMiddleware.with_judge()` (`agent_framework/_harness/_loop.py`) — a fully separate chat-client call returns a structured `JudgeVerdict` (`answered: bool`, `reasoning: str`), checked against the *original user request*, not a todo list; failure produces a steer (the judge's own reasoning fed back as a new user turn), not a restart; capped tighter than a non-judge loop (5 iterations vs. 10) specifically because judge calls are "costly and probabilistic"; never wired in by default, one of several interchangeable strategies alongside non-LLM alternatives (`todos_remaining()`, `background_tasks_running()`) in the same file. |
 | **A dedicated adversarial verification subagent, structurally unable to trust the implementer** | Claude Code (leaked, **internal-only — see the caveat in §7**) — `src/tools/AgentTool/built-in/verificationAgent.ts`: a separate LLM instance with no file-write access, required to gather command-output evidence for every check rather than accept the implementer's claims, run the build and full test suite ("failing tests are an automatic FAIL"), run linters/type-checkers, and perform mandatory "adversarial probes" (concurrency, boundary values, idempotency) before issuing a PASS/FAIL/PARTIAL verdict the implementer "cannot self-assign." |
 | **A minimal, rubric-scored judge prompt — the mechanism in isolation, without the surrounding retry/gating logic** | Zed (genuinely open source) — `diff_judge.hbs`: a separate call scores a `{{diff}}` 0-100 against a list of `{{assertions}}`, required to emit a one-line `<analysis>` per assertion before the final `<score>` — auditable per-criterion rather than a single opaque verdict, but this template alone doesn't reveal what calls it or what happens on a low score. |
-| **An advisory, non-gating judge with a three-tier named severity taxonomy per issue, rather than one score or verdict for the whole attempt** | GitHub Copilot CLI (leaked) — its `rubber-duck` sub-agent: "Call this agent for any non-trivial task to get a second opinion — the best time is after planning but before implementing," with each finding classified "Blocking," "Non-Blocking," or "Suggestion." Distinct from every other judge in this table's output shape — SWE-agent's Reviewer emits one numeric score, Microsoft Agent Framework's judge emits one boolean, Zed's emits one 0-100 score — here severity is assigned per-issue rather than to the attempt as a whole. Explicitly non-directive about consequence: "It is not your role to give an overall recommendation on what the agent does with your feedback... let the agent decide how to proceed" — even a "Blocking" verdict is advisory, with no automatic retry or gate tied to it, unlike SWE-agent's `ScoreRetryLoop` or Claude Code's verification subagent. |
+| **An advisory, non-gating judge with a three-tier named severity taxonomy per issue, rather than one score or verdict for the whole attempt** | GitHub Copilot CLI (leaked) — its `rubber-duck` sub-agent: "Call this agent for any non-trivial task to get a second opinion — the best time is after planning but before implementing," with each finding classified "Blocking," "Non-Blocking," or "Suggestion." Distinct from every other judge in this table's output shape — SWE-agent's Reviewer emits one numeric score, Microsoft Agent Framework's judge emits one boolean, Zed's emits one 0-100 score — here severity is assigned per-issue rather than to the attempt as a whole. Explicitly non-directive about consequence: "It is not your role to give an overall recommendation on what the agent does with your feedback... let the agent decide how to proceed" — even a "Blocking" verdict is advisory, with no automatic retry or gate tied to it, unlike SWE-agent's `ScoreRetryLoop` or Claude Code's verification sub-agent. |
 
 **A cross-cutting design question all four answer differently**: what
 happens when the judge/reviewer says "not good enough"? SWE-agent's
 `ScoreRetryLoop` and Augment's ensembler run *another full attempt*;
 Microsoft Agent Framework's judge *nudges the same conversation* to
-keep working; Claude Code's verification subagent (per its prompt)
+keep working; Claude Code's verification sub-agent (per its prompt)
 issues a verdict the calling agent then has to act on, without a
 prescribed retry mechanism visible in what was captured. Retry-a-whole-
 attempt is more expensive but cleaner (no risk of the same broken
-reasoning persisting); nudge-and-continue is cheaper but risks the
+reasoning persisting); steer-and-continue is cheaper but risks the
 working agent repeating whatever mistake it already made.
 
 ## 4. Review-as-a-general-tool — the conflation trap
@@ -239,7 +239,7 @@ doc is otherwise surveying.
 
 One source has a genuinely general-purpose mechanism for this, not
 tied to any specific verification logic at all: Claude Code's `Stop`
-hook (leaked source, but — unlike §3's verification subagent and §6's
+hook (leaked source, but — unlike §3's verification sub-agent and §6's
 plan-verification tool — **confirmed not gated behind the internal-only
 flag**, consistent with Claude Code's publicly documented hook system).
 A 26-member `HookEvent` union includes `Stop`, `StopFailure`,
@@ -251,7 +251,7 @@ running with the hook's stated reason surfaced as a message. This is
 the concrete mechanism behind "wire up `npm test` on Stop, and block
 the agent from finishing if it fails" — a real verification gate, just
 one the *user* sets up rather than the agent choosing to use or the
-scaffold building in by default.
+harness building in by default.
 
 ## 6. Per-action mandatory verification (not just pre-submission)
 
@@ -290,7 +290,7 @@ code-level gate found backing it up.
   running tests/checking types/running linters as a *permission*
   ("without asking"), plus a rhetorical self-check ("what would I want
   to verify before calling this done?") — softer than the ant-gated
-  verification subagent, but present in ordinary builds.
+  verification sub-agent, but present in ordinary builds.
 - **Crush**: the densest §7 instance by volume — testing/verification
   language recurs at nearly every structural checkpoint of
   `coder.md.tpl` (a top-level "TEST AFTER CHANGES" critical rule, a
@@ -317,7 +317,7 @@ code-level gate found backing it up.
   it: the Anthropic/Claude-family prompt and the GLM prompt are thin
   (one line each, no test-running specifics); the base `GenericEditingTips`
   shared across several families adds a bounded 3-try-then-ask pattern
-  keyed to linter diagnostics surfaced automatically in tool output;
+  keyed to linter diagnostics surfaced automatically in tool result;
   the OpenAI GPT-5.1/5.2/5.4 prompts carry text close to verbatim with
   Codex CLI's "Validating your work" section (both are OpenAI-authored,
   plausibly sharing an internal style guide — a cross-product lineage
@@ -391,7 +391,7 @@ code-level gate found backing it up.
 **The critical caveat for Claude Code specifically**: nearly every
 verification mechanism this research pass found for Claude Code —
 the `VerifyPlanExecutionTool` wiring, the periodic plan-verification
-nudge, the adversarial verification subagent, and two explicit
+steer, the adversarial verification sub-agent, and two explicit
 "verify before claiming done" / "never fake a green result" system
 prompt lines — are gated behind `process.env.USER_TYPE === 'ant'`
 (an Anthropic-employee-only flag) or a GrowthBook flag explicitly
@@ -872,13 +872,13 @@ pasted unframed into the prompt, and a retry count as the only bound
   weaker evidence of self-verification discipline than SWE-agent's
   unglamorous deterministic checklist-on-submit gate.
 - **The two richest findings in this survey (Claude Code's verification
-  subagent, Microsoft Agent Framework's judge) both land on "separate
+  sub-agent, Microsoft Agent Framework's judge) both land on "separate
   LLM call checks the work," but differ sharply on trust posture**:
   Claude Code's is adversarial by design (must not trust the
   implementer, must gather its own evidence, issues a verdict the
   implementer can't self-assign); the Agent Framework's judge is
   cooperative (checks against the original request, feeds its reasoning
-  back as a nudge to help the *same* agent improve, explicitly
+  back as a steer to help the *same* agent improve, explicitly
   documents its own risk of becoming an injection vector via that
   feedback channel). Different answers to "how skeptical should the
   checker be of the thing it's checking."
@@ -893,7 +893,7 @@ pasted unframed into the prompt, and a retry count as the only bound
   being A/B tested internally before wider release.
 - **Mechanical, non-LLM gates (§2) are unglamorous but have a real
   advantage the LLM-judge approaches (§3) don't**: they can't be talked
-  out of firing. A judge or reviewer subagent's verdict is itself a
+  out of firing. A judge or reviewer sub-agent's verdict is itself a
   model output, subject to the same failure modes (including, per the
   Agent Framework's own documented concern, prompt injection via
   whatever content it's reviewing) as the work it's checking. SWE-agent's

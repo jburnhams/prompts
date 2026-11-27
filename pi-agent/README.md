@@ -1,6 +1,6 @@
 # Pi (Agent Harness)
 
-- **Type**: Coding agent (minimal terminal harness — "adapt pi to your
+- **Type**: Coding harness (minimal terminal harness — "adapt pi to your
   workflows, not the other way around")
 - **License**: MIT
 - **Source**: https://github.com/badlogic/pi-mono (`packages/coding-agent`)
@@ -25,7 +25,7 @@ static document.
 a handful of moving parts rather than a large fixed block of rules:
 
 - **One persona sentence**: "You are an expert coding assistant operating
-  inside pi, a coding agent harness." No elaborated role/backstory beyond
+  inside pi, a coding harness." No elaborated role/backstory beyond
   that.
 - **Tool list built from whatever tools are actually registered** — each
   tool contributes its own one-line snippet (`toolSnippets[name]`, defined
@@ -206,7 +206,7 @@ and unusually well-evidenced**: `system-prompt.js` is fully readable
 executable code, not template text, and it contains no branch, flag,
 or conditional block related to permissions or approval anywhere in its
 120 lines. A full-file grep across every file in this folder (including
-`compaction/prompts.js`) for permission/confirm/approv/allowlist/risk/
+`compaction/prompts.js`) for permission/confirm/approv/allow list/risk/
 sandbox/autonomous/destructive/dangerous returns zero matches.
 
 - The entire base prompt assembles from a persona line, a dynamically

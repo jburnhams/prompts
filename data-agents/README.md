@@ -1,6 +1,6 @@
 # Data-analysis agents
 
-A fifth category, alongside the top-level coding-agent folders,
+A fifth category, alongside the top-level coding harness folders,
 [`leaked/`](../leaked), [`skills/`](../skills) and
 [`github-pr-bots/`](../github-pr-bots): harnesses whose task is **answering
 a question about data**, not editing a repository.
@@ -24,7 +24,7 @@ from it is in [`../agent-design/data.md`](../agent-design/data.md).
 | [`jupyter-mcp/`](./jupyter-mcp) | 18 MCP tools over a live Jupyter server. The most carefully built result/resource layer in the collection — cells and *individual outputs* are addressable resources | BSD-3-Clause | 2026-09-12 |
 | [`data-formulator/`](./data-formulator) | Microsoft Research's chart-first analyst. Splits its surface into **inspection tools** and **committing actions**, and forbids the model from drawing anything | MIT | 2026-09-12 |
 | [`marimo/`](./marimo) | A reactive notebook with four AI modes and a **code-mode** agent that drives the user's live kernel through a transactional private API — and can screenshot its own cell output | Apache-2.0 | 2026-09-12 |
-| [`vanna/`](./vanna) | Text-to-SQL, rebuilt in 2.0 as an agent framework. Its `run_sql` tool is the clearest worked example of *write the result to a file, hand the model a ref plus a preview, hand the UI a component* | MIT | 2026-09-12 |
+| [`vanna/`](./vanna) | Text-to-SQL, rebuilt in 2.0 as an agent SDK. Its `run_sql` tool is the clearest worked example of *write the result to a file, hand the model a ref plus a preview, hand the UI a component* | MIT | 2026-09-12 |
 | [`metagpt-di/`](./metagpt-di) | MetaGPT's Data Interpreter: plan-then-execute in one Jupyter kernel, with per-task-type prompt fragments and a generated "check the data" cell that re-derives kernel state into context | MIT | 2026-09-12 |
 | [`lida/`](./lida) | Microsoft's visualization pipeline: summarise → goals → **fill in a code scaffold** → self-evaluate on a six-dimension rubric → repair | MIT | 2026-09-12 |
 | [`e2b/`](./e2b) | The sandbox behind several of the above. Notable for two custom Jupyter MIME types that carry a DataFrame and a *deconstructed matplotlib figure* as data | Apache-2.0 / MIT | 2026-09-12 |

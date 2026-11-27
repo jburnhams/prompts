@@ -9,7 +9,7 @@
 
 A fourth *kind* of source for this collection. The existing
 [`skills/`](../skills) folder holds **Claude Code plugins** — slash
-commands and subagents that wrap a coding/review workflow. This folder
+commands and sub-agents that wrap a coding/review workflow. This folder
 holds Anthropic's **general-purpose creative skills**: the ones that
 teach a model to make a *thing* — an image, a poster, an animated GIF, a
 generative-art viewer, an interactive React page, a themed deck — rather

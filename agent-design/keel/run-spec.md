@@ -28,7 +28,7 @@ The fields, with the reason each is shaped the way it is:
   **opening user message**, in this order: the other generated blocks
   (`env`, `git_status`, `repo_context`, `data_overview`), then the
   inputs. Anything that changes during the run (a revealed tool, a
-  harness note, a nudge) is appended as a message, never written into
+  harness note, a steer) is appended as a message, never written into
   what was already sent. A prompt's text therefore has no placeholders.
   It refers to "the first message" for its task. For a sub-agent, the
   opening message is its `<scope>` block (from the sub-agent's `scope`),
@@ -108,7 +108,7 @@ The fields, with the reason each is shaped the way it is:
   each time and stopped one repairing six fields one at a time. No
   schema change: `threshold` keeps its meaning, counted in steps.
 - **`budgets`**: crossing `turns` or `context_high_water_tokens` triggers
-  the final-turn nudge. `tokens_by_tier` counts the run and its children
+  the final-turn steer. `tokens_by_tier` counts the run and its children
   together, so spend can't hide in a cheap child (`../models.md` §10).
   **Where the hard budgets are checked** *(added 2026-11-16, weekly pass,
   from Codex's rollout budgets #61578–#61583; `../../sources.md`, "The
@@ -126,7 +126,7 @@ The fields, with the reason each is shaped the way it is:
     its result is kept.
   - A response whose own bill crossed the budget is kept in the
     transcript, not discarded. It was paid for, and the report needs it.
-  - The run then ends through the final-turn nudge with
+  - The run then ends through the final-turn steer with
     `budget_exhausted` if the nudge turn still fits in what remains of the
     run's wall time. The nudge turn is the one model request admitted past
     a token or cost budget, and it allows no tools but the endings;

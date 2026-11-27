@@ -9,7 +9,7 @@
 blog posts recorded in [`sources.md`](../sources.md) that supply this
 harness's design rationale.
 
-A terminal coding agent, TypeScript + a ~80k-line Rust core, self-described
+A terminal coding harness, TypeScript + a ~80k-line Rust core, self-described
 as "the most capable agent surface that ships": **60+ providers, 31 built-in
 tools, 14 LSP operations, 28 DAP (debugger) operations**. Those claims are
 checkable and, on the tool-surface axis, hold up — see
@@ -40,14 +40,14 @@ description says":
 
 | File | Source path | What it is |
 |---|---|---|
-| [`system-prompt.md`](./system-prompt.md) | `packages/coding-agent/src/prompts/system/system-prompt.md` | The main coding-agent system prompt (272 lines). Sections: system conventions (RFC 2119 + an injection rule), role/engineering principles, runtime (skills, rules, internal URLs, tool inventory), tool policy, a six-phase execution workflow, and a delivery contract |
-| [`subagent-system-prompt.md`](./subagent-system-prompt.md) | `.../system/subagent-system-prompt.md` | The delegate prompt used for `task` subagents |
+| [`system-prompt.md`](./system-prompt.md) | `packages/coding-agent/src/prompts/system/system-prompt.md` | The main coding harness system prompt (272 lines). Sections: system conventions (RFC 2119 + an injection rule), role/engineering principles, runtime (skills, rules, internal URLs, tool inventory), tool policy, a six-phase execution workflow, and a delivery contract |
+| [`subagent-system-prompt.md`](./subagent-system-prompt.md) | `.../system/subagent-system-prompt.md` | The delegate prompt used for `task` sub-agents |
 | [`hashline-prompt.md`](./hashline-prompt.md) | `packages/hashline/src/prompt.md` | The model-facing spec for the default edit format — ops, body-row rules, block anchors, registers, 6 anti-patterns with WRONG/RIGHT pairs |
 | [`hashline-grammar.lark`](./hashline-grammar.lark) | `packages/hashline/src/grammar.lark` | The constrained-decoding grammar for the same format (27 lines). Compare Codex's `apply_patch.lark` |
 | [`tools/read.md`](./tools/read.md) | `.../prompts/tools/read.md` | The `read` description: one `path` string, an entire selector mini-language after a `:`, and nine source kinds behind it |
 | [`tools/replace.md`](./tools/replace.md) | `.../prompts/tools/replace.md` | The `str_replace`-style edit mode, kept as the fallback for models on the hashline exclusion list |
 | [`tools/patch.md`](./tools/patch.md) | `.../prompts/tools/patch.md` | The unified-diff edit mode — the third of four |
-| [`tools/task.md`](./tools/task.md) | `.../prompts/tools/task.md` | Subagent dispatch |
+| [`tools/task.md`](./tools/task.md) | `.../prompts/tools/task.md` | Sub-agent dispatch |
 
 Not copied, but read and analysed (paths in [`sources.md`](../sources.md)):
 `docs/toolconv/*` (11 dialects), `docs/tools/*` (30 tool references, which

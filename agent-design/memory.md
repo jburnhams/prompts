@@ -235,7 +235,7 @@ Four deliberate choices:
   exists precisely to be judged later. It is the recurrence signal, carried
   to the stage that can use it (§4b).
 - **The tool is not terminal and does not gate `Complete`.** A run that
-  records nothing completes normally; the final-turn nudge permits
+  records nothing completes normally; the final-turn steer permits
   `Retrospect`, `ReportProblem` and `Complete`.
 - **It is gated by a run digest** (§3d), so most runs are never prompted
   to reflect at all.

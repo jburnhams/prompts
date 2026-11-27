@@ -131,7 +131,7 @@ Four things to take:
 Compare [`../pandasai/`](../pandasai)'s
 `[r"\bINSERT\b", r"\bUPDATE\b", …]`. A blocklist has to anticipate every
 dangerous construct and loses to the first one it didn't think of; an
-allowlist of ten node types is short, auditable, and closed. `pglast` is
+allow list of ten node types is short, auditable, and closed. `pglast` is
 Postgres's own parser, so the model's SQL is validated by the same
 grammar that will execute it — no dialect gap to exploit.
 
@@ -179,7 +179,7 @@ run a query against an index that doesn't exist).
 This is a **counterfactual tool** — "what would happen if" — and it is
 the only one in this collection. It is worth noticing as a category: the
 model can test a hypothesis about a change without making the change.
-The obvious analogue for a coding agent is a dry-run build or a
+The obvious analogue for a coding harness is a dry-run build or a
 type-check against a proposed edit, and for a data agent, a query plan
 against a proposed materialisation.
 

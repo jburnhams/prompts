@@ -51,7 +51,7 @@ ending, or both. Two generic mechanisms are what make that work:
   can still read history and diffs but cannot change what git will
   execute; the bound server owns the only writable copy. And the server
   runs every git command with hooks and fsmonitor disabled, `include`
-  ignored, and a fixed allowlist of transport protocols, passing
+  ignored, and a fixed allow list of transport protocols, passing
   credentials through a helper rather than the environment. Claude Code
   reached the same conclusion from the other side, write-denying the
   folders git reads and refusing to suggest a command in a submodule
@@ -66,7 +66,7 @@ An `McpServer` records the transport, the pinned protocol version
 "MCP revision"), the auth mode (§8),
 whether its `instructions` text is ignored or included as untrusted
 context, a description cap, the two-axis limits from `../cloudflare.md`
-§2d, an egress allowlist for stdio processes, and a **tool snapshot**.
+§2d, an egress allow list for stdio processes, and a **tool snapshot**.
 
 **Snapshots exist because a server's tool list can change under you.**
 `:discover` stores the `tools/list` result with digests of each

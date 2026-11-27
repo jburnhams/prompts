@@ -134,7 +134,7 @@ Their shared claims, in their own words:
 
 The two discovery answers are the same idea bound to different
 substrates. Anthropic's filesystem reuses a skill the model has in
-abundance and a tool surface a coding agent already has — `Read`,
+abundance and a tool surface a coding harness already has — `Read`,
 `Grep`, `List` over a directory of declarations, at which point
 **the tool catalogue is a repository** and everything the collection
 knows about reading one efficiently applies. Cloudflare's method calls
@@ -242,7 +242,7 @@ query will touch is known before a byte is read:
 function scanTables(plan) { … }
 ```
 
-That is where an allowlist, a cost estimate or an approval prompt
+That is where an allow list, a cost estimate or an approval prompt
 belongs. A regex over the SQL text would not do it, and a sandbox does
 not help — the query is *authorised*, it is just expensive.
 
@@ -257,7 +257,7 @@ it, can inspect what it touches, and hands it to an interpreter. No
 codegen anywhere. Squirreling's grammar has no DML or DDL at all, so
 read-only is a property of the language rather than of a policy — a
 stronger position than [`data-agents/postgres-mcp/`](./data-agents/postgres-mcp)'s
-`pglast` allowlist, which is necessary precisely because the engine
+`pglast` allow list, which is necessary precisely because the engine
 underneath *can* write.
 
 **JS as code.** The model emits a program. Maximum expressiveness —

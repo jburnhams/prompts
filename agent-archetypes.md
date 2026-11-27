@@ -108,7 +108,7 @@ Anthropic's own `/code-review`).
 ## 5. PR-review specialist
 
 Narrow, single-purpose: diff (and sometimes existing PR comments) in,
-review findings/comments out. Never a general coding agent, even when
+review findings/comments out. Never a general coding harness, even when
 built by the same team as one.
 
 **Defining traits**: this is the entire subject of `code-review-approaches.md`

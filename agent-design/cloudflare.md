@@ -217,7 +217,7 @@ service in the safety layer.**
 
 §6 is this design's most carefully specified security surface and it
 already has the important half: the model never names a fetch target,
-ids map to harness-recorded URLs, host allowlist, manual redirects with
+ids map to harness-recorded URLs, host allow list, manual redirects with
 per-hop revalidation, size cap on the stream before decode, magic-byte
 content typing. Cloudflare's fetch tool
 ([`implementation.md`](../cloudflare-agents/implementation.md) §7) agrees
@@ -239,7 +239,7 @@ both. They are different decisions: a 900 KB PNG that must be fetched
 and must not be serialised into context is the normal case for
 `InspectImage`, and one number cannot express it.
 
-The header allowlist is small and buys something specific: `range` on
+The header allow list is small and buys something specific: `range` on
 the list is what makes a **bounded partial fetch** expressible at all,
 which is the fetch-side equivalent of `Read`'s offset/limit. Nothing
 else in this collection names which headers a model may set.
@@ -247,9 +247,9 @@ else in this collection names which headers a model may set.
 Two more details adopted with them, both cheap:
 
 - **Misconfiguration fails loudly.** Cloudflare refuses to construct the
-  tool with neither an allowlist nor a binding, rather than defaulting
+  tool with neither an allow list nor a binding, rather than defaulting
   to open. `tools.md`'s not-configurable list should say the host
-  allowlist may be narrowed and may never be empty — the same shape as
+  allow list may be narrowed and may never be empty — the same shape as
   the refused-path rule already there.
 - **The block event is as observable as the served one** — `onEvent`
   fires once per fetch, "success or failure/block". A blocked fetch that
@@ -457,7 +457,7 @@ All applied in the target documents, each cross-linking back.
 | Document | Change |
 |---|---|
 | `system-prompts.md` | the capability paragraph is generated from the turn's tool set, with the "do not claim access to capabilities not exposed as tools" line in all three entrypoint prompts (§2a) |
-| `tools.md` | `Edit` gains a whitespace-normalised retry as an ordered repair, with an ambiguity guard and a self-flagging result (§2b); transport cap and context cap separated (§2d); a model-settable header allowlist; the host allowlist joins the may-narrow-never-empty list (§2d) |
+| `tools.md` | `Edit` gains a whitespace-normalised retry as an ordered repair, with an ambiguity guard and a self-flagging result (§2b); transport cap and context cap separated (§2d); a model-settable header allow list; the host allow list joins the may-narrow-never-empty list (§2d) |
 | `artifacts.md` §5.6 | aged transcript payloads are evicted to a ref, bytes never dropped, text never evicted, marker format a wire contract (§2c) |
 | `artifacts.md` §6 | two caps on two axes; redirect policy as a three-value enum; the two IPv6 block-list traps and fail-closed-on-parse-failure (§2d) |
 | `vision.md` §4 | pinning interacts with eviction: a pinned image is exempt from the aged-media pass (§2c) |

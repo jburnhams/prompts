@@ -399,7 +399,7 @@ in the same visual language as a measurement is lying by layout.
 |---|---|---|
 | **Fill a pinned template** | Ship an HTML template with named FIXED and VARIABLE regions; the model replaces only the variable ones | `artifact-dashboard`/`report`/`data-table`/`explainer`, `algorithmic-art`, `plan-template.html` |
 | **Scaffold, build, bundle** | Generate a real multi-file project, compile it, inline to one file | `web-artifacts-builder` |
-| **Free-form, constrained by the runtime** | Write whatever, subject to the sandbox's library allowlist and CSP | LibreChat, Claude.ai artifacts, Bolt, v0 |
+| **Free-form, constrained by the runtime** | Write whatever, subject to the sandbox's library allow list and CSP | LibreChat, Claude.ai artifacts, Bolt, v0 |
 
 **Template-fill is the dominant new pattern and the most under-discussed.**
 The four `artifact-*` page types share a five-step recipe verbatim: read
@@ -449,14 +449,14 @@ will not attempt to render the component."* An escape hatch that
 degrades to a channel with no runtime is worth more than a longer rule
 list.
 
-The Artifact tool's own allowlist is the same shape and mostly the same
+The Artifact tool's own allow list is the same shape and mostly the same
 hosts: scripts from `cdnjs.cloudflare.com`, `cdn.jsdelivr.net/npm/`,
 `cdn.tailwindcss.com`, `code.jquery.com`; stylesheets only from
 `fonts.googleapis.com` with faces from `fonts.gstatic.com`; **everything
 else blocked, with no visible error** — including images, media, fetch,
 XHR, WebSocket, and a library's own runtime fetches. Silent CSP failure
 is the defining hazard of this lane, and both systems answer it the same
-way: tell the model the allowlist explicitly, and tell it that violations
+way: tell the model the allow list explicitly, and tell it that violations
 do not error.
 
 Hence `artifact-design`'s font rule: *"The Artifact CSP blocks font CDNs,
@@ -564,7 +564,7 @@ expose:
 
 Present in the shipped binary, absent from the live tool schema — the
 same built-but-not-switched-on pattern this collection recorded for
-Claude Code's `yoloClassifier` and its adversarial verification subagent
+Claude Code's `yoloClassifier` and its adversarial verification sub-agent
 ([`agent-permissions-approval.md`](./agent-permissions-approval.md),
 [`agent-self-verification.md`](./agent-self-verification.md)). Third
 independent instance, and the methodological note from
@@ -829,7 +829,7 @@ PR review, doc, page, and the app template. Each is a few kilobytes of
 That is a different bet from the one every app-builder in `leaked/` made.
 Bolt, v0, Lovable, Orchids and Replit all bet on **one very good
 general-purpose generator plus a rich runtime**: any page, subject to a
-library allowlist. The page-type bet is that most requests fall into a
+library allow list. The page-type bet is that most requests fall into a
 small number of genres, and that a genre's accumulated rules — a report's
 TOC self-heal, a dashboard's colour-delta semantics, a data table's
 "don't write your own no-results message" — are worth more than

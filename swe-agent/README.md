@@ -1,6 +1,6 @@
 # SWE-agent
 
-- **Type**: Coding agent (autonomous GitHub issue resolver, Princeton NLP)
+- **Type**: Coding harness (autonomous GitHub issue resolver, Princeton NLP)
 - **License**: MIT
 - **Source**: https://github.com/SWE-agent/SWE-agent
 - **Retrieved from**: `main` branch, `config/default.yaml` (2026-07-10)
@@ -64,7 +64,7 @@ the speculation about `edit_anthropic`'s lineage was only half right.
   list of canned message strings (`SUBMIT_REVIEW_MESSAGES`, one entry
   in `default.yaml` — a checklist to rerun the reproduction script,
   delete it, and `git checkout` any modified test files) and re-injects
-  the next one as ordinary tool output into the **same single agent
+  the next one as ordinary tool result into the **same single agent
   loop** — no separate model call, no distinct persona, and nothing
   automatically blocks submission if the agent ignores the checklist
   and just calls `submit` again. The genuinely separate-model-call

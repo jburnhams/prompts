@@ -46,7 +46,7 @@ Paths worth re-reading but not copied here — see
 
 ## What this source is, and why it earns a folder
 
-Every other coding agent in this collection is a coding agent. OpenClaw is
+Every other coding harness in this collection is a coding harness. OpenClaw is
 a **messaging gateway with a personal assistant in it** that grew a coding
 agent as one of its surfaces. That inversion produces almost everything
 distinctive about it.
@@ -392,7 +392,7 @@ is listed there as uncovered. Read as source:
   `displaySummary` (human UI), and `promptSnippet` / `promptGuidelines`
   (the system prompt's tool catalogue). This collection inferred that
   structure from other harnesses; here it is named.
-- **`exec` renders the host's approval allowlist into its own
+- **`exec` renders the host's approval allow list into its own
   description** — but only on Windows, capped at ten entries, filtered to
   patterns containing a path separator, and wrapped in a `try/catch`
   because "allowlist loading is best-effort; don't block tool creation."
@@ -492,7 +492,7 @@ half in `agent-self-verification.md`.
 ### Permissions and approval — [`agent-permissions-approval.md`](../agent-permissions-approval.md)
 
 - **A model in the approval path.** `tools.exec.mode: "auto"` routes
-  allowlist misses through a small reviewer model that can only *allow* or
+  allow list misses through a small reviewer model that can only *allow* or
   *escalate to a human*. It cannot deny — so a confused or compromised
   reviewer degrades to today's ask-the-human behaviour, never to silent
   approval or silent denial. The prompt is hardened against the obvious
@@ -505,7 +505,7 @@ half in `agent-self-verification.md`.
 - **The prompt says its own guardrails are advisory.**
   `docs/concepts/system-prompt.md`: "Safety guardrails in the system prompt
   are advisory, not enforcement. Use tool policy, exec approvals,
-  sandboxing, and channel allowlists for hard enforcement; **operators can
+  sandboxing, and channel allow lists for hard enforcement; **operators can
   disable prompt guardrails by design**." Rare candour.
 - **Approval UI is a channel capability.** On channels with native approval
   cards the prompt tells the model to rely on that UI first, and to include
@@ -757,7 +757,7 @@ Ordered by how much it changes the picture.
    Kanban, applied to agents.
 2. **"The program is the orchestration."** Swarm's refusal of a graph DSL,
    with `Promise.all` / `while` / `Promise.race` as the actual control
-   flow, structured child results via JSON Schema, one corrective nudge on
+   flow, structured child results via JSON Schema, one corrective steer on
    schema failure, and collector approvals that fail closed *into data the
    program can branch on*.
 3. **A model in the approval path that cannot deny.** Allow-or-escalate is

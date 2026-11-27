@@ -1,6 +1,6 @@
 # Goose
 
-- **Type**: Coding agent (Block's general-purpose, extensible AI agent — CLI
+- **Type**: Coding harness (Block's general-purpose, extensible AI agent — CLI
   + desktop)
 - **License**: Apache-2.0
 - **Source**: https://github.com/block/goose
@@ -79,7 +79,7 @@ prompt text is fully captured, not just the orchestrator-side tool
 description that triggers delegation.
 
 - **Explicit identity and provenance**: opens with "You are a specialized
-  subagent within the goose AI framework... You were spawned by the main
+  sub-agent within the goose AI framework... You were spawned by the main
   goose agent to handle a specific task efficiently" — the sub-agent is
   told directly that it *is* a sub-agent and who spawned it, more
   self-aware framing than Copilot Chat's or Crush's sub-agent prompts,
@@ -87,7 +87,7 @@ description that triggers delegation.
   analysis agent") without naming the spawning relationship itself.
 - **A stated security boundary specific to recursion**: listed as one of
   five core characteristics — "Security: Cannot spawn additional
-  subagents." Goose is the only source in this collection that states a
+  sub-agents." Goose is the only source in this collection that states a
   no-recursive-delegation rule explicitly in the sub-agent's own prompt,
   rather than leaving nesting depth unaddressed.
 - **Turn/timeout bounding via template variables**: `{{max_turns}}` is
@@ -108,7 +108,7 @@ description that triggers delegation.
   generate" instruction for the final summary/report — functionally
   similar to Copilot Chat's forced `<final_answer>` cutoff, but stated as
   a soft convention here rather than a hard turn-budget mechanism with an
-  injected nudge message.
+  injected steer message.
 
 ## Compaction
 

@@ -58,7 +58,7 @@ per-tool settings, tools marked as endings, and pipelines.
 
 ### 0a. A saved tool group for Java agents, used against a repo
 
-*"I define a tool group for Java coding agents from several MCP servers,
+*"I define a tool group for Java coding harnesses from several MCP servers,
 control each tool's visibility, override its params and other settings
 to change how the agent sees it, and save it. Then I run an agent with
 that group against a repo, with a saved Java prompt and a query with

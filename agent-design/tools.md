@@ -752,7 +752,7 @@ one has tested:
 - **The fetch host allowlist**, which a deployment may narrow and may
   never empty, and which fails loudly rather than open when
   unconfigured ([`cloudflare.md`](./cloudflare.md) §2d). Same shape as
-  the rule above and the same reason: an empty allowlist is not a
+  the rule above and the same reason: an empty allow list is not a
   permissive configuration, it is an un-reviewed one. Alongside it,
   **the set of request headers the model may influence is closed** —
   `accept`, `accept-language`, `range` — because `range` is what makes
@@ -1130,7 +1130,7 @@ Forge allows **one** smaller form and otherwise `blocked`. The harness
 does not try to judge whether the second attempt is smaller. A second
 `resource_limit` on the same limit in one run returns the result with
 `repeat: true` and a note that the next stop ends the run; a third
-puts the run on the final-turn nudge (`formats.md` §7), with a harness
+puts the run on the final-turn steer (`formats.md` §7), with a harness
 note that the run should complete as `blocked` and name the limit. No
 new status or refusal code: the run still decides its own status, as
 every ending does. Runner deaths

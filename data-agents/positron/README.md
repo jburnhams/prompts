@@ -40,7 +40,7 @@ with the comment:
 
 `extensions/positron-assistant` is not in the OSS tree at this commit, so
 the prompt text itself is unavailable. Set that alongside
-[`../open-interpreter/`](../open-interpreter)'s pivot to a coding agent:
+[`../open-interpreter/`](../open-interpreter)'s pivot to a coding harness:
 **both of the category's most visible open-source efforts have moved
 their data-analysis agent logic out of public source since 2024.** That
 is worth knowing when weighing how much of this folder is "the field" and
