@@ -2,6 +2,13 @@
 
 All notable changes to this repository, grouped by day, newest first. Generated from git history.
 
+## 2026-11-27
+
+**Set up looking up and asking for terms in the `prompts` glossary, on branch `claude/project-thread-8dnulq`.** Jonathan asked for a way for this repo's agents to find the term to use for a concept and to ask for a new one when none fits, so the glossary grows with the research; terms may also need clarifying or a breaking change. Sessions here often cannot write to `jburnhams/taxonomies`, so requests are kept in this repo and collected there. Works once taxonomies merges `tools/term.py` (its PR from the same branch).
+
+- `CLAUDE.md`: a missing concept is now a request, not a direct edit there; new "Looking up and asking for terms" section with the `lookup` and `changes` commands and when to run them.
+- `term-requests.md`: **new**. The request template (Ask `new`, `clarify` or `change`) and an empty list.
+
 ## 2026-11-26
 
 **Pointed the repo at the prompts glossary, on branch `claude/project-thread-oneclm`.** The `prompts` taxonomy in `jburnhams/taxonomies` reached stage 1 (in use) today, so this adds a `CLAUDE.md` telling agents and readers to use its preferred labels. No existing doc is renamed in this change.
