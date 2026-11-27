@@ -4,6 +4,10 @@ All notable changes to this repository, grouped by day, newest first. Generated 
 
 ## 2026-11-27
 
+**Brought the glossary pointer up to date with stages 2 and 3, on branch `claude/project-thread-oneclm`.** The `prompts` taxonomy adopted its context stage (2026-11-26) and control stage (2026-11-27), and stage 3 changed seven earlier entries. Jonathan asked for the repo to follow its taxonomy fully; this is the first step, before a rename pass over the docs.
+
+- `CLAUDE.md`: says which stages and facets are in use, that the remaining areas come later, and that a rename pass is under way; adds the stage-3 changes (steer and system reminder, escalation and handoff, authority and precedence, compaction and truncation) and blocking monitor to the common slips.
+
 **Set up looking up and asking for terms in the `prompts` glossary, on branch `claude/project-thread-8dnulq`.** Jonathan asked for a way for this repo's agents to find the term to use for a concept and to ask for a new one when none fits, so the glossary grows with the research; terms may also need clarifying or a breaking change. Sessions here often cannot write to `jburnhams/taxonomies`, so requests are kept in this repo and collected there. Works once taxonomies merges `tools/term.py` (its PR from the same branch).
 
 - `CLAUDE.md`: a missing concept is now a request, not a direct edit there; new "Looking up and asking for terms" section with the `lookup` and `changes` commands and when to run them.
