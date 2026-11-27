@@ -4,6 +4,11 @@ All notable changes to this repository, grouped by day, newest first. Generated 
 
 ## 2026-11-27
 
+**Term requests are now issues in `jburnhams/taxonomies`, on branch `claude/project-thread-8dnulq`.** Jonathan chose GitHub issues there over a request file in this repo (taxonomies decision J27, 2026-11-27), so the inbox added earlier today is removed.
+
+- `term-requests.md`: removed.
+- `CLAUDE.md`: step 2 now says how to file a `term-request` issue (title, label, the form's sections for an agent), to comment on an open one rather than file again, and the changelog fallback for a session that cannot file issues; the rules are marked adopted.
+
 **Set up looking up and asking for terms in the `prompts` glossary, on branch `claude/project-thread-8dnulq`.** Jonathan asked for a way for this repo's agents to find the term to use for a concept and to ask for a new one when none fits, so the glossary grows with the research; terms may also need clarifying or a breaking change. Sessions here often cannot write to `jburnhams/taxonomies`, so requests are kept in this repo and collected there. Works once taxonomies merges `tools/term.py` (its PR from the same branch).
 
 - `CLAUDE.md`: a missing concept is now a request, not a direct edit there; new "Looking up and asking for terms" section with the `lookup` and `changes` commands and when to run them.

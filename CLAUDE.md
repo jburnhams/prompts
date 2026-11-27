@@ -38,17 +38,23 @@ older terms sometimes need a sharper edge or a breaking change. So:
    ```
    It gives the term to use (an alias or old label finds its term), or the closest terms
    with their scope and near miss, and any request already made.
-2. **When nothing fits, use your own word now and add a request** to
-   [`term-requests.md`](./term-requests.md) (template there): Ask `new`, a one-sentence
-   definition, what lookup showed and why it does not fit, an example link and a count.
-   If a term is unclear for your case, or its label or edge looks wrong, add a `clarify`
-   or `change` request instead of working round it.
+2. **When nothing fits, use your own word now and file a request**: an issue in
+   `jburnhams/taxonomies` titled `[term] prompts: <your word>`, label `term-request`
+   ([form](https://github.com/jburnhams/taxonomies/issues/new?template=term-request.yml)).
+   An agent writes the form's sections in the body: `### Domain` (prompts), `### Ask` (`new`),
+   `### Word`, `### Concept` (one sentence: a <word> is a <broader term> that ...),
+   `### Looked at` (what lookup showed and why it does not fit), `### Example` (a link),
+   `### Warrant` (a count), `### Asked` (this pass and branch). If lookup shows an open
+   issue for it already, comment there instead. If a term is unclear for your case, or its
+   label or edge looks wrong, file `clarify` or `change` (with `### Term`, its ID) instead
+   of working round it. A session that cannot file issues lists the request under "Term
+   requests" in its changelog entry, and the weekly intake files it.
 3. **At the start of a pass**, run `curl -fsSL $T | python3 - changes prompts --since <date>`
    with the date your last changelog entry checked to. Switch the words it marks
-   BREAKING in the docs you touch, remove your requests it shows answered, and say in the
+   BREAKING in the docs you touch, and say in the
    new changelog entry which date you checked to and which requests you made.
 
-Requests are answered in the taxonomies repo
+Requests are answered on their issues each Tuesday and logged in the taxonomies repo
 ([`domains/prompts/requests.md`](https://github.com/jburnhams/taxonomies/blob/main/domains/prompts/requests.md));
 the rules are in [`design/growth.md`](https://github.com/jburnhams/taxonomies/blob/main/design/growth.md)
-(proposed).
+(adopted 2026-11-27).
