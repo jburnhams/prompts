@@ -1,6 +1,6 @@
 # Live-SWE-agent
 
-- **Type**: Coding agent (SWE-bench Verified agent)
+- **Type**: Coding harness (SWE-bench Verified agent)
 - **License**: MIT
 - **Source**: https://github.com/OpenAutoCoder/live-swe-agent
 - **Retrieved from**: `main` branch,
@@ -42,7 +42,7 @@ Diffing `config/livesweagent.yaml` against `../mini-swe-agent/config/mini.yaml`:
   there are any tools you can create to help you with the current task.
   Note that just because you can use basic bash commands doesn't mean you
   should not create any tools that can still be helpful." — mini-swe-agent
-  has no equivalent nudge.
+  has no equivalent steer.
 - **Text-parsed action blocks, not native tool-calling** — the system
   prompt requires "exactly ONE bash code block" in triple backticks per
   response, parsed out of the text (the older SWE-agent-style convention),
@@ -61,7 +61,7 @@ Diffing `config/livesweagent.yaml` against `../mini-swe-agent/config/mini.yaml`:
 
 - `config/livesweagent.yaml` — the full agent config: system prompt,
   instance/task template, action-observation template (including the
-  tool-creation reflection nudge), and format-error recovery template.
+  tool-creation reflection steer), and format-error recovery template.
 
 ## Tool surface
 

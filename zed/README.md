@@ -1,6 +1,6 @@
 # Zed
 
-- **Type**: Coding agent (AI-native code editor's built-in Agent Panel)
+- **Type**: Coding harness (AI-native code editor's built-in Agent Panel)
 - **License**: GPL-3.0-or-later (with Apache-2.0 components where marked)
 - **Source**: https://github.com/zed-industries/zed
 - **Retrieved from**: `main` branch,

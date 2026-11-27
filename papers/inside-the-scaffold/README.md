@@ -12,7 +12,7 @@
 
 Stored here (rather than just linked) since it's directly useful
 background for this repo: a systematic **architecture**-level comparison
-of 13 open-source coding agents, complementary to this repo's own
+of 13 open-source coding harnesses, complementary to this repo's own
 **prompt**-level comparisons in
 [`../../coding-agent-approaches.md`](../../coding-agent-approaches.md) and
 [`../../code-review-approaches.md`](../../code-review-approaches.md).

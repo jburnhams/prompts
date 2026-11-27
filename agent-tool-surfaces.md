@@ -10,7 +10,7 @@ of writing, not from memory or inference).
 
 The trigger for writing this was noticing that **CodeAct** (see
 [`codeact-hyperlight/`](./codeact-hyperlight)) isn't really one technique —
-it's a data point in a much bigger design space every scaffold has to
+it's a data point in a much bigger design space every harness has to
 answer: which shell, which search tool, whether code execution is a tool
 at all, whether the model can see the browser, whether images come back
 to it, whether the sandbox is a real OS or a micro-VM, and how (if at all)
@@ -69,7 +69,7 @@ persistence, async support, and how tightly it's constrained.
 **Takeaway**: persistence is a real fork, not a detail — mini-swe-agent's
 and Live-SWE-agent's non-persistent model forces `cd`-prefixing
 gymnastics that Augment's `pexpect` shell and most IDE-integrated tools
-don't need. Bolt.new's allowlist is the only source that treats the shell
+don't need. Bolt.new's allow list is the only source that treats the shell
 itself as something to be *restricted* rather than just wrapped — a
 consequence of running inside a browser sandbox with no real OS beneath
 it.
@@ -119,7 +119,7 @@ was published.
 **Takeaway**: this is the axis with the most genuine capability spread in
 the collection, from Aider's "no search tool, the human curates context"
 to Windsurf/Copilot Chat's semantic-search-plus-symbol-resolution-plus-
-delegate-subagent stack. Notably, the two sources with *zero* search
+delegate-sub-agent stack. Notably, the two sources with *zero* search
 tooling (Aider, mini-swe-agent/mini's floor) are both benchmark-lineage
 or deliberately-minimal designs, not accidents — the absence is a stated
 design choice in both READMEs, not a gap.
@@ -350,8 +350,8 @@ whether any are redundant/competing.
 | Real OS process, no sandbox indicated in the prompt itself | Cline, Roo Code, Cursor, Copilot Chat, Claude Code's extraction, Aider, Pi — all run in the user's actual editor/workspace or terminal |
 | Docker container (implied by environment gotchas noted in the prompt, e.g. symlinked paths) | Augment SWE-bench Agent |
 | Environment-conditional sandbox description (macOS Seatbelt vs. generic container vs. none), rendered as different prompt text depending on which is active | Gemini CLI — the sandbox enforcement itself is external, but the *description* shown to the model branches on it |
-| A simpler binary environment-conditional swap — sandboxed vs. not, no intermediate variants | GitHub Copilot CLI (leaked) — the default `environment_limitations` block ("You are *not* operating in a sandboxed environment... You may be sharing the environment with other users") is fully replaced, not just amended, by a "Sandboxed Environment" block when one is active; a third variant exists for its cloud coding-agent mode ("a fresh clone of a GitHub repository") |
-| Browser-based sandbox (WebContainer) — no real OS underneath, fixed command allowlist, no compiler | Bolt.new |
+| A simpler binary environment-conditional swap — sandboxed vs. not, no intermediate variants | GitHub Copilot CLI (leaked) — the default `environment_limitations` block ("You are *not* operating in a sandboxed environment... You may be sharing the environment with other users") is fully replaced, not just amended, by a "Sandboxed Environment" block when one is active; a third variant exists for its cloud coding harness mode ("a fresh clone of a GitHub repository") |
+| Browser-based sandbox (WebContainer) — no real OS underneath, fixed command allow list, no compiler | Bolt.new |
 | **Micro-VM**, millisecond startup, no filesystem/network by default, everything explicitly allow-listed, and — uniquely — the capability *description itself* is assembled live from the sandbox's actual current config rather than fixed/branching text | CodeAct+Hyperlight — the most dynamically-rendered sandbox description in the collection (contrast Gemini CLI's ~2-way branch above) |
 | Not specified / depends entirely on deployment | OpenHands, OpenCode, Codex CLI (cross-ref `github-pr-bots/codex-review`), SWE-agent, mini-swe-agent, Live-SWE-agent, Composio SWE-Kit, Goose, Crush, Windsurf |
 | **Sandboxing scoped only to delegated sub-agents, undescribed for the primary session** | Grok Build (leaked) — no OS-sandbox description for the main agent's own execution; `spawn_subagent`'s `capability_mode` (`read-only`/`read-write`/`execute`/`all`) and `isolation` (`none`/`worktree`) parameters scope a *spawned* agent's tool access and working directory, but nothing comparable is described for the orchestrator itself |
@@ -371,7 +371,7 @@ whether any are redundant/competing.
 | Per-sub-agent prompt assembly from independently-togglable shared fragments, rather than one hand-authored prompt per role | GitHub Copilot CLI (leaked) — every sub-agent YAML carries a `promptParts` block (`includeAISafety`, `includeToolInstructions`, `includeParallelToolCalling`, `includeCustomAgentInstructions`, `includeEnvironmentContext`) that composes the final sub-agent prompt from shared building blocks rather than each role's prompt being authored as one monolithic file — a maturity signal in the same spirit as this section's dynamic tool-registry rows, applied to prompt *construction* rather than tool-list rendering |
 | **Skill directories spanning multiple vendors' own conventions, read directly by name** | Grok Build (leaked) — skill files are searched for at `~/.grok/skills/`, `~/.grok/bundled/skills/`, **and also** `~/.claude/skills/` and `~/.agents/skills/`: an explicit, named cross-tool-compatibility gesture (reading Claude Code's own skill directory, plus a generic vendor-neutral `.agents/skills/` location) not found described this explicitly anywhere else in this collection's extensibility survey |
 | A **mandatory schema-fetch-before-first-use** MCP calling convention, enforced by prompt instruction rather than by the client withholding the schema | Grok Build (leaked) — `search_tool` must be called to retrieve an MCP tool's input schema before every first `use_tool` invocation of it: "NEVER guess or infer parameter names from the tool's name or description -- the schema from `search_tool` is the only source of truth" |
-| A user-facing **recurring/scheduled-task tool**, not matched by any other coding-agent source surveyed | Grok Build (leaked) — `scheduler_create`/`scheduler_list`/`scheduler_delete` (interval strings like `"5m"`/`"2h"`/`"1d"`, max 50 concurrent, 7-day auto-expiry unless `durable: true`) lets the model schedule a prompt to re-fire on its own, independent of any sub-agent or MCP mechanism |
+| A user-facing **recurring/scheduled-task tool**, not matched by any other coding harness source surveyed | Grok Build (leaked) — `scheduler_create`/`scheduler_list`/`scheduler_delete` (interval strings like `"5m"`/`"2h"`/`"1d"`, max 50 concurrent, 7-day auto-expiry unless `durable: true`) lets the model schedule a prompt to re-fire on its own, independent of any sub-agent or MCP mechanism |
 | **The model writes plugins that extend the harness it is running inside** — the far end of this axis, and unmatched here | DeepSeek Harness ([`deepseek-harness/`](./deepseek-harness)) — seven `cordis_*` tools (`inspect_list`/`inspect_query`/`inspect_self`/`define`/`run`/`stop`/`undefine`) let the model author a Cordis plugin *in the running process*: it can consume services, listen to events, **register new model tools**, and mount browser UI into queried slots. Immutability and identity are the whole design — `pluginId` names a plugin across versions, `packageId` names one immutable source version ("to change code, define a new Package; never overwrite an old version"), `pluginRunId` names one activation attempt. Everything else in this table extends the agent with capabilities *someone else* registered; this is the only source where the agent writes the registration. Note what bounds it: definitions "exist only in the current process… do not survive a process restart," `cordis_run` may require user approval and returns `awaiting-approval` (with the model told not to wait, retry, or claim it is running), and the sandbox is disclaimed outright — "the restricted execution environment prevents accidental misuse; it is **not** a security boundary for malicious code." |
 | **Skills as a provider registry rather than a directory scan** — layered, per-scope, with incomplete-discovery semantics | DeepSeek Harness — `ctx.skills` merges catalogs from any number of providers (local dirs, packaged, remote) across a host layer and per-agent-scope layers, so an agent preset can carry skills the global session does not see; a provider may return an explicit `SkillProviderObservation` marking its discovery **incomplete but usable**, which contributes candidates while making the result uncacheable. Every other row above treats "what skills exist" as a filesystem fact; this treats it as a query with partial-failure semantics. |
 

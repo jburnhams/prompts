@@ -1,7 +1,7 @@
 # Tool implementations: the layer below "which tools exist"
 
 [`agent-tool-surfaces.md`](./agent-tool-surfaces.md) catalogues *what
-capabilities* each scaffold hands the model — which shell, whether there's a
+capabilities* each harness hands the model — which shell, whether there's a
 browser, how search is tiered. This doc is the layer underneath: for the
 boring, universal primitives — **read, list, search, edit, write, run** —
 *how are they actually built*, and what does the field's collective
@@ -338,7 +338,7 @@ classification: deciding whether an arbitrary command string is read-only,
 whether a `sed` invocation is secretly an edit, whether a path escapes the
 workspace. **That is the bill for breadth.** Goose and Codex don't pay it
 in tool code because they push it into a sandbox and an approval prompt
-instead; Bolt.new pays it as a 39-command allowlist.
+instead; Bolt.new pays it as a 39-command allow list.
 
 ### 2d. Anthropic's own guidance points the other way — for a different class of tool
 
@@ -1495,7 +1495,7 @@ problem wearing a safety costume: the general rule is that a cap can only
 bound a read that *finishes*, so anything unbounded has to be refused by
 identity instead. It is also cheap — a fixed list checked before `open()` —
 and, unlike most safety machinery, it has no false-positive cost, because
-nothing a coding agent legitimately does involves reading `/dev/urandom`
+nothing a coding harness legitimately does involves reading `/dev/urandom`
 through its file-read tool. (A model that genuinely wants entropy has a
 shell.)
 
@@ -1826,7 +1826,7 @@ the disagreement is probably not an error by either side:
 - This collection has twice found Claude Code features that exist in the
   leaked source but are **flag- or `USER_TYPE === 'ant'`-gated** out of the
   shipped product (`agent-self-verification.md`'s adversarial verification
-  subagent; `agent-permissions-approval.md`'s `yoloClassifier.ts`), and
+  sub-agent; `agent-permissions-approval.md`'s `yoloClassifier.ts`), and
   §5c records that the read tool's own limits and line-prefix format sit
   behind GrowthBook flags. A third instance — code present, behaviour
   absent from a live probe — is exactly the pattern already documented.
@@ -1894,7 +1894,7 @@ Five mechanisms, all found in code:
 **A tool description that reads host *policy state* at build time.**
 OpenClaw's `describeExecTool` composes its text from three availability
 flags — and, on Windows only, renders the host's own exec approval
-allowlist into the description the model reads:
+allow list into the description the model reads:
 
 ```text
 Pre-approved executables (exact arguments are enforced at runtime; no approval prompt needed when args match):
@@ -1902,7 +1902,7 @@ Pre-approved executables (exact arguments are enforced at runtime; no approval p
   ${shortName} (restricted args)
 ```
 
-Capped at ten entries, filtered to allowlist patterns containing a path
+Capped at ten entries, filtered to allow list patterns containing a path
 separator or `~`, and wrapped in a `try/catch` because *"allowlist
 loading is best-effort; don't block tool creation."* Every other
 mechanism in this section varies a tool by *model family*, *capability*
@@ -2317,8 +2317,8 @@ independent implementations (sources in brackets).
 3. Consolidate *workflow* tools around intents, not endpoints. [Anthropic
    guidance, GitHub MCP]
 4. Expect to pay for shell breadth in classifier code, sandboxing, or an
-   allowlist — pick which up front. [Claude Code's 600 KB+ of Bash
-   validation, Codex's sandbox, Bolt's allowlist]
+   allow list — pick which up front. [Claude Code's 600 KB+ of Bash
+   validation, Codex's sandbox, Bolt's allow list]
 
 **Parameters**
 5. Named, typed fields — never a flag string the harness has to re-parse.

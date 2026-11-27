@@ -162,7 +162,7 @@ collection that models the difference between a worktree and its repo.
 ancestor list; Gemini CLI `unshift`s; Claude Code iterates `dirs.reverse()`;
 Goose reverses. Nobody puts the nearest file first.
 
-That means the claim these agents make about precedence — "sub-directory
+That means the claim these harnesses make about precedence — "sub-directory
 rules supersede the workspace root" — is carried **entirely by position in
 the text**, i.e. by the model's own recency behaviour, not by anything
 structural.
@@ -286,7 +286,7 @@ Four harnesses expand references. They diverge on every safety dimension.
 | Scanner | Markdown **token stream** (`marked`, `gfm:false`) | hand-written char scanner | regex over raw text |  |
 | Code masked? | yes — `code`/`codespan` tokens skipped; `html` comment spans stripped, residue rescanned | yes — backtick-run regions | **no** | n/a |
 | Depth cap | 5 | 5 | 3 | n/a |
-| Other budgets | extension allowlist (~30 text extensions) | — | **64 operations, 1 MiB output, 128 KB parse input** | 5s HTTP timeout |
+| Other budgets | extension allow list (~30 text extensions) | — | **64 operations, 1 MiB output, 128 KB parse input** | 5s HTTP timeout |
 | Boundary | inside original cwd, else a one-time **user approval dialog** | subpath of project root, `realpath`-canonicalized, URLs rejected, fail-closed | git root, canonicalized, `.git` metadata excluded, **gitignore-filtered** | — |
 | Cycle handling | monotonic `processedPaths` (+ realpath of symlinks) | monotonic; emits `<!-- File already processed -->` | `visited` **with backtracking** | n/a |
 | Failure looks like | file dropped | `<!-- Import failed: X - reason -->` in-band | **the literal `@path` text** | empty string |

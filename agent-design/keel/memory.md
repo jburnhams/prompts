@@ -176,7 +176,7 @@ memory is what survives consolidation out of it (§16g).
 
 **Decision: curated memory is path-addressed Markdown, retrieved by
 injection, file reads and grep, with no vector index.** The reasons stand
-from the coding-agent sources (`../../agent-memory-learning.md` §4), and
+from the coding harness sources (`../../agent-memory-learning.md` §4), and
 the always-running agents agree for this layer:
 
 - **It is small by construction.** A capped index and a few hundred
@@ -367,7 +367,7 @@ the rule, per the errors-are-prompts posture.
 5. **Instruction shape and invisible text.** A body that addresses the
    agent ("ignore", "always run", "you must"), contains tool-call or tag
    syntax, invisible Unicode, or a link to a host outside the
-   deployment's allowlist is forced to `propose` and flagged at `team`,
+   deployment's allow list is forced to `propose` and flagged at `team`,
    `tool_group` and `global`. At `user` level it is allowed, because
    people do write "always show me the SQL". Hermes scans for these
    patterns and refuses; Keel routes to a person instead, because

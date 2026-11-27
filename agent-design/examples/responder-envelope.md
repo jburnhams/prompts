@@ -9,7 +9,7 @@ Scenario: PR #91 on the same repo was authored by Forge itself (a
 `mode: implement` run on ticket PROJ-990, committed/pushed and opened
 as a PR by the external process, as always). A human reviewer, Carol,
 left two inline comments. The harness — having checked Carol is on the
-configured reviewer allowlist (§1c's gate) — dispatches this run on
+configured reviewer allow list (§1c's gate) — dispatches this run on
 the PR's branch, which is already checked out.
 
 ```

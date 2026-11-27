@@ -1,8 +1,8 @@
 # mini-swe-agent
 
-- **Type**: Coding agent (SWE-bench Verified agent — "the 100 line AI
+- **Type**: Coding harness (SWE-bench Verified agent — "the 100 line AI
   agent that solves GitHub issues," built by the same team as
-  `swe-agent/` after they concluded a much smaller scaffold could still
+  `swe-agent/` after they concluded a much smaller harness could still
   score competitively)
 - **License**: MIT
 - **Source**: https://github.com/SWE-agent/mini-swe-agent
@@ -12,7 +12,7 @@
 Referenced as a "reference baseline" in the arXiv paper *"Inside the
 Scaffold: A Source-Code Taxonomy of Coding Agent Architectures"*
 ([2604.03515](https://arxiv.org/html/2604.03515v1)), which analyzes 13
-open-source coding agents by scaffold architecture rather than prompt
+open-source coding harnesses by scaffold architecture rather than prompt
 content — a useful complementary read to
 [`coding-agent-approaches.md`](../coding-agent-approaches.md) in this
 repo. Also the base that [`../live-swe-agent/`](../live-swe-agent) forks

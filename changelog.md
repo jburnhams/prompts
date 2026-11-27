@@ -4,6 +4,13 @@ All notable changes to this repository, grouped by day, newest first. Generated 
 
 ## 2026-11-27
 
+**Renamed the repo's own docs to the `prompts` glossary's heading words, on branch `claude/project-thread-oneclm`.** Jonathan approved the rename list (G6) after the taxonomy's three stages were adopted. Applied to the repo's own writing only: root docs, `agent-design/` and each source folder's `README.md`. Untouched: `leaked/`, `skills/`, stored prompt copies, this changelog's history, code spans and fences, link targets, headings (so anchors still resolve), block quotes, quoted strings (also where a quote runs over several lines), italic spans (paper titles), indented blocks and prompt text ("You are ..."), and product or paper names in title case (Microsoft Agent Framework, Antigravity's Knowledge Subagent, *Inside the Scaffold*).
+
+- By script: "coding agent" → "coding harness" (105; "coding" kept so the contrast with data agents survives), "allowlist" → "allow list" (84), "subagent" → "sub-agent" (45), "tool output" → "tool result" (24), "agent framework" → "agent SDK" (6, lower-case only), "hand-off" → "handoff" (4), "denylist" → "deny list" (2).
+- By hand: "nudge" as a noun → "steer" (63, including Keel's "final-turn steer"; the verb "nudges" kept, as are "nudged" and Microsoft's "nudge-not-restart" pattern); "scaffold" meaning a harness → "harness" (30; "scaffolding" for templates, LIDA's plotting scaffold, the "minimalist scaffold" archetype and the paper's "scaffold architecture" kept); "system message" meaning a system prompt → "system prompt" (1; the API message role kept); "approval mode" → "permission mode" (1; Codex's network-call approval modes kept); "agent" meaning a product → "harness" (2).
+- Not changed: "reminder" (61). After the stage-3 split it resolves to `system-reminder`, which is the sense these docs use, so no use is wrong.
+- `CLAUDE.md`: the "rename pass is under way" line now says it is done.
+
 **Brought the glossary pointer up to date with stages 2 and 3, on branch `claude/project-thread-oneclm`.** The `prompts` taxonomy adopted its context stage (2026-11-26) and control stage (2026-11-27), and stage 3 changed seven earlier entries. Jonathan asked for the repo to follow its taxonomy fully; this is the first step, before a rename pass over the docs.
 
 - `CLAUDE.md`: says which stages and facets are in use, that the remaining areas come later, and that a rename pass is under way; adds the stage-3 changes (steer and system reminder, escalation and handoff, authority and precedence, compaction and truncation) and blocking monitor to the common slips.

@@ -45,10 +45,10 @@ are reported.
 | File | What |
 |---|---|
 | [`mcp-server.md`](./mcp-server.md) | The remote MCP server: 18 documented tools in two tiers, an agent behind three of them, polling, sensitive-connection rules, the Claude MCP Apps connector (thinking steps, chart carousel, 24-hour expiry), Hex 4.0's undocumented project tools, and what the docs leave unsaid about what the host model sees |
-| [`agents-and-context.md`](./agents-and-context.md) | The agent family (Threads, Notebook agent, Modeling agent, Chat with App, the subagents), the context assets (`hex.md`, a retrieved guide library, endorsements, exclusions, Governed mode, user memory), observability with a three-type warning taxonomy, Suggestions with evidence thresholds, approvals, and the harness internals from the talk |
+| [`agents-and-context.md`](./agents-and-context.md) | The agent family (Threads, Notebook agent, Modeling agent, Chat with App, the sub-agents), the context assets (`hex.md`, a retrieved guide library, endorsements, exclusions, Governed mode, user memory), observability with a three-type warning taxonomy, Suggestions with evidence thresholds, approvals, and the harness internals from the talk |
 | [`semantic-layer.md`](./semantic-layer.md) | The semantic model YAML (models, measures, relations, semi-additive measures, views), the Hex 4.0 semantic query file, and **how a query is bound to what the user sees**: model → query file → named table → chart → app element, walked back by Inspect |
 | [`evals.md`](./evals.md) | The eval suite format (three rubric types, SQL ground truth computed at grade time, attempts, `warnOnly`, measures), context previews as a fork-test-publish loop, and **the bootstrap prompt Hex publishes for coding agents**, verbatim |
-| [`hex-skills.md`](./hex-skills.md) | Hex's public Agent Skills repo: the `context-consultant` dispatcher and its eval-engineer and context-architect subagents, the migration skills' SQL-fidelity gate, with the prompt text that matters quoted |
+| [`hex-skills.md`](./hex-skills.md) | Hex's public Agent Skills repo: the `context-consultant` dispatcher and its eval-engineer and context-architect sub-agents, the migration skills' SQL-fidelity gate, with the prompt text that matters quoted |
 
 Proposals for Lens and Forge, **none adopted**, are in
 [`../../agent-design/proposals-hex-2026-11.md`](../../agent-design/proposals-hex-2026-11.md).

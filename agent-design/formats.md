@@ -812,8 +812,8 @@ suspended run's full transcript, so it starts with most of that run's
 context already spent. The run-bounding budgets (§7) apply to the
 resumed run as normal — which means a run that suspended near its
 context high-water mark can resume, act on the answer briefly, and hit
-the final-turn nudge almost immediately. That's the intended behavior,
-not a bug (the nudge guarantees an honest `Complete(failed)` with a
+the final-turn steer almost immediately. That's the intended behavior,
+not a bug (the steer guarantees an honest `Complete(failed)` with a
 partial report rather than a silent death), but a harness that wants
 resumed runs to have real headroom should suspend-and-resume with a
 raised budget or accept that late-run questions buy very little
@@ -1000,7 +1000,7 @@ explicit position on what happens at each:
    on a large window (`agent-context-compaction.md` §6) — three
    unrelated codebases independently settling on a five-figure token
    buffer. Forge's mark should leave at least that much room, plus
-   whatever a worst-case final `Complete` report costs, since the nudge
+   whatever a worst-case final `Complete` report costs, since the steer
    turn still has to fit. Crossing either budget doesn't kill the run —
    it triggers
    a **final-turn nudge**: an injected message stating that this is the
@@ -1014,7 +1014,7 @@ explicit position on what happens at each:
    ("OK, your allotted iterations are finished...") — deterministic
    string injection, no extra model call (`agent-self-verification.md` §7).
    In review mode, where `AskUser` isn't wired at all (`tools.md`), the
-   nudge names `Complete` as the only acceptable action — the injected
+   steer names `Complete` as the only acceptable action — the injected
    text is mode-aware, not one fixed string.
 
    **The status for a nudged run is `budget_exhausted`, not `failed`.**
@@ -1028,13 +1028,13 @@ explicit position on what happens at each:
    ([`orchestration.md`](./orchestration.md) §7, §8). The report is
    otherwise identical: partial, honest, saying what was done and what
    remains. A run that is genuinely stuck still uses `failed`; the
-   nudge does not launder one into the other.
+   steer does not launder one into the other.
 
    **`budget_exhausted` also outranks `blocked` on a nudged turn**, and
    the consequence is better than the rule looks. The coding prompt's
    persistence rule (`system-prompts.md` §1) says not to report `blocked`
    until the same obstacle has stopped the run twice — which a nudged run
-   may not have had room to establish. Rather than let the nudge force a
+   may not have had room to establish. Rather than let the steer force a
    premature `blocked`, the status names the proximate cause and the
    obstacle goes in the report body. The ledger then retries with a raised
    budget ([`orchestration.md`](./orchestration.md) §7), the retry
@@ -1054,7 +1054,7 @@ explicit position on what happens at each:
    subsystem (triggers, templates, incremental anchoring — see
    `agent-context-compaction.md`) that this design deliberately does
    not absorb at launch. A run that can't finish inside its budgets
-   ends via the nudge above, and the report says so; the ticket hears
+   ends via the steer above, and the report says so; the ticket hears
    "this didn't fit," which is actionable (split the ticket, raise the
    budget), instead of silence, which isn't. Compaction is the natural
    v2 lever if budget-exhausted runs turn out to be common on
@@ -1076,9 +1076,9 @@ explicit position on what happens at each:
    the harness both mint (`artifacts.md` §5.1). The re-render is a
    `context_overflow` run event (`keel/triggers-and-runs.md` §10) with
    the number of results stubbed and the bytes moved. If the retried
-   request is refused too, the run gets the final-turn nudge with
+   request is refused too, the run gets the final-turn steer with
    `budget_exhausted`, exactly as for crossing the high-water mark, and
-   if even the nudge turn cannot fit, the run ends as an infrastructure
+   if even the steer turn cannot fit, the run ends as an infrastructure
    failure below.
 
 4. **A model response that arrives broken is not a turn** *(added

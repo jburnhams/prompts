@@ -1,6 +1,6 @@
 # Aider
 
-- **Type**: Coding agent (terminal-based pair programmer)
+- **Type**: Coding harness (terminal-based pair programmer)
 - **License**: Apache-2.0
 - **Source**: https://github.com/Aider-AI/aider
 - **Retrieved from**: `main` branch, `aider/coders/` (2026-07-10)
@@ -47,7 +47,7 @@ invokes.
   local files by the CLI process itself.
 - **Distinctive**: this file-selection-by-the-human model (rather than
   agent-driven exploration) is the sharpest architectural outlier
-  in this collection's coding-agent set — everything else assumes the
+  in this collection's coding harness set — everything else assumes the
   model can freely explore and pick its own files.
 
 ## Self-verification and testing
@@ -184,7 +184,7 @@ nothing between sessions by design.
 
 ## Context-file loading: the null case
 
-Worth recording precisely because Aider is the one mature coding agent in
+Worth recording precisely because Aider is the one mature coding harness in
 this collection that **has no context-file loader at all**. Read
 2026-08-30 from `aider/website/docs/usage/conventions.md` and
 `base_prompts.py` (stored here).

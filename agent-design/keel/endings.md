@@ -24,7 +24,7 @@ Why not a `terminal: true` flag that authors could set on any tool:
 
 1. **Ending a run is harness behaviour, not tool behaviour.** It means
    exclusivity in the turn (`terminal_not_exclusive`), the final-turn
-   nudge naming exactly the allowed terminals, the first-`done`
+   steer naming exactly the allowed terminals, the first-`done`
    checklist, the post-run cross-check, and the outcome on the run
    record. A flag would put the trigger for all of that on a tool whose
    implementation is somewhere else, possibly an MCP server.
@@ -92,7 +92,7 @@ use it.
   can fix the problem, or pick another ending.
 - **`complete: false`** removes the generic `Complete`. The run can then
   end only through an ending tool, `AskUser`, `HandOff`, or the
-  final-turn nudge, which lists exactly the endings that exist.
+  final-turn steer, which lists exactly the endings that exist.
 
 **Ask for help during the run, or as the ending.** These are different,
 and both are useful. `AskUser` mid-run suspends and resumes the same task

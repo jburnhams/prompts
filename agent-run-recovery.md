@@ -162,7 +162,7 @@ Every harness here that detects in-run loops counts repeats of "the same
 call", and the definition of "same" decides what it catches. OpenHands'
 stuck detector compared invalid calls by their arguments, which missed a
 model that reworded its `thought` each time (it ran to the 12-iteration
-cap with no nudge) and stopped a model that was repairing a call field by
+cap with no steer) and stopped a model that was repairing a call field by
 field (six failing fields, then five, then four) after three attempts. The
 fix changes what is compared:
 
@@ -177,7 +177,7 @@ fix changes what is compared:
   `security_risk` fields first, so rewording those does not count as a
   different call.
 - **Parallel calls in one response are one attempt**: "the model sees
-  their errors together", so a nudge cannot fire before the model has seen
+  their errors together", so a steer cannot fire before the model has seen
   any of them.
 - **The nudge names the failing fields**: "Your calls to `X` have failed
   validation N times without resolving the failing fields. Latest error:

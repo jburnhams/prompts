@@ -1,6 +1,6 @@
 # CodeAct with Hyperlight
 
-- **Type**: Agent orchestration pattern (not a coding agent itself — a
+- **Type**: Agent orchestration pattern (not a coding harness itself — a
   tool-use *strategy* any agent built on Microsoft's Agent Framework can
   opt into), paired with a sandboxed code-execution backend
 - **License**: MIT
@@ -104,7 +104,7 @@ sandbox is currently configured with**, regenerated per run.
 - **Sandbox/isolation**: the headline feature — Hyperlight micro-VMs,
   millisecond startup, no filesystem/network by default, everything
   explicitly allow-listed. Compare Bolt.new's WebContainer (browser-based
-  sandbox with a fixed 39-command allowlist, static text) and Gemini
+  sandbox with a fixed 39-command allow list, static text) and Gemini
   CLI's macOS-Seatbelt-or-container split (also prompt-conditional, but
   branching over ~2 fixed descriptions rather than assembled from a live
   capability registry).
@@ -171,7 +171,7 @@ protocol across the five, each is a genuinely distinct design. A general
 single-agent "run until done" loop (`agent_framework/_harness`, with
 its own todo-list, tool-approval, and "judge"-pattern self-evaluation
 machinery) is a separate, orthogonal runtime concern — closer to a
-coding agent's own inner ReAct loop than to any of the five
+coding harness's own inner ReAct loop than to any of the five
 multi-agent patterns above. See
 [`agent-subagent-architectures.md`](../agent-subagent-architectures.md)
 for how Handoff/GroupChat/Magentic compare to every other source's
@@ -215,7 +215,7 @@ wrapped agent's own pipeline, tools, or session at all.
   default versus 10 for a plain loop, checked *before* invoking the
   judge so an expensive judge call is skipped once the cap fires — the
   framework's own docstring calls judge calls out as "costly and
-  probabilistic," a rare case of a scaffold explicitly budgeting for
+  probabilistic," a rare case of a harness explicitly budgeting for
   the cost of checking its own work, not just the work itself.
 - **Optional, never wired in by default**: `create_harness_agent()`
   only attaches this middleware when a caller explicitly passes

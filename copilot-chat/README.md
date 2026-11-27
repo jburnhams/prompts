@@ -1,6 +1,6 @@
 # GitHub Copilot Chat (VS Code)
 
-- **Type**: Coding agent (VS Code Copilot Chat's "agent mode"), plus Copilot
+- **Type**: Coding harness (VS Code Copilot Chat's "agent mode"), plus Copilot
   CLI
 - **License**: MIT
 - **Source**: https://github.com/microsoft/vscode-copilot-chat — **archived/
@@ -27,7 +27,7 @@ This is the **complete** contents of `agent/` and `agent/openai/` — every
 file in both directories. Not included: the separate prompt trees for
 `panel/`, `inline/`, `notebook/`, `devcontainer/`, etc. one level up, which
 back distinct chat features (non-agentic chat, inline completions, notebook
-cells...) rather than the core coding agent, plus the `agent/test/`
+cells...) rather than the core coding harness, plus the `agent/test/`
 directory (test fixtures, not real prompts).
 
 ## Files
@@ -158,7 +158,7 @@ comments):
   plumbing as the main agent) rather than a separate lightweight
   execution path — the sub-agent is a real, complete tool-calling loop,
   just under a different system prompt, a hard turn cap, and a
-  constrained output grammar. The forced-final-turn nudge ("OK, your
+  constrained output grammar. The forced-final-turn steer ("OK, your
   allotted iterations are finished...") is a distinctive reliability
   mechanism not seen elsewhere in this collection — most other sources
   just trust the sub-agent to wrap up in time.

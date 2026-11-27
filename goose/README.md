@@ -1,6 +1,6 @@
 # Goose
 
-- **Type**: Coding agent (Block's general-purpose, extensible AI agent — CLI
+- **Type**: Coding harness (Block's general-purpose, extensible AI agent — CLI
   + desktop)
 - **License**: Apache-2.0
 - **Source**: https://github.com/block/goose
@@ -108,7 +108,7 @@ description that triggers delegation.
   generate" instruction for the final summary/report — functionally
   similar to Copilot Chat's forced `<final_answer>` cutoff, but stated as
   a soft convention here rather than a hard turn-budget mechanism with an
-  injected nudge message.
+  injected steer message.
 
 ## Compaction
 

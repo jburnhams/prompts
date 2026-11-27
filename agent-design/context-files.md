@@ -1115,7 +1115,7 @@ genuinely wants them. The reasons to defer:
   it.
 - Every import expander in the field is a small security project.
   Gemini CLI needs realpath canonicalization and fail-closed subpath
-  checks; Claude Code needs an extension allowlist, a symlink-aware
+  checks; Claude Code needs an extension allow list, a symlink-aware
   processed set, and a one-time human approval dialog for anything
   outside the cwd; Goose needs a git-root boundary, `.git` metadata
   exclusion, and gitignore filtering so a committed hints file cannot

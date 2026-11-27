@@ -1,10 +1,10 @@
 # Approaches to building a code/PR review bot
 
 Everything in this collection that's specifically a code- or PR-review tool
-(as opposed to a general coding agent) makes a different set of choices at
+(as opposed to a general coding harness) makes a different set of choices at
 each stage of the pipeline. This doc pulls those choices out and puts them
 side by side, stage by stage, with links to the source folder for full
-detail. It doesn't cover general-purpose coding agents (Cline, Aider,
+detail. It doesn't cover general-purpose coding harnesses (Cline, Aider,
 etc.) — only things whose job is specifically reviewing code.
 
 ## Sources covered
@@ -99,7 +99,7 @@ does it just default to the full thing?
 | Codex CLI | `--config experimental_instructions_file=<path>` overrides the built-in instructions (marked experimental) | [`openai/codex` discussion #7296](https://github.com/openai/codex/discussions/7296) |
 | OpenCode | Fully custom agents via `"agent": { "review": { "prompt": "{file:...}" } }` in config, plus a built-in read-only "Plan" agent as a lighter-weight option than "build" | [OpenCode docs, Agents](https://opencode.ai/docs/agents/) |
 
-So the capability to avoid shipping a whole general-purpose coding-agent
+So the capability to avoid shipping a whole general-purpose coding harness
 prompt just to review a diff **exists on every platform** represented in
 this collection.
 
@@ -124,7 +124,7 @@ than overriding it with something leaner:
 - **`opencode-review` was checked specifically because of this question**,
   and it's the clearest case: `github.handler.ts` explicitly falls back to
   `default_agent` from config, or `"build"` — OpenCode's full
-  general-purpose, edit-capable coding agent — [when no `agent` input is
+  general-purpose, edit-capable coding harness — [when no `agent` input is
   set](https://github.com/anomalyco/opencode/blob/dev/packages/opencode/src/cli/cmd/github.handler.ts).
   A leaner "Plan" (read-only) agent exists and a fully custom one can be
   configured, but **neither is the default** — you have to opt in.
@@ -253,7 +253,7 @@ comment was addressed between first and last commit, suppressing comment
 classes the team keeps ignoring — with security findings exempted from
 suppression. The signal these three learn from is human reaction to
 their own output, which is why their loops run automatically while
-coding agents' self-mined memory tends to sit behind an approval queue.
+coding harnesses' self-mined memory tends to sit behind an approval queue.
 
 **The opposite move: deliberately withholding the repository.**
 Every row above adds context. `autoreview` removes it, and says so to
@@ -301,10 +301,10 @@ the reviewed diff."*
 | Several fixed parallel specialist sub-agents (bugs, security, types, tests, comments, ...) | [`pr-review-toolkit`](./skills/anthropic/pr-review-toolkit) (up to 6), [`turingmind`](./skills/turingmind) (4 quick / 9 deep), [`agent37/local-review`](./skills/agent37/local-review) (5), [`anthropic/code-review`](./skills/anthropic/code-review) (4: 2× CLAUDE.md, 2× bugs) |
 | Pluggable review "layers," each an independently swappable instruction template | [`bmad-code-review`](./skills/bmad-code-review) (`customize.toml`'s `review_layers` array — override, add, or disable per team/user) |
 | Conditional/progressive agent loading based on what actually changed | [`turingmind`](./skills/turingmind) (routing table by file type / `CLAUDE.md` presence), [`claude-code-cookbook`](./skills/claude-code-cookbook) `smart-review` |
-| User chooses sequential vs. parallel subagent execution | [`pr-review-toolkit`](./skills/anthropic/pr-review-toolkit) — the only source that makes this a user choice rather than hardcoding one |
+| User chooses sequential vs. parallel sub-agent execution | [`pr-review-toolkit`](./skills/anthropic/pr-review-toolkit) — the only source that makes this a user choice rather than hardcoding one |
 | Single pass, no sub-agents at all | `pr-agent`, [`codex-review`](./github-pr-bots/codex-review), [`gemini-code-review`](./github-pr-bots/gemini-code-review) `/pr-code-review` |
 | Explicitly "adversarial" framing | [`bmad-code-review`](./skills/bmad-code-review) (`bmad-review-adversarial-general` layer), [`gemini-code-review`](./github-pr-bots/gemini-code-review) ("your adherence to instructions is absolute") |
-| Sequential pipeline of role-specialized agents that hand off via literal keyword responses (not tool calls or structured fields) | [`composio-swekit/pr_review`](./composio-swekit) — `PR_FETCHER_PROMPT` → (`"ANALYZE REPO"`) → `REPO_ANALYZER_PROMPT` → (`"ANALYSIS COMPLETED"`) → `PR_COMMENT_PROMPT`, each a separately-prompted role in one LangGraph state machine rather than parallel subagents |
+| Sequential pipeline of role-specialized agents that hand off via literal keyword responses (not tool calls or structured fields) | [`composio-swekit/pr_review`](./composio-swekit) — `PR_FETCHER_PROMPT` → (`"ANALYZE REPO"`) → `REPO_ANALYZER_PROMPT` → (`"ANALYSIS COMPLETED"`) → `PR_COMMENT_PROMPT`, each a separately-prompted role in one LangGraph state machine rather than parallel sub-agents |
 
 ## 6. Filtering, confidence & triage
 
@@ -314,7 +314,7 @@ arguably where most of the engineering effort in this whole space goes.
 | Mechanism | Sources |
 |---|---|
 | Numeric confidence score (0-100) from an additive point rubric, cutoff ~80 | [`turingmind`](./skills/turingmind) (`false-positive-rules.md`), [`agent37/local-review`](./skills/agent37/local-review) (coarser bucketed rubric) |
-| Second-pass **validation** subagent per candidate finding (binary, not scored) | [`anthropic/code-review`](./skills/anthropic/code-review) — finds via 4 agents, then a dedicated subagent re-checks each candidate before anything is posted |
+| Second-pass **validation** sub-agent per candidate finding (binary, not scored) | [`anthropic/code-review`](./skills/anthropic/code-review) — finds via 4 agents, then a dedicated sub-agent re-checks each candidate before anything is posted |
 | Self-scored reflection pass on proposed fixes (0-10), catches suggestions that misread the diff | `pr-agent` `/improve` (`pr_code_suggestions_reflect_prompts.toml`) |
 | 4-way triage bucket instead of a score: `decision_needed` / `patch` / `defer` / `dismiss` | [`bmad-code-review`](./skills/bmad-code-review) — also the only one requiring the model to *read surrounding code* before rating severity, not just the diff hunk |
 | Two-pass LLM verification: initial scan → broader "final review" pass → separate refutation prompt | [`security-guidance`](./skills/anthropic/security-guidance) |
@@ -403,7 +403,7 @@ the design treats *being called* as the thing to gate.
 
 | Constraint | Sources |
 |---|---|
-| Bash allowlist restricted to read-only git commands (`diff`/`status`/`log`/`blame`/`show`) | [`agent37/local-review`](./skills/agent37/local-review), [`turingmind`](./skills/turingmind) |
+| Bash allow list restricted to read-only git commands (`diff`/`status`/`log`/`blame`/`show`) | [`agent37/local-review`](./skills/agent37/local-review), [`turingmind`](./skills/turingmind) |
 | MCP tool list locked to an exact minimal set (can't merge, approve, or touch issues even if instructed to) | [`gemini-code-review`](./github-pr-bots/gemini-code-review) — 3 tools only, enforced at tool-registration level not by prompt |
 | Explicitly barred from formal review/approve/merge actions, regardless of what's asked | [`claude-code-action`](./github-pr-bots/claude-code-action) tag mode |
 | Review event type hard-locked to `COMMENT` (never `APPROVE`/`REQUEST_CHANGES`) even though the tool supports them | [`gemini-code-review`](./github-pr-bots/gemini-code-review) |
@@ -789,7 +789,7 @@ counts come from variables and are taken from Piebald's descriptions.
 | Level | Finders | Verification | Cap | Notes |
 |---|---|---|---|---|
 | minimal | one careful pass by the main agent | none | variable | Restates findings as `file:line — summary` after the tool call, "so they stay visible in sessions that do not render tool output" |
-| low | one tool call reads the diff; no subagents, no full-file reads | none | ≤4 | Test and fixture hunks are skipped. A variant sets a **floor** of `min(files_changed, 4)`: with fewer, do one more pass on the largest changed file and on removed code |
+| low | one tool call reads the diff; no sub-agents, no full-file reads | none | ≤4 | Test and fixture hunks are skipped. A variant sets a **floor** of `min(files_changed, 4)`: with fewer, do one more pass on the largest changed file and on removed code |
 | medium | 8 angles (3 correctness, 3 cleanup, 1 altitude, 1 conventions), ≤6 each | one verifier per candidate, 3-state | ≤8 | "Reviewing for **precision**" |
 | high | the same 8 angles | one verifier, **recall-biased** | ≤10 | "Reviewing for **recall**" |
 | xhigh / max | 10 angles (5 correctness), ≤8 each | one verifier; "a single non-REFUTED vote carries the finding" | variable | Adds a **gap sweep**: a fresh finder given the verified list, looking only for what is missing, "do not pad" |
@@ -1303,7 +1303,7 @@ A few things stood out across all fourteen:
   defaults to.
 - **False-positive filtering is where the real design divergence is.**
   Everything from a simple threshold (TuringMind, agent37) to a two-stage
-  validation subagent (Anthropic's `/code-review`) to a 4-bucket triage
+  validation sub-agent (Anthropic's `/code-review`) to a 4-bucket triage
   system that re-reads surrounding code before rating severity (BMAD).
   None of the "no filtering step described" tools (Codex, Gemini,
   Cookbook) are necessarily worse — they may just push that judgment into

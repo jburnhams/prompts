@@ -1,7 +1,7 @@
 # Memory, learnings, and retrospectives: what survives the session
 
 A drill-down alongside [`agent-context-compaction.md`](./agent-context-compaction.md)
-(how a scaffold survives running out of room *inside* one session) and
+(how a harness survives running out of room *inside* one session) and
 [`agent-self-verification.md`](./agent-self-verification.md) (how it checks
 its own work *before* finishing): what, if anything, does a coding or
 review agent carry from one session into the next? Does it write anything
@@ -507,7 +507,7 @@ persist it*, rather than writing it itself.
    CLI (`startAutoMemoryIfEnabled` fires and forgets at CLI start). Both
    deliberately avoid touching the session that is still running. Gemini
    CLI's eligibility gates are unusually explicit and worth copying:
-   skip subagent sessions, skip sessions idle for less than **3 hours**
+   skip sub-agent sessions, skip sessions idle for less than **3 hours**
    ("to avoid summarizing still-active/fresh rollouts" is Codex's
    phrasing of the same rule), skip sessions with fewer than **10 user
    messages**, throttle to one run per **30 minutes**, index at most 50
@@ -1290,11 +1290,11 @@ contribution has to be.
   overlapping time windows re-classify already-incorporated guidance as
   `covered`, so no cursor state is kept and a missed day self-heals.
 
-The axis worth naming: **coding agents mine their own trajectories;
+The axis worth naming: **coding harnesses mine their own trajectories;
 review bots mine human responses to their output.** The second signal is
 better (a human actually accepted or ignored the suggestion), which is
 probably why the review tools were comfortable making their loops fully
-automatic while the coding agents wrap theirs in approval queues.
+automatic while the coding harnesses wrap theirs in approval queues.
 
 **A follow-up read settles what the acceptance run left open.** Re-reading
 `deepseek-ai/deepseek-harness` at `cd5ef81` (2026-08-30, two weeks after
@@ -1540,7 +1540,7 @@ mechanisms their vendors do describe.
 ## 10. Memory as an attack surface
 
 Consolidating a transcript means feeding attacker-influenceable text
-(tool output, fetched pages, third-party file contents) to a model that
+(tool result, fetched pages, third-party file contents) to a model that
 writes durable instructions read by every future session. Every source
 that built a background consolidator noticed:
 
@@ -1824,7 +1824,7 @@ read limit, which is the write-side counterpart of the index cap above.
 
 *Added 2026-11-02 for the Keel memory proposal
 ([`agent-design/keel/memory.md`](./agent-design/keel/memory.md)).
-Everything above treats memory as a feature of one agent product. Three
+Everything above treats memory as a feature of one harness. Three
 sources now treat it as a resource that a platform hands to runs, which
 is the shape Keel needs.*
 
@@ -2035,7 +2035,7 @@ prose":
 
 - an **origin class** from a closed set: `owner` (typed by the owner in a
   trusted channel), `agent` (derived by the agent from owner content),
-  `untrusted` (web pages, tool output, non-owner participants in group
+  `untrusted` (web pages, tool result, non-owner participants in group
   chats) and `system` (heartbeat prompts, cron preambles). Unknown origin
   is never defaulted to `owner`;
 - a **session kind**: interactive, cron, heartbeat or sub-agent;
@@ -2181,7 +2181,7 @@ document, and the claims below should be checked before being relied on.
    archival memory) that is searched. OpenClaw searches it with hybrid
    vector + BM25; Hermes with FTS5 only; Letta, mem0 and Zep with
    vectors or graphs. Grep-sized corpora are a property of short-session
-   coding agents, not of memory. The accurate statement is: **curated
+   coding harnesses, not of memory. The accurate statement is: **curated
    memory is files and injection; episodic memory is searched, and
    hybrid search is the norm once it spans months.**
 2. **Provenance beats content inspection as the write boundary.**
@@ -2193,7 +2193,7 @@ document, and the claims below should be checked before being relied on.
    so does Claude Code for secrets; scanning is still worth doing for
    secrets and obvious injection, but as a second line.
 3. **Background-run noise is the dominant failure of always-on memory.**
-   Neither the coding-agent sources nor §9 named it, because coding
+   Neither the coding harness sources nor §9 named it, because coding
    agents rarely run on heartbeats.
 4. **Prospective memory is not memory.** Intentions belong in a scheduler
    or a rule table with expiry and fire budgets, not in prose.
@@ -2237,7 +2237,7 @@ document, and the claims below should be checked before being relied on.
    the requirement removes the delay before a learning becomes usable
    (§6).
 6. **Trust user messages over your own.** Both mature extractor prompts
-   independently rank user messages and tool outputs above assistant
+   independently rank user messages and tool results above assistant
    messages, and both explicitly refuse to promote assistant proposals
    that were never adopted.
 7. **Store retrospectives in symptom → cause → fix form.** "Failure

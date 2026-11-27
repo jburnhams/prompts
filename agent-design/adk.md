@@ -448,7 +448,7 @@ integration work:
 | Per-call classification (concurrency by path, `Bash` read-only-ness) | Server, with `beforeToolCallback` as a client-side gate | MCP annotations are per-tool, not per-call |
 | Sanitising untrusted content from *third-party* MCP servers (Jira, Bitbucket) | **`afterToolCallback`** | Our servers can't sanitise someone else's output |
 | Backstop caps on third-party results | `afterToolCallback` | Same reason |
-| Turn budget, context high-water mark, final-turn nudge | **Agent loop** | Not a tool concern at all |
+| Turn budget, context high-water mark, final-turn steer | **Agent loop** | Not a tool concern at all |
 | `AskUser`/`Complete` terminating the run | Agent loop | The tool returns; the loop decides the run is over (`formats.md` §5) |
 | Post-run `git status` cross-check | Agent loop / harness | Runs after the loop ends |
 

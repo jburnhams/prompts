@@ -36,7 +36,7 @@ clipboard for an external chat (`btw()`), run an assistant in the IDE
 | `git` / `github` | repository context |
 | `cran` | search CRAN, package info |
 | `web` | fetch |
-| `agent` | subagent, custom agents |
+| `agent` | sub-agent, custom agents |
 | `skills` | skill loading |
 | `run` | **run R code — disabled by default** |
 

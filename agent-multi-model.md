@@ -128,8 +128,8 @@ Mechanics from the docs:
 - Anthropic's guidance: good for long agentic work where most turns are
   mechanical and planning matters; poor for single-turn Q&A and for work where
   every turn needs the strong model. Haiku executors under-call the advisor, so
-  the docs suggest a turn-2 nudge (+~7 points on their internal tasks; a late
-  nudge hurt). These are vendor internal numbers.
+  the docs suggest a turn-2 steer (+~7 points on their internal tasks; a late
+  steer hurt). These are vendor internal numbers.
 
 Fit for data analysis: the advisor shape helps *planning* ("which tables, which
 join, what would make this number wrong") because the advisor sees the whole
@@ -226,7 +226,7 @@ steps**. A good split is:
 | Schema and profile reads, running a fixed query, fetching files | Follow instructions, call tools correctly | cheap |
 | Deciding the analysis plan, join keys, metrics definitions | Judgment, checked by nothing downstream | strong |
 | Writing queries/code that compute the answer | Correctness; verified only by provenance and cross-checks | strong, or cheap with a verifier |
-| Summarising big tool output into a handoff | Faithfulness | cheap is fine if the evidence refs are carried alongside |
+| Summarising big tool result into a handoff | Faithfulness | cheap is fine if the evidence refs are carried alongside |
 | Writing the report from verified evidence | Synthesis, prose, calibration of claims | strong |
 
 The handoff matters more than the tiering. Three habits recur across the data

@@ -92,7 +92,7 @@ re-litigated later.
   working-tree-is-the-deliverable design actually suits this well:
   N worktrees, one judged winner, no branch juggling inside the agent.
 - **An LLM judge over completed work.** Claude Code's internal
-  adversarial verification subagent is the ceiling
+  adversarial verification sub-agent is the ceiling
   (`agent-self-verification.md` §3); v1's completion-integrity story
   is deterministic only (checklist gate + harness `git status`
   cross-check), which can't be prompt-injected or talked out of
@@ -127,7 +127,7 @@ re-litigated later.
   is the part not to skip. **Trigger:** long runs drift in ways the
   existing monitors cannot name (scope creep, claims nobody checked).
 - **Context compaction.** A run that outgrows its budgets ends via the
-  final-turn nudge with an honest partial report (`formats.md` §7)
+  final-turn steer with an honest partial report (`formats.md` §7)
   rather than summarizing and continuing — compaction is a genuine
   subsystem (`agent-context-compaction.md`) and the natural lever if
   budget-exhausted runs turn out to be common on legitimately-sized
@@ -284,7 +284,7 @@ re-litigated later.
   survey (`agent-tool-surfaces.md` §4-5). A screenshot-and-view
   capability is the minimal useful slice; full interactive automation
   is a large dependency for one ticket class.
-- **Turn caps for sub-agents.** Copilot Chat's `isLastTurn` nudge (the
+- **Turn caps for sub-agents.** Copilot Chat's `isLastTurn` steer (the
   mechanism `formats.md` §7 uses run-level) applied to individual
   `Task` calls. The run-level budget is enough for now; a runaway
   sub-agent still terminates when the parent run's budget is hit.

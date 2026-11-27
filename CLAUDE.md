@@ -22,8 +22,9 @@ Read it before writing a research doc or a design doc here.
   control area (facets `target`, `response`), from 2026-11-27. The other areas (tool use,
   coordination, output, verification, operations) get their own words in later stages;
   until then use the kernel words and ask for the rest.
-- Existing docs are being renamed to the heading words; until that lands, older wording in
-  a doc you are not otherwise changing can stay.
+- Existing docs were renamed to the heading words on 2026-11-27 (see `changelog.md`). Words
+  that stayed on purpose: verb "nudges", "scaffolding" for templates, "reminder" (finds
+  `system-reminder`), and product or paper names in title case.
 - Words inside stored prompts and sources (`leaked/`, `skills/`, each source folder's
   stored files) and Keel's schema identifiers keep their authors' wording.
 - Common slips: **agent** is a model configured to act, not a product; Claude Code,

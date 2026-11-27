@@ -16,7 +16,7 @@ Keel already has more of this than most harnesses read here:
 
 - **An event stream without bodies** (`triggers-and-runs.md` §10,
   `RunEvent`): state, turns, tool calls and results (size and status),
-  refusals, narration, harness notes, reveals, the nudge, gates,
+  refusals, narration, harness notes, reveals, the steer, gates,
   artifacts, usage, outcome, deliveries, follow-ons, server requests,
   reissued calls, `cache_collapse`, `context_overflow`. SSE, resumable
   by sequence number.
@@ -86,7 +86,7 @@ schema URL and a `keel.semconv.commit` resource attribute:
 | MCP tool call | MCP client span `tools/call {name}` (it *is* the `execute_tool` span) | `mcp.method.name`, `mcp.protocol.version`, `jsonrpc.request.id`, `keel.server` |
 | `Expand` / reveal, `Load*` of a skill | `execute_tool` with the skill operations (`load_skill`, `read_skill_resource`) where they fit | `gen_ai.skill.*` |
 | waiting on a person (gate, approval, elicitation) | `keel.wait` child span | `keel.wait.kind`, who answered |
-| nudge, harness note, `cache_collapse`, `context_overflow`, `reissued_call` | span events on the run span, `keel.*` names | the event's data minus bodies |
+| steer, harness note, `cache_collapse`, `context_overflow`, `reissued_call` | span events on the run span, `keel.*` names | the event's data minus bodies |
 | outcome | attributes on the run span | `keel.outcome.terminal`, `keel.outcome.finished_with`, span status `ERROR` only for infrastructure death |
 
 The `keel.*` attribute names are a small registry in Keel's own docs,
@@ -303,7 +303,7 @@ transcript, not from the trace backend:
 - sub-agents as collapsible nested transcripts, parallel ones as
   lanes;
 - waits on a person as visible gaps with who answered;
-- refusals, nudges, reveals and harness notes inline where they
+- refusals, steers, reveals and harness notes inline where they
   happened;
 - a header with outcome, cost by source (proposal 7), scores
   (proposal 9) and links to the trace in the backend and to the parent
@@ -328,7 +328,7 @@ The per-use-case panels are where Forge and Lens differ.
   argument digest N times in a row (default 3); the same error type from
   the same tool N times in a row; N turns with no state-changing call.
   Each emits a `loop_suspected` event and takes the monitor's configured
-  action (note, nudge, stop).
+  action (note, steer, stop).
 - **Across runs**, an `alerts` block on a template (or a resource beside
   it) using proposal 8's metrics and proposal 9's scores: cost per run
   p95, refusal rate, tool error rate per server, `cache_collapse` rate,

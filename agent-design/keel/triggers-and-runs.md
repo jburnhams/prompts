@@ -163,7 +163,7 @@ queued → provisioning → running ⇄ finalizing → ended
 - **`suspended`** holds a gate. The run itself has ended. The suspended
   record keeps envelope and transcript for a resume.
 - **Stopping**: `:stop` is graceful by default. It injects the
-  final-turn nudge at the next turn boundary, so even a cancelled run
+  final-turn steer at the next turn boundary, so even a cancelled run
   ends through `Complete` with an honest report. `abort` exists, and
   ends with `terminal: stopped`. The harness then posts the failure note
   itself, as `../formats.md` §7 requires for infrastructure deaths.
@@ -177,7 +177,7 @@ queued → provisioning → running ⇄ finalizing → ended
   (`../models.md` §8's "record tier, model ID and the price at the time").
 - **Events** (`GET /v1/runs/{id}/events`, SSE): state changes, turns,
   tool calls and results (sizes and status, not bodies), refusals,
-  narration, harness notes, reveals, the nudge, gates, artifacts, usage,
+  narration, harness notes, reveals, the steer, gates, artifacts, usage,
   outcome, deliveries, follow-ons, `cache_collapse`,
   `context_overflow`, `response_retry`, `budget_stop` and
   `outbound_rewrite`. Bodies are in
