@@ -4,6 +4,10 @@ All notable changes to this repository, grouped by day, newest first. Generated 
 
 ## 2026-11-27
 
+**Term requests are now issues in `jburnhams/taxonomies`, on branch `claude/project-thread-8dnulq`.** Jonathan chose GitHub issues there over a request file in this repo (taxonomies decision J27, 2026-11-27), so the inbox added earlier today is removed.
+
+- `term-requests.md`: removed.
+- `CLAUDE.md`: step 2 now says how to file a `term-request` issue (title, label, the form's sections for an agent), to comment on an open one rather than file again, and the changelog fallback for a session that cannot file issues; the rules are marked adopted.
 **Renamed the repo's own docs to the `prompts` glossary's heading words, on branch `claude/project-thread-oneclm`.** Jonathan approved the rename list (G6) after the taxonomy's three stages were adopted. Applied to the repo's own writing only: root docs, `agent-design/` and each source folder's `README.md`. Untouched: `leaked/`, `skills/`, stored prompt copies, this changelog's history, code spans and fences, link targets, headings (so anchors still resolve), block quotes, quoted strings (also where a quote runs over several lines), italic spans (paper titles), indented blocks and prompt text ("You are ..."), and product or paper names in title case (Microsoft Agent Framework, Antigravity's Knowledge Subagent, *Inside the Scaffold*).
 
 - By script: "coding agent" → "coding harness" (105; "coding" kept so the contrast with data agents survives), "allowlist" → "allow list" (84), "subagent" → "sub-agent" (45), "tool output" → "tool result" (24), "agent framework" → "agent SDK" (6, lower-case only), "hand-off" → "handoff" (4), "denylist" → "deny list" (2).
