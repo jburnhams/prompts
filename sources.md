@@ -708,6 +708,41 @@ first tagged release and the schema URL), Claude Code's monitoring page
 (read past 100k), and read LlamaIndex's instrumentation module, W&B
 Weave and MLflow Tracing, which this pass only named.
 
+### Agent swarms (read 2026-11-28)
+
+Sources for [`agent-swarms.md`](./agent-swarms.md) and
+`agent-design/proposals-swarms-2026-11.md`. Repos cloned `--depth 1
+--filter=blob:none --sparse` on the paths below; nothing was run.
+
+| Repo | SHA read | Paths that matter |
+|---|---|---|
+| `openai/openai-agents-python` | `6afdd47` | `src/agents/handoffs/__init__.py` (`input_filter`, `nest_handoff_history`, `is_enabled`), `src/agents/handoffs/history.py` (`<CONVERSATION HISTORY>` wrapper) |
+| `langchain-ai/langgraph-swarm-py` | `8956b13` | `langgraph_swarm/{swarm,handoff}.py` (`active_agent`, `Command(goto=..., graph=Command.PARENT)`) |
+| `google/adk-python` | `03725e8` | `src/google/adk/agents/{parallel_agent,loop_agent,sequential_agent}.py` (isolated branch per child; `max_iterations`, `escalate`) |
+| `crewAIInc/crewAI` | `77237ae` | `lib/crewai/src/crewai/crew.py` (`Process.hierarchical`, `manager_llm`/`manager_agent`), `tools/agent_tools/` (`delegate_work_tool`, `ask_question_tool`) |
+
+Papers (arXiv ids; "full" means the HTML was read, in places through a
+summarising fetch): 2512.08296 v3 full, 2503.13657 v3 full, 2602.02276 v2 full
+(§3), 2605.02801 full, 2608.30661 full, 2609.01870 v2 full, 2610.10263 full,
+2610.25966 full, 2610.33048 full; abstracts only: 2510.01285, 2606.29270,
+2609.35875, 2402.05120, 2406.04692, 2606.05400, 2606.03303, 2607.11307.
+
+Pages: anthropic.com/engineering/multi-agent-research-system and
+/building-c-compiler; cursor.com/blog/scaling-agents; cognition.com/blog/dont-build-multi-agents
+and /multi-agents-working; code.claude.com/docs/en/agent-teams;
+antigravity.google/blog/gemini-4-carbon-in-google-antigravity, /docs/swarm,
+/docs/dynamic-workflows, /docs/changelog; kimi.com/blog/kimi-k2-5 and /kimi-k2-6,
+kimi.com/help/agent/agent-swarm; a2a-protocol.org/latest/specification/ and the
+2026-08-27 AAIF post; github.com/openai/swarm; openai.github.io/openai-agents-python/handoffs/;
+the langgraph-supervisor-py README (archived 2026-09-20); research.google AI
+co-scientist post; deepmind.google AlphaEvolve post and "Finding faster quantum
+algorithms with agents and formal verification" (2026-11-23); quantamagazine.org
+Erdős feature (2026-08-03).
+
+Candidates not read: Agensh's code (`github.com/microsoft/Agensh`, unlinked from
+the paper); LeanMarathon's code; DeepMind's `formal-quantum-computation` Lean
+library; arXiv 2611.09822; Aletheia.
+
 ### The weekly pass (read 2026-11-16)
 
 Sources for `agent-run-recovery.md` §7, `code-review-approaches.md` §18,
