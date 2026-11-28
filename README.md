@@ -15,6 +15,17 @@ repo here has been restructured at least once), the commits read, and the
 sparse-clone recipe for re-fetching any of them in a couple of minutes.
 Start there before re-deriving where a harness keeps its tool definitions.
 
+**[→ `agent-swarms.md`](./agent-swarms.md)** — agent swarms (2026-11-28):
+many agents on one task, read across SDKs (OpenAI handoffs, LangGraph, ADK,
+CrewAI, Microsoft), harnesses (Claude Code teams, Codex boards, Antigravity
+`/swarm`), trained swarms (Kimi), large builds (Anthropic's C compiler, Cursor),
+maths provers and 2026 papers, by how they communicate, organise, focus, iterate
+and orchestrate. The evidence says fan out only where parts can be judged alone,
+keep one writer, and verify rather than vote. Case studies add the Bun port, AIxCC, Kosmos and
+the Show-Up attack on supervisors. Fifteen proposals for Keel, Forge
+and Lens, **none adopted, for discussion**, are in
+[`agent-design/proposals-swarms-2026-11.md`](./agent-design/proposals-swarms-2026-11.md).
+
 **[→ `data-agents/rill/`](./data-agents/rill)** — Rill (2026-11-12), an
 open-source BI tool whose metrics layer is the only thing its agents
 query, read for its MCP server, its analyst prompts, and its interactive
