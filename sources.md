@@ -739,6 +739,15 @@ co-scientist post; deepmind.google AlphaEvolve post and "Finding faster quantum
 algorithms with agents and formal verification" (2026-11-23); quantamagazine.org
 Erdős feature (2026-08-03).
 
+Case studies (added the same day): bun.com/blog/bun-in-rust; claude.com/resources/articles/ai-code-migration;
+kirshatrov.com/posts/codebase-migrations-with-llms; arXiv 2504.09691, 2602.07666
+(HTML truncated after §6.2, rest through a summary), 2610.27574 (truncated after
+Table 2), 2511.02824 (v2, partly through a summary), 2602.18710, 2605.27571,
+2607.22682; blog.trailofbits.com/categories/aixcc/ (Buttercup open-source and
+second-place posts); xbow.com/platform and /blog (page 1); futurehouse.org Robin
+post. Not read: Trail of Bits' "AIxCC finals: Tale of the tape"; XBOW blog pages
+2-13.
+
 Candidates not read: Agensh's code (`github.com/microsoft/Agensh`, unlinked from
 the paper); LeanMarathon's code; DeepMind's `formal-quantum-computation` Lean
 library; arXiv 2611.09822; Aletheia.

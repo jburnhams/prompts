@@ -1,6 +1,7 @@
 # Proposals from the agent swarms deep dive (2026-11-28)
 
-**Status: proposals only, none adopted.** Jonathan asked to see proposals before
+**Status: proposals only, none adopted.** Proposals 13-15 and the campaign stages in
+proposal 10 were added the same day from the case studies (`../agent-swarms.md` §9a). Jonathan asked to see proposals before
 anything changes, so no other file under `agent-design/` is edited. The research
 is in [`../agent-swarms.md`](../agent-swarms.md); section references (§3, §8c)
 are to that file unless they name another.
@@ -61,7 +62,10 @@ in a read-only sandbox by default, keeping write only under `branch`.
 fell from 83.0% to 59.0% with concurrent sub-agents in one workspace, the main
 failure cause being shared state (arXiv 2610.10263, paper). The C compiler's 16
 agents overwrote each other's fixes (docs); Claude Code's teams docs warn that two
-teammates on one file "leads to overwrites" (docs); Cognition's 2026 rule is
+teammates on one file "leads to overwrites" (docs); Bun's port saw agents in one
+checkout run `git stash` and `reset --hard` against each other about two minutes in,
+and had to forbid every git command but committing a named file (docs, §9a);
+Cognition's 2026 rule is
 "writes stay single-threaded" (docs). A prompt rule asks the model to know its
 children's file sets in advance, which it cannot.
 
@@ -254,6 +258,27 @@ lands units in order and re-runs the oracle on the result. Units that fail N tim
 go back to the plan stage to be split or flagged, not retried forever. No oracle,
 no campaign: the plan stage hands off instead.
 
+The Bun port and Anthropic's migration guide (§9a, docs) give the stage list this proposal
+would follow:
+
+1. **Validate the oracle** before using it: it must pass on the original and fail
+   on deliberately broken versions.
+2. **A rulebook** (conventions for this migration) written with a person, reviewed
+   by one sub-agent per failure category.
+3. **A rehearsal** on three units, by two implementers with different briefs and a
+   third agent that turns their diff into new rules; its output is discarded.
+4. **The unit loop**: one implementer, two reviewers who see only the diff (not the
+   implementer's reasoning) and a tie-breaker; a unit is done when its artifact
+   exists and passes, so the queue resumes for free.
+5. **Fix the loop, not the unit**: a finding that recurs across units becomes a
+   rulebook rule, and the units it touched are re-queued; it is never patched unit
+   by unit.
+6. **One builder**: shared build, lockfile and generated code are owned by one
+   harness process that batches units' changes, as Bun's build daemon did.
+7. **Units that fail N times** go to a person or back to the plan stage, as
+   Google's migration sends any file that fails its validation chain to a developer
+   (paper).
+
 **Why.** The two very large builds that worked (the C compiler, Cursor's browser)
 both rested on an oracle that judged each piece, and both failed where it did not
 (16 agents on one kernel bug, docs). LeanMarathon's "many local, recoverable,
@@ -304,6 +329,65 @@ source read uses A2A inside a swarm, and Keel's MCP-first decision stands.
 
 **Rests on:** docs.
 
+### 13. Routing is not steered by what a sub-agent says about itself
+
+**What.** Extend the "reports are data" rule (`keel/tools-and-agents.md` §4c) to
+routing. A sub-agent's report cannot ask for, claim or be read as earning more work:
+the `report_schema` has no free field for it, and the orchestrator prompt says that
+which sub-agent gets the next task is decided by the task and the template's
+`spawns`, never by a report's claims of competence, another agent's endorsement or
+"history" in a report. The harness flags a run where one sub-agent's share of spawns
+or tool calls jumps against its template's norm (an `anomaly` event), and memory
+written by a run never records which sub-agent "is best at" something.
+
+**Why.** The Show-Up attack (arXiv 2610.27574, paper, §9a) had a malicious
+sub-agent win extra routing from supervisors up to 93% of the time, mostly by
+claiming peer endorsement, and the effect survived 17 tasks through memory.
+Restricting channels alone was "insufficient"; successful attacks made 4.43 extra
+tool calls against 0.58. Keel's current rule stops a report being obeyed, not a
+report being believed about who should do the next thing.
+
+**Cost.** A prompt paragraph, a schema review, one event. Keel's fixed `spawns`
+already limit who can be chosen.
+
+**Rests on:** paper; the remedies are inference.
+
+### 14. Lens: report the spread, cite every statement, mark synthesis
+
+**What.** When a Lens run fans out analysts over the same question (proposal 11's
+sources, or several hypotheses), the answer reports the spread of their results (a
+small specification table: the choices each made and the estimate it got) instead of
+one number, unless every analyst agrees within a stated tolerance. Every statement in
+a Lens report cites the query or notebook that produced it, and a statement that
+combines several results is marked as **synthesis** and held to the answer gate's
+stricter check.
+
+**Why.** About 5,000 analyst runs on the same data gave "substantial dispersion in
+effect sizes, p-values, and conclusions", with reversals, and filtering to compliant
+runs did not remove it (arXiv 2602.18710, paper). Kosmos cites every statement and
+still found synthesis statements right only 57.9% of the time, against 85.5% for
+data-analysis statements (arXiv 2511.02824, paper).
+
+**Cost.** A report section and a statement type.
+
+**Rests on:** two papers.
+
+### 15. Forge: ask whether a change should exist
+
+**What.** Forge's completion gate and review validator gain one fixed question per
+changed file or finding: "is this change needed for the task at all?" A `no`
+removes the change (implement) or the finding (review) before anything else is
+checked. In a campaign (proposal 10) it is the first check in each unit's chain.
+
+**Why.** Google's migration pipeline runs this check, "Punt", before build and tests
+on every file (arXiv 2504.09691, paper); it is cheaper than a build and catches
+changes that work but should not be there. Forge's gates ask whether work is
+correct and complete, not whether each part belongs.
+
+**Cost.** One schema-checked question.
+
+**Rests on:** paper; the placement is inference.
+
 ## Not proposed
 
 - **Peer messaging between sub-agents** (Claude Code teams, Codex
@@ -325,5 +409,5 @@ source read uses A2A inside a swarm, and Keel's MCP-first decision stands.
    be harness code over existing templates?
 3. **Proposal 8**: is a board worth building before Lens has more than one data
    source in use?
-4. **Order**: 1, 3, 4 and 9 are small and stand alone; 2 enables 10; 8 enables 11;
+4. **Order**: 1, 3, 4, 9, 13 and 15 are small and stand alone; 2 enables 10; 8 enables 11;
    5 depends on the telemetry proposals. Is that the right order?

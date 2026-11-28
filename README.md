@@ -21,7 +21,8 @@ CrewAI, Microsoft), harnesses (Claude Code teams, Codex boards, Antigravity
 `/swarm`), trained swarms (Kimi), large builds (Anthropic's C compiler, Cursor),
 maths provers and 2026 papers, by how they communicate, organise, focus, iterate
 and orchestrate. The evidence says fan out only where parts can be judged alone,
-keep one writer, and verify rather than vote. Twelve proposals for Keel, Forge
+keep one writer, and verify rather than vote. Case studies add the Bun port, AIxCC, Kosmos and
+the Show-Up attack on supervisors. Fifteen proposals for Keel, Forge
 and Lens, **none adopted, for discussion**, are in
 [`agent-design/proposals-swarms-2026-11.md`](./agent-design/proposals-swarms-2026-11.md).
 

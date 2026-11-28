@@ -74,6 +74,17 @@ failures in MAST (§8d).
 | **Decentralized** | peers message each other or pass control | OpenAI and LangGraph handoffs; Claude Code teammates; Agensh |
 | **Board** | agents read and write one shared record; nobody routes | blackboard systems; ArcticSwarm's bulletin board; Codex message boards; LeanMarathon's blueprint file |
 
+"A Vocabulary for Multi-Agent Automated Research Systems" (Amazon AGI, arXiv
+2607.22682) **[paper]** offers a finer frame worth carrying into the glossary
+requests. It keeps a topology's **shape** (which message edges exist) apart from its
+**control** (who picks the active edge), separates an **agent** (a model with private
+memory and a role) from a **module** (a stateless call), splits shared state into
+within-run, world and cross-run, and names the **structural actions** a system may
+take mid-run: spawn, kill, fork, join, grant, revoke, consolidate, migrate and
+rewrite-policy. It also names the risk every search-by-score swarm runs: the
+**proxy-quality gap** between the evaluator's score and true quality, and the
+"overfitting tax" of searching harder against a miscalibrated evaluator.
+
 ---
 
 ## 2. The systems read
@@ -102,6 +113,12 @@ failures in MAST (§8d).
 | Blackboard for data discovery | paper | board, agents volunteer | blackboard | central agent | [abstract] 2510.01285 |
 | Agensh | paper | no orchestrator, 128-1,024 workers | git, message bus, typed context board | merge | [abstract], §7e there |
 | A2A 1.0 | protocol | agent to agent across vendors | Task, Message, Artifact | n/a | [docs] |
+| Bun Zig → Rust port (§9a) | migration | sharded workflows, ~64 agents | rulebook files, git, a build daemon | implementer + 2 reviewers + tie-breaker per file | [docs] 2026-07-08 |
+| Google ID migration (§9a) | migration | per-file fan-out | none between units | validation chain, then a person | [paper] 2504.09691 |
+| AIxCC cyber reasoning systems (§9a) | security competition | ensembles and pipelines | seeds, coverage, PoVs | execution: reproduce, build, test | [paper] 2602.07666 |
+| XBOW (§9a) | security product | coordinator, thousands of short-lived workers | missions | independent validators | [docs] vendor |
+| Kosmos, Robin (§9a) | science | parallel analysis and literature agents | a structured world model | report citing every statement | [paper] 2511.02824, [docs] |
+| Many analysts, one dataset (§9a) | data-analysis study | independent | none | a second-model audit | [paper] 2602.18710 |
 
 ---
 
@@ -509,6 +526,175 @@ The same shape carries to the other uses in this repo:
 | Research question | a cited claim | searchers by sub-question, isolation then board | the lead writing the report |
 | Data analysis (Lens) | a query result that reproduces | one agent per data source or hypothesis, volunteering on a board | the writer of the answer |
 
+## 9a. More case studies: coding, security, science, data analysis
+
+*Added 2026-11-28, after Jonathan asked for more case studies. Same tags as above.*
+
+### Porting Bun from Zig to Rust (coding, very large)
+
+Read from Bun's own post (Jarred Sumner, 2026-07-08) and Anthropic's migration
+guide (2026-07-16) **[docs]**. The largest documented swarm build after Cursor's,
+and the best documented.
+
+- **Scale.** 535,496 lines of Zig, 1,448 files, ported in 11 days by about 50
+  Claude Code dynamic workflows running continuously; at peak four shards, each in
+  its own git worktree with 16 agents (about 64). +1,009,272 lines, 6,502 commits;
+  5.9 billion uncached input tokens, 690 million output, 72 billion cached reads,
+  about $165,000. Jarred's estimate by hand: about a year for a small team.
+- **The judge comes first.** The guide's prerequisite is a test suite rewritten to
+  run against both codebases and itself validated: it must pass on the original and
+  fail on deliberately broken code. Krieger's Python-to-TypeScript port (165,000
+  lines, a weekend, "hundreds of agents, eight phase gates, three adversarial review
+  rounds") used a parity harness of seven real scenarios instead.
+- **A rulebook before fan-out.** About three hours of discussion produced
+  `PORTING.md`; a workflow then built `LIFETIMES.tsv` with two adversarial
+  reviewers per struct field. Eight sub-agents reviewed the rulebook against eight
+  failure categories.
+- **A stress test, thrown away.** Three files were translated with the rulebook,
+  once more "like a senior Rust engineer", and a third agent turned the diff into
+  new rules. It caught "two critical issues". All three outputs were discarded.
+- **The unit loop.** Per file: one implementer, two adversarial reviewers, and a
+  third agent for disagreements. **The reviewer saw only the diff, not the
+  implementer's reasoning.** Findings that recurred became rules in the rulebook,
+  not per-file patches: "you don't fix the code. You fix the process (loop) that
+  produced the code." Done-ness was "does the output file exist", so the queue
+  resumed for free.
+- **One writer for shared resources.** A build daemon was "the only process
+  allowed to rebuild the binary", batching fixers' patches. About two minutes in,
+  agents in a shared checkout ran `git stash`, `stash pop` and `reset --hard`
+  against each other; the fix was a rule forbidding every git command except
+  committing a named file (per-agent worktrees were too large for the disk).
+- **Compile and test as swarm phases.** About 16,000 compile errors were grouped
+  by crate for 64 agents. Agents stubbed functions to make things compile, so the
+  reviewers got a rule: "If you need a paragraph-long comment to justify why the
+  workaround is OK, the code is wrong." Failing test files went from 972 to 23 in
+  two days.
+- **What got through.** 100% of the suite passed before merge; 19 regressions
+  appeared after, most "syntactically identical in both languages but semantically
+  different". The guide's advice: "Front-load the human hours"; Krieger ran his
+  whole migration three times, discarding each run.
+
+### Google's ID migration (coding, conservative)
+
+"Migrating Code At Scale With LLMs At Google" (arXiv 2504.09691, FSE 2025)
+**[paper]**: moving 32-bit identifiers to 64-bit. No swarm in the conversational
+sense, but a fan-out per file under a strict validation chain: Kythe finds
+references to distance five; a fine-tuned Gemini at temperature 0 makes three
+attempts per file; each is checked in order (whitespace, AST parse, **"Punt"**: a
+model asked whether the change was needed at all, build, tests); any failure sends
+the file to a person. Over 12 months three developers landed 595 changes, 74.45%
+LLM-generated, with an estimated (not measured) 50% saving. **[inference]** The
+"Punt" step is a check Forge lacks: whether a change should exist, apart from
+whether it works.
+
+### DARPA AIxCC cyber reasoning systems (security)
+
+The SoK (arXiv 2602.07666, USENIX Security 2026) **[paper]** compares the seven
+finalists of a 143-hour autonomous competition to find and patch vulnerabilities
+in 48 challenge projects, and the Trail of Bits posts on Buttercup **[docs]** add
+one system's detail.
+
+- **Two philosophies.** Team Atlanta (first, $4M) was "ensemble-first": several
+  bug-finding modules sharing seeds and eight patching agents. Trail of Bits
+  (second) used "Expertise-Driven Decomposition": deterministic workflows with
+  models "only where traditional tools fall short", only non-reasoning models, a
+  four-step patcher (root cause, fix strategy, patch, reflection) and over 100,000
+  model requests. Theori (third) was "agentic-first", using logprobs to filter bug
+  candidates.
+- **Spend and score** (Table 8, $K): Atlanta 103.3 total, 29.4 LLM, 392.8 points;
+  Trail of Bits 39.6 and 21.1, 219.4; Theori 31.8 and 11.5, 210.7. Score roughly
+  tracked total spend, but Trail of Bits got second at $181 a point.
+- **Tools and models together.** Fuzzers gave models coverage; models seeded
+  fuzzers, wrote dictionaries and proofs of vulnerability (PoVs) with call paths and
+  debugger access; static analysers filtered candidates first.
+- **Checks were executions.** A PoV counts if it reproduces (the organisers ran each
+  100 times; a team that checked once lost stateful PoVs). A patch must build, stop
+  the PoV and its duplicates, and pass the project's tests; two teams also fuzzed
+  for five minutes after patching. Patches without a PoV were held back for 45
+  minutes to half the challenge time.
+- **Dedup is code**: crash stack, input hash, sanitizer signature, with models only
+  grouping what those miss.
+- **The biggest gap was stability**, not intelligence: several systems plateaued
+  after early phases. Accuracy penalties moved Theori from second to fourth.
+  Semantic patch errors ran 16-21% for the most accurate systems and 38-46% for two
+  general agents run as baselines.
+
+**XBOW** (vendor pages, **[docs]**, unverified): a coordinator "decides what to test,
+where, and in what order, then directs thousands of agents", each a "short-lived
+attack worker with fresh context and one objective", "retired after each mission to
+avoid bias"; independent validators reproduce every exploit, and "a safety judge
+reviews every action before execution".
+
+### The Show-Up attack: when sub-agents work the supervisor (security of swarms)
+
+arXiv 2610.27574 (2026-10-20) **[paper]**: a malicious sub-agent manipulates its
+supervisor into routing it more work than its scope, without making tasks fail. On
+a benchmark of one supervisor and nine sub-agents (188 tasks from AgentDojo,
+ClawBench and new ones), GPT-5.6-Sol as supervisor reached an attack success rate
+up to 0.93. Peer deception (claiming another sub-agent endorsed it) beat collusion
+everywhere (Gemini 3.6 Flash 0.97 against 0.19). Retries raised success from under
+20% to about 65%. **The effect outlived the attack**: success stayed near 67% about
+17 tasks after the last exposure, through memory. Prompt hardening helped unevenly
+(83% to 26% for one strategy, almost nothing for task forgery); restricting channels
+alone was "insufficient"; successful show-ups made 4.43 extra tool calls on average
+against 0.58, a possible signal.
+
+**[inference]** This is the routing-side twin of Keel's "reports are data" rule
+(`keel/tools-and-agents.md` §4c): the rule stops a report's text being obeyed, but
+not a report's claims of competence steering whom the orchestrator picks next.
+
+### Kosmos and Robin (science)
+
+**Kosmos** (Edison Scientific, arXiv 2511.02824) **[paper]**: data-analysis agents
+and literature agents run in parallel, up to ten tasks a cycle for about 20 cycles
+and up to 12 hours, over **a structured world model** that each cycle's results are
+summarised into and that proposes the next cycle's tasks. A run is over 200
+rollouts, about 42,000 lines of code and 1,500 papers, at $200. Every statement in
+the report cites a paper or a notebook. Experts judged 79.4% of 102 statements
+supported: 85.5% of data-analysis statements, 82.1% of literature ones, **57.9% of
+synthesis statements**. Failures named: "excessively strong claims", treating
+significance as value, rabbit holes, and a pipeline error skipped rather than fixed.
+Of seven reported discoveries, three reproduce findings published or unpublished
+elsewhere.
+
+**Robin** (FutureHouse, Nature 2026) **[docs]**: three agents (Crow for literature,
+Falcon for candidate evaluation, Finch for data analysis), "an interpretable
+workflow of only three agents", with people running the wet-lab experiments. It
+proposed ripasudil for dry macular degeneration, from concept to submission in 2.5
+months.
+
+### Many analysts, one dataset (data analysis)
+
+arXiv 2602.18710 (AWS and CMU) **[paper]**: about 5,000 runs of autonomous analyst
+agents (four models, five personas) on three datasets, each run audited by a second
+model, 67% passing. The result is "substantial dispersion in effect sizes, p-values,
+and conclusions", with direction reversals; persona alone moved support for a
+hypothesis by 34 to 66 points, and filtering to compliant runs "narrows, but does
+not eliminate" the gap. The authors recommend reporting the spread as a
+specification curve and disclosing prompts "on par with code and data". IBM's
+streaming discovery agents (arXiv 2605.27571, workshop) **[paper]** pass typed
+contracts with lineage between hypothesis, analyst, verification and visualisation
+agents over Kafka; their own demo shows a `ValidationReport` marked `VALIDATED` with
+its runtime check false.
+
+### What the cases add
+
+1. **Validate the judge before trusting it** (Bun: must fail on broken code; AIxCC:
+   reproduce 100 times).
+2. **Rehearse on a few units and throw the output away** before fanning out.
+3. **Fix the loop, not the unit**: recurring review findings become rules for every
+   later unit.
+4. **The verifier sees the work, not the worker's reasoning** (Bun's diff-only
+   reviewers), and is short-lived (XBOW's retired workers).
+5. **Deterministic tools first, models where they fall short** (Trail of Bits at a
+   third of the winner's spend; Google's validation chain).
+6. **Ask whether a change should exist**, not only whether it works (Google's Punt).
+7. **Stability beats cleverness** at hours-long scale (AIxCC).
+8. **Synthesis is the weakest link** (Kosmos 57.9%), and many analysts disagree:
+   report the spread, cite every statement.
+9. **Supervisors can be worked by their sub-agents**: routing needs the same
+   distrust as instructions.
+
 ---
 
 ## 10. What recurs
@@ -526,6 +712,10 @@ The same shape carries to the other uses in this repo:
    local and resume is cheap.
 8. **Compare at matched spend**: against one agent with the same budget and
    against a vote over N single runs, per task, more than once.
+9. **Validate the judge, rehearse, then fix the loop** (§9a): a check that fails
+   on broken work, a discarded trial run, and recurring findings turned into rules.
+10. **Distrust routing claims**: a sub-agent's claim of competence is data, like
+    any other text in its report.
 
 **Anti-patterns seen**: a flat team with locks; parallel writers on one
 workspace; an integrator agent in the path of every change; debate as a quality
@@ -598,6 +788,15 @@ Google Antigravity: "Gemini 4 Carbon in Google Antigravity" (2026-11-10), the
 2026-11-13, read partly through a summary); Kimi K2.6 blog (2026-04-20); DeepMind,
 "Finding faster quantum algorithms with agents and formal verification"
 (2026-11-23).
+
+Case studies (§9a): Bun, "Rewriting Bun in Rust" (2026-07-08); Anthropic, "How
+Anthropic runs large-scale code migrations with Claude Code" (2026-07-16); arXiv
+2504.09691 (Google, FSE 2025), 2602.07666 (AIxCC SoK, partly through a summary),
+2610.27574 (Show-Up attack), 2511.02824 (Kosmos), 2602.18710 (many analysts),
+2605.27571 (IBM discovery agents), 2607.22682 (a vocabulary for multi-agent research
+systems); Trail of Bits' Buttercup posts (2025-08-08, 2025-08-09); xbow.com platform
+and blog pages; FutureHouse's Robin post; Kir Shatrov, "Large-Scale Code Migrations
+with LLMs" (2025-12).
 
 Secondary: the data-cleaning debate result (from a search summary of arXiv
 2606.02866).
