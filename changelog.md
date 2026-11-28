@@ -2,6 +2,16 @@
 
 All notable changes to this repository, grouped by day, newest first. Generated from git history.
 
+## 2026-11-28
+
+**Agent swarms deep dive, on branch `claude/project-thread-7iimfg`.** Jonathan asked for research into agent swarms: the frameworks and techniques used, and how swarms communicate, organise, focus, iterate and orchestrate, "inspired by but not limited by use cases like breaking a maths problem". The finding that matters most: a swarm is not a better default. Controlled studies show gains on breadth search and decomposable work and losses on sequential planning, tool-heavy tasks and shared-workspace writing (Claude Code on SWE-bench Verified fell from 83.0% to 59.0% with concurrent sub-agents), and debate does not beat a vote at matched budget. What worked at scale had an oracle that judged each part, one writer, and a check before integration.
+
+- `agent-swarms.md` — **new** cross-source document: the five orchestration decisions and five topologies; 22 systems compared (OpenAI handoffs, LangGraph, ADK, CrewAI, Microsoft Agent Framework, Claude Code teams and Workflow, Codex boards, Antigravity `/swarm` and Dynamic Workflows, Kimi Agent Swarm, Anthropic's research system and C compiler, Cursor, Cognition, co-scientist, AlphaEvolve, the Lean provers, ArcticSwarm, AutoSwarm, SwarmBench, the blackboard data-discovery system, Agensh, A2A); the evidence on when it helps; techniques under each of the five verbs; a maths case study (Erdős problems, LeanMarathon, DeepMind's quantum-algorithm teams) generalised to coding, review, research and data analysis; what recurs. Every claim tagged source, paper, abstract, docs, secondary or inference.
+- `agent-design/proposals-swarms-2026-11.md` — **new**: twelve proposals for Keel, Forge and Lens, **none adopted**: one writer per workspace, enforced; a `workspace` mode (`inherit`, `branch`, `share`); join rules (deadline, missing part); acceptance criteria per delegated task; critical-path usage and spawn/report/join events; spawn limits against serial collapse and spurious parallelism; no debate and no vote that drops a finding; a run-scoped board with isolation first; a matched-spend rule in `eval.md`; a Forge campaign shape for oracle-split work; Lens discovery by volunteering; A2A at the edge only. No other design file is changed.
+- `sources.md` — new "Agent swarms (read 2026-11-28)" section with SHAs for the OpenAI Agents SDK, `langgraph-swarm-py`, ADK and CrewAI, the papers and pages read, and candidates not read.
+- `README.md` — pointer to the new document.
+- **Glossary.** Checked to 2026-11-27 (`term.py changes prompts --since 2026-11-27`: the stage-3 breaking changes, already applied). Jonathan asked to "make use of and update taxonomies": heading words are used throughout, and seven requests are filed in `jburnhams/taxonomies`: `new` for swarm (#23), topology (#24), fan-out (#25), board (#26), vote (#27) and debate (#28), and `clarify` on handoff for agent-to-agent control passing inside a run (#29). The taxonomies branch of the same name logs them and adds coordination backlog rows.
+
 ## 2026-11-27
 
 **Term requests are now issues in `jburnhams/taxonomies`, on branch `claude/project-thread-8dnulq`.** Jonathan chose GitHub issues there over a request file in this repo (taxonomies decision J27, 2026-11-27), so the inbox added earlier today is removed.
